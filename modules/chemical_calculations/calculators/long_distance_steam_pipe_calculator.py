@@ -1,9 +1,29 @@
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, 
-                              QLabel, QLineEdit, QPushButton, QComboBox, 
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
+                              QLabel, QLineEdit, QPushButton, QComboBox,
                               QFormLayout, QTextEdit, QGridLayout, QScrollArea)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
 import math
+import os
+import importlib.util
+
+# IAPWS-IF97 工业标准蒸汽物性（动态导入，避免 relative import 失败）
+try:
+    _current_dir = os.path.dirname(os.path.abspath(__file__))
+    _parent_dir = os.path.dirname(_current_dir)
+    _spec = importlib.util.spec_from_file_location(
+        "steam_iapws",
+        os.path.join(_parent_dir, "steam_iapws.py")
+    )
+    _steam_iapws = importlib.util.module_from_spec(_spec)
+    _spec.loader.exec_module(_steam_iapws)
+
+    iapws_steam = _steam_iapws.steam_properties
+    iapws_mu = _steam_iapws.viscosity
+    iapws_k = _steam_iapws.thermal_conductivity
+except Exception as e:
+    print(f"警告: 无法加载 IAPWS-IF97 模块: {e}")
+    iapws_steam = iapws_mu = iapws_k = None
 
 
 class LongDistanceSteamPipeCalculator(QWidget):
@@ -335,16 +355,21 @@ class LongDistanceSteamPipeCalculator(QWidget):
                                  pipe_length, pipe_diameter, roughness,
                                  insulation_thickness, insulation_conductivity, ambient_temp):
         """计算蒸汽管道温降和压降"""
-        # 蒸汽物性参数 (简化计算，实际应使用蒸汽表)
-        def get_steam_properties(temp, pressure):
-            # 简化计算，实际应使用IAPWS公式或蒸汽表
-            # 这里使用近似公式
-            density = pressure * 100 / (0.4615 * (temp + 273.15))  # kg/m³
-            viscosity = 1.2e-5  # Pa·s (近似值)
-            specific_heat = 2.0  # kJ/(kg·K) (近似值)
-            thermal_conductivity = 0.03  # W/(m·K) (近似值)
-            
-            return density, viscosity, specific_heat, thermal_conductivity
+        # 蒸汽物性参数 (IAPWS-IF97 工业标准)
+        def get_steam_properties(temp_c, pressure_mpa):
+            try:
+                props = iapws_steam(pressure_mpa, temp_c)
+                density = props['rho']  # kg/m³
+                specific_heat = props['cp']  # kJ/(kg·K)
+                # 动力粘度 [Pa·s]
+                viscosity = iapws_mu(pressure_mpa, temp_c)
+                # 导热系数 [W/(m·K)]
+                thermal_cond = iapws_k(pressure_mpa, temp_c)
+                return density, viscosity, specific_heat, thermal_cond
+            except Exception:
+                # 降级处理
+                density = pressure_mpa * 100 / (0.4615 * (temp_c + 273.15))
+                return density, 1.2e-5, 2.0, 0.03
         
         # 初始参数
         current_temp = inlet_temp

@@ -8,8 +8,25 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont, QDoubleValidator
 import math
 import re
+import os
+import importlib.util
 from datetime import datetime
 from enum import Enum
+
+# 动态加载 IAPWS-IF97 蒸汽物性模块
+try:
+    _current_dir = os.path.dirname(os.path.abspath(__file__))
+    _parent_dir = os.path.dirname(_current_dir)
+    _spec = importlib.util.spec_from_file_location(
+        "steam_iapws",
+        os.path.join(_parent_dir, "steam_iapws.py")
+    )
+    _steam_iapws = importlib.util.module_from_spec(_spec)
+    _spec.loader.exec_module(_steam_iapws)
+    _iapws_available = True
+except Exception as _e:
+    _iapws_available = False
+    print(f"警告: 无法加载 IAPWS-IF97 模块: {_e}")
 
 # ==================== 枚举定义 ====================
 
@@ -77,14 +94,34 @@ class 换热器面积(QWidget):
         """
         根据表压计算蒸汽物性参数
         输入：表压 (MPa)
-        返回：饱和温度 (°C), 汽化潜热 (kJ/kg)
+        返回：dict 包含 saturation_temp (°C), latent_heat (kJ/kg)
+        
+        优先使用 IAPWS-IF97 标准，不可用时回退到查表插值
         """
-        # 蒸汽表数据（表压MPa，饱和温度°C，汽化潜热kJ/kg）
+        P_abs = pressure_gauge_MPa + 0.101325  # 表压 → 绝对压力
+        
+        if _iapws_available and 0.001 <= P_abs <= 22.064:
+            try:
+                sat = _steam_iapws.saturation_properties(P_MPa=P_abs)
+                return {
+                    "saturation_temp": round(sat['T_C'], 1),
+                    "latent_heat": round(sat['h_fg'], 1),
+                    "method": "IAPWS-IF97"
+                }
+            except Exception:
+                pass
+        
+        # 回退：查表插值法
+        return self._steam_properties_fallback(pressure_gauge_MPa)
+    
+    @staticmethod
+    def _steam_properties_fallback(pressure_gauge_MPa):
+        """回退查表法"""
         steam_data_gauge = [
             (0.0, 100.0, 2256.4),
             (0.1, 120.2, 2201.6),
             (0.2, 133.5, 2163.2),
-            (0.3, 143.6, 2133.0),  # 常用压力点
+            (0.3, 143.6, 2133.0),
             (0.4, 151.8, 2107.4),
             (0.5, 158.8, 2084.3),
             (0.6, 165.0, 2063.0),
@@ -94,19 +131,19 @@ class 换热器面积(QWidget):
             (1.0, 184.1, 1989.8)
         ]
         
-        # 边界检查
         if pressure_gauge_MPa <= steam_data_gauge[0][0]:
             return {
                 "saturation_temp": steam_data_gauge[0][1],
-                "latent_heat": steam_data_gauge[0][2]
+                "latent_heat": steam_data_gauge[0][2],
+                "method": "查表法(回退)"
             }
         elif pressure_gauge_MPa >= steam_data_gauge[-1][0]:
             return {
                 "saturation_temp": steam_data_gauge[-1][1],
-                "latent_heat": steam_data_gauge[-1][2]
+                "latent_heat": steam_data_gauge[-1][2],
+                "method": "查表法(回退)"
             }
         
-        # 线性插值
         for i in range(len(steam_data_gauge)-1):
             P1, T1, r1 = steam_data_gauge[i]
             P2, T2, r2 = steam_data_gauge[i+1]
@@ -118,13 +155,14 @@ class 换热器面积(QWidget):
                 
                 return {
                     "saturation_temp": round(T_sat, 1),
-                    "latent_heat": round(latent_heat, 1)
+                    "latent_heat": round(latent_heat, 1),
+                    "method": "查表法(回退)"
                 }
         
-        # 默认返回100°C
         return {
             "saturation_temp": 100.0,
-            "latent_heat": 2256.4
+            "latent_heat": 2256.4,
+            "method": "查表法(回退)"
         }
     
     def setup_ui(self):
@@ -1258,6 +1296,7 @@ class 换热器面积(QWidget):
             # 7. 准备结果
             mode_text = "蒸汽加热法（设计计算）" if is_design_calculation else "蒸汽加热法（校核计算）"
             P_abs = steam_pressure + 0.101325  # 表压转绝对压力
+            steam_method = steam_props.get("method", "未知")
             
             result_text = f"""═══════════
  输入参数
@@ -1307,6 +1346,7 @@ class 换热器面积(QWidget):
     • 设计面积已考虑{safety_factor:.2f}倍安全系数
     • 面积裕度{((A_design/A_theoretical)-1)*100:.1f}%确保长期运行可靠性
     • 蒸汽加热器设计时需考虑冷凝水排放问题
+    • 蒸汽物性数据来源: {steam_method}
 """
             
             self.result_text.setText(result_text)

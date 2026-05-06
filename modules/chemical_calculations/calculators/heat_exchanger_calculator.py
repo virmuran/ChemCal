@@ -9,7 +9,24 @@ from PySide6.QtGui import QFont, QDoubleValidator
 import math
 import random
 import re
+import os
+import importlib.util
 from datetime import datetime
+
+# 动态加载 IAPWS-IF97 蒸汽物性模块
+try:
+    _current_dir = os.path.dirname(os.path.abspath(__file__))
+    _parent_dir = os.path.dirname(_current_dir)
+    _spec = importlib.util.spec_from_file_location(
+        "steam_iapws",
+        os.path.join(_parent_dir, "steam_iapws.py")
+    )
+    _steam_iapws = importlib.util.module_from_spec(_spec)
+    _spec.loader.exec_module(_steam_iapws)
+    _iapws_available = True
+except Exception as _e:
+    _iapws_available = False
+    print(f"警告: 无法加载 IAPWS-IF97 模块: {_e}")
 
 
 class 换热器计算(QWidget):
@@ -752,27 +769,56 @@ class 换热器计算(QWidget):
             print(f"解析传热系数范围失败: {e}")
     
     def get_steam_latent_heat(self, pressure_mpa):
-        """根据蒸汽压力获取汽化潜热"""
-        # 简化计算：压力(MPa)对应的汽化潜热(kJ/kg)
-        if pressure_mpa <= 0.1:
+        """根据蒸汽表压获取汽化潜热 (kJ/kg)
+        
+        pressure_mpa: 表压 (MPa)，自动转为绝对压力
+        使用 IAPWS-IF97 标准计算，若不可用则回退到查表法
+        """
+        P_abs = pressure_mpa + 0.101325  # 表压 → 绝对压力
+        
+        if _iapws_available and 0.001 <= P_abs <= 22.064:
+            try:
+                sat = _steam_iapws.saturation_properties(P_MPa=P_abs)
+                return sat['h_fg']
+            except Exception:
+                pass
+        
+        # 回退：查表法
+        return self._steam_latent_heat_fallback(P_abs)
+    
+    def get_steam_sat_temperature(self, pressure_mpa):
+        """根据蒸汽表压获取饱和温度 (°C)"""
+        P_abs = pressure_mpa + 0.101325
+        if _iapws_available and 0.001 <= P_abs <= 22.064:
+            try:
+                sat = _steam_iapws.saturation_properties(P_MPa=P_abs)
+                return sat['T_C']
+            except Exception:
+                pass
+        return None
+    
+    @staticmethod
+    def _steam_latent_heat_fallback(P_abs):
+        """回退查表法：绝对压力(MPa) → 汽化潜热(kJ/kg)"""
+        if P_abs <= 0.1:
             return 2257.0
-        elif pressure_mpa <= 0.2:
+        elif P_abs <= 0.2:
             return 2202.0
-        elif pressure_mpa <= 0.3:
+        elif P_abs <= 0.3:
             return 2164.0
-        elif pressure_mpa <= 0.4:
+        elif P_abs <= 0.4:
             return 2133.0
-        elif pressure_mpa <= 0.5:
+        elif P_abs <= 0.5:
             return 2108.0
-        elif pressure_mpa <= 0.6:
+        elif P_abs <= 0.6:
             return 2085.0
-        elif pressure_mpa <= 0.7:
+        elif P_abs <= 0.7:
             return 2065.0
-        elif pressure_mpa <= 0.8:
+        elif P_abs <= 0.8:
             return 2047.0
-        elif pressure_mpa <= 0.9:
+        elif P_abs <= 0.9:
             return 2030.0
-        else:  # 1.0 MPa
+        else:
             return 2015.0
     
     def get_input_value(self, key, default=0.0):
@@ -836,8 +882,15 @@ class 换热器计算(QWidget):
             QMessageBox.warning(self, "输入错误", "冷流体出口温度必须大于进口温度")
             return
         
-        # 获取蒸汽汽化潜热
+        # 获取蒸汽物性
         latent_heat = self.get_steam_latent_heat(steam_pressure)
+        sat_temp = self.get_steam_sat_temperature(steam_pressure)
+        
+        # 验证冷流体出口温度不超过蒸汽饱和温度
+        if sat_temp is not None and cold_t2 >= sat_temp:
+            QMessageBox.warning(self, "输入错误", 
+                f"冷流体出口温度({cold_t2:.1f}°C)不能高于蒸汽饱和温度({sat_temp:.1f}°C)")
+            return
         
         # 计算冷流体吸热量 (kW)
         Q_cold = cold_flow * cold_cp * (cold_t2 - cold_t1) / 3600  # 转换为kW
@@ -845,14 +898,18 @@ class 换热器计算(QWidget):
         # 计算所需蒸汽流量 (kg/h)
         steam_flow = Q_cold * 3600 / latent_heat
         
-        # 显示结果
+        # 构建结果文本
+        P_abs = steam_pressure + 0.101325
+        method_note = "IAPWS-IF97 标准" if _iapws_available else "查表法(回退)"
+        
         result = f"""
 ═══════════
  输入参数
 ═══════════
 
     计算模式: {self.mode_combo.currentText()}
-    蒸汽压力: {steam_pressure:.2f} MPa
+    蒸汽压力: {steam_pressure:.2f} MPa（表压）
+    蒸汽绝对压力: {P_abs:.3f} MPa
     冷流体流量: {cold_flow:.0f} kg/h
     冷流体比热容: {cold_cp:.2f} kJ/(kg·K)
     冷流体进口温度: {cold_t1:.1f} °C
@@ -862,6 +919,7 @@ class 换热器计算(QWidget):
 计算结果
 ══════════
 
+    蒸汽饱和温度: {sat_temp:.1f} °C
     蒸汽汽化潜热: {latent_heat:.1f} kJ/kg
     冷流体吸热量: {Q_cold:.1f} kW
     所需饱和蒸汽流量: {steam_flow:.1f} kg/h
@@ -875,6 +933,7 @@ class 换热器计算(QWidget):
     2. 蒸汽流量: W_steam = Q × 3600 / r [kg/h]
     其中: r - 蒸汽汽化潜热 (kJ/kg)
 
+    蒸汽物性数据来源: {method_note}
     注意: 实际应用应考虑换热效率和安全系数"""
         
         self.result_text.setText(result)
@@ -893,14 +952,23 @@ class 换热器计算(QWidget):
             QMessageBox.warning(self, "输入错误", "冷流体出口温度必须大于进口温度")
             return
         
-        # 获取蒸汽汽化潜热
+        # 获取蒸汽物性
         latent_heat = self.get_steam_latent_heat(steam_pressure)
+        sat_temp = self.get_steam_sat_temperature(steam_pressure)
+        
+        if sat_temp is not None and cold_t2 >= sat_temp:
+            QMessageBox.warning(self, "输入错误", 
+                f"冷流体出口温度({cold_t2:.1f}°C)不能高于蒸汽饱和温度({sat_temp:.1f}°C)")
+            return
         
         # 计算蒸汽放热量 (kW)
         Q_steam = steam_flow * latent_heat / 3600  # 转换为kW
         
         # 计算冷流体流量 (kg/h)
         cold_flow = Q_steam * 3600 / (cold_cp * (cold_t2 - cold_t1))
+        
+        P_abs = steam_pressure + 0.101325
+        method_note = "IAPWS-IF97 标准" if _iapws_available else "查表法(回退)"
         
         # 显示结果
         result = f"""
@@ -909,7 +977,8 @@ class 换热器计算(QWidget):
 ═══════════
 
     计算模式: {self.mode_combo.currentText()}
-    蒸汽压力: {steam_pressure:.2f} MPa
+    蒸汽压力: {steam_pressure:.2f} MPa（表压）
+    蒸汽绝对压力: {P_abs:.3f} MPa
     蒸汽流量: {steam_flow:.0f} kg/h
     冷流体比热容: {cold_cp:.2f} kJ/(kg·K)
     冷流体进口温度: {cold_t1:.1f} °C
@@ -919,6 +988,7 @@ class 换热器计算(QWidget):
 计算结果
 ══════════
 
+    蒸汽饱和温度: {sat_temp:.1f} °C
     蒸汽汽化潜热: {latent_heat:.1f} kJ/kg
     蒸汽放热量: {Q_steam:.1f} kW
     冷流体流量: {cold_flow:.1f} kg/h
@@ -932,6 +1002,7 @@ class 换热器计算(QWidget):
     2. 冷流体流量: W_cold = Q × 3600 / [Cp_cold × (t2 - t1)] [kg/h]
     其中: r - 蒸汽汽化潜热 (kJ/kg)
 
+    蒸汽物性数据来源: {method_note}
     注意: 实际应用应考虑换热效率和安全系数"""
         
         self.result_text.setText(result)
@@ -945,14 +1016,24 @@ class 换热器计算(QWidget):
         cold_cp = self.get_input_value("冷流体cp_kj/(kg·k)", 4.19)
         cold_t1 = self.get_input_value("冷流体t1_℃", 20)
         
-        # 获取蒸汽汽化潜热
+        # 获取蒸汽物性
         latent_heat = self.get_steam_latent_heat(steam_pressure)
+        sat_temp = self.get_steam_sat_temperature(steam_pressure)
         
         # 计算蒸汽放热量 (kW)
         Q_steam = steam_flow * latent_heat / 3600  # 转换为kW
         
         # 计算冷流体出口温度 (°C)
         cold_t2 = cold_t1 + (Q_steam * 3600) / (cold_flow * cold_cp)
+        
+        # 校验出口温度不超过蒸汽饱和温度
+        if sat_temp is not None and cold_t2 >= sat_temp:
+            QMessageBox.warning(self, "温度警告", 
+                f"计算出口温度{cold_t2:.1f}°C已达或超过蒸汽饱和温度{sat_temp:.1f}°C\n"
+                f"请检查蒸汽流量是否过大或冷流体流量是否过小")
+        
+        P_abs = steam_pressure + 0.101325
+        method_note = "IAPWS-IF97 标准" if _iapws_available else "查表法(回退)"
         
         # 显示结果
         result = f"""
@@ -961,7 +1042,8 @@ class 换热器计算(QWidget):
 ═══════════
 
     计算模式: {self.mode_combo.currentText()}
-    蒸汽压力: {steam_pressure:.2f} MPa
+    蒸汽压力: {steam_pressure:.2f} MPa（表压）
+    蒸汽绝对压力: {P_abs:.3f} MPa
     蒸汽流量: {steam_flow:.0f} kg/h
     冷流体流量: {cold_flow:.0f} kg/h
     冷流体比热容: {cold_cp:.2f} kJ/(kg·K)
@@ -971,6 +1053,7 @@ class 换热器计算(QWidget):
 计算结果
 ══════════
 
+    蒸汽饱和温度: {sat_temp:.1f} °C
     蒸汽汽化潜热: {latent_heat:.1f} kJ/kg
     蒸汽放热量: {Q_steam:.1f} kW
     冷流体出口温度: {cold_t2:.1f} °C
@@ -985,6 +1068,7 @@ class 换热器计算(QWidget):
     2. 冷流体出口温度: t2 = t1 + (Q × 3600) / (W_cold × Cp_cold) [°C]
     其中: r - 蒸汽汽化潜热 (kJ/kg)
 
+    蒸汽物性数据来源: {method_note}
     注意: 实际应用应考虑换热效率和安全系数"""
         
         self.result_text.setText(result)

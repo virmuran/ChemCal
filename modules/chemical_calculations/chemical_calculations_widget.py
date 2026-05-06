@@ -160,6 +160,7 @@ class ChemicalCalculationsWidget(QWidget):
             ("离心泵功率计算", "CentrifugalPumpCalculator", "pump_power_calculator", False),
             ("离心泵NPSHa计算", "NPSHaCalculator", "npsha_calculator", False),
             ("可压缩流体压降", "CompressibleFlowPressureDrop", "compressible_flow_pressure_drop", False),
+            ("溶液密度计算", "SolutionDensityCalculator", "solution_density_calculator", False),
         ]
         
         # 添加所有页面
@@ -383,6 +384,7 @@ class ChemicalCalculationsWidget(QWidget):
         "pump_power_calculator": "流体设备",
         "npsha_calculator": "流体设备",
         "compressible_flow_pressure_drop": "管道",
+        "solution_density_calculator": "热力学",
     }
 
     def _get_category_from_module(self, module_name):
