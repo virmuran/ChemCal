@@ -547,12 +547,19 @@ class ReliefAreaCalculator(QWidget):
         }
     
     def calculate_liquid_relief_area(self, W, P1, P2, rho, Kd):
-        """计算液体泄放面积"""
-        # ASME VIII 液体泄放公式
+        """计算液体泄放面积（ASME VIII / API 520）"""
         delta_P = P1 - P2  # kPa
         delta_P_pa = delta_P * 1000  # 转换为Pa
-        
-        # 计算泄放面积
+
+        if delta_P_pa <= 0:
+            return {
+                'area': float('inf'),
+                'flow_type': "背压过高，无法泄放",
+                'actual_flow': W
+            }
+
+        # ASME VIII 液体泄放公式 (SI单位)
+        # A = W / (Kd * sqrt(2 * rho * delta_P))
         A = W / (Kd * math.sqrt(2 * rho * delta_P_pa))
         
         return {

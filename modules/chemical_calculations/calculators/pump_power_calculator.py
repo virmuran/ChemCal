@@ -437,10 +437,11 @@ class CentrifugalPumpCalculator(QWidget):
             # 计算总效率
             total_efficiency = (efficiency / 100) * (motor_efficiency / 100) * 100
             
-            # 推荐电机规格
+            # 推荐电机规格（必须 >= 计算功率）
             standard_motors = [0.75, 1.1, 1.5, 2.2, 3.0, 4.0, 5.5, 7.5, 11, 15, 18.5, 22, 
                               30, 37, 45, 55, 75, 90, 110, 132, 160, 200, 250, 315, 355, 400]
-            recommended_motor = min(standard_motors, key=lambda x: abs(x - motor_power))
+            candidates = [m for m in standard_motors if m >= motor_power]
+            recommended_motor = min(candidates) if candidates else standard_motors[-1]
             
             # 显示结果 - 使用格式化的输出
             result = f"""═══════════════════════════════════════════════════

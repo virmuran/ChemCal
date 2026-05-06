@@ -973,20 +973,73 @@ class 压降计算(QWidget):
             elif mode == "可压缩流体（绝热）":
                 adiabatic_index = self.get_adiabatic_value()
                 start_pressure = float(self.pressure_input.text() or 0) * 1000  # 转换为Pa
-                
-                # 绝热流动计算 (简化)
-                # 使用Fanno流动关系式
-                mach_number = velocity / math.sqrt(adiabatic_index * 287 * 293)  # 简化计算，假设温度为20°C
-                
-                if mach_number < 1:
-                    # 亚音速流动
-                    # 使用等熵流动关系式简化计算
-                    pressure_ratio = 1 - (friction_factor * length / diameter) * (adiabatic_index * mach_number**2) / 2
-                    end_pressure = start_pressure * pressure_ratio
-                    total_pressure_drop = start_pressure - end_pressure
+
+                # Fanno 绝热流动计算
+                # 气体声速 c = sqrt(γ * P / ρ), 使用入口条件计算
+                speed_of_sound = math.sqrt(adiabatic_index * start_pressure / density)
+                mach_number = velocity / speed_of_sound
+
+                if mach_number >= 1.0:
+                    # 超音速或阻塞流
+                    total_pressure_drop = start_pressure * 0.5  # 简化处理
                 else:
-                    # 超音速流动 - 简化处理
-                    total_pressure_drop = friction_factor * (length / diameter) * (density * velocity ** 2) / 2
+                    # 亚音速 Fanno 流动
+                    # Fanno 参数: 4fL*/D = (1-M²)/(γM²) + (γ+1)/(2γ) * ln(M²*(γ+1)/(2+(γ-1)*M²))
+                    # 其中 L* 是达到声速的最大管长
+                    def fanno_parameter(M, gamma):
+                        """计算 Fanno 参数 4fL*/D"""
+                        if M <= 0 or M >= 1:
+                            return float('inf')
+                        term1 = (1 - M**2) / (gamma * M**2)
+                        term2 = (gamma + 1) / (2 * gamma) * math.log(
+                            M**2 * (gamma + 1) / (2 + (gamma - 1) * M**2)
+                        )
+                        return term1 + term2
+
+                    def fanno_M_from_param(param, gamma, M_guess=0.5):
+                        """从 Fanno 参数反求 Mach 数 (Newton-Raphson)"""
+                        M = M_guess
+                        for _ in range(50):
+                            fp = fanno_parameter(M, gamma)
+                            # 数值导数
+                            dm = 1e-6
+                            fp_plus = fanno_parameter(M + dm, gamma)
+                            dfp = (fp_plus - fp) / dm
+                            if abs(dfp) < 1e-12:
+                                break
+                            M_new = M - (fp - param) / dfp
+                            if M_new <= 0.001:
+                                M_new = 0.001
+                            if M_new >= 0.999:
+                                M_new = 0.999
+                            if abs(M_new - M) < 1e-8:
+                                M = M_new
+                                break
+                            M = M_new
+                        return M
+
+                    # 计算 4fL/D
+                    fLD = 4 * friction_factor * length / diameter
+                    # 入口 Fanno 参数
+                    fanno_in = fanno_parameter(mach_number, adiabatic_index)
+                    # 出口 Fanno 参数
+                    fanno_out = fanno_in - fLD
+
+                    if fanno_out <= 0:
+                        # 管道过长，达到声速（阻塞流）
+                        total_pressure_drop = start_pressure * (1 - (mach_number / 1.0) ** 2)
+                    else:
+                        # 求出口 Mach 数
+                        M_out = fanno_M_from_param(fanno_out, adiabatic_index, M_guess=max(mach_number * 0.9, 0.1))
+                        # Fanno 流 P/P* 关系
+                        def fanno_pressure_ratio(M, gamma):
+                            """P/P* 关系"""
+                            return (1 / M) * math.sqrt(
+                                (2 + (gamma - 1) * M**2) / (gamma + 1)
+                            )
+                        P_star_in = start_pressure / fanno_pressure_ratio(mach_number, adiabatic_index)
+                        end_pressure = P_star_in * fanno_pressure_ratio(M_out, adiabatic_index)
+                        total_pressure_drop = start_pressure - end_pressure
                 
                 result = self.format_adiabatic_result(
                     mode, diameter, length, flow_rate, density, viscosity, 
@@ -997,15 +1050,30 @@ class 压降计算(QWidget):
                 
             elif mode == "可压缩流体（等温）":
                 start_pressure = float(self.pressure_input.text() or 0) * 1000  # 转换为Pa
-                
-                # 等温流动计算 (简化)
-                # 使用等温流动公式
-                pressure_drop = (friction_factor * length * density * velocity**2) / (2 * diameter)
-                total_pressure_drop = pressure_drop
-                
+
+                # 等温流动积分法
+                # P1² - P2² = (f * L / D) * (ṁ/A)² * (P1 / (ρ1))
+                # 简化为: P1² - P2² = (f * L / D) * (ρ1 * u1²) * P1
+                # 更精确: P2 = sqrt(P1² - (f*L/D)*(ṁ/A)²*R*T)
+                mass_flow = density * velocity * math.pi * (diameter / 2) ** 2  # kg/s
+                area = math.pi * (diameter / 2) ** 2
+                # 假设气体遵循理想气体: ρ = P/(R*T), R_specific = P/(ρ*T)
+                R_specific = start_pressure / (density * (273.15 + 20))  # J/(kg·K), 假设20°C
+                P1_sq = start_pressure ** 2
+                term = (friction_factor * length / diameter) * (mass_flow / area) ** 2 * R_specific * 293.15
+                P2_sq = P1_sq - term
+
+                if P2_sq <= 0:
+                    # 阻塞流
+                    end_pressure = 0
+                    total_pressure_drop = start_pressure
+                else:
+                    end_pressure = math.sqrt(P2_sq)
+                    total_pressure_drop = start_pressure - end_pressure
+
                 result = self.format_isothermal_result(
-                    mode, diameter, length, flow_rate, density, viscosity, 
-                    roughness, start_pressure/1000, velocity, reynolds, 
+                    mode, diameter, length, flow_rate, density, viscosity,
+                    roughness, start_pressure/1000, velocity, reynolds,
                     flow_regime, friction_factor, total_pressure_drop
                 )
             

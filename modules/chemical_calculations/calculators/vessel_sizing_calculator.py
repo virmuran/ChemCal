@@ -633,12 +633,10 @@ class 设备尺寸计算(QWidget):
             top_type = self.top_type.currentText()
             bottom_type = self.bottom_type.currentText()
 
-            # 获取顶部封头深度（m）
-            top_head_h = self.get_head_depth('top', top_type)
-            # 获取底部封头深度（m）
-            bottom_head_h = self.get_head_depth('bottom', bottom_type)
-
             if mode == "反向计算":
+                # 反向计算模式下D未知，get_head_depth使用比例标记
+                top_head_h = self.get_head_depth('top', top_type)
+                bottom_head_h = self.get_head_depth('bottom', bottom_type)
                 target_work_vol = float(self.target_vol_input.text())   # m³
                 # 几何容积 = 工作容积 / 填充系数
                 target_geo_vol = target_work_vol / fill_factor
@@ -650,6 +648,9 @@ class 设备尺寸计算(QWidget):
             else:  # 正向计算
                 D = float(self.diameter_input.text()) / 1000
                 H_cyl = float(self.cyl_height_input.text()) / 1000
+                # 正向计算模式下传入实际直径D
+                top_head_h = self.get_head_depth('top', top_type, D=D)
+                bottom_head_h = self.get_head_depth('bottom', bottom_type, D=D)
                 # 几何容积
                 geo_vol = self.calc_total_volume(D, H_cyl, top_type, top_head_h,
                                                    bottom_type, bottom_head_h)
@@ -758,14 +759,21 @@ class 设备尺寸计算(QWidget):
 
         return {"inputs": inputs, "outputs": outputs}
 
-    def get_head_depth(self, which, head_type):
-        """获取封头深度（m）"""
+    def get_head_depth(self, which, head_type, D=None):
+        """获取封头深度（m）
+
+        参数:
+            which: 'top' 或 'bottom'
+            head_type: 封头类型
+            D: 筒体直径(m)。正向计算时传入实际值，反向计算时内部由resolve_head_depth动态计算
+        """
         if head_type in ["平顶", "平底"]:
             return 0.0
 
         auto = (self.top_auto_check if which == 'top' else self.bottom_auto_check).isChecked()
         param_input = self.top_param_input if which == 'top' else self.bottom_param_input
-        D = 1.0  # 仅用于比例计算，实际会在求解时动态更新
+        if D is None:
+            D = 1.0  # 仅用于比例计算，实际会在求解时动态更新
 
         if auto:
             # 根据类型返回与直径的比例
@@ -787,9 +795,12 @@ class 设备尺寸计算(QWidget):
             val = float(param_input.text()) / 1000  # 转换为m
             if head_type == "锥形封头" and param_input.isEnabled():
                 # 此时val是角度（°），需转换为深度：深度 = (D/2) * tan(angle_rad)
-                # 但D未知，因此返回一个标记，由求解函数处理
-                # 这里暂时返回角度值（负值标记），solve_dimensions中特殊处理
-                return -val  # 负值表示角度
+                # 如果D未知（反向计算模式D=None），返回角度标记由resolve_head_depth处理
+                if D is None or D == 1.0:
+                    return -val  # 负值表示角度
+                else:
+                    angle_rad = math.radians(val)
+                    return (D / 2.0) * math.tan(angle_rad)
             else:
                 return val   # 深度，单位m
 
@@ -798,20 +809,31 @@ class 设备尺寸计算(QWidget):
         if head_type == "平顶" or head_type == "平底" or h <= 0:
             return 0.0
         if head_type == "椭圆封头":
-            # 标准椭圆封头容积 = π/24 * D^3 当 h = D/4
-            # 一般情况容积与h成正比（假设形状相似）
-            std_h = D / 4.0
-            if std_h > 0:
-                return (math.pi / 24.0) * D**3 * (h / std_h)
-            else:
-                return 0.0
+            # 椭圆封头（半椭球）：V = π/24 * D³ 当 h = D/4
+            # 一般情况：V = 2π/3 * a² * b（半椭球），其中 a=D/2, b=h
+            a = D / 2.0
+            b = h
+            return (2.0 / 3.0) * math.pi * a**2 * b
         elif head_type == "碟形封头":
-            # 近似按椭圆处理
-            std_h = D / 5.0
-            if std_h > 0:
-                return (math.pi / 24.0) * D**3 * (h / std_h)
+            # 碟形封头由球面段 + 折边段组成
+            # 标准碟形封头：球面半径 R ≈ D，折边半径 r ≈ 0.1D，深度 h ≈ 0.1935D
+            R_s = D       # 球面半径
+            r_k = 0.1 * D  # 折边半径
+            # 球面段（球缺）高度
+            if R_s > D / 2:
+                h_s = R_s - math.sqrt(R_s**2 - (D / 2 - r_k)**2)
             else:
-                return 0.0
+                h_s = h * 0.7  # 近似
+            # 球缺容积
+            vol_sphere = math.pi * h_s**2 * (3 * R_s - h_s) / 3.0
+            # 折边段容积（近似为截头锥体）
+            h_k = h - h_s
+            if h_k > 0 and r_k > 0:
+                r_top = D / 2 - r_k + r_k * math.sin(math.acos((D/2 - r_k) / R_s)) if R_s > D/2 - r_k else D / 2 - r_k
+                vol_knuckle = math.pi * h_k * ((D/2)**2 + r_top**2 + (D/2) * r_top) / 3.0
+            else:
+                vol_knuckle = 0.0
+            return vol_sphere + vol_knuckle
         elif head_type == "锥形封头":
             # 圆锥体积 = 1/3 * π * r^2 * h
             return (1.0/3.0) * math.pi * (D/2)**2 * h
@@ -828,12 +850,36 @@ class 设备尺寸计算(QWidget):
         if h <= 0:
             return math.pi * (D/2)**2
         if head_type == "椭圆封头":
-            # 近似公式
-            a = D/2
-            b = h
-            return 2 * math.pi * a * (a + b)  # 粗糙估计
+            # 半椭球壳表面积（椭圆封头为半个旋转椭球）
+            a = D / 2.0  # 赤道半径
+            b = h        # 深度（极半径）
+            if a <= 0 or b <= 0:
+                return math.pi * (D/2)**2
+            if abs(a - b) < 1e-10:
+                # 半球
+                return 2.0 * math.pi * a**2
+            # 使用近似公式: A = π * (a² + b²/e * ln((1+e)/(1-e)))
+            # 其中 e = sqrt(1 - (b/a)²)
+            ratio = b / a
+            if ratio >= 1.0:
+                # b >= a，近似为半球
+                return 2.0 * math.pi * a**2
+            e = math.sqrt(1.0 - ratio**2)
+            if e < 1e-10:
+                return math.pi * a**2
+            area = math.pi * (a**2 + (b**2 / e) * math.log((1 + e) / (1 - e)))
+            return area
         elif head_type == "碟形封头":
-            return 2 * math.pi * (D/2)**2  # 粗略
+            # 碟形封头由球面段+折边段组成，近似按等效椭圆封头计算
+            # 近似面积 = 球面段 + 折边段（简化为1.15*半球面积*修正）
+            R_s = D  # 球面半径约等于D
+            r_k = 0.1 * D  # 折边半径
+            # 球面段面积（球缺）：2π*R*h_s，其中h_s为球缺高度
+            h_s = R_s - math.sqrt(R_s**2 - (D/2)**2) if R_s > D/2 else h
+            area_sphere = 2 * math.pi * R_s * h_s
+            # 折边段近似面积
+            area_knuckle = 2 * math.pi * r_k * (D/2 - r_k) * math.pi / 2
+            return area_sphere + area_knuckle
         elif head_type == "锥形封头":
             r = D/2
             l = math.sqrt(r**2 + h**2)

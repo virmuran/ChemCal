@@ -674,7 +674,7 @@ class 篮式过滤器(QWidget):
                 "有效面积_m2": round(effective_area, 4),
                 "筛网直径_mm": round(screen_diameter * 1000, 1),
                 "筛网高度_mm": round(screen_height * 1000, 1),
-                "压降_kPa": round(pressure_drop / 1000, 2),
+                "压降_kPa": round(pressure_drop, 2),
                 "应力因子": round(stress_factor, 3),
                 "管道直径_mm": round(pipe_diameter * 1000, 1),
                 "过滤器直径_mm": filter_diameter_rounded

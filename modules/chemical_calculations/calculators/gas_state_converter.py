@@ -443,13 +443,16 @@ class 气体标态转压缩态(QWidget):
             std_temp, std_pressure = self.get_standard_conditions()
             
             # 验证输入
-            if not all([std_flow, actual_pressure, actual_temp is not None]):
-                QMessageBox.warning(self, "输入错误", "请填写所有必需参数")
-                return
-            
-            # 转换为绝对温度和绝对压力
             std_temp_k = std_temp + 273.15
             actual_temp_k = actual_temp + 273.15
+            if std_flow <= 0 or actual_pressure <= 0 or std_temp_k <= 0 or actual_temp_k <= 0:
+                QMessageBox.warning(self, "输入错误", "请填写有效的参数（流量和压力必须大于0，温度不能低于-273.15°C）")
+                return
+            if compress_factor <= 0:
+                QMessageBox.warning(self, "输入错误", "压缩因子必须大于0")
+                return
+
+            # 转换为绝对压力
             
             std_pressure_abs = std_pressure
             actual_pressure_abs = actual_pressure

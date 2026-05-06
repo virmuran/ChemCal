@@ -469,41 +469,56 @@ class SafetyValveCalculator(QWidget):
         
         return relief_rate / 3600  # 返回kg/s
     
-    def calculate_gas_area(self, relief_rate, relief_pressure, back_pressure, 
+    def calculate_gas_area(self, relief_rate, relief_pressure, back_pressure,
                           temperature, molecular_weight, gamma, compressibility):
-        """计算气体泄放面积"""
-        # 通用气体常数
-        R = 8314  # J/(kmol·K)
-        
-        # 判断是否为阻塞流
+        """计算气体泄放面积（ASME VIII / API 520）"""
+        # 温度转换为绝对温度
+        T_abs = temperature + 273.15
+        P1 = relief_pressure  # kPa (泄放压力)
+        P2 = back_pressure    # kPa (背压)
+
+        # 判断是否为阻塞流（临界流动）
         critical_pressure_ratio = (2 / (gamma + 1)) ** (gamma / (gamma - 1))
-        pressure_ratio = back_pressure / relief_pressure
-        
+        pressure_ratio = P2 / P1 if P1 > 0 else 1.0
+
+        # 临界流系数 C (ASME VIII / API 520, SI单位)
+        # C = 0.03948 * sqrt(k * (2/(k+1))^((k+1)/(k-1)))
+        C = 0.03948 * math.sqrt(gamma * (2 / (gamma + 1)) ** ((gamma + 1) / (gamma - 1)))
+
+        # 泄放系数 Kd
+        Kd = 0.65
+
         if pressure_ratio <= critical_pressure_ratio:
-            # 阻塞流
-            C = gamma * math.sqrt((2 / (gamma + 1)) ** ((gamma + 1) / (gamma - 1))) / math.sqrt(R)
-            area = relief_rate / (C * relief_pressure * math.sqrt(molecular_weight / (compressibility * temperature)))
+            # 临界流动（阻塞流）
+            # A = W / (C * Kd * P1 * sqrt(M / (T * Z)))
+            area = relief_rate / (C * Kd * P1 * math.sqrt(molecular_weight / (T_abs * compressibility)))
         else:
-            # 亚临界流
-            # 简化计算，实际应使用更复杂的公式
-            C = 0.9  # 经验系数
-            area = relief_rate / (C * relief_pressure * math.sqrt(molecular_weight / (compressibility * temperature)))
-        
+            # 亚临界流动
+            r = pressure_ratio
+            F = math.sqrt((gamma / (gamma - 1)) * (r ** (2 / gamma) - r ** ((gamma + 1) / gamma)))
+            area = relief_rate / (C * Kd * P1 * F * math.sqrt(molecular_weight / (T_abs * compressibility)))
+
         return area
     
-    def calculate_liquid_area(self, relief_rate, relief_pressure, back_pressure):
-        """计算液体泄放面积"""
-        # 假设液体密度为1000 kg/m³
-        density = 1000  # kg/m³
-        # 流量系数
-        K = 0.65
-        
-        # 压差
-        delta_p = relief_pressure - back_pressure
-        
-        # 计算面积
-        area = relief_rate / (5.1 * K * math.sqrt(density * delta_p))
-        
+    def calculate_liquid_area(self, relief_rate, relief_pressure, back_pressure, liquid_density=None):
+        """计算液体泄放面积（ASME VIII / API 520）"""
+        # 液体密度，默认为水
+        density = liquid_density if liquid_density and liquid_density > 0 else 1000  # kg/m³
+
+        # 泄放系数 Kd
+        Kd = 0.65
+
+        # 压差（kPa → Pa）
+        delta_p = (relief_pressure - back_pressure) * 1000  # Pa
+
+        if delta_p <= 0:
+            return float('inf')  # 背压过高，无法泄放
+
+        # ASME VIII 液体泄放公式 (SI单位)
+        # A = W / (Kd * sqrt(2 * rho * delta_P))
+        # 其中 W: kg/s, rho: kg/m³, delta_P: Pa, A: m²
+        area = relief_rate / (Kd * math.sqrt(2 * density * delta_p))
+
         return area
     
     def display_results(self, area, diameter, relief_rate, medium):

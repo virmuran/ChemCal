@@ -103,7 +103,7 @@ class NPSHaCalculator(QWidget):
         
         self.vapor_pressure_input = QLineEdit()
         self.vapor_pressure_input.setPlaceholderText("例如: 2.34 (水在20°C)")
-        self.vapor_pressure_input.setValidator(QDoubleValidator(0.1, 100.0, 6))
+        self.vapor_pressure_input.setValidator(QDoubleValidator(0.001, 22064.0, 6))
         self.vapor_pressure_input.setFixedWidth(input_width)
         input_layout.addWidget(self.vapor_pressure_input, row, 1)
         
@@ -412,8 +412,8 @@ class NPSHaCalculator(QWidget):
             npshr_value = float(npshr) if npshr else None
             
             # 验证输入
-            if not all([atm_pressure, vapor_pressure, static_head is not None, friction_loss, density]):
-                QMessageBox.warning(self, "输入错误", "请填写所有必需参数")
+            if atm_pressure <= 0 or vapor_pressure < 0 or friction_loss < 0 or density <= 0:
+                QMessageBox.warning(self, "输入错误", "请填写有效的参数（大气压和密度必须大于0）")
                 return
             
             # 计算NPSHa

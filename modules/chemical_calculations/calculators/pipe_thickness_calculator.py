@@ -1061,7 +1061,7 @@ class 管道壁厚(QWidget):
 计算书标识
 ══════════
 
-    计算书编号: PT-{datetime.now().strftime('%Y%m%d')}-001
+    计算书编号: {project_info['report_number']}
     版本: 1.0
     状态: 正式计算书
 
@@ -1245,10 +1245,6 @@ class 管道壁厚(QWidget):
         """处理内容，使其适合PDF显示"""
         # 清理bullet符号
         content = content.replace("•", "")
-        # 替换表情图标
-        for emoji, text in replacements.items():
-            content = content.replace(emoji, text)
-        
         # 替换单位符号
         content = content.replace("m³", "m3")
         content = content.replace("g/100g", "g/100g")

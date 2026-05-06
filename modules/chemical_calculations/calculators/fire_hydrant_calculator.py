@@ -520,9 +520,10 @@ class 消火栓计算(QWidget):
         # 计算所需扬程
         required_head = building_height + 10 + 5  # 建筑高度 + 最不利点高度 + 余量
         
-        # 计算水泵功率
+        # 计算水泵功率 P = ρ·g·Q·H/η，ρ_水=1000 kg/m³
         efficiency = 0.75
-        power_kw = (total_flow / 1000) * required_head * 9.81 / efficiency
+        power_w = 1000 * 9.81 * (total_flow / 1000) * required_head / efficiency
+        power_kw = power_w / 1000  # W → kW
         
         return {
             "required_head": required_head,

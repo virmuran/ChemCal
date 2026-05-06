@@ -806,6 +806,24 @@ class 管径计算(QWidget):
             "二氯乙烷": 1256,
             "三氯乙烷": 1320
         }
+
+        # 标态密度数据 (0°C, 101.325 kPa, kg/Nm³)
+        # 用于 Nm³/h 流量单位的质量换算
+        self.std_density_data = {
+            "压缩空气": 1.293,
+            "压缩气体": 1.293,
+            "氧气": 1.429,
+            "煤气": 0.46,
+            "半水煤气": 0.75,
+            "天然气": 0.717,
+            "烟道气": 1.34,
+            "石灰窑窑气": 1.35,
+            "氮气": 1.251,
+            "氢氮混合气": 0.292,
+            "氨气": 0.771,
+            "乙炔气": 1.171,
+            "乙烯气": 1.264,
+        }
     
     def on_fluid_changed(self, text):
         """处理流体选择变化"""
@@ -1094,8 +1112,9 @@ class 管径计算(QWidget):
         elif flow_unit == "m³/h":
             W = flow_rate * density  # m³/h → kg/h
         elif flow_unit == "Nm³/h":
-            # 对于压缩空气，1 Nm³ = 1.293 kg
-            W = flow_rate * 1.293  # Nm³/h → kg/h
+            # Nm³/h → kg/h，使用该气体的标态密度
+            std_rho = self.std_density_data.get(fluid, 1.293)
+            W = flow_rate * std_rho
         else:
             W = flow_rate * 1000  # 默认按t/h处理
         
@@ -1117,8 +1136,9 @@ class 管径计算(QWidget):
         elif flow_unit == "m³/h":
             flow_rate = W / density  # kg/h → m³/h
         elif flow_unit == "Nm³/h":
-            # 对于压缩空气，1 Nm³ = 1.293 kg
-            flow_rate = W / 1.293  # kg/h → Nm³/h
+            # kg/h → Nm³/h，使用该气体的标态密度
+            std_rho = self.std_density_data.get(fluid, 1.293)
+            flow_rate = W / std_rho
         else:
             flow_rate = W / 1000  # 默认按t/h处理
         
@@ -1135,7 +1155,8 @@ class 管径计算(QWidget):
         elif flow_unit == "m³/h":
             W = flow_rate * density
         elif flow_unit == "Nm³/h":
-            W = flow_rate * 1.293
+            std_rho = self.std_density_data.get(fluid, 1.293)
+            W = flow_rate * std_rho
         else:
             W = flow_rate * 1000
         
@@ -1205,7 +1226,8 @@ class 管径计算(QWidget):
         elif flow_unit == "m³/h":
             W = flow_rate * density
         elif flow_unit == "Nm³/h":
-            W = flow_rate * 1.293
+            std_rho = self.std_density_data.get(fluid, 1.293)
+            W = flow_rate * std_rho
         else:
             W = flow_rate * 1000
         
@@ -1238,9 +1260,10 @@ class 管径计算(QWidget):
     • {flow_rate * 1000:.0f} L/h
     • {flow_rate / 3600:.4f} m³/s"""
         elif flow_unit == "Nm³/h":
+            std_rho = self.std_density_data.get(fluid, 1.293)
             result += f"""
-    • {flow_rate * 1.293:.0f} kg/h
-    • {flow_rate * 1.293 / 3600:.2f} kg/s"""
+    • {flow_rate * std_rho:.0f} kg/h
+    • {flow_rate * std_rho / 3600:.2f} kg/s"""
 
         result += f"""
 
@@ -1285,8 +1308,8 @@ class 管径计算(QWidget):
         elif flow_unit == "m³/h":
             flow_kg_s = flow_rate * density / 3600  # m³/h → kg/s
         elif flow_unit == "Nm³/h":
-            # 对于压缩空气，Nm³/h需要转换为kg/s
-            flow_kg_s = flow_rate * 1.293 / 3600
+            std_rho = self.std_density_data.get(fluid, 1.293)
+            flow_kg_s = flow_rate * std_rho / 3600
         else:
             flow_kg_s = flow_rate * 1000 / 3600  # 默认按t/h处理
         
@@ -1698,11 +1721,7 @@ class 管径计算(QWidget):
         """处理内容，使其适合PDF显示"""
         # 清理bullet符号
         content = content.replace("•", "")
-        
-        # 替换表情图标
-        for emoji, text in replacements.items():
-            content = content.replace(emoji, text)
-        
+
         # 替换单位符号
         content = content.replace("m³", "m3")
         content = content.replace("g/100g", "g/100g")

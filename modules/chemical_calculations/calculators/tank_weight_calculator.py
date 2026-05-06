@@ -162,7 +162,7 @@ class 罐体重量(QWidget):
         
         self.diameter_input = QLineEdit()
         self.diameter_input.setPlaceholderText("例如: 3000")
-        self.diameter_input.setValidator(QDoubleValidator(0.1, 50.0, 2))
+        self.diameter_input.setValidator(QDoubleValidator(0.1, 50000.0, 2))
         self.diameter_input.setText("")
         self.diameter_input.setFixedWidth(input_width)
         self.input_layout.addWidget(self.diameter_input, row, 1)
@@ -182,7 +182,7 @@ class 罐体重量(QWidget):
         
         self.height_input = QLineEdit()
         self.height_input.setPlaceholderText("例如: 5000")
-        self.height_input.setValidator(QDoubleValidator(0.1, 50.0, 2))
+        self.height_input.setValidator(QDoubleValidator(0.1, 50000.0, 2))
         self.height_input.setText("")
         self.height_input.setFixedWidth(input_width)
         self.input_layout.addWidget(self.height_input, row, 1)
@@ -222,7 +222,7 @@ class 罐体重量(QWidget):
         
         self.cone_height_input = QLineEdit()
         self.cone_height_input.setPlaceholderText("例如: 1200")
-        self.cone_height_input.setValidator(QDoubleValidator(0.1, 10.0, 2))
+        self.cone_height_input.setValidator(QDoubleValidator(0.1, 10000.0, 2))
         self.cone_height_input.setText("")
         self.cone_height_input.setFixedWidth(input_width)
         self.input_layout.addWidget(self.cone_height_input, row, 1)
@@ -242,7 +242,7 @@ class 罐体重量(QWidget):
         
         self.nozzle_diameter_input = QLineEdit()
         self.nozzle_diameter_input.setPlaceholderText("例如: 100")
-        self.nozzle_diameter_input.setValidator(QDoubleValidator(0.01, 2.0, 3))
+        self.nozzle_diameter_input.setValidator(QDoubleValidator(0.01, 50000.0, 3))
         self.nozzle_diameter_input.setText("")
         self.nozzle_diameter_input.setFixedWidth(input_width)
         self.input_layout.addWidget(self.nozzle_diameter_input, row, 1)

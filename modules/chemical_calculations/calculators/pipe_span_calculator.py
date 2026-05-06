@@ -831,10 +831,12 @@ class 管道跨距(QWidget):
             
             # 计算最大跨距
             span_stress = math.sqrt(8 * allowable_stress * Z / total_weight)
-            
-            # 基于挠度的跨距
-            max_deflection = span_stress / 360  # L/360 挠度限制
-            span_deflection = (384 * elastic_modulus * I / (5 * total_weight * max_deflection)) ** 0.25
+
+            # 基于挠度的跨距（简支梁，挠度限 L/360）
+            # δ = 5·w·L⁴/(384·E·I) = L/360
+            # → L³ = 384·E·I / (360·5·w) = 384·E·I / (1800·w)
+            w = total_weight  # N/m
+            span_deflection = ((384 * elastic_modulus * I) / (1800 * w)) ** (1/3)
             
             # 取较小值作为推荐跨距
             recommended_span = min(span_stress, span_deflection)
@@ -944,9 +946,12 @@ class 管道跨距(QWidget):
             insulation_area = math.pi * (insulation_od**2 - od**2) / 4
             insulation_weight = insulation_area * insulation_density * 9.81 if insulation_thickness > 0 and insulation_density > 0 else 0
             total_weight = pipe_weight + fluid_weight + insulation_weight
+            # 基于应力的跨距（应力限制）
             span_stress = math.sqrt(8 * allowable_stress * Z / total_weight)
-            max_deflection = span_stress / 360
-            span_deflection = (384 * elastic_modulus * I / (5 * total_weight * max_deflection)) ** 0.25
+
+            # 基于挠度的跨距（简支梁，挠度限 L/360）
+            w = total_weight  # N/m
+            span_deflection = ((384 * elastic_modulus * I) / (1800 * w)) ** (1/3)
             recommended_span = min(span_stress, span_deflection)
 
             outputs = {

@@ -7,7 +7,38 @@ from PySide6.QtGui import QFont, QDoubleValidator
 from PySide6.QtCore import Qt
 import math
 import re
+import importlib.util
+import os
 from datetime import datetime
+
+# ─────────────────── IAPWS-IF97 动态加载 ───────────────────
+_IAPWS_MODULE = None
+_IAPWS_AVAILABLE = False
+
+def _load_iapws():
+    """动态加载 steam_iapws 模块"""
+    global _IAPWS_MODULE, _IAPWS_AVAILABLE
+    if _IAPWS_MODULE is not None or _IAPWS_AVAILABLE:
+        return _IAPWS_AVAILABLE
+    try:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        spec = importlib.util.spec_from_file_location(
+            "steam_iapws",
+            os.path.join(base_dir, "steam_iapws.py")
+        )
+        if spec is None:
+            _IAPWS_AVAILABLE = False
+            return False
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        _IAPWS_MODULE = module
+        _IAPWS_AVAILABLE = True
+        return True
+    except Exception:
+        _IAPWS_AVAILABLE = False
+        return False
+
+_load_iapws()
 
 
 class 蒸汽管径流量(QWidget):
@@ -768,14 +799,33 @@ class 蒸汽管径流量(QWidget):
     • 计算结果仅供参考，实际应用请考虑具体工况"""
     
     def calculate_steam_density(self, pressure_mpa, temperature_c):
-        """计算蒸汽密度"""
+        """计算蒸汽密度（优先 IAPWS-IF97，失败则简化公式）"""
+        temperature_k = temperature_c + 273.15
+
+        # 优先使用 IAPWS-IF97
+        if _IAPWS_MODULE is not None:
+            try:
+                # 判断是饱和还是过热：查饱和温度
+                T_sat = _IAPWS_MODULE.tsat_p(pressure_mpa)  # 饱和温度 °C
+                if temperature_c <= T_sat:
+                    # 饱和蒸汽 → Region 4 饱和气体密度
+                    props = _IAPWS_MODULE.region4_saturation(pressure_mpa)
+                    vg = props['vg']  # 比容 m³/kg
+                    return 1.0 / vg if vg > 0 else 0.1
+                else:
+                    # 过热蒸汽 → Region 2
+                    props = _IAPWS_MODULE.region2(pressure_mpa, temperature_c)
+                    v = props['v']  # 比容 m³/kg
+                    return 1.0 / v if v > 0 else 0.1
+            except Exception:
+                pass
+
+        # Fallback: 简化经验公式（误差较大，仅供参考）
         pressure_bar = pressure_mpa * 10
-        
         if temperature_c < 200:
             density = 0.6 * pressure_bar / (temperature_c + 100)
         else:
             density = 0.5 * pressure_bar / (temperature_c + 150)
-        
         return max(density, 0.1)
     
     def get_project_info(self):
@@ -1125,10 +1175,7 @@ class 蒸汽管径流量(QWidget):
         """处理内容，使其适合PDF显示"""
         # 清理bullet符号
         content = content.replace("•", "")
-        # 替换表情图标
-        for emoji, text in replacements.items():
-            content = content.replace(emoji, text)
-        
+
         # 替换单位符号
         content = content.replace("m³", "m3")
         content = content.replace("kg/m³", "kg/m3")

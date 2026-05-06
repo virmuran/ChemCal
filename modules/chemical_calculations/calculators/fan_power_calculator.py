@@ -57,22 +57,11 @@ class FanPowerCalculator(QWidget):
         
         self.pressure_unit = QComboBox()
         self.pressure_unit.addItems(["Pa", "kPa", "mmH₂O"])
-        
+
         self.temperature_input = QLineEdit()
         self.temperature_input.setText("20")
         self.temperature_input.setValidator(QDoubleValidator(-50, 200, 1))
-        
-        self.pressure_input = QLineEdit()
-        self.pressure_input.setPlaceholderText("例如：1000")
-        self.pressure_input.setValidator(QDoubleValidator(10, 50000, 1))
-        
-        self.pressure_unit = QComboBox()
-        self.pressure_unit.addItems(["Pa", "kPa", "mmH₂O"])
-        
-        self.temperature_input = QLineEdit()
-        self.temperature_input.setText("20")
-        self.temperature_input.setValidator(QDoubleValidator(-50, 200, 1))
-        
+
         self.altitude_input = QLineEdit()
         self.altitude_input.setText("0")
         self.altitude_input.setValidator(QDoubleValidator(-100, 5000, 0))
@@ -357,11 +346,12 @@ class FanPowerCalculator(QWidget):
 
         outputs = {}
         try:
-            rho_standard = 1.2
+            # 空气密度计算：以标准状态(0°C, 101.325kPa)为基准
             T_kelvin = temperature + 273.15
-            rho_temp = 1.293 * (273.15 / T_kelvin)
-            rho_altitude = (1 - altitude / 44300) ** 5.255
-            rho = rho_standard * rho_temp * rho_altitude
+            rho_temp = 1.293 * (273.15 / T_kelvin)  # 温度修正
+            # 海拔修正：国际标准大气(ISA)幂律公式
+            rho_altitude = (1 - altitude / 44300) ** 5.255 if altitude < 44300 else 0.01
+            rho = rho_temp * rho_altitude
             flow_m3s = flow_rate_m3h / 3600
             shaft_power = flow_m3s * pressure_pa / fan_efficiency if fan_efficiency > 0 else 0
             motor_power = shaft_power / motor_efficiency if motor_efficiency > 0 else 0
@@ -387,17 +377,15 @@ class FanPowerCalculator(QWidget):
                            operation_hours, days_per_year, electricity_price):
         """计算风机功率和能耗"""
         # 计算空气密度修正
-        # 标准空气密度 (20°C, 海平面)
-        rho_standard = 1.2  # kg/m³
-        
+        # 标准空气密度 (0°C, 101.325kPa): 1.293 kg/m³
+
         # 温度修正
         T_kelvin = temperature + 273.15
         rho_temp = 1.293 * (273.15 / T_kelvin)
-        
-        # 海拔修正 (简化公式)
-        # 海拔每升高1000米，大气压下降约12%
-        altitude_factor = math.exp(-altitude / 8400)
-        rho_actual = rho_temp * altitude_factor
+
+        # 海拔修正：国际标准大气(ISA)幂律公式
+        rho_altitude = (1 - altitude / 44300) ** 5.255 if altitude < 44300 else 0.01
+        rho_actual = rho_temp * rho_altitude
         
         # 计算轴功率 (kW)
         # P_shaft = (Q × p) / (3600 × 1000 × η_fan)
