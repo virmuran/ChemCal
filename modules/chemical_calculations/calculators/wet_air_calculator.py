@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
     QLabel, QLineEdit, QPushButton, QComboBox,
     QTextEdit, QGridLayout, QFileDialog, QMessageBox,
-    QScrollArea,
+    QScrollArea, QSizePolicy,
 
 )
 from PySide6.QtCore import Qt
@@ -30,6 +30,9 @@ COMBOBOX_STYLE = """
         padding: 3px 8px;
     }
 """
+
+LINEEDIT_STYLE = "padding: 6px 10px; border: 1px solid #bdc3c7; border-radius: 4px; background-color: white;"
+
 class WetAirCalculator(QWidget):
     """湿空气计算器"""
 
@@ -88,12 +91,10 @@ class WetAirCalculator(QWidget):
         input_group.setStyleSheet(group_style)
         grid = QGridLayout(input_group)
         grid.setHorizontalSpacing(10)
-        grid.setVerticalSpacing(10)
-        grid.setColumnStretch(0, 2)  # 标签列可伸缩
-
-        grid.setColumnStretch(1, 3)  # 输入框列可伸缩
-
-        grid.setColumnStretch(2, 2)  # 提示列可伸缩
+        grid.setVerticalSpacing(12)
+        grid.setColumnStretch(0, 4)  # 标签列
+        grid.setColumnStretch(1, 8)  # 输入框列
+        grid.setColumnStretch(2, 5)  # 提示列
 
 
         label_style = "font-weight: bold; padding-right: 10px;"
@@ -101,36 +102,28 @@ class WetAirCalculator(QWidget):
         def make_label(text):
             lbl = QLabel(text)
             lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            lbl.setMinimumWidth(120)
-            lbl.setMaximumWidth(200)
             lbl.setStyleSheet(label_style)
             return lbl
 
         # 行0：干球温度 + 大气压力
         self.temp_input = QLineEdit()
-        self.temp_input.setMinimumWidth(150)
-        self.temp_input.setMaximumWidth(400)
         self.temp_input.setPlaceholderText("例如：25")
         self.temp_input.setValidator(QDoubleValidator(-50, 200, 2))
+        self.temp_input.setStyleSheet(LINEEDIT_STYLE)
         self.temp_unit = QComboBox()
         self.temp_unit.setStyleSheet(COMBOBOX_STYLE)
         self.temp_unit.addItems(["°C", "K"])
-        self.temp_unit.setMinimumWidth(100)
-        self.temp_unit.setMaximumWidth(250)
         grid.addWidget(make_label("干球温度:"), 0, 0)
         grid.addWidget(self.temp_input, 0, 1)
         grid.addWidget(self.temp_unit, 0, 2)
 
         # 行1：大气压力
         self.pressure_input = QLineEdit("101.325")
-        self.pressure_input.setMinimumWidth(150)
-        self.pressure_input.setMaximumWidth(400)
         self.pressure_input.setValidator(QDoubleValidator(50, 2000, 3))
+        self.pressure_input.setStyleSheet(LINEEDIT_STYLE)
         self.pressure_unit = QComboBox()
         self.pressure_unit.setStyleSheet(COMBOBOX_STYLE)
         self.pressure_unit.addItems(["kPa", "bar", "atm"])
-        self.pressure_unit.setMinimumWidth(100)
-        self.pressure_unit.setMaximumWidth(250)
         grid.addWidget(make_label("大气压力:"), 1, 0)
         grid.addWidget(self.pressure_input, 1, 1)
         grid.addWidget(self.pressure_unit, 1, 2)
@@ -143,54 +136,42 @@ class WetAirCalculator(QWidget):
 
         # 行3：相对湿度
         self.rh_input = QLineEdit()
-        self.rh_input.setMinimumWidth(150)
-        self.rh_input.setMaximumWidth(400)
         self.rh_input.setPlaceholderText("例如：60（0~100）")
         self.rh_input.setValidator(QDoubleValidator(0, 100, 2))
+        self.rh_input.setStyleSheet(LINEEDIT_STYLE)
         grid.addWidget(make_label("相对湿度:"), 3, 0)
         grid.addWidget(self.rh_input, 3, 1)
         hint_rh = QLabel("%")
-        hint_rh.setMinimumWidth(100)
-        hint_rh.setMaximumWidth(250)
         grid.addWidget(hint_rh, 3, 2)
 
         # 行4：绝对湿度
         self.humidity_input = QLineEdit()
-        self.humidity_input.setMinimumWidth(150)
-        self.humidity_input.setMaximumWidth(400)
         self.humidity_input.setPlaceholderText("例如：0.012 或 12")
         self.humidity_input.setValidator(QDoubleValidator(0, 9999, 6))
+        self.humidity_input.setStyleSheet(LINEEDIT_STYLE)
         self.humidity_unit = QComboBox()
         self.humidity_unit.setStyleSheet(COMBOBOX_STYLE)
         self.humidity_unit.addItems(["kg/kg干空气", "g/kg干空气"])
-        self.humidity_unit.setMinimumWidth(100)
-        self.humidity_unit.setMaximumWidth(250)
         grid.addWidget(make_label("绝对湿度:"), 4, 0)
         grid.addWidget(self.humidity_input, 4, 1)
         grid.addWidget(self.humidity_unit, 4, 2)
 
         # 行5：湿球温度
         self.wet_bulb_input = QLineEdit()
-        self.wet_bulb_input.setMinimumWidth(150)
-        self.wet_bulb_input.setMaximumWidth(400)
         self.wet_bulb_input.setPlaceholderText("例如：20")
         self.wet_bulb_input.setValidator(QDoubleValidator(-50, 200, 2))
+        self.wet_bulb_input.setStyleSheet(LINEEDIT_STYLE)
         hint_wb = QLabel("°C（需 ≤ 干球温度）")
-        hint_wb.setMinimumWidth(100)
-        hint_wb.setMaximumWidth(250)
         grid.addWidget(make_label("湿球温度:"), 5, 0)
         grid.addWidget(self.wet_bulb_input, 5, 1)
         grid.addWidget(hint_wb, 5, 2)
 
         # 行6：露点温度
         self.dew_point_input = QLineEdit()
-        self.dew_point_input.setMinimumWidth(150)
-        self.dew_point_input.setMaximumWidth(400)
         self.dew_point_input.setPlaceholderText("例如：15")
         self.dew_point_input.setValidator(QDoubleValidator(-50, 200, 2))
+        self.dew_point_input.setStyleSheet(LINEEDIT_STYLE)
         hint_dp = QLabel("°C（需 ≤ 干球温度）")
-        hint_dp.setMinimumWidth(100)
-        hint_dp.setMaximumWidth(250)
         grid.addWidget(make_label("露点温度:"), 6, 0)
         grid.addWidget(self.dew_point_input, 6, 1)
         grid.addWidget(hint_dp, 6, 2)
@@ -199,16 +180,18 @@ class WetAirCalculator(QWidget):
 
         # ── 计算按钮 ──
         calc_btn = QPushButton("▶  计算湿空气参数")
+        calc_btn.setFont(QFont("Arial", 12))
+        calc_btn.setMinimumHeight(50)
         calc_btn.setStyleSheet("""
             QPushButton {
-                background-color: #3498db;
+                background-color: #27ae60;
                 color: white;
                 font-weight: bold;
-                font-size: 14px;
+                border: none;
                 border-radius: 8px;
-                min-height: 50px;
+                padding: 12px;
             }
-            QPushButton:hover { background-color: #2980b9; }
+            QPushButton:hover { background-color: #219955; }
         """)
         calc_btn.clicked.connect(self.calculate)
         left_layout.addWidget(calc_btn)
@@ -258,7 +241,7 @@ class WetAirCalculator(QWidget):
 
         # ───────── 右侧结果区 ─────────
         right_widget = QWidget()
-        right_widget.setMinimumWidth(400)
+        right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(10)
 
@@ -269,14 +252,15 @@ class WetAirCalculator(QWidget):
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
         self.result_text.setMinimumHeight(500)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet("""
             QTextEdit {
                 background-color: #f8f9fa;
-                border: 1px solid #dee2e6;
+                border: 1px solid #ecf0f1;
                 border-radius: 6px;
                 font-family: Consolas, monospace;
                 font-size: 13px;
-                padding: 10px;
+                padding: 8px;
             }
         """)
         self.result_text.setPlaceholderText("计算结果将在此显示……")
