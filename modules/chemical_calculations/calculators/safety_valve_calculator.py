@@ -12,6 +12,25 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QDoubleValidator
 
 
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 class SafetyValveCalculator(QWidget):
     """安全阀计算器（统一 UI 规范版）"""
 
@@ -92,6 +111,7 @@ class SafetyValveCalculator(QWidget):
 
         # 行0：介质类型
         self.medium_combo = QComboBox()
+        self.medium_combo.setStyleSheet(COMBOBOX_STYLE)
         self.medium_combo.addItems(["蒸汽", "空气", "气体", "液体", "两相流"])
         self.medium_combo.setMinimumWidth(150)
         self.medium_combo.setMaximumWidth(400)
@@ -257,6 +277,7 @@ class SafetyValveCalculator(QWidget):
         vgrid.setVerticalSpacing(10)
 
         self.valve_type_combo = QComboBox()
+        self.valve_type_combo.setStyleSheet(COMBOBOX_STYLE)
         self.valve_type_combo.addItems(["弹簧式", "先导式", "重锤式"])
         self.valve_type_combo.setMinimumWidth(150)
         self.valve_type_combo.setMaximumWidth(400)
@@ -268,6 +289,7 @@ class SafetyValveCalculator(QWidget):
         vgrid.addWidget(hint_vt, 0, 2)
 
         self.material_combo = QComboBox()
+        self.material_combo.setStyleSheet(COMBOBOX_STYLE)
         self.material_combo.addItems(["碳钢", "不锈钢", "合金钢", "特殊合金"])
         self.material_combo.setMinimumWidth(150)
         self.material_combo.setMaximumWidth(400)
@@ -279,6 +301,7 @@ class SafetyValveCalculator(QWidget):
         vgrid.addWidget(hint_mt, 1, 2)
 
         self.discharge_combo = QComboBox()
+        self.discharge_combo.setStyleSheet(COMBOBOX_STYLE)
         self.discharge_combo.addItems(["开式", "闭式", "半开式"])
         self.discharge_combo.setMinimumWidth(150)
         self.discharge_combo.setMaximumWidth(400)

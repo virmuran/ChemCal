@@ -24,6 +24,25 @@ GROUP_STYLE = """
         padding: 0 8px 0 8px;
     }
 """
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 
 class PureSubstanceProperties(QWidget):
     """纯物质物性数据查询"""
@@ -90,6 +109,7 @@ class PureSubstanceProperties(QWidget):
         substance_layout.addWidget(category_label)
         
         self.category_combo = QComboBox()
+        self.category_combo.setStyleSheet(COMBOBOX_STYLE)
         self.category_combo.setFixedWidth(400)
         self.category_combo.addItems([
             "无机物", "有机物", "金属", "气体", "液体", "固体"
@@ -112,6 +132,7 @@ class PureSubstanceProperties(QWidget):
         substance_layout2.addWidget(substance_label)
         
         self.substance_combo = QComboBox()
+        self.substance_combo.setStyleSheet(COMBOBOX_STYLE)
         self.substance_combo.setFixedWidth(400)
         self.substance_combo.currentTextChanged.connect(self.on_substance_changed)
         substance_layout2.addWidget(self.substance_combo)

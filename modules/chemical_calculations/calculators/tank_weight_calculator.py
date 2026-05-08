@@ -9,6 +9,25 @@ from PySide6.QtGui import QFont, QDoubleValidator
 import math
 
 
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 class 罐体重量(QWidget):
     """罐体重量计算器（与压降计算UI完全一致）"""
     
@@ -368,6 +387,7 @@ class 罐体重量(QWidget):
         material_layout.addWidget(self.density_input, row, 1)
         
         self.material_combo = QComboBox()
+        self.material_combo.setStyleSheet(COMBOBOX_STYLE)
         self.material_combo.addItems([
             "- 请选择材料 -",
             "304不锈钢 - 密度: 7930 kg/m³",

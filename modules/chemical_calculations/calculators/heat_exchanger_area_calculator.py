@@ -30,6 +30,25 @@ except Exception as _e:
 
 # ==================== 枚举定义 ====================
 
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 class FlowArrangement(Enum):
     """流动方式枚举"""
     COUNTERCURRENT = "逆流"
@@ -527,6 +546,7 @@ class 换热器面积(QWidget):
         self.input_layout.addWidget(label, row, 0)
         
         self.input_widgets["flow_arrangement"] = QComboBox()
+        self.input_widgets["flow_arrangement"].setStyleSheet(COMBOBOX_STYLE)
         for arrangement in self.flow_arrangements:
             self.input_widgets["flow_arrangement"].addItem(arrangement.value)
         self.input_widgets["flow_arrangement"].setCurrentText("逆流")
@@ -582,6 +602,7 @@ class 换热器面积(QWidget):
         self.input_layout.addWidget(label, row, 0)
         
         self.input_widgets["flow_arrangement"] = QComboBox()
+        self.input_widgets["flow_arrangement"].setStyleSheet(COMBOBOX_STYLE)
         for arrangement in self.flow_arrangements:
             self.input_widgets["flow_arrangement"].addItem(arrangement.value)
         self.input_widgets["flow_arrangement"].setCurrentText("逆流")
@@ -597,6 +618,7 @@ class 换热器面积(QWidget):
         self.input_layout.addWidget(label, row, 0)
         
         self.input_widgets["calculation_type"] = QComboBox()
+        self.input_widgets["calculation_type"].setStyleSheet(COMBOBOX_STYLE)
         self.input_widgets["calculation_type"].addItem("设计计算（计算蒸汽消耗）")
         self.input_widgets["calculation_type"].addItem("校核计算（给定蒸汽流量）")
         self.input_widgets["calculation_type"].setFixedWidth(combo_width)
@@ -727,6 +749,7 @@ class 换热器面积(QWidget):
         
         fluid_types = ["水/液体", "气体", "蒸汽", "粘稠流体", "腐蚀性流体"]
         self.input_widgets["fluid_type"] = QComboBox()
+        self.input_widgets["fluid_type"].setStyleSheet(COMBOBOX_STYLE)
         for fluid in fluid_types:
             self.input_widgets["fluid_type"].addItem(fluid)
         self.input_widgets["fluid_type"].setFixedWidth(combo_width)
@@ -786,6 +809,7 @@ class 换热器面积(QWidget):
         self.input_layout.addWidget(self.input_widgets[cp_key], row, 1)
         
         self.input_widgets[combo_key] = QComboBox()
+        self.input_widgets[combo_key].setStyleSheet(COMBOBOX_STYLE)
         self.input_widgets[combo_key].addItem("- 选择流体类型 -")
         for fluid in self.specific_heat_data.keys():
             self.input_widgets[combo_key].addItem(fluid)
@@ -809,6 +833,7 @@ class 换热器面积(QWidget):
         self.input_layout.addWidget(self.input_widgets["k_value"], row, 1)
         
         self.input_widgets["exchanger_type"] = QComboBox()
+        self.input_widgets["exchanger_type"].setStyleSheet(COMBOBOX_STYLE)
         self.input_widgets["exchanger_type"].addItem("- 选择换热器类型 -")
         for exchanger_type in self.exchanger_types_data.keys():
             self.input_widgets["exchanger_type"].addItem(exchanger_type)

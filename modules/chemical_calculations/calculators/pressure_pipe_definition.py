@@ -7,6 +7,25 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
 import math
 
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 class 压力管道定义(QWidget):
     """压力管道定义计算器"""
     
@@ -80,6 +99,7 @@ class 压力管道定义(QWidget):
         media_layout = QHBoxLayout()
         media_layout.addWidget(QLabel("介质类型:"))
         self.media_combo = QComboBox()
+        self.media_combo.setStyleSheet(COMBOBOX_STYLE)
         self.media_combo.addItems(["气体", "液化气体", "蒸汽", "可燃液体", "有毒介质", "一般液体"])
         media_layout.addWidget(self.media_combo)
         media_layout.addWidget(QLabel("公称直径 (mm):"))

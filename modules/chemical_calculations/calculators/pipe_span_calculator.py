@@ -10,6 +10,25 @@ import re
 from datetime import datetime
 
 
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 class ProjectInfoDialog(QDialog):
     """工程信息对话框 - 与压降计算模块保持一致"""
     
@@ -200,6 +219,7 @@ class 管道跨距(QWidget):
         input_layout.addWidget(self.od_input, row, 1)
         
         self.od_combo = QComboBox()
+        self.od_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_od_options()
         self.od_combo.setFixedWidth(combo_width)
         self.od_combo.currentTextChanged.connect(self.on_od_changed)
@@ -220,6 +240,7 @@ class 管道跨距(QWidget):
         input_layout.addWidget(self.thickness_input, row, 1)
         
         self.thickness_combo = QComboBox()
+        self.thickness_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_thickness_options()
         self.thickness_combo.setFixedWidth(combo_width)
         self.thickness_combo.currentTextChanged.connect(self.on_thickness_changed)
@@ -234,6 +255,7 @@ class 管道跨距(QWidget):
         input_layout.addWidget(material_label, row, 0)
         
         self.material_combo = QComboBox()
+        self.material_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_material_options()
         self.material_combo.setFixedWidth(input_width)
         self.material_combo.currentTextChanged.connect(self.on_material_changed)
@@ -260,6 +282,7 @@ class 管道跨距(QWidget):
         input_layout.addWidget(self.fluid_density_input, row, 1)
         
         self.fluid_combo = QComboBox()
+        self.fluid_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_fluid_options()
         self.fluid_combo.setFixedWidth(combo_width)
         self.fluid_combo.currentTextChanged.connect(self.on_fluid_changed)
@@ -280,6 +303,7 @@ class 管道跨距(QWidget):
         input_layout.addWidget(self.insulation_input, row, 1)
         
         self.insulation_combo = QComboBox()
+        self.insulation_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_insulation_options()
         self.insulation_combo.setFixedWidth(combo_width)
         self.insulation_combo.currentTextChanged.connect(self.on_insulation_changed)
@@ -300,6 +324,7 @@ class 管道跨距(QWidget):
         input_layout.addWidget(self.insulation_density_input, row, 1)
         
         self.insulation_density_combo = QComboBox()
+        self.insulation_density_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_insulation_density_options()
         self.insulation_density_combo.setFixedWidth(combo_width)
         self.insulation_density_combo.currentTextChanged.connect(self.on_insulation_density_changed)
@@ -320,6 +345,7 @@ class 管道跨距(QWidget):
         input_layout.addWidget(self.stress_input, row, 1)
         
         self.stress_combo = QComboBox()
+        self.stress_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_stress_options()
         self.stress_combo.setFixedWidth(combo_width)
         self.stress_combo.currentTextChanged.connect(self.on_stress_changed)

@@ -8,6 +8,25 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
 import math
 
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 class 消火栓计算(QWidget):
     """消火栓计算器"""
     
@@ -53,6 +72,7 @@ class 消火栓计算(QWidget):
         type_height_layout = QHBoxLayout()
         type_height_layout.addWidget(QLabel("建筑类型:"))
         self.building_type_combo = QComboBox()
+        self.building_type_combo.setStyleSheet(COMBOBOX_STYLE)
         self.building_type_combo.addItems([
             "民用建筑", "工业建筑", "仓库", "高层建筑", "超高层建筑", "地下建筑"
         ])
@@ -79,6 +99,7 @@ class 消火栓计算(QWidget):
         danger_layout = QHBoxLayout()
         danger_layout.addWidget(QLabel("火灾危险等级:"))
         self.danger_level_combo = QComboBox()
+        self.danger_level_combo.setStyleSheet(COMBOBOX_STYLE)
         self.danger_level_combo.addItems(["轻危险级", "中危险级Ⅰ级", "中危险级Ⅱ级", "严重危险级"])
         danger_layout.addWidget(self.danger_level_combo)
         
@@ -138,6 +159,7 @@ class 消火栓计算(QWidget):
         
         pressure_layout.addWidget(QLabel("主管直径 (mm):"))
         self.main_pipe_diameter_combo = QComboBox()
+        self.main_pipe_diameter_combo.setStyleSheet(COMBOBOX_STYLE)
         self.main_pipe_diameter_combo.addItems(["100", "125", "150", "200"])
         self.main_pipe_diameter_combo.setCurrentText("150")
         pressure_layout.addWidget(self.main_pipe_diameter_combo)

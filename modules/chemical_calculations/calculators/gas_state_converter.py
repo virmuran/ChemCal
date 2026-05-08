@@ -11,6 +11,25 @@ import re
 from datetime import datetime
 
 
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 class 气体标态转压缩态(QWidget):
     """气体标准状态转压缩状态（左右布局优化版）"""
     
@@ -125,6 +144,7 @@ class 气体标态转压缩态(QWidget):
         input_layout.addWidget(standard_label, row, 0)
         
         self.standard_combo = QComboBox()
+        self.standard_combo.setStyleSheet(COMBOBOX_STYLE)
         self.standard_combo.addItems([
             "- 请选择标准状态 -",
             "0°C, 101.325 kPa (国际标准)",
@@ -259,6 +279,7 @@ class 气体标态转压缩态(QWidget):
         input_layout.addWidget(self.compress_input, row, 1)
         
         self.compress_combo = QComboBox()
+        self.compress_combo.setStyleSheet(COMBOBOX_STYLE)
         self.compress_combo.addItems([
             "- 请选择压缩因子 -",
             "1.0 - 理想气体",

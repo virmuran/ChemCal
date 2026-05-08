@@ -29,6 +29,25 @@ except Exception as _e:
     print(f"警告: 无法加载 IAPWS-IF97 模块: {_e}")
 
 
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 class 换热器计算(QWidget):
     """换热器计算器（统一UI风格版）"""
     
@@ -183,6 +202,7 @@ class 换热器计算(QWidget):
         mode_layout.addWidget(mode_label)
         
         self.mode_combo = QComboBox()
+        self.mode_combo.setStyleSheet(COMBOBOX_STYLE)
         modes = [
             ("求饱和蒸汽流量", "根据冷流体参数计算所需饱和蒸汽流量"),
             ("求冷流体流量(蒸汽加热)", "已知蒸汽参数和冷流体温度变化，计算冷流体流量"),
@@ -479,6 +499,7 @@ class 换热器计算(QWidget):
 
         # 下拉菜单 - 第2列
         combobox = QComboBox()
+        combobox.setStyleSheet(COMBOBOX_STYLE)
         combobox.addItem("- 请选择流体比热容 -")
         for fluid in self.specific_heat_data.keys():
             combobox.addItem(fluid)
@@ -515,6 +536,7 @@ class 换热器计算(QWidget):
         
         # 下拉框 - 第2列
         combo = QComboBox()
+        combo.setStyleSheet(COMBOBOX_STYLE)
         combo.addItem("- 请选择流体组合 -")
         
         # 添加传热系数选项

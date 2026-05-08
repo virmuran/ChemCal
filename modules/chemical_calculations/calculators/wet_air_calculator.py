@@ -11,6 +11,25 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
 
 
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 class WetAirCalculator(QWidget):
     """湿空气计算器"""
 
@@ -94,6 +113,7 @@ class WetAirCalculator(QWidget):
         self.temp_input.setPlaceholderText("例如：25")
         self.temp_input.setValidator(QDoubleValidator(-50, 200, 2))
         self.temp_unit = QComboBox()
+        self.temp_unit.setStyleSheet(COMBOBOX_STYLE)
         self.temp_unit.addItems(["°C", "K"])
         self.temp_unit.setMinimumWidth(100)
         self.temp_unit.setMaximumWidth(250)
@@ -107,6 +127,7 @@ class WetAirCalculator(QWidget):
         self.pressure_input.setMaximumWidth(400)
         self.pressure_input.setValidator(QDoubleValidator(50, 2000, 3))
         self.pressure_unit = QComboBox()
+        self.pressure_unit.setStyleSheet(COMBOBOX_STYLE)
         self.pressure_unit.addItems(["kPa", "bar", "atm"])
         self.pressure_unit.setMinimumWidth(100)
         self.pressure_unit.setMaximumWidth(250)
@@ -140,6 +161,7 @@ class WetAirCalculator(QWidget):
         self.humidity_input.setPlaceholderText("例如：0.012 或 12")
         self.humidity_input.setValidator(QDoubleValidator(0, 9999, 6))
         self.humidity_unit = QComboBox()
+        self.humidity_unit.setStyleSheet(COMBOBOX_STYLE)
         self.humidity_unit.addItems(["kg/kg干空气", "g/kg干空气"])
         self.humidity_unit.setMinimumWidth(100)
         self.humidity_unit.setMaximumWidth(250)

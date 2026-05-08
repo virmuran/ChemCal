@@ -108,7 +108,23 @@ class ThemeManager(QObject):
         QLineEdit:focus, QTextEdit:focus, QComboBox:focus {
             border-color: #4a6fa5;
         }
-        
+
+        /* QComboBox 下拉列表样式 */
+        QComboBox QAbstractItemView {
+            background-color: white;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            selection-background-color: #4a6fa5;
+            selection-color: white;
+        }
+        QComboBox QAbstractItemView::item {
+            min-height: 28px;
+            padding: 4px 8px;
+        }
+        QComboBox QAbstractItemView::item:hover {
+            background-color: #e8edf2;
+        }
+
         /* 列表和树状视图 */
         QListWidget, QTreeWidget {
             border: 1px solid #d1d5db;
@@ -265,7 +281,23 @@ class ThemeManager(QObject):
         QLineEdit:focus, QTextEdit:focus, QComboBox:focus {
             border-color: #4a6fa5;
         }
-        
+
+        /* QComboBox 下拉列表样式 */
+        QComboBox QAbstractItemView {
+            background-color: #3a3a3a;
+            color: #e0e0e0;
+            border: 1px solid #555;
+            selection-background-color: #4a6fa5;
+            selection-color: white;
+        }
+        QComboBox QAbstractItemView::item {
+            min-height: 28px;
+            padding: 4px 8px;
+        }
+        QComboBox QAbstractItemView::item:hover {
+            background-color: #4a4a4a;
+        }
+
         /* 列表和树状视图 */
         QListWidget, QTreeWidget {
             border: 1px solid #555;
@@ -421,7 +453,23 @@ class ThemeManager(QObject):
         QLineEdit:focus, QTextEdit:focus, QComboBox:focus {
             border-color: #3182ce;
         }
-        
+
+        /* QComboBox 下拉列表样式 */
+        QComboBox QAbstractItemView {
+            background-color: white;
+            color: #2d3748;
+            border: 1px solid #bee3f8;
+            selection-background-color: #3182ce;
+            selection-color: white;
+        }
+        QComboBox QAbstractItemView::item {
+            min-height: 28px;
+            padding: 4px 8px;
+        }
+        QComboBox QAbstractItemView::item:hover {
+            background-color: #ebf4ff;
+        }
+
         /* 列表和树状视图 */
         QListWidget, QTreeWidget {
             border: 1px solid #bee3f8;

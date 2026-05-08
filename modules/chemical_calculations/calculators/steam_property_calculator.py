@@ -86,6 +86,25 @@ SCROLLBAR_STYLE = """
         width: 0;
     }
 """
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 
 
 class SteamPropertyCalculator(QWidget):
@@ -408,6 +427,7 @@ class SteamPropertyCalculator(QWidget):
         input_layout.addWidget(self.sat_param1_input, row, 1)
 
         self.sat_param1_combo = QComboBox()
+        self.sat_param1_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_pressure_options(self.sat_param1_combo)
         self.sat_param1_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.sat_param1_combo.currentTextChanged.connect(
@@ -511,6 +531,7 @@ class SteamPropertyCalculator(QWidget):
         input_layout.addWidget(self.other_param1_input, row, 1)
 
         self.other_param1_combo = QComboBox()
+        self.other_param1_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_pressure_options(self.other_param1_combo)
         self.other_param1_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.other_param1_combo.currentTextChanged.connect(
@@ -534,6 +555,7 @@ class SteamPropertyCalculator(QWidget):
         input_layout.addWidget(self.other_param2_input, row, 1)
 
         self.other_param2_combo = QComboBox()
+        self.other_param2_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_temperature_options(self.other_param2_combo)
         self.other_param2_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.other_param2_combo.currentTextChanged.connect(

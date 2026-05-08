@@ -11,6 +11,25 @@ import re
 from datetime import datetime
 
 
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 class 管道壁厚(QWidget):
     """管道壁厚计算器（左右布局优化版）"""
     
@@ -84,6 +103,7 @@ class 管道壁厚(QWidget):
         standard_layout = QHBoxLayout(standard_group)
         
         self.standard_combo = QComboBox()
+        self.standard_combo.setStyleSheet(COMBOBOX_STYLE)
         self.standard_combo.addItems([
             "ASME B31.3 - 工艺管道",
             "GB/T 20801 - 压力管道规范",
@@ -201,6 +221,7 @@ class 管道壁厚(QWidget):
         input_layout.addLayout(diameter_unit_layout, row, 1)
         
         self.diameter_combo = QComboBox()
+        self.diameter_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_diameter_options()
         self.diameter_combo.setFixedWidth(combo_width)
         self.diameter_combo.currentTextChanged.connect(self.on_diameter_changed)
@@ -225,6 +246,7 @@ class 管道壁厚(QWidget):
         input_layout.addWidget(self.weld_input, row, 1)
         
         self.weld_combo = QComboBox()
+        self.weld_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_weld_factor_options()
         self.weld_combo.setFixedWidth(combo_width)
         self.weld_combo.currentTextChanged.connect(self.on_weld_factor_changed)
@@ -245,6 +267,7 @@ class 管道壁厚(QWidget):
         input_layout.addWidget(self.stress_input, row, 1)
         
         self.material_combo = QComboBox()
+        self.material_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_material_options()
         self.material_combo.setFixedWidth(combo_width)
         self.material_combo.currentTextChanged.connect(self.on_material_changed)
@@ -265,6 +288,7 @@ class 管道壁厚(QWidget):
         input_layout.addWidget(self.y_input, row, 1)
         
         self.y_combo = QComboBox()
+        self.y_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_y_factor_options()
         self.y_combo.setFixedWidth(combo_width)
         self.y_combo.currentTextChanged.connect(self.on_y_factor_changed)
@@ -289,6 +313,7 @@ class 管道壁厚(QWidget):
         input_layout.addLayout(thinning_unit_layout, row, 1)
         
         self.thinning_combo = QComboBox()
+        self.thinning_combo.setStyleSheet(COMBOBOX_STYLE)
         self.thinning_combo.addItems([
             "0.00 mm - 无减薄",
             "0.25 mm - 轻微减薄",
@@ -319,6 +344,7 @@ class 管道壁厚(QWidget):
         input_layout.addLayout(corrosion_unit_layout, row, 1)
         
         self.corrosion_combo = QComboBox()
+        self.corrosion_combo.setStyleSheet(COMBOBOX_STYLE)
         self.corrosion_combo.addItems([
             "0.00 mm - 无腐蚀",
             "0.05 mm - 轻微腐蚀",

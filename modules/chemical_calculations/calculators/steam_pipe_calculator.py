@@ -41,6 +41,25 @@ def _load_iapws():
 _load_iapws()
 
 
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 class 蒸汽管径流量(QWidget):
     """蒸汽管径和流量查询（左右布局优化版 - 统一UI风格）"""
     
@@ -216,6 +235,7 @@ class 蒸汽管径流量(QWidget):
         input_layout.addWidget(self.pressure_input, row, 1)
         
         self.pressure_combo = QComboBox()
+        self.pressure_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_pressure_options()
         self.pressure_combo.setFixedWidth(combo_width)
         self.pressure_combo.currentTextChanged.connect(self.on_pressure_changed)
@@ -236,6 +256,7 @@ class 蒸汽管径流量(QWidget):
         input_layout.addWidget(self.temperature_input, row, 1)
         
         self.temperature_combo = QComboBox()
+        self.temperature_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_temperature_options()
         self.temperature_combo.setFixedWidth(combo_width)
         self.temperature_combo.currentTextChanged.connect(self.on_temperature_changed)
@@ -256,6 +277,7 @@ class 蒸汽管径流量(QWidget):
         input_layout.addWidget(self.flow_input, row, 1)
         
         self.flow_combo = QComboBox()
+        self.flow_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_flow_options()
         self.flow_combo.setFixedWidth(combo_width)
         self.flow_combo.currentTextChanged.connect(self.on_flow_changed)
@@ -278,6 +300,7 @@ class 蒸汽管径流量(QWidget):
         input_layout.addWidget(self.diameter_input, row, 1)
         
         self.diameter_combo = QComboBox()
+        self.diameter_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_diameter_options()
         self.diameter_combo.setFixedWidth(combo_width)
         self.diameter_combo.currentTextChanged.connect(self.on_diameter_changed)

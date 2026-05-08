@@ -141,6 +141,25 @@ PDF_BUTTON_STYLE = """
         background-color: #c0392b;
     }
 """
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 
 
 class LongDistanceSteamPipeCalculator(QWidget):
@@ -205,6 +224,7 @@ class LongDistanceSteamPipeCalculator(QWidget):
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         lbl.setStyleSheet("font-weight: bold;")
         self.steam_type = QComboBox()
+        self.steam_type.setStyleSheet(COMBOBOX_STYLE)
         self.steam_type.setFixedWidth(400)
         self.steam_type.addItems(["饱和蒸汽", "过热蒸汽"])
         hint = QLabel("")
@@ -223,6 +243,7 @@ class LongDistanceSteamPipeCalculator(QWidget):
         self.flow_rate_input.setPlaceholderText("例如：10")
         self.flow_rate_input.setValidator(QDoubleValidator(0.1, 1000, 2))
         self.flow_rate_unit = QComboBox()
+        self.flow_rate_unit.setStyleSheet(COMBOBOX_STYLE)
         self.flow_rate_unit.setFixedWidth(250)
         self.flow_rate_unit.addItems(["t/h", "kg/s"])
         steam_layout.addWidget(lbl, row, 0)
@@ -254,6 +275,7 @@ class LongDistanceSteamPipeCalculator(QWidget):
         self.inlet_pressure_input.setPlaceholderText("例如：1.0")
         self.inlet_pressure_input.setValidator(QDoubleValidator(0.1, 10, 2))
         self.pressure_unit = QComboBox()
+        self.pressure_unit.setStyleSheet(COMBOBOX_STYLE)
         self.pressure_unit.setFixedWidth(250)
         self.pressure_unit.addItems(["MPa", "bar"])
         steam_layout.addWidget(lbl, row, 0)
@@ -304,6 +326,7 @@ class LongDistanceSteamPipeCalculator(QWidget):
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         lbl.setStyleSheet("font-weight: bold;")
         self.pipe_material = QComboBox()
+        self.pipe_material.setStyleSheet(COMBOBOX_STYLE)
         self.pipe_material.setFixedWidth(400)
         self.pipe_material.addItems(["碳钢", "不锈钢", "铜"])
         hint = QLabel("")
@@ -356,6 +379,7 @@ class LongDistanceSteamPipeCalculator(QWidget):
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         lbl.setStyleSheet("font-weight: bold;")
         self.insulation_material = QComboBox()
+        self.insulation_material.setStyleSheet(COMBOBOX_STYLE)
         self.insulation_material.setFixedWidth(400)
         self.insulation_material.addItems(["岩棉", "玻璃棉", "硅酸铝", "聚氨酯"])
         hint = QLabel("")

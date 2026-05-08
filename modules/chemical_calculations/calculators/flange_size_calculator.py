@@ -7,6 +7,25 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
 import math
 
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 class FlangeSizeCalculator(QWidget):
     """法兰尺寸查询计算器"""
     
@@ -57,6 +76,7 @@ class FlangeSizeCalculator(QWidget):
         standard_layout = QHBoxLayout()
         standard_layout.addWidget(QLabel("法兰标准:"))
         self.standard_combo = QComboBox()
+        self.standard_combo.setStyleSheet(COMBOBOX_STYLE)
         self.standard_combo.addItems([
             "HG/T 20592", "HG/T 20615", "GB/T 9119", "JB/T 81", 
             "ANSI B16.5", "DIN", "JIS", "EN"
@@ -66,10 +86,12 @@ class FlangeSizeCalculator(QWidget):
         
         standard_layout.addWidget(QLabel("法兰类型:"))
         self.type_combo = QComboBox()
+        self.type_combo.setStyleSheet(COMBOBOX_STYLE)
         standard_layout.addWidget(self.type_combo)
         
         standard_layout.addWidget(QLabel("公称压力:"))
         self.pressure_combo = QComboBox()
+        self.pressure_combo.setStyleSheet(COMBOBOX_STYLE)
         standard_layout.addWidget(self.pressure_combo)
         
         query_layout.addLayout(standard_layout)
@@ -78,6 +100,7 @@ class FlangeSizeCalculator(QWidget):
         size_layout = QHBoxLayout()
         size_layout.addWidget(QLabel("公称通径:"))
         self.dn_combo = QComboBox()
+        self.dn_combo.setStyleSheet(COMBOBOX_STYLE)
         self.dn_combo.addItems([str(dn) for dn in [10, 15, 20, 25, 32, 40, 50, 65, 80, 100, 
                                                   125, 150, 200, 250, 300, 350, 400, 450, 500,
                                                   600, 700, 800, 900, 1000, 1200, 1400, 1600, 1800, 2000]])
@@ -85,10 +108,12 @@ class FlangeSizeCalculator(QWidget):
         
         size_layout.addWidget(QLabel("密封面形式:"))
         self.face_type_combo = QComboBox()
+        self.face_type_combo.setStyleSheet(COMBOBOX_STYLE)
         size_layout.addWidget(self.face_type_combo)
         
         size_layout.addWidget(QLabel("材料:"))
         self.material_combo = QComboBox()
+        self.material_combo.setStyleSheet(COMBOBOX_STYLE)
         self.material_combo.addItems(["Q235A", "20#", "304", "316", "304L", "316L", "碳钢", "不锈钢"])
         size_layout.addWidget(self.material_combo)
         

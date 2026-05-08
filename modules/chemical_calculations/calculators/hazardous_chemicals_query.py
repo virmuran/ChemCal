@@ -61,6 +61,25 @@ SCROLLBAR_STYLE = """
         width: 0;
     }
 """
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 
 
 class ChemicalDetailDialog(QDialog):
@@ -432,6 +451,7 @@ class HazardousChemicalsQuery(QWidget):
         type_layout.addWidget(QLabel("搜索类型:"))
 
         self.search_type_combo = QComboBox()
+        self.search_type_combo.setStyleSheet(COMBOBOX_STYLE)
         self.search_type_combo.addItems([
             "按名称搜索",
             "按CAS号搜索",
@@ -452,6 +472,7 @@ class HazardousChemicalsQuery(QWidget):
         hazard_layout.addWidget(QLabel("危险性筛选:"))
 
         self.hazard_filter_combo = QComboBox()
+        self.hazard_filter_combo.setStyleSheet(COMBOBOX_STYLE)
         self.hazard_filter_combo.addItems([
             "所有危险性",
             "易燃液体",

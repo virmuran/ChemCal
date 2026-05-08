@@ -98,6 +98,25 @@ SUBSTANCE_DATABASE = {
 #  EOS 计算器主类（统一 UI 规范版）
 # ---------------------------------------------------------------------------
 
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 class EOSCalculator(QWidget):
     """状态方程计算器 — 支持 vdW / RK / SRK / PR 立方型 EOS"""
     calculation_type = "eos_calculator"
@@ -175,6 +194,7 @@ class EOSCalculator(QWidget):
 
 
         self.substance_combo = QComboBox()
+        self.substance_combo.setStyleSheet(COMBOBOX_STYLE)
         self.substance_combo.addItems(["自定义"] + list(SUBSTANCE_DATABASE.keys()))
         self.substance_combo.setMinimumWidth(150)
         self.substance_combo.setMaximumWidth(400)
@@ -237,6 +257,7 @@ class EOSCalculator(QWidget):
         egrid.setVerticalSpacing(10)
 
         self.eos_type = QComboBox()
+        self.eos_type.setStyleSheet(COMBOBOX_STYLE)
         self.eos_type.addItems([
             "理想气体方程",
             "范德瓦尔斯方程",
@@ -251,6 +272,7 @@ class EOSCalculator(QWidget):
         egrid.addWidget(H("推荐SRK或PR"), 0, 2)
 
         self.calc_type_combo = QComboBox()
+        self.calc_type_combo.setStyleSheet(COMBOBOX_STYLE)
         self.calc_type_combo.addItems([
             "P-V-T关系计算",
             "压缩因子计算",

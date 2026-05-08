@@ -244,6 +244,25 @@ GROUP_STYLE = """
         padding: 0 8px 0 8px;
     }
 """
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 
 
 class VLEActivityCoefficientCalculator(QWidget):
@@ -357,6 +376,7 @@ class VLEActivityCoefficientCalculator(QWidget):
         condition_layout.addWidget(model_label, 2, 0)
 
         self.model_selection = QComboBox()
+        self.model_selection.setStyleSheet(COMBOBOX_STYLE)
         self.model_selection.addItems(["Wilson方程", "NRTL方程", "UNIQUAC方程"])
         self.model_selection.setFixedWidth(input_width)
         self.model_selection.currentTextChanged.connect(self._on_model_changed)
@@ -374,6 +394,7 @@ class VLEActivityCoefficientCalculator(QWidget):
         condition_layout.addWidget(ctype_label, 3, 0)
 
         self.calc_type = QComboBox()
+        self.calc_type.setStyleSheet(COMBOBOX_STYLE)
         self.calc_type.addItems(["泡点计算", "露点计算", "等温闪蒸"])
         self.calc_type.setFixedWidth(input_width)
         condition_layout.addWidget(self.calc_type, 3, 1)
@@ -390,6 +411,7 @@ class VLEActivityCoefficientCalculator(QWidget):
         condition_layout.addWidget(comp_label, 4, 0)
 
         self.component_count = QComboBox()
+        self.component_count.setStyleSheet(COMBOBOX_STYLE)
         self.component_count.addItems(["2", "3", "4"])
         self.component_count.setFixedWidth(input_width)
         self.component_count.currentTextChanged.connect(self.update_component_table)
@@ -563,6 +585,7 @@ class VLEActivityCoefficientCalculator(QWidget):
 
         for i in range(count):
             name_combo = QComboBox()
+            name_combo.setStyleSheet(COMBOBOX_STYLE)
             name_combo.addItems(["自定义"] + list(SUBSTANCE_DB.keys()))
             name_combo.setCurrentIndex((i % len(SUBSTANCE_DB)) + 1)
             name_combo.currentTextChanged.connect(lambda text, row=i: self._on_component_changed(row))

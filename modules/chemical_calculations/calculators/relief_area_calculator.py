@@ -12,6 +12,25 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QDoubleValidator
 
 
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 class ReliefAreaCalculator(QWidget):
     """泄压面积计算器（统一 UI 规范版）
 
@@ -121,6 +140,7 @@ class ReliefAreaCalculator(QWidget):
 
         # 行0：泄放场景
         self.scenario_combo = QComboBox()
+        self.scenario_combo.setStyleSheet(COMBOBOX_STYLE)
         self.scenario_combo.addItems([
             "火灾工况", "操作故障", "热膨胀",
             "化学反应失控", "外部火灾", "换热管破裂"])
@@ -132,6 +152,7 @@ class ReliefAreaCalculator(QWidget):
 
         # 行1：介质类型
         self.fluid_combo = QComboBox()
+        self.fluid_combo.setStyleSheet(COMBOBOX_STYLE)
         self.fluid_combo.addItems(["气体/蒸汽", "液体", "两相流"])
         self.fluid_combo.setMinimumWidth(150)
         self.fluid_combo.setMaximumWidth(400)
@@ -142,6 +163,7 @@ class ReliefAreaCalculator(QWidget):
 
         # 行2：设计标准
         self.standard_combo = QComboBox()
+        self.standard_combo.setStyleSheet(COMBOBOX_STYLE)
         self.standard_combo.addItems(["ASME VIII", "API 520", "API 521", "ISO 4126"])
         self.standard_combo.setMinimumWidth(150)
         self.standard_combo.setMaximumWidth(400)
@@ -166,6 +188,7 @@ class ReliefAreaCalculator(QWidget):
         vg.addWidget(make_lbl("容器容积:"), 0, 0)
         vg.addWidget(self.volume_input, 0, 1)
         self.volume_unit_combo = QComboBox()
+        self.volume_unit_combo.setStyleSheet(COMBOBOX_STYLE)
         self.volume_unit_combo.addItems(["m\u00b3", "L"])
         self.volume_unit_combo.setMinimumWidth(100)
         self.volume_unit_combo.setMaximumWidth(250)
@@ -179,6 +202,7 @@ class ReliefAreaCalculator(QWidget):
         vg.addWidget(make_lbl("设计压力:"), 1, 0)
         vg.addWidget(self.design_p_input, 1, 1)
         self.design_p_unit_combo = QComboBox()
+        self.design_p_unit_combo.setStyleSheet(COMBOBOX_STYLE)
         self.design_p_unit_combo.addItems(["kPa", "MPa", "bar"])
         self.design_p_unit_combo.setMinimumWidth(100)
         self.design_p_unit_combo.setMaximumWidth(250)
@@ -192,6 +216,7 @@ class ReliefAreaCalculator(QWidget):
         vg.addWidget(make_lbl("操作压力:"), 2, 0)
         vg.addWidget(self.oper_p_input, 2, 1)
         self.oper_p_unit_combo = QComboBox()
+        self.oper_p_unit_combo.setStyleSheet(COMBOBOX_STYLE)
         self.oper_p_unit_combo.addItems(["kPa", "MPa", "bar"])
         self.oper_p_unit_combo.setMinimumWidth(100)
         self.oper_p_unit_combo.setMaximumWidth(250)
@@ -205,6 +230,7 @@ class ReliefAreaCalculator(QWidget):
         vg.addWidget(make_lbl("最大允许压力:"), 3, 0)
         vg.addWidget(self.mawp_input, 3, 1)
         self.mawp_unit_combo = QComboBox()
+        self.mawp_unit_combo.setStyleSheet(COMBOBOX_STYLE)
         self.mawp_unit_combo.addItems(["kPa", "MPa", "bar"])
         self.mawp_unit_combo.setMinimumWidth(100)
         self.mawp_unit_combo.setMaximumWidth(250)
@@ -290,6 +316,7 @@ class ReliefAreaCalculator(QWidget):
         rg.addWidget(make_lbl("泄放速率:"), 0, 0)
         rg.addWidget(self.relief_rate_input, 0, 1)
         self.rate_unit_combo = QComboBox()
+        self.rate_unit_combo.setStyleSheet(COMBOBOX_STYLE)
         self.rate_unit_combo.addItems(["kg/h", "kg/s", "m\u00b3/h"])
         self.rate_unit_combo.setMinimumWidth(100)
         self.rate_unit_combo.setMaximumWidth(250)

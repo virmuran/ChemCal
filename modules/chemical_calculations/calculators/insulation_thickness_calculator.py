@@ -13,6 +13,25 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
 
 
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 class InsulationThicknessCalculator(QWidget):
     """保温厚度计算器（统一 UI 规范版）"""
 
@@ -157,6 +176,7 @@ class InsulationThicknessCalculator(QWidget):
 
         def make_combo(items, row, col):
             cb = QComboBox()
+            cb.setStyleSheet(COMBOBOX_STYLE)
             cb.addItems(items)
             cb.setFixedWidth(180)
             grid.addWidget(cb, row, col)

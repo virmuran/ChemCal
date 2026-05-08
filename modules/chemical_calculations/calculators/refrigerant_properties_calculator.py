@@ -42,6 +42,25 @@ GROUP_STYLE = """
         padding: 0 8px 0 8px;
     }
 """
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 
 # 制冷剂数据库
 REFRIGERANT_DB = {
@@ -146,6 +165,7 @@ class RefrigerantPropertiesCalculator(QWidget):
         ref_layout.addWidget(ref_label, 0, 0)
 
         self.refrigerant_selection = QComboBox()
+        self.refrigerant_selection.setStyleSheet(COMBOBOX_STYLE)
         self.refrigerant_selection.addItems(list(REFRIGERANT_DB.keys()))
         self.refrigerant_selection.setFixedWidth(input_width)
         self.refrigerant_selection.currentTextChanged.connect(self.update_refrigerant_info)
@@ -183,6 +203,7 @@ class RefrigerantPropertiesCalculator(QWidget):
         condition_layout.addWidget(ctype_label, 0, 0)
 
         self.calculation_type = QComboBox()
+        self.calculation_type.setStyleSheet(COMBOBOX_STYLE)
         self.calculation_type.addItems([
             "饱和性质计算", "过热性质计算", "过冷性质计算",
             "压缩因子计算", "热力循环分析"

@@ -8,6 +8,25 @@ from PySide6.QtGui import QFont, QDoubleValidator
 from PySide6.QtCore import Qt
 
 
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 class NPSHaCalculator(QWidget):
     """离心泵NPSHa计算（左右布局优化版）"""
     
@@ -95,6 +114,7 @@ class NPSHaCalculator(QWidget):
         input_layout.addWidget(self.atm_pressure_input, row, 1)
         
         self.atm_pressure_combo = QComboBox()
+        self.atm_pressure_combo.setStyleSheet(COMBOBOX_STYLE)
         self.atm_pressure_combo.addItems([
             "101.3 kPa - 标准大气压",
             "98.1 kPa - 海拔300米",
@@ -123,6 +143,7 @@ class NPSHaCalculator(QWidget):
         input_layout.addWidget(self.vapor_pressure_input, row, 1)
         
         self.vapor_pressure_combo = QComboBox()
+        self.vapor_pressure_combo.setStyleSheet(COMBOBOX_STYLE)
         self.vapor_pressure_combo.addItems([
             "0.61 kPa - 水在0°C",
             "1.23 kPa - 水在10°C",
@@ -158,6 +179,7 @@ class NPSHaCalculator(QWidget):
         input_layout.addWidget(self.static_head_input, row, 1)
         
         self.static_head_combo = QComboBox()
+        self.static_head_combo.setStyleSheet(COMBOBOX_STYLE)
         self.static_head_combo.addItems([
             "正压头 - 灌注吸入",
             "负压头 - 抽吸吸入",
@@ -184,6 +206,7 @@ class NPSHaCalculator(QWidget):
         input_layout.addWidget(self.friction_loss_input, row, 1)
         
         self.friction_loss_combo = QComboBox()
+        self.friction_loss_combo.setStyleSheet(COMBOBOX_STYLE)
         self.friction_loss_combo.addItems([
             "0.5-1.0 m - 短直管路",
             "1.0-2.0 m - 中等管路",
@@ -212,6 +235,7 @@ class NPSHaCalculator(QWidget):
         input_layout.addWidget(self.density_input, row, 1)
         
         self.density_combo = QComboBox()
+        self.density_combo.setStyleSheet(COMBOBOX_STYLE)
         self.density_combo.addItems([
             "1000 kg/m³ - 水(20°C)",
             "998 kg/m³ - 水(25°C)",
@@ -245,6 +269,7 @@ class NPSHaCalculator(QWidget):
         input_layout.addWidget(self.npshr_input, row, 1)
         
         self.npshr_combo = QComboBox()
+        self.npshr_combo.setStyleSheet(COMBOBOX_STYLE)
         self.npshr_combo.addItems([
             "1.0-2.0 m - 低NPSHr泵",
             "2.0-4.0 m - 标准泵",

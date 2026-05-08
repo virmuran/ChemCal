@@ -9,6 +9,25 @@ from PySide6.QtGui import QFont, QDoubleValidator
 import math
 
 
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 class ComponentDialog(QDialog):
     """组分添加/编辑对话框"""
     
@@ -87,6 +106,7 @@ class ComponentDialog(QDialog):
         solvents_layout = QVBoxLayout(common_solvents_group)
         
         self.solvents_combo = QComboBox()
+        self.solvents_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_solvents_options()
         self.solvents_combo.currentTextChanged.connect(self.on_solvent_selected)
         solvents_layout.addWidget(self.solvents_combo)
@@ -290,6 +310,7 @@ class MixedLiquidFlashPointCalculator(QWidget):
         method_layout = QVBoxLayout(method_group)
         
         self.method_combo = QComboBox()
+        self.method_combo.setStyleSheet(COMBOBOX_STYLE)
         self.method_combo.addItems([
             "Le Chatelier 法则 - 适用于理想混合物",
             "最低闪点法 - 保守估计，取最低组分闪点",

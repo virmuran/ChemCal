@@ -167,6 +167,25 @@ GROUP_STYLE = """
         padding: 0 8px 0 8px;
     }
 """
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 
 
 class GasMixturePropertiesCalculator(QWidget):
@@ -281,6 +300,7 @@ class GasMixturePropertiesCalculator(QWidget):
         condition_layout.addWidget(mix_label, 2, 0)
 
         self.mixture_type = QComboBox()
+        self.mixture_type.setStyleSheet(COMBOBOX_STYLE)
         self.mixture_type.addItems(["理想气体", "真实气体"])
         self.mixture_type.setFixedWidth(input_width)
         condition_layout.addWidget(self.mixture_type, 2, 1)
@@ -297,6 +317,7 @@ class GasMixturePropertiesCalculator(QWidget):
         condition_layout.addWidget(method_label, 3, 0)
 
         self.calculation_method = QComboBox()
+        self.calculation_method.setStyleSheet(COMBOBOX_STYLE)
         self.calculation_method.addItems(["简单混合规则", "Kay规则", "对应状态原理"])
         self.calculation_method.setFixedWidth(input_width)
         condition_layout.addWidget(self.calculation_method, 3, 1)
@@ -313,6 +334,7 @@ class GasMixturePropertiesCalculator(QWidget):
         condition_layout.addWidget(comp_label, 4, 0)
 
         self.component_count = QComboBox()
+        self.component_count.setStyleSheet(COMBOBOX_STYLE)
         self.component_count.addItems(["2", "3", "4", "5"])
         self.component_count.setFixedWidth(input_width)
         self.component_count.currentTextChanged.connect(self.update_component_table)
@@ -434,6 +456,7 @@ class GasMixturePropertiesCalculator(QWidget):
 
         for i in range(count):
             name_combo = QComboBox()
+            name_combo.setStyleSheet(COMBOBOX_STYLE)
             name_combo.addItems(list(_PRESET_GASES.keys()))
             name_combo.setCurrentIndex(i % len(_PRESET_GASES))
             self.component_table.setCellWidget(i, 0, name_combo)

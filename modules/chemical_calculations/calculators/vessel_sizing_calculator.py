@@ -14,6 +14,25 @@ import re
 from datetime import datetime
 
 # 附件选择对话框 -------------------------------------------------
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 class AccessoriesDialog(QDialog):
     """设备附件（支腿、挂耳等）选择对话框"""
     def __init__(self, parent=None):
@@ -61,6 +80,7 @@ class AccessoriesDialog(QDialog):
 
         leg_layout.addWidget(QLabel("截面形状:"), 2, 0)
         self.leg_section = QComboBox()
+        self.leg_section.setStyleSheet(COMBOBOX_STYLE)
         self.leg_section.addItems(["圆管", "方钢", "工字钢"])
         self.leg_section.currentTextChanged.connect(self.on_leg_changed)
         leg_layout.addWidget(self.leg_section, 2, 1)
@@ -89,6 +109,7 @@ class AccessoriesDialog(QDialog):
 
         lug_layout.addWidget(QLabel("类型:"), 1, 0)
         self.lug_type = QComboBox()
+        self.lug_type.setStyleSheet(COMBOBOX_STYLE)
         self.lug_type.addItems(["A型（顶部）", "B型（侧壁）"])
         self.lug_type.currentTextChanged.connect(self.on_lug_changed)
         lug_layout.addWidget(self.lug_type, 1, 1)
@@ -295,6 +316,7 @@ class 设备尺寸计算(QWidget):
         self.hd_ratio_input.setPlaceholderText("例如 2.0")
         grid.addWidget(self.hd_ratio_input, row, 1)
         self.hd_combo = QComboBox()
+        self.hd_combo.setStyleSheet(COMBOBOX_STYLE)
         self.hd_combo.addItems(["1:1", "1.5:1", "2:1", "3:1", "自定义"])
         self.hd_combo.currentTextChanged.connect(self.on_hd_combo_changed)
         grid.addWidget(self.hd_combo, row, 2)
@@ -339,6 +361,7 @@ class 设备尺寸计算(QWidget):
         # 顶部类型
         grid.addWidget(self._create_label("顶部封头:"), row, 0)
         self.top_type = QComboBox()
+        self.top_type.setStyleSheet(COMBOBOX_STYLE)
         self.top_type.addItems(["平顶", "椭圆封头", "锥形封头", "碟形封头"])
         self.top_type.currentTextChanged.connect(self.on_top_type_changed)
         grid.addWidget(self.top_type, row, 1)
@@ -366,6 +389,7 @@ class 设备尺寸计算(QWidget):
         # 底部类型
         grid.addWidget(self._create_label("底部封头:"), row, 0)
         self.bottom_type = QComboBox()
+        self.bottom_type.setStyleSheet(COMBOBOX_STYLE)
         self.bottom_type.addItems(["平底", "椭圆封头", "锥形封头", "碟形封头", "斜底"])
         self.bottom_type.currentTextChanged.connect(self.on_bottom_type_changed)
         grid.addWidget(self.bottom_type, row, 1)
@@ -397,6 +421,7 @@ class 设备尺寸计算(QWidget):
         self.density_input.setText("7850")
         grid.addWidget(self.density_input, row, 1)
         self.density_combo = QComboBox()
+        self.density_combo.setStyleSheet(COMBOBOX_STYLE)
         self.density_combo.addItems(["碳钢 7850", "不锈钢 7930", "铝 2700", "自定义"])
         self.density_combo.currentTextChanged.connect(self.on_density_combo_changed)
         grid.addWidget(self.density_combo, row, 2)

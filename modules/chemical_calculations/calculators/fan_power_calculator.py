@@ -26,6 +26,25 @@ _GROUP_STYLE = """
         padding: 0 8px 0 8px;
     }
 """
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 
 
 class FanPowerCalculator(QWidget):
@@ -97,6 +116,7 @@ class FanPowerCalculator(QWidget):
         # 风机类型
         self._add_label(grid, row, "风机类型:", lbl)
         self.fan_type = QComboBox()
+        self.fan_type.setStyleSheet(COMBOBOX_STYLE)
         self.fan_type.addItems(["离心风机", "轴流风机", "混流风机", "罗茨风机"])
         self.fan_type.setMinimumWidth(W_MIN)
         self.fan_type.setMaximumWidth(W_MAX)
@@ -113,6 +133,7 @@ class FanPowerCalculator(QWidget):
         self.flow_rate_input.setMaximumWidth(W_MAX)
         grid.addWidget(self.flow_rate_input, row, 1)
         self.flow_rate_unit = QComboBox()
+        self.flow_rate_unit.setStyleSheet(COMBOBOX_STYLE)
         self.flow_rate_unit.addItems(["m³/h", "m³/min", "m³/s"])
         self.flow_rate_unit.setMinimumWidth(C_MIN)
         self.flow_rate_unit.setMaximumWidth(C_MAX)
@@ -128,6 +149,7 @@ class FanPowerCalculator(QWidget):
         self.pressure_input.setMaximumWidth(W_MAX)
         grid.addWidget(self.pressure_input, row, 1)
         self.pressure_unit = QComboBox()
+        self.pressure_unit.setStyleSheet(COMBOBOX_STYLE)
         self.pressure_unit.addItems(["Pa", "kPa", "mmH₂O"])
         self.pressure_unit.setMinimumWidth(C_MIN)
         self.pressure_unit.setMaximumWidth(C_MAX)
@@ -187,6 +209,7 @@ class FanPowerCalculator(QWidget):
         self.transmission_efficiency_input.setMaximumWidth(W_MAX)
         grid.addWidget(self.transmission_efficiency_input, row, 1)
         self.transmission_type = QComboBox()
+        self.transmission_type.setStyleSheet(COMBOBOX_STYLE)
         self.transmission_type.addItems(["直联", "皮带传动", "联轴器"])
         self.transmission_type.setMinimumWidth(C_MIN)
         self.transmission_type.setMaximumWidth(C_MAX)

@@ -11,6 +11,25 @@ import re
 from datetime import datetime
 
 
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 class FittingsDialog(QDialog):
     """管件和阀门选择对话框"""
     
@@ -270,6 +289,7 @@ class 压降计算(QWidget):
         input_layout.addWidget(self.roughness_input, row, 1)
         
         self.roughness_combo = QComboBox()
+        self.roughness_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_roughness_options()
         self.roughness_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # 水平扩展
         self.roughness_combo.currentTextChanged.connect(self.on_roughness_changed)
@@ -290,6 +310,7 @@ class 压降计算(QWidget):
         input_layout.addWidget(self.diameter_input, row, 1)
         
         self.diameter_combo = QComboBox()
+        self.diameter_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_diameter_options()
         self.diameter_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # 水平扩展
         self.diameter_combo.currentTextChanged.connect(self.on_diameter_changed)
@@ -350,6 +371,7 @@ class 压降计算(QWidget):
         input_layout.addWidget(self.fluid_input, row, 1)
         
         self.fluid_combo = QComboBox()
+        self.fluid_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_fluid_options()
         self.fluid_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # 水平扩展
         self.fluid_combo.currentTextChanged.connect(self.on_fluid_changed)
@@ -431,6 +453,7 @@ class 压降计算(QWidget):
         input_layout.addWidget(self.adiabatic_input, row, 1)
         
         self.adiabatic_combo = QComboBox()
+        self.adiabatic_combo.setStyleSheet(COMBOBOX_STYLE)
         self.adiabatic_combo.addItems([
             "- 请选择绝热系数 -",
             "1.67 - 单原子气体",

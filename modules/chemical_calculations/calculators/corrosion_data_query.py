@@ -26,6 +26,25 @@ GROUP_STYLE = """
         padding: 0 8px 0 8px;
     }
 """
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 
 
 class CorrosionDataQuery(QWidget):
@@ -101,6 +120,7 @@ class CorrosionDataQuery(QWidget):
         material_cat_layout.addWidget(material_cat_label)
         
         self.material_category_combo = QComboBox()
+        self.material_category_combo.setStyleSheet(COMBOBOX_STYLE)
         self.material_category_combo.setFixedWidth(400)
         self.material_category_combo.addItems([
             "碳钢", "不锈钢", "合金钢", "铜及铜合金", "铝及铝合金",
@@ -124,6 +144,7 @@ class CorrosionDataQuery(QWidget):
         material_layout.addWidget(material_label)
         
         self.material_combo = QComboBox()
+        self.material_combo.setStyleSheet(COMBOBOX_STYLE)
         self.material_combo.setFixedWidth(400)
         material_layout.addWidget(self.material_combo)
         
@@ -142,6 +163,7 @@ class CorrosionDataQuery(QWidget):
         medium_cat_layout.addWidget(medium_cat_label)
         
         self.medium_category_combo = QComboBox()
+        self.medium_category_combo.setStyleSheet(COMBOBOX_STYLE)
         self.medium_category_combo.setFixedWidth(400)
         self.medium_category_combo.addItems([
             "酸类", "碱类", "盐类", "有机溶剂", "气体", "水及水溶液"
@@ -164,6 +186,7 @@ class CorrosionDataQuery(QWidget):
         medium_layout.addWidget(medium_label)
         
         self.medium_combo = QComboBox()
+        self.medium_combo.setStyleSheet(COMBOBOX_STYLE)
         self.medium_combo.setFixedWidth(400)
         medium_layout.addWidget(self.medium_combo)
         

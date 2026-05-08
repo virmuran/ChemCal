@@ -11,6 +11,25 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QDoubleValidator
 
 
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 class CompressibleFlowPressureDrop(QWidget):
     """可压缩流体压降计算器（统一 UI 规范版）"""
     calculation_type = "compressible_flow_pressure_drop"
@@ -98,6 +117,7 @@ class CompressibleFlowPressureDrop(QWidget):
 
 
         self.fluid_combo = QComboBox()
+        self.fluid_combo.setStyleSheet(COMBOBOX_STYLE)
         self.fluid_combo.addItems(["air","nitrogen","oxygen","hydrogen","co2","ng","steam","methane","ethane","propane","custom"])
         self.fluid_combo.setMinimumWidth(150)
         self.fluid_combo.setMaximumWidth(400)

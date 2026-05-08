@@ -12,6 +12,25 @@ from PySide6.QtCore import Qt, Signal, QThread
 from PySide6.QtGui import QFont, QDoubleValidator
 
 
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 class SolubilityWorker(QThread):
     """溶解度查询工作线程"""
     finished = Signal(dict)
@@ -244,6 +263,7 @@ class SolidSolubilityCalculator(QWidget):
 
         # 行0：化合物
         self.compound_input = QComboBox()
+        self.compound_input.setStyleSheet(COMBOBOX_STYLE)
         self.compound_input.setEditable(True)
         self.compound_input.setMinimumWidth(150)
         self.compound_input.setMaximumWidth(400)
@@ -262,6 +282,7 @@ class SolidSolubilityCalculator(QWidget):
 
         # 行1：溶剂
         self.solvent_input = QComboBox()
+        self.solvent_input.setStyleSheet(COMBOBOX_STYLE)
         self.solvent_input.setEditable(True)
         self.solvent_input.setMinimumWidth(150)
         self.solvent_input.setMaximumWidth(400)
@@ -471,6 +492,7 @@ class SolidSolubilityCalculator(QWidget):
         self.batch_table.setRowCount(n + 1)
 
         cc = QComboBox()
+        cc.setStyleSheet(COMBOBOX_STYLE)
         cc.setEditable(True)
         cc.addItems([
             "氯化钠", "氯化钾", "硫酸钠", "碳酸钙",
@@ -478,6 +500,7 @@ class SolidSolubilityCalculator(QWidget):
         self.batch_table.setCellWidget(n, 0, cc)
 
         sc = QComboBox()
+        sc.setStyleSheet(COMBOBOX_STYLE)
         sc.setEditable(True)
         sc.addItems(["水", "乙醇", "甲醇", "丙酮"])
         self.batch_table.setCellWidget(n, 1, sc)

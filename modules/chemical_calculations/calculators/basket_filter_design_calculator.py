@@ -11,6 +11,25 @@ import re
 from datetime import datetime
 
 
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 class 篮式过滤器(QWidget):
     """篮式过滤器设计与压降计算器"""
     
@@ -191,6 +210,7 @@ class 篮式过滤器(QWidget):
         
         # 介质腐蚀性下拉框
         self.corrosion_combo = QComboBox()
+        self.corrosion_combo.setStyleSheet(COMBOBOX_STYLE)
         self.corrosion_combo.addItems(["无腐蚀", "弱腐蚀", "中等腐蚀", "强腐蚀", "特殊腐蚀性"])
         self.add_labeled_input(layout, 1, 2, "介质腐蚀性:", self.corrosion_combo)
     
@@ -217,6 +237,7 @@ class 篮式过滤器(QWidget):
         
         # 滤网材质下拉框
         self.material_combo = QComboBox()
+        self.material_combo.setStyleSheet(COMBOBOX_STYLE)
         self.add_labeled_input(layout, 0, 2, "滤网材质:", self.material_combo)
         
         # 第1行：滤网开孔率和推荐过滤速度
@@ -239,6 +260,7 @@ class 篮式过滤器(QWidget):
         
         # 法兰口径下拉框
         self.flange_size_combo = QComboBox()
+        self.flange_size_combo.setStyleSheet(COMBOBOX_STYLE)
         self.add_labeled_input(layout, 1, 2, "法兰口径:", self.flange_size_combo)
     
     def setup_economic_parameters(self, layout):

@@ -11,6 +11,25 @@ import re
 from datetime import datetime
 
 
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 class 管径计算(QWidget):
     """管道直径计算器 - 基于表格数据（统一UI风格版）"""
     
@@ -419,6 +438,7 @@ class 管径计算(QWidget):
         input_layout.addWidget(fluid_label, row, 0)
         
         self.fluid_combo = QComboBox()
+        self.fluid_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_fluid_options()
         self.fluid_combo.setFixedWidth(input_width)
         self.fluid_combo.currentTextChanged.connect(self.on_fluid_changed)
@@ -438,6 +458,7 @@ class 管径计算(QWidget):
         input_layout.addWidget(condition_label, row, 0)
         
         self.condition_combo = QComboBox()
+        self.condition_combo.setStyleSheet(COMBOBOX_STYLE)
         self.condition_combo.setFixedWidth(input_width)
         self.condition_combo.currentTextChanged.connect(self.on_condition_changed)
         input_layout.addWidget(self.condition_combo, row, 1)
@@ -576,6 +597,7 @@ class 管径计算(QWidget):
         input_layout.addWidget(self.diameter_input, row, 1)
         
         self.diameter_combo = QComboBox()
+        self.diameter_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_diameter_options()
         self.diameter_combo.setFixedWidth(combo_width)
         self.diameter_combo.currentTextChanged.connect(self.on_diameter_changed)

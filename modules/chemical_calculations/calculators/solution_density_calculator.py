@@ -263,6 +263,25 @@ SUBSTANCE_CONFIG = {
 
 # ─────────────────────────── UI 主类 ───────────────────────────
 
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 class SolutionDensityCalculator(QWidget):
     """溶液密度计算器"""
 
@@ -310,6 +329,7 @@ class SolutionDensityCalculator(QWidget):
         # 物料选择
         grid.addWidget(QLabel("物料种类:"), 0, 0, Qt.AlignRight)
         self.substance_combo = QComboBox()
+        self.substance_combo.setStyleSheet(COMBOBOX_STYLE)
         self.substance_combo.addItems(list(SUBSTANCE_CONFIG.keys()))
         self.substance_combo.currentTextChanged.connect(self._on_substance_changed)
         grid.addWidget(self.substance_combo, 0, 1, 1, 3)
@@ -400,6 +420,7 @@ class SolutionDensityCalculator(QWidget):
 
         param_grid.addWidget(QLabel("物料:"), 0, 0, Qt.AlignRight)
         self.scan_substance_combo = QComboBox()
+        self.scan_substance_combo.setStyleSheet(COMBOBOX_STYLE)
         self.scan_substance_combo.addItems(list(SUBSTANCE_CONFIG.keys()))
         param_grid.addWidget(self.scan_substance_combo, 0, 1)
 

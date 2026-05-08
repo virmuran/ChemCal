@@ -11,6 +11,25 @@ import re
 from datetime import datetime
 
 
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 class 管道补偿(QWidget):
     """管道补偿计算器（与压降计算器UI一致）"""
     
@@ -256,6 +275,7 @@ class 管道补偿(QWidget):
         input_layout.addWidget(material_label, row, 0)
         
         self.material_combo = QComboBox()
+        self.material_combo.setStyleSheet(COMBOBOX_STYLE)
         self.material_combo.setFixedWidth(input_width)
         
         # 添加材质选项，分组显示
@@ -330,6 +350,7 @@ class 管道补偿(QWidget):
         input_layout.addWidget(self.od_input, row, 1)
         
         self.od_combo = QComboBox()
+        self.od_combo.setStyleSheet(COMBOBOX_STYLE)
         self.od_combo.setFixedWidth(combo_width)
         
         # 添加管道外径选项

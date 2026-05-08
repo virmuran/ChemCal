@@ -46,6 +46,25 @@ GROUP_STYLE = """
         padding: 0 8px 0 8px;
     }
 """
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 
 
 class RefrigerationCycleCalculator(QWidget):
@@ -176,6 +195,7 @@ class RefrigerationCycleCalculator(QWidget):
         input_layout.addWidget(label_ref, row, 0)
 
         self.refrigerant_combo = QComboBox()
+        self.refrigerant_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_refrigerant_options()
         self.refrigerant_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.refrigerant_combo.currentTextChanged.connect(self.on_refrigerant_changed)

@@ -57,6 +57,25 @@ GROUP_STYLE = """
         padding: 0 8px 0 8px;
     }
 """
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 
 
 class CentrifugalPumpCalculator(QWidget):
@@ -138,6 +157,7 @@ class CentrifugalPumpCalculator(QWidget):
         input_layout.addWidget(self.flow_input, row, 1)
 
         self.flow_combo = QComboBox()
+        self.flow_combo.setStyleSheet(COMBOBOX_STYLE)
         self.flow_combo.addItems([
             "小流量: 0.1-10 m³/h",
             "中等流量: 10-100 m³/h",
@@ -165,6 +185,7 @@ class CentrifugalPumpCalculator(QWidget):
         input_layout.addWidget(self.head_input, row, 1)
 
         self.head_combo = QComboBox()
+        self.head_combo.setStyleSheet(COMBOBOX_STYLE)
         self.head_combo.addItems([
             "低扬程: 1-20 m",
             "中等扬程: 20-80 m",
@@ -192,6 +213,7 @@ class CentrifugalPumpCalculator(QWidget):
         input_layout.addWidget(self.density_input, row, 1)
 
         self.density_combo = QComboBox()
+        self.density_combo.setStyleSheet(COMBOBOX_STYLE)
         self.density_combo.addItems([
             "1000 - 水 (20°C)",
             "998 - 水 (25°C)",
@@ -223,6 +245,7 @@ class CentrifugalPumpCalculator(QWidget):
         input_layout.addWidget(self.efficiency_input, row, 1)
 
         self.efficiency_combo = QComboBox()
+        self.efficiency_combo.setStyleSheet(COMBOBOX_STYLE)
         self.efficiency_combo.addItems([
             "50-60% - 小型泵",
             "60-70% - 标准泵",
@@ -250,6 +273,7 @@ class CentrifugalPumpCalculator(QWidget):
         input_layout.addWidget(self.motor_efficiency_input, row, 1)
 
         self.motor_efficiency_combo = QComboBox()
+        self.motor_efficiency_combo.setStyleSheet(COMBOBOX_STYLE)
         self.motor_efficiency_combo.addItems([
             "85-88% - 小型电机",
             "88-92% - 标准电机",
@@ -271,6 +295,7 @@ class CentrifugalPumpCalculator(QWidget):
         input_layout.addWidget(safety_label, row, 0)
 
         self.safety_combo = QComboBox()
+        self.safety_combo.setStyleSheet(COMBOBOX_STYLE)
         self.safety_combo.addItems([
             "1.0 (无安全系数)",
             "1.05 (轻微)",

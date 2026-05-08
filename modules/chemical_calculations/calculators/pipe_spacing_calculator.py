@@ -14,6 +14,25 @@ from PySide6.QtGui import QFont, QDoubleValidator, QIntValidator
 import math
 
 
+COMBOBOX_STYLE = """
+    QComboBox {
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        padding: 6px 10px;
+        background: white;
+        color: black;
+    }
+    QComboBox QAbstractItemView {
+        background-color: white;
+        color: black;
+        border: 1px solid #bdc3c7;
+        selection-background-color: #3498db;
+        selection-color: white;
+    }
+    QComboBox QAbstractItemView::item {
+        padding: 3px 8px;
+    }
+"""
 class 管道间距(QWidget):
     """专业的管道间距计算器 - 依据化工部标准"""
     
@@ -80,6 +99,7 @@ class 管道间距(QWidget):
         # 单位制选择
         pipes_layout.addWidget(QLabel("单位制:"), 1, 0)
         self.unit_combo = QComboBox()
+        self.unit_combo.setStyleSheet(COMBOBOX_STYLE)
         self.unit_combo.addItems(["公制 (DN/mm)", "英制 (NPS/inch)"])
         self.unit_combo.currentIndexChanged.connect(self.on_unit_changed)
         pipes_layout.addWidget(self.unit_combo, 1, 1, 1, 2)
@@ -87,8 +107,10 @@ class 管道间距(QWidget):
         # 公称直径
         pipes_layout.addWidget(QLabel("公称直径:"), 2, 0)
         self.dn_input1 = QComboBox()
+        self.dn_input1.setStyleSheet(COMBOBOX_STYLE)
         self.dn_input1.setEditable(True)
         self.dn_input2 = QComboBox()
+        self.dn_input2.setStyleSheet(COMBOBOX_STYLE)
         self.dn_input2.setEditable(True)
         pipes_layout.addWidget(self.dn_input1, 2, 1)
         pipes_layout.addWidget(self.dn_input2, 2, 2)
@@ -96,7 +118,9 @@ class 管道间距(QWidget):
         # 法兰等级
         pipes_layout.addWidget(QLabel("法兰等级:"), 3, 0)
         self.flange_combo1 = QComboBox()
+        self.flange_combo1.setStyleSheet(COMBOBOX_STYLE)
         self.flange_combo2 = QComboBox()
+        self.flange_combo2.setStyleSheet(COMBOBOX_STYLE)
         pipes_layout.addWidget(self.flange_combo1, 3, 1)
         pipes_layout.addWidget(self.flange_combo2, 3, 2)
         
@@ -126,11 +150,13 @@ class 管道间距(QWidget):
         
         # 布置方式
         self.layout_combo = QComboBox()
+        self.layout_combo.setStyleSheet(COMBOBOX_STYLE)
         self.layout_combo.addItems(["水平平行", "上下平行", "垂直交叉", "L形布置"])
         layout_form.addRow("布置方式:", self.layout_combo)
         
         # 管廊类型
         self.rack_type_combo = QComboBox()
+        self.rack_type_combo.setStyleSheet(COMBOBOX_STYLE)
         self.rack_type_combo.addItems(["管廊", "管墩", "地面", "架空"])
         layout_form.addRow("支承类型:", self.rack_type_combo)
         
