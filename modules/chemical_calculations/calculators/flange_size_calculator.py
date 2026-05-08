@@ -20,7 +20,7 @@ COMBOBOX_STYLE = """
         color: black;
         border: 1px solid #bdc3c7;
         selection-background-color: #3498db;
-        selection-color: white;
+        selection-color: black;
     }
     QComboBox QAbstractItemView::item {
         padding: 3px 8px;

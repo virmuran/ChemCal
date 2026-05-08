@@ -115,7 +115,7 @@ class ThemeManager(QObject):
             color: #374151;
             border: 1px solid #d1d5db;
             selection-background-color: #4a6fa5;
-            selection-color: white;
+            selection-color: black;
         }
         QComboBox QAbstractItemView::item {
             min-height: 28px;
@@ -288,7 +288,7 @@ class ThemeManager(QObject):
             color: #e0e0e0;
             border: 1px solid #555;
             selection-background-color: #4a6fa5;
-            selection-color: white;
+            selection-color: black;
         }
         QComboBox QAbstractItemView::item {
             min-height: 28px;
@@ -460,7 +460,7 @@ class ThemeManager(QObject):
             color: #2d3748;
             border: 1px solid #bee3f8;
             selection-background-color: #3182ce;
-            selection-color: white;
+            selection-color: black;
         }
         QComboBox QAbstractItemView::item {
             min-height: 28px;
