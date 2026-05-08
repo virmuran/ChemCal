@@ -254,7 +254,6 @@ class SteamPropertyCalculator(QWidget):
             QPushButton:hover {
                 background-color: #219955;
             } """)
-        self.calculate_btn.setMinimumHeight(50)
         left_layout.addWidget(self.calculate_btn)
         
         # 5. 底部按钮行：清空→Stretch→下载TXT→下载PDF
@@ -380,7 +379,7 @@ class SteamPropertyCalculator(QWidget):
                     background-color: #ecf0f1;
                     border: 1px solid #bdc3c7;
                     border-radius: 4px;
-                    padding: 6px;
+                    padding: 8px;
                     text-align: center;
                     color: black;
                 }
@@ -390,6 +389,7 @@ class SteamPropertyCalculator(QWidget):
                 }
                 QPushButton:hover:!checked {
                     background-color: #d5dbdb;
+                    color: green;
                 } """)
             self.sat_known_button_group.addButton(btn, i)
             known_btn_layout.addWidget(btn)
@@ -478,13 +478,14 @@ class SteamPropertyCalculator(QWidget):
         for i, option in enumerate(known_options):
             btn = QPushButton(option)
             btn.setCheckable(True)
+            btn.setMinimumWidth(120)
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             btn.setStyleSheet("""
                 QPushButton {
                     background-color: #ecf0f1;
                     border: 1px solid #bdc3c7;
                     border-radius: 4px;
-                    padding: 6px;
+                    padding: 8px;
                     text-align: center;
                     color: black;
                 }
@@ -494,6 +495,7 @@ class SteamPropertyCalculator(QWidget):
                 }
                 QPushButton:hover:!checked {
                     background-color: #d5dbdb;
+                    color: green;
                 } """)
             self.other_known_button_group.addButton(btn, i)
             known_btn_layout.addWidget(btn)
