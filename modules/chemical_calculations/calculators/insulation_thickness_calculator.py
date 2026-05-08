@@ -1,45 +1,51 @@
-# [file name]: calculators/insulation_thickness_calculator.py
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, 
-                              QLabel, QLineEdit, QComboBox, QPushButton, 
-                              QTextEdit, QTableWidget, QTableWidgetItem,
-                              QHeaderView, QMessageBox, QTabWidget, QDoubleSpinBox,
-                              QCheckBox, QRadioButton, QButtonGroup, QGridLayout,
-                              QStackedWidget, QFrame, QScrollArea, QSizePolicy)
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont, QDoubleValidator, QIntValidator
+import os
 import math
 from datetime import datetime
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
+    QLabel, QLineEdit, QPushButton, QComboBox,
+    QTextEdit, QGridLayout,
+    QButtonGroup, QMessageBox, QFileDialog,
+    QScrollArea,
+
+)
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont, QDoubleValidator
+
 
 class InsulationThicknessCalculator(QWidget):
-    """保温厚度计算器（紧凑四列布局版本）"""
-    
-    def __init__(self, parent=None):
+    """保温厚度计算器（统一 UI 规范版）"""
+
+    def __init__(self, parent=None, data_manager=None):
         super().__init__(parent)
-        self.setup_ui()
+        if data_manager is not None:
+            self.data_manager = data_manager
+        else:
+            self.data_manager = None
+        self._last_result = {}   # 缓存最近一次计算结果
+        self._last_params = {}    # 缓存最近一次输入参数
         self.setup_material_properties()
-    
+        self.setup_ui()
+
+    # ─────────────────────────── 材料数据 ─────────────────────────────
+    def setup_material_properties(self):
+        self.material_properties = {
+            "硅酸钙(170kg/m³)": {"conductivity": 0.0512, "density": 170},
+            "岩棉":                {"conductivity": 0.040,  "density": 120},
+            "玻璃棉":              {"conductivity": 0.042,  "density": 64},
+            "硅酸铝纤维":          {"conductivity": 0.120,  "density": 200},
+            "聚氨酯泡沫":          {"conductivity": 0.025,  "density": 40},
+            "聚苯乙烯泡沫":        {"conductivity": 0.038,  "density": 30},
+            "橡塑海绵":            {"conductivity": 0.038,  "density": 80},
+            "气凝胶":              {"conductivity": 0.018,  "density": 180},
+            "复合硅酸盐":          {"conductivity": 0.048,  "density": 180},
+            "微孔硅酸钙":          {"conductivity": 0.055,  "density": 220},
+            "珍珠岩":              {"conductivity": 0.065,  "density": 80},
+        }
+
+    # ─────────────────────────── UI ─────────────────────────────
     def setup_ui(self):
-        """设置UI - 紧凑四列布局"""
-        main_layout = QHBoxLayout(self)
-        main_layout.setSpacing(15)
-        main_layout.setContentsMargins(10, 10, 10, 10)
-        
-        # 左侧：输入参数区域
-        left_widget = QWidget()
-        left_layout = QVBoxLayout(left_widget)
-        left_layout.setSpacing(15)
-        
-        # 1. 说明文本
-        description = QLabel(
-            "计算保温层厚度，支持四种计算方法。参数输入区采用四列布局以节省空间。"
-        )
-        description.setWordWrap(True)
-        description.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
-        left_layout.addWidget(description)
-        
-        # 2. 计算类型选择 - 改为点选按钮模式
-        calc_type_group = QGroupBox("计算类型")
-        calc_type_group.setStyleSheet("""
+        group_style = """
             QGroupBox {
                 font-weight: bold;
                 border: 1px solid #bdc3c7;
@@ -52,1065 +58,631 @@ class InsulationThicknessCalculator(QWidget):
                 left: 10px;
                 padding: 0 8px 0 8px;
             }
-        """)
-        calc_type_layout = QHBoxLayout(calc_type_group)
-        
-        # 创建按钮组
+        """
+
+        main_layout = QHBoxLayout(self)
+        main_layout.setSpacing(15)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+
+        # ──────────────── 左侧输入区 ────────────────
+        scroll_left = QScrollArea()
+        scroll_left.setStyleSheet("QScrollArea { border: none; background: transparent; } QScrollBar:vertical { background: transparent; width: 8px; margin: 0; } QScrollBar::handle:vertical { background: #c0c0c0; border-radius: 4px; min-height: 30px; } QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }")
+
+        scroll_left.setWidgetResizable(True)
+
+        scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        left_widget = QWidget()
+        left_widget.setStyleSheet("QWidget { background: transparent; }")
+        left_layout = QVBoxLayout(left_widget)
+        left_layout.setSpacing(15)
+
+        # 说明文字
+        desc = QLabel(
+            "计算保温层厚度，支持四种计算方法："
+            "绝热层经济厚度、表面温度法、防结露、热损失法。"
+            "请根据实际工况选择计算方法并填写参数。"
+        )
+        desc.setWordWrap(True)
+        desc.setStyleSheet("color: #7f8c8d; font-size: 12px;")
+        left_layout.addWidget(desc)
+
+        # ── 计算类型选择（按钮组）──
+        type_group = QGroupBox("计算类型")
+        type_group.setStyleSheet(group_style)
+        type_layout = QHBoxLayout(type_group)
+
         self.calc_type_group = QButtonGroup(self)
-        
-        # 定义计算类型和对应的工具提示
         calc_types = [
             ("绝热层经济厚度", "基于经济性考虑计算最佳保温厚度"),
-            ("表面温度法", "根据外表面温度要求计算保温厚度"),
-            ("防结露", "防止表面结露的最小保温厚度"),
-            ("热损失法", "根据允许热损失量计算保温厚度")
+            ("表面温度法",     "根据外表面温度要求计算保温厚度"),
+            ("防结露",         "防止表面结露的最小保温厚度"),
+            ("热损失法",       "根据允许热损失量计算保温厚度"),
         ]
-        
-        for i, (text, tooltip) in enumerate(calc_types):
+        for i, (text, tip) in enumerate(calc_types):
             btn = QPushButton(text)
             btn.setCheckable(True)
-            btn.setToolTip(tooltip)
-            btn.setMinimumWidth(100)
-            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            btn.setToolTip(tip)
+            btn.setMinimumWidth(110)
             btn.setStyleSheet("""
                 QPushButton {
                     background-color: #ecf0f1;
                     border: 1px solid #bdc3c7;
-                    border-radius: 4px;
-                    padding: 8px;
-                    text-align: center;
+                    border-radius: 6px;
+                    padding: 7px 4px;
+                    font-size: 12px;
                 }
                 QPushButton:checked {
                     background-color: #3498db;
                     color: white;
+                    font-weight: bold;
                 }
                 QPushButton:hover {
                     background-color: #d5dbdb;
                 }
             """)
             self.calc_type_group.addButton(btn, i)
-            calc_type_layout.addWidget(btn)
-        
-        # 默认选择第一个按钮
+            type_layout.addWidget(btn)
         self.calc_type_group.buttons()[0].setChecked(True)
-        self.calc_type_group.buttonClicked.connect(self.on_calc_type_changed)
-        
-        left_layout.addWidget(calc_type_group)
-        
-        # 3. 输入参数组 - 四列布局
+        self.calc_type_group.idClicked.connect(self._on_calc_type_changed)
+
+        left_layout.addWidget(type_group)
+
+        # ── 输入参数组（四列网格，适配多计算方法）──
         input_group = QGroupBox("输入参数")
-        input_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
-        
-        # 使用GridLayout实现四列布局
-        input_layout = QGridLayout(input_group)
-        input_layout.setVerticalSpacing(10)
-        input_layout.setHorizontalSpacing(8)
-        
-        # 标签样式 - 右对齐，紧凑
-        label_style = """
-            QLabel {
-                font-weight: bold;
-                font-size: 11px;
-                padding-right: 5px;
-            }
-        """
-        
-        # 输入框样式 - 设置固定宽度
-        input_style = """
-            QLineEdit, QComboBox {
-                min-width: 120px;
-                max-width: 150px;
-                font-size: 11px;
-            }
-        """
-        
-        row = 0
-        
-        # 第1行：设备型式和保温类型
-        equipment_label = QLabel("设备型式:")
-        equipment_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        equipment_label.setStyleSheet(label_style)
-        input_layout.addWidget(equipment_label, row, 0)
-        
-        self.equipment_type_combo = QComboBox()
-        self.equipment_type_combo.addItems(["管道或圆筒形设备", "平面形设备"])
-        self.equipment_type_combo.setStyleSheet(input_style)
-        self.equipment_type_combo.currentTextChanged.connect(self.on_equipment_type_changed)
-        input_layout.addWidget(self.equipment_type_combo, row, 1)
-        
-        insulation_label = QLabel("保温类型:")
-        insulation_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        insulation_label.setStyleSheet(label_style)
-        input_layout.addWidget(insulation_label, row, 2)
-        
-        self.insulation_type_combo = QComboBox()
-        self.insulation_type_combo.addItems(["保温", "保冷"])
-        self.insulation_type_combo.setStyleSheet(input_style)
-        self.insulation_type_combo.currentTextChanged.connect(self.on_insulation_type_changed)
-        input_layout.addWidget(self.insulation_type_combo, row, 3)
-        
-        row += 1
-        
-        # 第2行：设备尺寸和保温材料
-        size_label = QLabel("设备尺寸(mm):")
-        size_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        size_label.setStyleSheet(label_style)
-        input_layout.addWidget(size_label, row, 0)
-        
-        self.size_input = QLineEdit()
-        self.size_input.setPlaceholderText("108")
-        self.size_input.setValidator(QDoubleValidator(1.0, 5000.0, 2))
+        input_group.setStyleSheet(group_style)
+        grid = QGridLayout(input_group)
+        grid.setHorizontalSpacing(10)
+        grid.setVerticalSpacing(10)
+
+        label_style = "font-weight: bold; padding-right: 10px;"
+
+        def make_lbl(text, row, col):
+            lbl = QLabel(text)
+            lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            lbl.setFixedWidth(160)
+            lbl.setStyleSheet(label_style)
+            grid.addWidget(lbl, row, col)
+            return lbl
+
+        def make_edit(placeholder, validator_range, row, col):
+            ed = QLineEdit()
+            ed.setPlaceholderText(placeholder)
+            ed.setFixedWidth(180)
+            if validator_range:
+                lo, hi, dec = validator_range
+                ed.setValidator(QDoubleValidator(lo, hi, dec))
+            grid.addWidget(ed, row, col)
+            return ed
+
+        def make_combo(items, row, col):
+            cb = QComboBox()
+            cb.addItems(items)
+            cb.setFixedWidth(180)
+            grid.addWidget(cb, row, col)
+            return cb
+
+        # 行0：设备型式 + 保温类型
+        make_lbl("设备型式:", 0, 0)
+        self.equipment_type_combo = make_combo(
+            ["管道或圆筒形设备", "平面形设备"], 0, 1)
+        self.equipment_type_combo.currentTextChanged.connect(
+            self._on_equipment_type_changed)
+
+        make_lbl("保温类型:", 0, 2)
+        self.insulation_type_combo = make_combo(
+            ["保温", "保冷"], 0, 3)
+        self.insulation_type_combo.currentTextChanged.connect(
+            self._on_insulation_type_changed)
+
+        # 行1：设备尺寸 + 保温材料
+        make_lbl("设备尺寸(mm):", 1, 0)
+        self.size_input = make_edit("108", (1.0, 5000.0, 2), 1, 1)
         self.size_input.setText("108")
-        self.size_input.setStyleSheet(input_style)
-        input_layout.addWidget(self.size_input, row, 1)
-        
-        material_label = QLabel("保温材料:")
-        material_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        material_label.setStyleSheet(label_style)
-        input_layout.addWidget(material_label, row, 2)
-        
-        self.material_combo = QComboBox()
-        self.material_combo.addItems([
-            "硅酸钙(170kg/m³)",
-            "岩棉",
-            "玻璃棉", 
-            "硅酸铝纤维",
-            "聚氨酯泡沫",
-            "聚苯乙烯泡沫",
-            "橡塑海绵",
-            "气凝胶",
-            "复合硅酸盐",
-            "微孔硅酸钙",
-            "珍珠岩",
-            "自定义材料"
-        ])
-        self.material_combo.setStyleSheet(input_style)
-        self.material_combo.currentTextChanged.connect(self.on_material_changed)
-        input_layout.addWidget(self.material_combo, row, 3)
-        
-        row += 1
-        
-        # 第3行：导热系数和材料密度
-        conductivity_label = QLabel("导热系数:")
-        conductivity_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        conductivity_label.setStyleSheet(label_style)
-        input_layout.addWidget(conductivity_label, row, 0)
-        
-        self.conductivity_input = QLineEdit()
-        self.conductivity_input.setPlaceholderText("0.0512")
-        self.conductivity_input.setValidator(QDoubleValidator(0.001, 1.0, 6))
+
+        make_lbl("保温材料:", 1, 2)
+        self.material_combo = make_combo(
+            list(self.material_properties.keys()) + ["自定义材料"], 1, 3)
+        self.material_combo.currentTextChanged.connect(self._on_material_changed)
+
+        # 行2：导热系数 + 材料密度
+        make_lbl("导热系数(W/m·K):", 2, 0)
+        self.conductivity_input = make_edit("0.0512", (0.001, 1.0, 6), 2, 1)
         self.conductivity_input.setText("0.0512")
-        self.conductivity_input.setStyleSheet(input_style)
-        input_layout.addWidget(self.conductivity_input, row, 1)
-        
-        density_label = QLabel("密度(kg/m³):")
-        density_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        density_label.setStyleSheet(label_style)
-        input_layout.addWidget(density_label, row, 2)
-        
-        self.density_input = QLineEdit()
-        self.density_input.setPlaceholderText("170")
-        self.density_input.setValidator(QDoubleValidator(10, 500, 2))
+
+        make_lbl("密度(kg/m³):", 2, 2)
+        self.density_input = make_edit("170", (10.0, 500.0, 2), 2, 3)
         self.density_input.setText("170")
-        self.density_input.setStyleSheet(input_style)
-        input_layout.addWidget(self.density_input, row, 3)
-        
-        row += 1
-        
-        # 第4行：环境温度和风速
-        ambient_label = QLabel("环境温度(°C):")
-        ambient_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        ambient_label.setStyleSheet(label_style)
-        input_layout.addWidget(ambient_label, row, 0)
-        
-        self.ambient_temp_input = QLineEdit()
-        self.ambient_temp_input.setPlaceholderText("20")
-        self.ambient_temp_input.setValidator(QDoubleValidator(-50, 60, 2))
+
+        # 行3：环境温度 + 风速
+        make_lbl("环境温度(°C):", 3, 0)
+        self.ambient_temp_input = make_edit("20", (-50.0, 60.0, 2), 3, 1)
         self.ambient_temp_input.setText("20")
-        self.ambient_temp_input.setStyleSheet(input_style)
-        input_layout.addWidget(self.ambient_temp_input, row, 1)
-        
-        wind_label = QLabel("风速(m/s):")
-        wind_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        wind_label.setStyleSheet(label_style)
-        input_layout.addWidget(wind_label, row, 2)
-        
-        self.wind_speed_input = QLineEdit()
-        self.wind_speed_input.setPlaceholderText("3")
-        self.wind_speed_input.setValidator(QDoubleValidator(0, 20, 2))
+
+        make_lbl("风速(m/s):", 3, 2)
+        self.wind_speed_input = make_edit("3", (0.0, 20.0, 2), 3, 3)
         self.wind_speed_input.setText("3")
-        self.wind_speed_input.setStyleSheet(input_style)
-        input_layout.addWidget(self.wind_speed_input, row, 3)
-        
-        row += 1
-        
-        # 第5行：露点温度和设备温度
-        dew_point_label = QLabel("露点温度(°C):")
-        dew_point_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        dew_point_label.setStyleSheet(label_style)
-        input_layout.addWidget(dew_point_label, row, 0)
-        
-        self.dew_point_input = QLineEdit()
-        self.dew_point_input.setPlaceholderText("22")
-        self.dew_point_input.setValidator(QDoubleValidator(-50, 60, 2))
+
+        # 行4：露点温度 + 设备温度
+        make_lbl("露点温度(°C):", 4, 0)
+        self.dew_point_input = make_edit("22", (-50.0, 60.0, 2), 4, 1)
         self.dew_point_input.setText("22")
-        self.dew_point_input.setStyleSheet(input_style)
-        input_layout.addWidget(self.dew_point_input, row, 1)
-        
-        equipment_temp_label = QLabel("设备温度(°C):")
-        equipment_temp_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        equipment_temp_label.setStyleSheet(label_style)
-        input_layout.addWidget(equipment_temp_label, row, 2)
-        
-        self.equipment_temp_input = QLineEdit()
-        self.equipment_temp_input.setPlaceholderText("200")
-        self.equipment_temp_input.setValidator(QDoubleValidator(-200, 1000, 2))
+        self.dew_point_label = grid.itemAtPosition(4, 0).widget()
+
+        make_lbl("设备温度(°C):", 4, 2)
+        self.equipment_temp_input = make_edit("200", (-200.0, 1000.0, 2), 4, 3)
         self.equipment_temp_input.setText("200")
-        self.equipment_temp_input.setStyleSheet(input_style)
-        input_layout.addWidget(self.equipment_temp_input, row, 3)
-        
-        row += 1
-        
-        # 动态参数区域 - 不同计算方法的特定参数
-        self.dynamic_params_widget = QWidget()
-        self.dynamic_params_layout = QGridLayout(self.dynamic_params_widget)
-        self.dynamic_params_layout.setVerticalSpacing(10)
-        self.dynamic_params_layout.setHorizontalSpacing(8)
-        
-        # 创建不同计算方法的动态参数
-        self.setup_dynamic_parameters()
-        
-        # 将动态参数区域添加到主布局，跨4列
-        input_layout.addWidget(self.dynamic_params_widget, row, 0, 1, 4)
-        
+
+        # ── 动态参数区（不同计算方法的特定参数）──
+        self.dynamic_container = QWidget()
+        self.dynamic_layout = QGridLayout(self.dynamic_container)
+        self.dynamic_layout.setHorizontalSpacing(10)
+        self.dynamic_layout.setVerticalSpacing(10)
+        grid.addWidget(self.dynamic_container, 5, 0, 1, 4)
+
         left_layout.addWidget(input_group)
-        
-        # 4. 按钮布局
-        button_layout = QHBoxLayout()
-        
-        self.calculate_btn = QPushButton("计算")
-        self.calculate_btn.setFont(QFont("Arial", 12, QFont.Bold))
-        self.calculate_btn.clicked.connect(self.calculate)
-        self.calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.calculate_btn.setStyleSheet("""
+
+        # ── 计算按钮 ──
+        calc_btn = QPushButton("▶  计算保温厚度")
+        calc_btn.setStyleSheet("""
             QPushButton {
-                background-color: #27ae60;
+                background-color: #3498db;
                 color: white;
-                border: none;
+                font-weight: bold;
+                font-size: 14px;
                 border-radius: 8px;
-                padding: 12px;
-                font-weight: bold;
+                min-height: 50px;
             }
-            QPushButton:hover {
-                background-color: #219955;
-            }
+            QPushButton:hover { background-color: #2980b9; }
         """)
-        self.calculate_btn.setMinimumHeight(50)
-        button_layout.addWidget(self.calculate_btn)
-        
-        left_layout.addLayout(button_layout)
-        
-        # 5. 下载按钮布局
-        download_layout = QHBoxLayout()
-        
-        download_txt_btn = QPushButton("下载计算书(TXT)")
-        download_txt_btn.clicked.connect(self.download_txt_report)
-        download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        download_txt_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219653;
-            }
-        """)
-        
-        download_pdf_btn = QPushButton("下载计算书(PDF)")
-        download_pdf_btn.clicked.connect(self.generate_pdf_report)
-        download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        download_pdf_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #c0392b;
-            }
-        """)
-        
-        download_layout.addWidget(download_txt_btn)
-        download_layout.addWidget(download_pdf_btn)
-        left_layout.addLayout(download_layout)
-        
-        # 6. 清空按钮
-        clear_btn = QPushButton("清空输入")
-        clear_btn.clicked.connect(self.clear_inputs)
-        clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        calc_btn.clicked.connect(self.calculate)
+        left_layout.addWidget(calc_btn)
+
+        # ── 底部按钮行 ──
+        btn_row = QHBoxLayout()
+
+        clear_btn = QPushButton("清空")
         clear_btn.setStyleSheet("""
             QPushButton {
-                background-color: #95a5a6;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
+                background-color: #95a5a6; color: white;
+                font-weight: bold; border-radius: 6px;
+                padding: 8px 20px;
             }
-            QPushButton:hover {
-                background-color: #7f8c8d;
-            }
+            QPushButton:hover { background-color: #7f8c8d; }
         """)
-        left_layout.addWidget(clear_btn)
-        
-        # 添加弹性空间
+        clear_btn.clicked.connect(self.clear_inputs)
+
+        dl_txt_btn = QPushButton("⬇ 下载TXT报告")
+        dl_txt_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60; color: white;
+                font-weight: bold; border-radius: 6px;
+                padding: 8px 20px;
+            }
+            QPushButton:hover { background-color: #219a52; }
+        """)
+        dl_txt_btn.clicked.connect(self.download_txt_report)
+
+        dl_pdf_btn = QPushButton("⬇ 下载PDF报告")
+        dl_pdf_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e74c3c; color: white;
+                font-weight: bold; border-radius: 6px;
+                padding: 8px 20px;
+            }
+            QPushButton:hover { background-color: #c0392b; }
+        """)
+        dl_pdf_btn.clicked.connect(self.generate_pdf_report)
+
+        btn_row.addWidget(clear_btn)
+        btn_row.addStretch()
+        btn_row.addWidget(dl_txt_btn)
+        btn_row.addWidget(dl_pdf_btn)
+        left_layout.addLayout(btn_row)
         left_layout.addStretch()
-        
-        # 右侧：结果显示区域
+
+        # ──────────────── 右侧结果区 ────────────────
         right_widget = QWidget()
-        right_widget.setMinimumWidth(300)
+        right_widget.setMinimumWidth(400)
         right_layout = QVBoxLayout(right_widget)
-        right_layout.setSpacing(15)
-        
-        # 结果显示
-        self.result_group = QGroupBox("计算结果")
-        self.result_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
-        result_layout = QVBoxLayout(self.result_group)
-        
+        right_layout.setSpacing(10)
+
+        result_group = QGroupBox("计算结果")
+        result_group.setStyleSheet(group_style)
+        result_vbox = QVBoxLayout(result_group)
+
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.result_text.setMinimumHeight(500)
         self.result_text.setStyleSheet("""
             QTextEdit {
-                border: 1px solid #ecf0f1;
-                border-radius: 6px;
-                padding: 8px;
                 background-color: #f8f9fa;
-                min-height: 500px;
+                border: 1px solid #dee2e6;
+                border-radius: 6px;
+                font-family: Consolas, monospace;
+                font-size: 13px;
+                padding: 10px;
             }
         """)
-        result_layout.addWidget(self.result_text)
-        
-        right_layout.addWidget(self.result_group)
-        
-        # 将左右两部分添加到主布局
-        main_layout.addWidget(left_widget, 2)  # 左侧占2/3权重
-        main_layout.addWidget(right_widget, 1)  # 右侧占1/3权重
-        
-        # 初始化显示状态
-        self.update_ui_visibility()
-    
-    def setup_dynamic_parameters(self):
-        """设置不同计算方法的动态参数"""
-        # 清空现有布局
-        while self.dynamic_params_layout.count():
-            child = self.dynamic_params_layout.takeAt(0)
+        self.result_text.setPlaceholderText("计算结果将在此显示……")
+        result_vbox.addWidget(self.result_text)
+        right_layout.addWidget(result_group)
+
+        # 拼合
+        scroll_left.setWidget(left_widget)
+        main_layout.addWidget(scroll_left, 2)
+        main_layout.addWidget(right_widget, 1)
+
+        # 初始化动态参数 + UI 可见性
+        self._build_dynamic_params()
+        self._update_ui_visibility()
+
+    # ──────────────────── 动态参数 ──────────────────────────────
+    def _build_dynamic_params(self):
+        """根据当前计算方法重建动态参数区"""
+        # 清空
+        while self.dynamic_layout.count():
+            child = self.dynamic_layout.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
-        
-        # 获取当前计算方法
-        calc_type = self.get_current_calc_type()
-        
-        # 设置标签样式
-        label_style = """
-            QLabel {
-                font-weight: bold;
-                font-size: 11px;
-                padding-right: 5px;
-            }
-        """
-        
-        # 设置输入框样式
-        input_style = """
-            QLineEdit {
-                min-width: 120px;
-                max-width: 150px;
-                font-size: 11px;
-            }
-        """
-        
+
+        calc_type = self._get_calc_type()
         row = 0
-        
+
+        def lbl(text):
+            w = QLabel(text)
+            w.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            w.setFixedWidth(160)
+            w.setStyleSheet("font-weight: bold; padding-right: 10px;")
+            return w
+
+        def ed(placeholder, val_range):
+            w = QLineEdit()
+            w.setPlaceholderText(placeholder)
+            w.setFixedWidth(180)
+            if val_range:
+                lo, hi, dec = val_range
+                w.setValidator(QDoubleValidator(lo, hi, dec))
+            return w
+
         if calc_type == "绝热层经济厚度":
-            # 经济厚度法参数 - 两行四列
-            energy_price_label = QLabel("能量价格(元/GJ):")
-            energy_price_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            energy_price_label.setStyleSheet(label_style)
-            self.dynamic_params_layout.addWidget(energy_price_label, row, 0)
-            
-            self.energy_price_input = QLineEdit()
-            self.energy_price_input.setPlaceholderText("3.6")
-            self.energy_price_input.setValidator(QDoubleValidator(0.1, 100, 2))
+            self.dynamic_layout.addWidget(lbl("能量价格(元/GJ):"), row, 0)
+            self.energy_price_input = ed("3.6", (0.1, 100.0, 2))
             self.energy_price_input.setText("3.6")
-            self.energy_price_input.setStyleSheet(input_style)
-            self.dynamic_params_layout.addWidget(self.energy_price_input, row, 1)
-            
-            insulation_cost_label = QLabel("绝热造价(元/m³):")
-            insulation_cost_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            insulation_cost_label.setStyleSheet(label_style)
-            self.dynamic_params_layout.addWidget(insulation_cost_label, row, 2)
-            
-            self.insulation_cost_input = QLineEdit()
-            self.insulation_cost_input.setPlaceholderText("640")
-            self.insulation_cost_input.setValidator(QDoubleValidator(100, 5000, 2))
+            self.dynamic_layout.addWidget(self.energy_price_input, row, 1)
+
+            self.dynamic_layout.addWidget(lbl("绝热造价(元/m³):"), row, 2)
+            self.insulation_cost_input = ed("640", (100.0, 5000.0, 2))
             self.insulation_cost_input.setText("640")
-            self.insulation_cost_input.setStyleSheet(input_style)
-            self.dynamic_params_layout.addWidget(self.insulation_cost_input, row, 3)
-            
+            self.dynamic_layout.addWidget(self.insulation_cost_input, row, 3)
             row += 1
-            
-            operation_time_label = QLabel("年运行时间(小时):")
-            operation_time_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            operation_time_label.setStyleSheet(label_style)
-            self.dynamic_params_layout.addWidget(operation_time_label, row, 0)
-            
-            self.operation_time_input = QLineEdit()
-            self.operation_time_input.setPlaceholderText("8000")
-            self.operation_time_input.setValidator(QDoubleValidator(1, 8760, 2))
+
+            self.dynamic_layout.addWidget(lbl("年运行时间(小时):"), row, 0)
+            self.operation_time_input = ed("8000", (1.0, 8760.0, 2))
             self.operation_time_input.setText("8000")
-            self.operation_time_input.setStyleSheet(input_style)
-            self.dynamic_params_layout.addWidget(self.operation_time_input, row, 1)
-            
-            interest_rate_label = QLabel("年利率(%):")
-            interest_rate_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            interest_rate_label.setStyleSheet(label_style)
-            self.dynamic_params_layout.addWidget(interest_rate_label, row, 2)
-            
-            self.interest_rate_input = QLineEdit()
-            self.interest_rate_input.setPlaceholderText("10")
-            self.interest_rate_input.setValidator(QDoubleValidator(0.1, 50, 2))
+            self.dynamic_layout.addWidget(self.operation_time_input, row, 1)
+
+            self.dynamic_layout.addWidget(lbl("年利率(%):"), row, 2)
+            self.interest_rate_input = ed("10", (0.1, 50.0, 2))
             self.interest_rate_input.setText("10")
-            self.interest_rate_input.setStyleSheet(input_style)
-            self.dynamic_params_layout.addWidget(self.interest_rate_input, row, 3)
-            
+            self.dynamic_layout.addWidget(self.interest_rate_input, row, 3)
             row += 1
-            
-            years_label = QLabel("计息年限(年):")
-            years_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            years_label.setStyleSheet(label_style)
-            self.dynamic_params_layout.addWidget(years_label, row, 0)
-            
-            self.years_input = QLineEdit()
-            self.years_input.setPlaceholderText("5")
-            self.years_input.setValidator(QDoubleValidator(1, 30, 2))
+
+            self.dynamic_layout.addWidget(lbl("计息年限(年):"), row, 0)
+            self.years_input = ed("5", (1.0, 30.0, 2))
             self.years_input.setText("5")
-            self.years_input.setStyleSheet(input_style)
-            self.dynamic_params_layout.addWidget(self.years_input, row, 1)
-            
+            self.dynamic_layout.addWidget(self.years_input, row, 1)
+
         elif calc_type == "表面温度法":
-            # 表面温度法参数
-            surface_temp_label = QLabel("外表面温度(°C):")
-            surface_temp_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            surface_temp_label.setStyleSheet(label_style)
-            self.dynamic_params_layout.addWidget(surface_temp_label, row, 0)
-            
-            self.surface_temp_input = QLineEdit()
-            self.surface_temp_input.setPlaceholderText("26")
-            self.surface_temp_input.setValidator(QDoubleValidator(-50, 200, 2))
+            self.dynamic_layout.addWidget(lbl("外表面温度(°C):"), row, 0)
+            self.surface_temp_input = ed("26", (-50.0, 200.0, 2))
             self.surface_temp_input.setText("26")
-            self.surface_temp_input.setStyleSheet(input_style)
-            self.dynamic_params_layout.addWidget(self.surface_temp_input, row, 1)
-            
-            # 留空第2、3列保持布局对齐
-            # 或者添加一个占位符
-            placeholder = QLabel("")
-            self.dynamic_params_layout.addWidget(placeholder, row, 2)
-            
-            placeholder2 = QLabel("")
-            self.dynamic_params_layout.addWidget(placeholder2, row, 3)
+            self.dynamic_layout.addWidget(self.surface_temp_input, row, 1)
 
         elif calc_type == "热损失法":
-            # 热损失法参数
-            heat_loss_label = QLabel("允许热损失(W/m²):")
-            heat_loss_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            heat_loss_label.setStyleSheet(label_style)
-            self.dynamic_params_layout.addWidget(heat_loss_label, row, 0)
-            
-            self.heat_loss_limit_input = QLineEdit()
-            self.heat_loss_limit_input.setPlaceholderText("160")
-            self.heat_loss_limit_input.setValidator(QDoubleValidator(10, 1000, 2))
+            self.dynamic_layout.addWidget(lbl("允许热损失(W/m²):"), row, 0)
+            self.heat_loss_limit_input = ed("160", (10.0, 1000.0, 2))
             self.heat_loss_limit_input.setText("160")
-            self.heat_loss_limit_input.setStyleSheet(input_style)
-            self.dynamic_params_layout.addWidget(self.heat_loss_limit_input, row, 1)
+            self.dynamic_layout.addWidget(self.heat_loss_limit_input, row, 1)
 
-    def get_current_calc_type(self):
-        """获取当前选择的计算类型"""
-        checked_button = self.calc_type_group.checkedButton()
-        if checked_button:
-            return checked_button.text()
-        return "绝热层经济厚度"  # 默认值
-    
-    def on_calc_type_changed(self, button):
-        """计算类型改变事件"""
-        self.setup_dynamic_parameters()
-    
-    def setup_material_properties(self):
-        """设置保温材料属性"""
-        self.material_properties = {
-            "硅酸钙(170kg/m³)": {"conductivity": 0.0512, "density": 170},
-            "岩棉": {"conductivity": 0.040, "density": 120},
-            "玻璃棉": {"conductivity": 0.042, "density": 64},
-            "硅酸铝纤维": {"conductivity": 0.120, "density": 200},
-            "聚氨酯泡沫": {"conductivity": 0.025, "density": 40},
-            "聚苯乙烯泡沫": {"conductivity": 0.038, "density": 30},
-            "橡塑海绵": {"conductivity": 0.038, "density": 80},
-            "气凝胶": {"conductivity": 0.018, "density": 180},
-            "复合硅酸盐": {"conductivity": 0.048, "density": 180},
-            "微孔硅酸钙": {"conductivity": 0.055, "density": 220},
-            "珍珠岩": {"conductivity": 0.065, "density": 80}
-        }
-    
-    def on_equipment_type_changed(self, equipment_type):
-        """设备类型改变事件"""
+        # 防结露法：无额外参数
+
+    def _get_calc_type(self):
+        btn = self.calc_type_group.checkedButton()
+        return btn.text() if btn else "绝热层经济厚度"
+
+    def _on_calc_type_changed(self, _id):
+        self._build_dynamic_params()
+        self._update_ui_visibility()
+
+    def _on_equipment_type_changed(self, _text):
         pass
-    
-    def on_insulation_type_changed(self, insulation_type):
-        """保温类型改变事件"""
-        self.update_ui_visibility()
-    
-    def on_material_changed(self, material_name):
-        """保温材料改变事件"""
-        if material_name in self.material_properties:
-            props = self.material_properties[material_name]
-            self.conductivity_input.setText(f"{props['conductivity']}")
-            self.density_input.setText(f"{props['density']}")
-    
-    def update_ui_visibility(self):
-        """更新UI元素可见性"""
-        insulation_type = self.insulation_type_combo.currentText()
-        
-        # 保冷时显示露点温度，保温时隐藏
-        if insulation_type == "保冷":
-            self.dew_point_input.setEnabled(True)
-            # 查找露点温度标签并启用
-            for i in range(self.dynamic_params_widget.layout().count()):
-                widget = self.dynamic_params_widget.layout().itemAt(i).widget()
-                if isinstance(widget, QLabel) and "露点温度" in widget.text():
-                    widget.setEnabled(True)
-        else:
-            self.dew_point_input.setEnabled(False)
-            # 查找露点温度标签并禁用
-            for i in range(self.dynamic_params_widget.layout().count()):
-                widget = self.dynamic_params_widget.layout().itemAt(i).widget()
-                if isinstance(widget, QLabel) and "露点温度" in widget.text():
-                    widget.setEnabled(False)
-    
+
+    def _on_insulation_type_changed(self, text):
+        self._update_ui_visibility()
+
+    def _on_material_changed(self, text):
+        if text in self.material_properties:
+            p = self.material_properties[text]
+            self.conductivity_input.setText(str(p["conductivity"]))
+            self.density_input.setText(str(p["density"]))
+
+    def _update_ui_visibility(self):
+        is_cold = self.insulation_type_combo.currentText() == "保冷"
+        self.dew_point_input.setEnabled(is_cold)
+        if hasattr(self, "dew_point_label"):
+            self.dew_point_label.setEnabled(is_cold)
+
+    # ──────────────────── 计算核心 ──────────────────────────────
+    @staticmethod
+    def _surface_htc(wind_speed, delta_t=None):
+        """表面传热系数 (W/m²·K)，GB/T 8175 近似"""
+        h_out = 11.63 + 7.12 * (wind_speed ** 0.6)
+        h_in = 9.1 + 0.052 * (delta_t or 20)
+        return max(h_out, h_in)
+
     def calculate(self):
-        """执行计算"""
         try:
-            # 获取通用参数
-            calc_type = self.get_current_calc_type()
-            equipment_type = self.equipment_type_combo.currentText()
-            insulation_type = self.insulation_type_combo.currentText()
-            size = float(self.size_input.text() or 108) / 1000.0  # 转换为米
+            ct = self._get_calc_type()
+            equip_type = self.equipment_type_combo.currentText()
+            ins_type = self.insulation_type_combo.currentText()
+            size = float(self.size_input.text() or 108) / 1000.0
             conductivity = float(self.conductivity_input.text() or 0.0512)
-            ambient_temp = float(self.ambient_temp_input.text() or 20)
-            wind_speed = float(self.wind_speed_input.text() or 3)
-            equipment_temp = float(self.equipment_temp_input.text() or 200)
-            
-            # 根据计算类型执行不同的计算
-            if calc_type == "绝热层经济厚度":
-                thickness = self.calculate_economic_thickness(
-                    equipment_type, size, insulation_type,
-                    float(self.energy_price_input.text() or 3.6),
-                    float(self.insulation_cost_input.text() or 640),
-                    ambient_temp, equipment_temp, conductivity,
-                    wind_speed,
-                    float(self.operation_time_input.text() or 8000),
-                    float(self.interest_rate_input.text() or 10) / 100.0,
-                    float(self.years_input.text() or 5)
-                )
+            ambient = float(self.ambient_temp_input.text() or 20)
+            wind = float(self.wind_speed_input.text() or 3)
+            equip_t = float(self.equipment_temp_input.text() or 200)
+
+            args = {
+                "calc_type": ct,
+                "equipment_type": equip_type,
+                "insulation_type": ins_type,
+                "size": size,
+                "conductivity": conductivity,
+                "ambient_temp": ambient,
+                "wind_speed": wind,
+                "equipment_temp": equip_t,
+            }
+
+            h = self._surface_htc(wind, abs(equip_t - ambient))
+            delta_t = abs(equip_t - ambient)
+
+            if ct == "绝热层经济厚度":
+                ep = float(self.energy_price_input.text() or 3.6)
+                ic = float(self.insulation_cost_input.text() or 640)
+                ot = float(self.operation_time_input.text() or 8000)
+                ir = float(self.interest_rate_input.text() or 10) / 100.0
+                yr = float(self.years_input.text() or 5)
+                thk = self._economic_thickness(
+                    equip_type, size, conductivity, h,
+                    delta_t, ep, ic, ot, ir, yr)
                 method_name = "绝热层经济厚度法"
-                
-            elif calc_type == "表面温度法":
-                thickness = self.calculate_by_surface_temp(
-                    equipment_type, size, insulation_type,
-                    ambient_temp, float(self.surface_temp_input.text() or 26),
-                    equipment_temp, conductivity, wind_speed
-                )
+
+            elif ct == "表面温度法":
+                t_surf = float(self.surface_temp_input.text() or 26)
+                thk = self._surface_temp_method(
+                    equip_type, size, conductivity, h,
+                    ambient, equip_t, t_surf)
                 method_name = "表面温度法"
-                
-            elif calc_type == "防结露":
-                thickness = self.calculate_anti_condensation(
-                    equipment_type, size,
-                    ambient_temp, float(self.dew_point_input.text() or 22),
-                    equipment_temp, conductivity
-                )
+
+            elif ct == "防结露":
+                dew = float(self.dew_point_input.text() or 22)
+                thk = self._anti_condensation(
+                    equip_type, size, conductivity, ambient, equip_t, dew)
                 method_name = "防结露法"
-                
-            elif calc_type == "热损失法":
-                thickness = self.calculate_by_heat_loss(
-                    equipment_type, size, insulation_type,
-                    ambient_temp, equipment_temp,
-                    float(self.heat_loss_limit_input.text() or 160),
-                    conductivity, wind_speed
-                )
+
+            elif ct == "热损失法":
+                q_limit = float(self.heat_loss_limit_input.text() or 160)
+                thk = self._heat_loss_method(
+                    equip_type, size, conductivity, h,
+                    delta_t, q_limit)
                 method_name = "最大允许热损失法"
             else:
-                raise ValueError(f"未知的计算类型: {calc_type}")
-            
-            # 显示结果
-            self.display_results(calc_type, thickness, method_name)
-            
+                raise ValueError(f"未知计算类型：{ct}")
+
+            self._last_result = {
+                "thickness_mm": thk,
+                "method": method_name,
+                "calc_type": ct,
+            }
+            self._last_params = args
+            self._display_result(thk, ct, method_name, args)
+
+            if self.data_manager:
+                try:
+                    self.data_manager.add_record(
+                        "insulation_thickness", self._get_history_data())
+                except Exception:
+                    pass
+
+        except ValueError as e:
+            self._show_error(f"输入错误：{e}")
         except Exception as e:
-            QMessageBox.critical(self, "计算错误", f"计算过程中发生错误:\n{str(e)}")
+            self._show_error(f"计算错误：{e}")
 
-    def _get_history_data(self):
-        """提供历史记录数据"""
-        calc_type = self.get_current_calc_type()
-        equipment_type = self.equipment_type_combo.currentText()
-        insulation_type = self.insulation_type_combo.currentText()
-        size = float(self.size_input.text() or 0) if self.size_input.text() else 108
-        conductivity = float(self.conductivity_input.text() or 0)
-        ambient_temp = float(self.ambient_temp_input.text() or 0)
-        wind_speed = float(self.wind_speed_input.text() or 0)
-        equipment_temp = float(self.equipment_temp_input.text() or 0)
+    # ── 各种厚度计算方法 ──
 
-        inputs = {
-            "计算方法": calc_type,
-            "设备类型": equipment_type,
-            "保温材料": insulation_type,
-            "管道外径或设备尺寸_mm": size,
-            "导热系数_W_mK": conductivity,
-            "环境温度_C": ambient_temp,
-            "风速_m_s": wind_speed,
-            "设备工作温度_C": equipment_temp
-        }
-
-        outputs = {}
-        result_text = self.result_text.toPlainText()
-        if "推荐保温厚度" in result_text or "计算结果" in result_text:
-            try:
-                import re
-                thick_match = re.search(r'推荐保温厚度[：:]\s*([\d.]+)\s*mm', result_text)
-                if thick_match:
-                    outputs["推荐保温厚度_mm"] = float(thick_match.group(1))
-                loss_match = re.search(r'表面热损失[：:]\s*([\d.]+)\s*W/m', result_text)
-                if loss_match:
-                    outputs["表面热损失_W_m2"] = float(loss_match.group(1))
-            except Exception:
-                pass
-
-        return {"inputs": inputs, "outputs": outputs}
-
-    def calculate_economic_thickness(self, equipment_type, size, insulation_type,
-                                   energy_price, insulation_cost,
-                                   ambient_temp, equipment_temp, conductivity,
-                                   wind_speed, operation_time, interest_rate, years):
-        """计算经济厚度"""
-        # 计算表面传热系数
-        h = self.calculate_surface_heat_transfer_coefficient(wind_speed)
-        
-        # 将能量价格从元/GJ转换为元/J
+    def _economic_thickness(self, equip_type, d1, lam, h,
+                           delta_t, energy_price, ins_cost,
+                           op_time, interest, years):
+        """绝热层经济厚度（迭代法）"""
         energy_price_j = energy_price / 1e9
-        
-        # 年运行时间转换为秒
-        operation_time_s = operation_time * 3600
-        
-        # 温差
-        delta_t = abs(equipment_temp - ambient_temp)
-        
-        if equipment_type == "管道或圆筒形设备":
-            # 圆筒形设备经济厚度计算
-            thickness = 0.01  # 从10mm开始
-            best_thickness = thickness
-            min_cost = float('inf')
-            
-            # 迭代范围：1mm 到 300mm
-            for t in range(1, 301):
-                thickness = t / 1000.0  # 转换为米
-                
-                # 计算热损失
-                d1 = size  # 管道外径
-                d2 = d1 + 2 * thickness  # 保温外径
-                
-                if d2 <= d1:
-                    continue
-                
-                # 热阻计算
-                r_insulation = math.log(d2 / d1) / (2 * math.pi * conductivity)
-                r_surface = 1 / (h * math.pi * d2)
-                total_r = r_insulation + r_surface
-                
-                # 热损失
-                heat_loss = delta_t / total_r  # W/m
-                
-                # 年热损失费用
-                annual_heat_loss_cost = heat_loss * operation_time_s * energy_price_j
-                
-                # 保温材料体积
-                volume_per_meter = math.pi * (d2**2 - d1**2) / 4
-                
-                # 保温材料投资
-                insulation_investment = volume_per_meter * insulation_cost
-                
-                # 等额分付资本回收系数
-                capital_recovery_factor = (interest_rate * (1 + interest_rate)**years) / ((1 + interest_rate)**years - 1)
-                
-                # 年投资成本
-                annual_investment_cost = insulation_investment * capital_recovery_factor
-                
-                # 年总费用
-                total_annual_cost = annual_heat_loss_cost + annual_investment_cost
-                
-                if total_annual_cost < min_cost:
-                    min_cost = total_annual_cost
-                    best_thickness = thickness
-            
-            return best_thickness * 1000  # 返回毫米
-            
-        else:  # 平面形设备
-            # 平面设备经济厚度计算
-            # 简化公式：经济厚度 = sqrt(λ * ΔT * τ * P_E / (P_T * i)) - λ/h
-            numerator = conductivity * delta_t * operation_time_s * energy_price_j
-            denominator = insulation_cost * interest_rate
-            economic_thickness = math.sqrt(numerator / denominator) - conductivity / h
-            
-            # 确保厚度非负
-            economic_thickness = max(economic_thickness, 0)
-            
-            return economic_thickness * 1000  # 返回毫米
-    
-    def calculate_by_surface_temp(self, equipment_type, size, insulation_type,
-                                ambient_temp, surface_temp, equipment_temp,
-                                conductivity, wind_speed):
-        """根据表面温度计算厚度"""
-        # 计算表面传热系数
-        h = self.calculate_surface_heat_transfer_coefficient(wind_speed)
-        
-        if equipment_type == "管道或圆筒形设备":
-            # 圆筒形设备
-            d1 = size  # 管道外径
-            
-            # 使用迭代法求解厚度
-            thickness = 0.01  # 从10mm开始
-            
-            for _ in range(50):  # 最多迭代50次
-                d2 = d1 + 2 * thickness
-                
-                # 计算当前厚度下的表面温度
-                r_insulation = math.log(d2 / d1) / (2 * math.pi * conductivity)
-                heat_loss = (equipment_temp - ambient_temp) / (r_insulation + 1/(h * math.pi * d2))
-                calculated_surface_temp = ambient_temp + heat_loss * (1/(h * math.pi * d2))
-                
-                # 检查是否收敛
-                if abs(calculated_surface_temp - surface_temp) < 0.1:
-                    break
-                
-                # 调整厚度
-                if calculated_surface_temp > surface_temp:
-                    thickness += 0.001  # 增加厚度
-                else:
-                    thickness -= 0.001  # 减少厚度
-                
-                # 确保厚度在合理范围内
-                thickness = max(thickness, 0.001)
-            
-            return thickness * 1000  # 返回毫米
-            
-        else:  # 平面形设备
-            # 平面设备
-            # 从表面温度计算热损失
-            heat_loss = h * (surface_temp - ambient_temp)
-            
-            # 计算保温层热阻
-            r_insulation = (equipment_temp - surface_temp) / heat_loss - 1/h
-            
-            # 计算厚度
-            thickness = r_insulation * conductivity
-            
-            # 确保厚度非负
-            thickness = max(thickness, 0)
-            
-            return thickness * 1000  # 返回毫米
-    
-    def calculate_anti_condensation(self, equipment_type, size,
-                                  ambient_temp, dew_point, equipment_temp, conductivity):
-        """防结露计算"""
-        # 确保表面温度高于露点温度
-        # 设置表面温度为露点温度 + 安全裕度（通常2-3°C）
-        surface_temp = dew_point + 2.0
-        
-        # 假设风速为0.5m/s（室内环境）
-        h = self.calculate_surface_heat_transfer_coefficient(0.5)
-        
-        if equipment_type == "管道或圆筒形设备":
-            # 圆筒形设备
-            d1 = size  # 管道外径
-            
-            # 使用迭代法求解厚度
-            thickness = 0.01  # 从10mm开始
-            
-            for _ in range(50):
-                d2 = d1 + 2 * thickness
-                
-                # 计算当前厚度下的表面温度
-                r_insulation = math.log(d2 / d1) / (2 * math.pi * conductivity)
-                heat_loss = (equipment_temp - ambient_temp) / (r_insulation + 1/(h * math.pi * d2))
-                calculated_surface_temp = ambient_temp + heat_loss * (1/(h * math.pi * d2))
-                
-                # 检查是否收敛
-                if abs(calculated_surface_temp - surface_temp) < 0.1:
-                    break
-                
-                # 调整厚度
-                if calculated_surface_temp > surface_temp:
-                    thickness += 0.001
-                else:
-                    thickness -= 0.001
-                
-                thickness = max(thickness, 0.001)
-            
-            return thickness * 1000
-            
-        else:  # 平面形设备
-            # 平面设备
-            # 从表面温度计算热损失
-            heat_loss = h * (surface_temp - ambient_temp)
-            
-            # 计算保温层热阻
-            r_insulation = (equipment_temp - surface_temp) / heat_loss - 1/h
-            
-            # 计算厚度
-            thickness = r_insulation * conductivity
-            
-            # 确保厚度非负
-            thickness = max(thickness, 0)
-            
-            return thickness * 1000
-    
-    def calculate_by_heat_loss(self, equipment_type, size, insulation_type,
-                             ambient_temp, equipment_temp, heat_loss_limit,
-                             conductivity, wind_speed):
-        """根据最大允许热损失计算厚度"""
-        # 计算表面传热系数
-        h = self.calculate_surface_heat_transfer_coefficient(wind_speed)
-        
-        # 温差
-        delta_t = abs(equipment_temp - ambient_temp)
-        
-        if equipment_type == "管道或圆筒形设备":
-            # 圆筒形设备
-            d1 = size  # 管道外径
-            
-            # 使用迭代法求解厚度
-            thickness = 0.01  # 从10mm开始
-            
-            for _ in range(50):
-                d2 = d1 + 2 * thickness
-                
-                # 计算当前厚度下的热损失
-                r_insulation = math.log(d2 / d1) / (2 * math.pi * conductivity)
-                r_surface = 1 / (h * math.pi * d2)
-                total_r = r_insulation + r_surface
-                
-                heat_loss_per_meter = delta_t / total_r  # W/m
-                
-                # 转换为单位面积热损失 (W/m²)
-                heat_loss_per_area = heat_loss_per_meter / (math.pi * d2)
-                
-                # 检查是否收敛
-                if abs(heat_loss_per_area - heat_loss_limit) < 0.1:
-                    break
-                
-                # 调整厚度
-                if heat_loss_per_area > heat_loss_limit:
-                    thickness += 0.001  # 增加厚度
-                else:
-                    thickness -= 0.001  # 减少厚度
-                
-                thickness = max(thickness, 0.001)
-            
-            return thickness * 1000
-            
-        else:  # 平面形设备
-            # 平面设备
-            # 从热损失计算总热阻
-            total_r = delta_t / heat_loss_limit
-            
-            # 计算保温层热阻
-            r_insulation = total_r - 1/h
-            
-            # 计算厚度
-            thickness = r_insulation * conductivity
-            
-            # 确保厚度非负
-            thickness = max(thickness, 0)
-            
-            return thickness * 1000
-    
-    def calculate_surface_heat_transfer_coefficient(self, wind_speed):
-        """计算表面传热系数"""
-        # 简化公式：h = 9.4 + 0.052 * ΔT + 3.6 * √v
-        # 假设ΔT为20°C进行估算
-        estimated_delta_t = 20
-        h = 9.4 + 0.052 * estimated_delta_t + 3.6 * math.sqrt(wind_speed)
-        return h
-    
-    def display_results(self, calc_type, thickness, method_name):
-        """显示计算结果"""
-        # 获取输入参数
-        equipment_type = self.equipment_type_combo.currentText()
-        insulation_type = self.insulation_type_combo.currentText()
-        size = self.size_input.text()
-        ambient_temp = self.ambient_temp_input.text()
-        equipment_temp = self.equipment_temp_input.text()
-        conductivity = self.conductivity_input.text()
-        
-        # 根据计算类型获取特定参数
-        specific_params = ""
+        op_time_s = op_time * 3600.0
+        crf = (interest * (1 + interest) ** years) / \
+              ((1 + interest) ** years - 1) if interest > 0 else 1.0
+
+        best, min_cost = 0.010, float("inf")
+
+        for t_int in range(1, 301):
+            t = t_int / 1000.0
+            if equip_type == "管道或圆筒形设备":
+                d2 = d1 + 2 * t
+                r_ins = math.log(d2 / d1) / (2 * math.pi * lam)
+                r_surf = 1 / (h * math.pi * d2)
+                q = delta_t / (r_ins + r_surf)    # W/m
+                vol = math.pi * (d2 ** 2 - d1 ** 2) / 4
+            else:
+                r_ins = t / lam
+                r_surf = 1 / h
+                q = delta_t / (r_ins + r_surf)    # W/m²
+                vol = t
+
+            ann_heat = q * op_time_s * energy_price_j
+            ann_inv = vol * ins_cost * crf
+            total = ann_heat + ann_inv
+            if total < min_cost:
+                min_cost = total
+                best = t
+
+        return best * 1000.0
+
+    def _surface_temp_method(self, equip_type, d1, lam, h,
+                             ambient, equip_t, t_surf):
+        """表面温度法求厚度（Newton-Raphson）"""
+        t_guess = 0.010
+        for _ in range(80):
+            if equip_type == "管道或圆筒形设备":
+                d2 = d1 + 2 * t_guess
+                r_ins = math.log(d2 / d1) / (2 * math.pi * lam)
+                heat = (equip_t - ambient) / (r_ins + 1 / (h * math.pi * d2))
+                t_calc = ambient + heat * (1 / (h * math.pi * d2))
+            else:
+                r_ins = t_guess / lam
+                heat = (equip_t - ambient) / (r_ins + 1 / h)
+                t_calc = ambient + heat / h
+
+            f = t_calc - t_surf
+            if abs(f) < 0.05:
+                break
+            t_guess += -f * 0.001 if f > 0 else 0.001
+            t_guess = max(t_guess, 0.001)
+
+        return t_guess * 1000.0
+
+    def _anti_condensation(self, equip_type, d1, lam,
+                           ambient, equip_t, dew_point):
+        """防结露最小厚度"""
+        return self._surface_temp_method(
+            equip_type, d1, lam,
+            self._surface_htc(0.5, 10),
+            ambient, equip_t, dew_point + 2.0)
+
+    def _heat_loss_method(self, equip_type, d1, lam, h,
+                          delta_t, q_limit):
+        """允许热损失法求厚度"""
+        t_guess = 0.010
+        for _ in range(80):
+            if equip_type == "管道或圆筒形设备":
+                d2 = d1 + 2 * t_guess
+                r_ins = math.log(d2 / d1) / (2 * math.pi * lam)
+                r_surf = 1 / (h * math.pi * d2)
+                q = delta_t / (r_ins + r_surf)        # W/m
+                q_area = q / (math.pi * d2)           # W/m²
+            else:
+                r_ins = t_guess / lam
+                q_area = delta_t / (r_ins + 1 / h)   # W/m²
+
+            f = q_area - q_limit
+            if abs(f) < 0.1:
+                break
+            t_guess += -f * 0.0001 if f > 0 else 0.0001
+            t_guess = max(t_guess, 0.001)
+
+        return t_guess * 1000.0
+
+    # ──────────────────── 结果显示 ──────────────────────────────
+    def _display_result(self, thk_mm, calc_type, method_name, params):
+        lines = [
+            "=" * 50,
+            "         保温厚度计算结果",
+            "=" * 50,
+            "",
+            "【计算信息】",
+            f"  计算方法   : {method_name}",
+            f"  设备型式   : {params['equipment_type']}",
+            f"  保温类型   : {params['insulation_type']}",
+            "",
+            "【输入参数】",
+            f"  设备尺寸   : {float(self.size_input.text() or 108):.1f} mm",
+            f"  导热系数   : {float(self.conductivity_input.text() or 0.0512):.6f} W/(m·K)",
+            f"  材料密度   : {float(self.density_input.text() or 170):.0f} kg/m³",
+            f"  环境温度   : {float(self.ambient_temp_input.text() or 20):.1f} °C",
+            f"  设备温度   : {float(self.equipment_temp_input.text() or 200):.1f} °C",
+            f"  风速       : {float(self.wind_speed_input.text() or 3):.1f} m/s",
+            "",
+        ]
+
+        # 动态参数
         if calc_type == "绝热层经济厚度":
-            specific_params = f"""
-                    <tr>
-                        <td style="padding: 6px;">能量价格:</td>
-                        <td style="padding: 6px; color: #2c3e50;">{self.energy_price_input.text()} 元/GJ</td>
-                        <td style="padding: 6px;">绝热造价:</td>
-                        <td style="padding: 6px; color: #2c3e50;">{self.insulation_cost_input.text()} 元/m³</td>
-                    </tr>
-                    <tr style="background-color: #f1f1f1;">
-                        <td style="padding: 6px;">年运行时间:</td>
-                        <td style="padding: 6px; color: #2c3e50;">{self.operation_time_input.text()} 小时</td>
-                        <td style="padding: 6px;">年利率:</td>
-                        <td style="padding: 6px; color: #2c3e50;">{self.interest_rate_input.text()} %</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 6px;">计息年限:</td>
-                        <td style="padding: 6px; color: #2c3e50;">{self.years_input.text()} 年</td>
-                        <td colspan="2"></td>
-                    </tr>
-            """
+            lines += [
+                "【经济参数】",
+                f"  能量价格   : {float(self.energy_price_input.text() or 3.6):.2f} 元/GJ",
+                f"  绝热造价   : {float(self.insulation_cost_input.text() or 640):.0f} 元/m³",
+                f"  年运行时间 : {float(self.operation_time_input.text() or 8000):.0f} h",
+                f"  年利率     : {float(self.interest_rate_input.text() or 10):.1f} %",
+                f"  计息年限   : {float(self.years_input.text() or 5):.0f} 年",
+                "",
+            ]
         elif calc_type == "表面温度法":
-            specific_params = f"""
-                    <tr>
-                        <td style="padding: 6px;">外表面温度:</td>
-                        <td style="padding: 6px; color: #2c3e50;" colspan="3">{self.surface_temp_input.text()} °C</td>
-                    </tr>
-            """
+            lines += [
+                "【目标参数】",
+                f"  外表面温度 : {float(self.surface_temp_input.text() or 26):.1f} °C",
+                "",
+            ]
         elif calc_type == "防结露":
-            specific_params = f"""
-                    <tr>
-                        <td style="padding: 6px;">露点温度:</td>
-                        <td style="padding: 6px; color: #2c3e50;" colspan="3">{self.dew_point_input.text()} °C</td>
-                    </tr>
-            """
+            lines += [
+                "【目标参数】",
+                f"  露点温度   : {float(self.dew_point_input.text() or 22):.1f} °C",
+                f"  目标表面温 : {float(self.dew_point_input.text() or 22):.1f} + 2.0 = {float(self.dew_point_input.text() or 22) + 2:.1f} °C",
+                "",
+            ]
         elif calc_type == "热损失法":
-            specific_params = f"""
-                    <tr>
-                        <td style="padding: 6px;">允许热损失量:</td>
-                        <td style="padding: 6px; color: #2c3e50;" colspan="3">{self.heat_loss_limit_input.text()} W/m²</td>
-                    </tr>
-            """
-        
-        result_html = f"""
-        <div style="font-family: 'Segoe UI', Arial, sans-serif;">
-            <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px;">
-                保温厚度计算结果
-            </h2>
-            
-            <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
-                <h3 style="color: #16a085; margin-top: 0;">计算信息</h3>
-                <table style="width: 100%; border-collapse: collapse;">
-                    <tr>
-                        <td style="padding: 8px; width: 30%; font-weight: bold;">计算类型:</td>
-                        <td style="padding: 8px; color: #2c3e50;">{calc_type}</td>
-                        <td style="padding: 8px; width: 30%; font-weight: bold;">计算方法:</td>
-                        <td style="padding: 8px; color: #2c3e50;">{method_name}</td>
-                    </tr>
-                    <tr style="background-color: #f1f1f1;">
-                        <td style="padding: 8px; font-weight: bold;">设备型式:</td>
-                        <td style="padding: 8px; color: #2c3e50;">{equipment_type}</td>
-                        <td style="padding: 8px; font-weight: bold;">保温类型:</td>
-                        <td style="padding: 8px; color: #2c3e50;">{insulation_type}</td>
-                    </tr>
-                </table>
-            </div>
-            
-            <div style="background-color: #e8f4fc; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
-                <h3 style="color: #3498db; margin-top: 0;">计算结果</h3>
-                <table style="width: 100%; border-collapse: collapse;">
-                    <tr>
-                        <td style="padding: 10px; font-weight: bold; width: 70%;">推荐保温厚度:</td>
-                        <td style="padding: 10px;">
-                            <span style="font-size: 24px; color: #e74c3c; font-weight: bold;">
-                                {thickness:.1f} mm
-                            </span>
-                        </td>
-                    </tr>
-                </table>
-            </div>
-            
-            <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px;">
-                <h3 style="color: #27ae60; margin-top: 0;">输入参数</h3>
-                <table style="width: 100%; border-collapse: collapse;">
-                    <tr>
-                        <td style="padding: 6px; width: 25%;">设备尺寸:</td>
-                        <td style="padding: 6px; color: #2c3e50;">{size} mm</td>
-                        <td style="padding: 6px; width: 25%;">环境温度:</td>
-                        <td style="padding: 6px; color: #2c3e50;">{ambient_temp} °C</td>
-                    </tr>
-                    <tr style="background-color: #f1f1f1;">
-                        <td style="padding: 6px;">设备温度:</td>
-                        <td style="padding: 6px; color: #2c3e50;">{equipment_temp} °C</td>
-                        <td style="padding: 6px;">导热系数:</td>
-                        <td style="padding: 6px; color: #2c3e50;">{conductivity} W/(m·K)</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 6px;">材料密度:</td>
-                        <td style="padding: 6px; color: #2c3e50;">{self.density_input.text()} kg/m³</td>
-                        <td style="padding: 6px;">风速:</td>
-                        <td style="padding: 6px; color: #2c3e50;">{self.wind_speed_input.text()} m/s</td>
-                    </tr>
-                    {specific_params}
-                </table>
-            </div>
-            
-            <div style="margin-top: 20px; padding: 10px; background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 3px;">
-                <p style="margin: 0; color: #856404;">
-                    <strong>说明:</strong> 计算结果仅供参考，实际工程中应结合具体工况、施工条件和安全系数进行最终设计。
-                    建议咨询专业工程师进行审核确认。
-                </p>
-            </div>
-        </div>
-        """
-        
-        self.result_text.setHtml(result_html)
-    
+            lines += [
+                "【目标参数】",
+                f"  允许热损失 : {float(self.heat_loss_limit_input.text() or 160):.0f} W/m²",
+                "",
+            ]
+
+        lines += [
+            "【计算结果】",
+            f"  ★ 推荐保温厚度：{thk_mm:.1f} mm",
+            f"                       ({thk_mm / 1000:.3f} m)",
+            "",
+            "【标准依据】",
+            "  GB/T 4272-2008   设备绝热技术通则",
+            "  GB/T 8175-2008   设备及管道绝热设计导则",
+            "  ASHRAE Fundamentals Handbook",
+            "",
+            "【工程建议】",
+        ]
+
+        # 工程建议
+        if thk_mm < 20:
+            lines.append("  保温厚度偏薄（<20mm），")
+        elif thk_mm > 100:
+            lines.append("  保温厚度较大（>100mm），建议核算经济厚度。")
+        else:
+            lines.append("  保温厚度处于合理范围（20~100mm）。")
+
+        ins_type = params["insulation_type"]
+        if ins_type == "保冷":
+            lines.append("  保冷工况：注意防潮层及接缝密封，防止结露腐蚀。")
+        else:
+            lines.append("  保温工况：建议在外表面加设保护层（铝皮/镀锌板）。")
+
+        lines += [
+            "",
+            "  ⚠️  本结果为理论计算值，",
+            "      实际工程请结合施工条件、规范安全系数，",
+            "      并由专业工程师确认设计方案。",
+            "=" * 50,
+        ]
+        self.result_text.setPlainText("\n".join(lines))
+
+    def _show_error(self, msg):
+        self.result_text.setPlainText(f"⚠️  错误：{msg}")
+
+    # ──────────────────── 清空 ───────────────────────────────────
     def clear_inputs(self):
-        """清空输入"""
-        # 重置通用参数
         self.size_input.setText("108")
         self.material_combo.setCurrentIndex(0)
         self.conductivity_input.setText("0.0512")
@@ -1119,183 +691,115 @@ class InsulationThicknessCalculator(QWidget):
         self.wind_speed_input.setText("3")
         self.dew_point_input.setText("22")
         self.equipment_temp_input.setText("200")
-        
-        # 重置动态参数
-        self.setup_dynamic_parameters()
-        
-        # 清空结果
+        self.calc_type_group.buttons()[0].setChecked(True)
+        self._build_dynamic_params()
         self.result_text.clear()
-    
+        self._last_result = {}
+        self._last_params = {}
+
+    # ──────────────────── 历史数据 ──────────────────────────────
+    def _get_history_data(self):
+        r = self._last_result
+        p = self._last_params
+        return {
+            "inputs": {
+                "计算方法": p.get("calc_type", ""),
+                "设备型式": p.get("equipment_type", ""),
+                "保温类型": p.get("insulation_type", ""),
+                "设备尺寸_mm": p.get("size", 0) * 1000,
+                "导热系数_W_mK": p.get("conductivity", 0),
+            },
+            "outputs": {
+                "推荐保温厚度_mm": round(r.get("thickness_mm", 0), 1),
+                "计算方法": r.get("method", ""),
+            }
+        }
+
+    def get_project_info(self):
+        return {
+            "calculator": "InsulationThicknessCalculator",
+            "name": "保温厚度计算",
+        }
+
+    # ──────────────────── 报告生成 ──────────────────────────────
+    def generate_report(self):
+        return self.result_text.toPlainText()
+
     def download_txt_report(self):
-        """下载TXT格式计算书"""
-        try:
-            from PySide6.QtWidgets import QFileDialog
-            
-            # 检查是否有计算结果
-            if not self.result_text.toPlainText().strip():
-                QMessageBox.warning(self, "生成失败", "请先进行计算再生成计算书")
-                return
-            
-            # 获取当前结果
-            result_text = self.result_text.toPlainText()
-            
-            # 创建报告内容
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            report = f"""工程计算书 - 保温厚度计算
-生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-计算工具: CalcE 工程计算模块
-========================================
-
-{result_text}
-
----
-生成于 CalcE 工程计算模块
-"""
-            
-            # 选择保存路径
-            default_name = f"保温厚度计算书_{timestamp}.txt"
-            file_path, _ = QFileDialog.getSaveFileName(
-                self, "保存计算书", default_name, "Text Files (*.txt)"
-            )
-            
-            if file_path:
-                with open(file_path, 'w', encoding='utf-8') as f:
-                    f.write(report)
-                QMessageBox.information(self, "下载成功", f"计算书已保存到:\n{file_path}")
-                
-        except Exception as e:
-            QMessageBox.critical(self, "下载失败", f"保存计算书时发生错误: {str(e)}")
-    
-    def generate_pdf_report(self):
-        """生成PDF格式计算书"""
-        try:
-            from PySide6.QtWidgets import QFileDialog
-            
-            # 检查是否有计算结果
-            if not self.result_text.toPlainText().strip():
-                QMessageBox.warning(self, "生成失败", "请先进行计算再生成计算书")
-                return False
-            
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            default_name = f"保温厚度计算书_{timestamp}.pdf"
-            file_path, _ = QFileDialog.getSaveFileName(
-                self, "保存PDF计算书", default_name, "PDF Files (*.pdf)"
-            )
-            
-            if not file_path:
-                return False
-            
-            # 尝试生成PDF
+        content = self.result_text.toPlainText()
+        if not content.strip():
+            QMessageBox.warning(self, "提示", "请先执行计算，再下载报告。")
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "保存TXT报告", "保温厚度计算报告.txt", "文本文件 (*.txt)")
+        if path:
             try:
-                from reportlab.lib.pagesizes import A4
-                from reportlab.pdfgen import canvas
-                from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-                from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-                from reportlab.lib.units import inch
-                from reportlab.pdfbase import pdfmetrics
-                from reportlab.pdfbase.ttfonts import TTFont
-                import os
-                
-                # 注册中文字体
-                try:
-                    font_paths = [
-                        "C:/Windows/Fonts/simhei.ttf",
-                        "C:/Windows/Fonts/simsun.ttc",
-                        "C:/Windows/Fonts/msyh.ttc",
-                    ]
-                    
-                    chinese_font_registered = False
-                    for font_path in font_paths:
-                        if os.path.exists(font_path):
-                            try:
-                                pdfmetrics.registerFont(TTFont('ChineseFont', font_path))
-                                chinese_font_registered = True
-                                break
-                            except:
-                                continue
-                    
-                    if not chinese_font_registered:
-                        pdfmetrics.registerFont(TTFont('ChineseFont', 'Helvetica'))
-                except:
-                    pass
-                
-                # 创建PDF文档
-                doc = SimpleDocTemplate(file_path, pagesize=A4)
-                styles = getSampleStyleSheet()
-                
-                # 创建支持中文的样式
-                chinese_style_normal = ParagraphStyle(
-                    'ChineseNormal',
-                    parent=styles['Normal'],
-                    fontName='ChineseFont',
-                    fontSize=10,
-                    leading=14,
-                )
-                
-                chinese_style_heading = ParagraphStyle(
-                    'ChineseHeading',
-                    parent=styles['Heading1'],
-                    fontName='ChineseFont',
-                    fontSize=16,
-                    leading=20,
-                    spaceAfter=12,
-                )
-                
-                story = []
-                
-                # 添加标题
-                title = Paragraph("工程计算书 - 保温厚度计算", chinese_style_heading)
-                story.append(title)
-                story.append(Spacer(1, 0.2*inch))
-                
-                # 处理结果文本
-                result_text = self.result_text.toPlainText()
-                processed_content = self.process_content_for_pdf(result_text)
-                
-                # 添加内容
-                for line in processed_content.split('\n'):
-                    if line.strip():
-                        line = line.replace(' ', '&nbsp;')
-                        para = Paragraph(line, chinese_style_normal)
-                        story.append(para)
-                        story.append(Spacer(1, 0.05*inch))
-                
-                # 生成PDF
-                doc.build(story)
-                QMessageBox.information(self, "生成成功", f"PDF计算书已保存到:\n{file_path}")
-                return True
-                
-            except ImportError:
-                QMessageBox.warning(
-                    self, 
-                    "功能不可用", 
-                    "PDF生成功能需要安装reportlab库\n\n请运行: pip install reportlab"
-                )
-                return False
-                
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(content)
+                QMessageBox.information(self, "成功", f"报告已保存到：\n{path}")
+            except Exception as e:
+                QMessageBox.critical(self, "错误", f"保存失败：{e}")
+
+    def generate_pdf_report(self):
+        content = self.result_text.toPlainText()
+        if not content.strip():
+            QMessageBox.warning(self, "提示", "请先执行计算，再下载PDF。")
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "保存PDF报告", "保温厚度计算报告.pdf", "PDF文件 (*.pdf)")
+        if not path:
+            return
+        try:
+            from reportlab.lib.pagesizes import A4
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib.units import mm
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+            from reportlab.lib.enums import TA_LEFT
+            from reportlab.pdfbase import pdfmetrics
+            from reportlab.pdfbase.ttfonts import TTFont
+
+            font_paths = [
+                "C:/Windows/Fonts/simhei.ttf",
+                "C:/Windows/Fonts/msyh.ttc",
+                "C:/Windows/Fonts/simsun.ttc",
+            ]
+            font_name = "Helvetica"
+            for fp in font_paths:
+                if os.path.exists(fp):
+                    try:
+                        pdfmetrics.registerFont(TTFont("CF", fp))
+                        font_name = "CF"
+                        break
+                    except Exception:
+                        continue
+
+            doc = SimpleDocTemplate(
+                path, pagesize=A4,
+                leftMargin=20 * mm, rightMargin=20 * mm,
+                topMargin=20 * mm, bottomMargin=20 * mm)
+            styles = getSampleStyleSheet()
+            st = ParagraphStyle(
+                "Body", fontName=font_name, fontSize=10,
+                leading=16, alignment=TA_LEFT)
+            story = []
+            for line in content.split("\n"):
+                safe = line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                story.append(Paragraph(safe if safe.strip() else "&nbsp;", st))
+                story.append(Spacer(1, 1))
+            doc.build(story)
+            QMessageBox.information(self, "成功", f"PDF已保存到：\n{path}")
+        except ImportError:
+            QMessageBox.critical(
+                self, "错误", "缺少 reportlab 库，请运行：pip install reportlab")
         except Exception as e:
-            QMessageBox.critical(self, "生成失败", f"生成PDF时发生错误: {str(e)}")
-            return False
-    
-    def process_content_for_pdf(self, content):
-        """处理内容，使其适合PDF显示"""
-        # 替换单位符号
-        content = content.replace("m³", "m3")
-        content = content.replace("kg/m³", "kg/m3")
-        content = content.replace("W/(m·K)", "W/(m.K)")
-        
-        return content
+            QMessageBox.critical(self, "错误", f"PDF生成失败：{e}")
+
 
 if __name__ == "__main__":
-    # 测试代码
     import sys
     from PySide6.QtWidgets import QApplication
-    
     app = QApplication(sys.argv)
-    
-    widget = InsulationThicknessCalculator()
-    widget.resize(1200, 800)
-    widget.setWindowTitle("保温厚度计算器 - 紧凑四列布局")
-    widget.show()
-    
+    w = InsulationThicknessCalculator()
+    w.resize(1200, 800)
+    w.show()
     sys.exit(app.exec())

@@ -1,8 +1,8 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
-    QGroupBox, QTextEdit, QComboBox, QMessageBox, QFrame,
+    QGroupBox, QTextEdit, QComboBox, QMessageBox,
     QScrollArea, QDialog, QSpinBox, QButtonGroup, QGridLayout,
-    QFileDialog, QDialogButtonBox, QSizePolicy, QRadioButton, QStackedWidget
+    QFileDialog, QDialogButtonBox, QSizePolicy
 )
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont, QDoubleValidator
@@ -16,8 +16,7 @@ from datetime import datetime
 try:
     _current_dir = os.path.dirname(os.path.abspath(__file__))
     _parent_dir = os.path.dirname(_current_dir)
-    _spec = importlib.util.spec_from_file_location(
-        "steam_iapws",
+    _spec = importlib.util.spec_from_file_location( "steam_iapws",
         os.path.join(_parent_dir, "steam_iapws.py")
     )
     _steam_iapws = importlib.util.module_from_spec(_spec)
@@ -39,9 +38,61 @@ except Exception as e:
     iapws_from_ph = iapws_from_ps = None
     iapws_viscosity = iapws_thermal_cond = None
 
+# QGroupBox 统一样式
+GROUP_STYLE = """
+    QGroupBox {
+        font-weight: bold;
+        border: 1px solid #bdc3c7;
+        border-radius: 8px;
+        margin-top: 10px;
+        padding-top: 10px;
+    }
+    QGroupBox::title {
+        subcontrol-origin: margin;
+        left: 10px;
+        padding: 0 8px 0 8px;
+    }
+"""
+
+# 滚动条统一样式
+SCROLLBAR_STYLE = """
+    QScrollBar:vertical {
+        background: transparent;
+        width: 8px;
+        margin: 0;
+    }
+    QScrollBar::handle:vertical {
+        background: #c0c0c0;
+        border-radius: 4px;
+        min-height: 30px;
+    }
+    QScrollBar::handle:vertical:hover {
+        background: #a0a0a0;
+    }
+    QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+        height: 0;
+    }
+    QScrollBar:horizontal {
+        background: transparent;
+        height: 8px;
+        margin: 0;
+    }
+    QScrollBar::handle:horizontal {
+        background: #c0c0c0;
+        border-radius: 4px;
+        min-width: 30px;
+    }
+    QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+        width: 0;
+    }
+"""
+
 
 class SteamPropertyCalculator(QWidget):
-    """水蒸气性质查询（与压降计算模块保持相同UI风格）"""
+    """水蒸气性质查询计算器 - 统一UI规范版本"""
+    
+    # 计算类型类属性
+    calculation_type = "水蒸气性质查询"
     
     # 信号：用于传递计算结果
     calculation_completed = Signal(dict)
@@ -83,17 +134,26 @@ class SteamPropertyCalculator(QWidget):
             self.data_manager = None
     
     def setup_ui(self):
-        """设置UI界面 - 保持与压降计算模块完全相同的风格"""
+        """设置UI界面 - 按照统一UI规范"""
+        # 主布局：QHBoxLayout，间距15，边距10
         main_layout = QHBoxLayout(self)
         main_layout.setSpacing(15)
         main_layout.setContentsMargins(10, 10, 10, 10)
         
         # ==================== 左侧：输入参数区域 ====================
+        scroll_left = QScrollArea()
+        scroll_left.setWidgetResizable(True)
+        scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll_left.setStyleSheet("QScrollArea { border: none; background: transparent; } " + SCROLLBAR_STYLE)
+
         left_widget = QWidget()
+        left_widget.setStyleSheet("QWidget { background: transparent; }")
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        self.left_layout = left_layout  # 供子函数直接添加控件
         
-        # 1. 说明文本
+        # 1. 顶部说明文字
         description = QLabel(
             "查询水蒸气在不同状态下的热力学性质，包括密度、比焓、比熵等。支持饱和状态和其他状态查询。"
         )
@@ -103,7 +163,7 @@ class SteamPropertyCalculator(QWidget):
         
         # 2. 查询模式选择
         mode_group = QGroupBox("查询模式")
-        mode_group.setStyleSheet(self.get_groupbox_style())
+        mode_group.setStyleSheet(GROUP_STYLE)
         mode_layout = QHBoxLayout(mode_group)
         
         self.mode_button_group = QButtonGroup(self)
@@ -133,11 +193,9 @@ class SteamPropertyCalculator(QWidget):
                     background-color: #3498db;
                     color: white;
                 }
-                QPushButton:hover {
+                QPushButton:hover:!checked {
                     background-color: #d5dbdb;
-                    color: green;
-                }
-            """)
+                } """)
             self.mode_button_group.addButton(btn, i)
             mode_layout.addWidget(btn)
             self.mode_buttons[mode_name] = btn
@@ -149,24 +207,21 @@ class SteamPropertyCalculator(QWidget):
         mode_layout.addStretch()
         left_layout.addWidget(mode_group)
         
-        # 3. 参数输入区域 - 使用堆栈窗口切换不同模式
-        self.input_stack = QStackedWidget()
-        
-        # 饱和状态页面
-        self.saturation_page = self.create_saturation_page()
-        
-        # 其他状态页面
-        self.other_page = self.create_other_page()
-        
-        self.input_stack.addWidget(self.saturation_page)
-        self.input_stack.addWidget(self.other_page)
-        
-        left_layout.addWidget(self.input_stack)
-        
-        # 4. 计算按钮
+        # 3. 饱和状态：已知参数 + 输入参数
+        self.create_saturation_page()
+
+        # 4. 其他状态：已知参数组合 + 输入参数
+        self.create_other_page()
+
+        # 默认显示饱和状态，隐藏其他状态
+        self.other_known_group.hide()
+        self.other_input_group.hide()
+
+        # 5. 计算按钮（绿色样式）
         self.calculate_btn = QPushButton("计算")
-        self.calculate_btn.setFont(QFont("Arial", 12, QFont.Bold))
-        self.calculate_btn.clicked.connect(self.calculate_steam_properties)
+        self.calculate_btn.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+        self.calculate_btn.clicked.connect(self.calculate)
+        self.calculate_btn.setMinimumHeight(50)
         self.calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.calculate_btn.setStyleSheet("""
             QPushButton {
@@ -179,16 +234,35 @@ class SteamPropertyCalculator(QWidget):
             }
             QPushButton:hover {
                 background-color: #219955;
-            }
-        """)
+            } """)
         self.calculate_btn.setMinimumHeight(50)
         left_layout.addWidget(self.calculate_btn)
         
-        # 5. 下载按钮布局
-        download_layout = QHBoxLayout()
+        # 5. 底部按钮行：清空→Stretch→下载TXT→下载PDF
+        bottom_layout = QHBoxLayout()
         
+        # 清空按钮（灰色）
+        self.clear_btn = QPushButton("清空")
+        self.clear_btn.clicked.connect(self.clear_inputs)
+        self.clear_btn.setMinimumHeight(50)
+        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.clear_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #95a5a6;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #7f8c8d;
+            } """)
+        
+        # 下载TXT按钮（绿色）
         self.download_txt_btn = QPushButton("下载计算书(TXT)")
         self.download_txt_btn.clicked.connect(self.download_txt_report)
+        self.download_txt_btn.setMinimumHeight(50)
         self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.download_txt_btn.setStyleSheet("""
             QPushButton {
@@ -200,12 +274,13 @@ class SteamPropertyCalculator(QWidget):
                 font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #219653;
-            }
-        """)
+                background-color: #219955;
+            } """)
         
+        # 下载PDF按钮（红色）
         self.download_pdf_btn = QPushButton("下载计算书(PDF)")
         self.download_pdf_btn.clicked.connect(self.download_pdf_report)
+        self.download_pdf_btn.setMinimumHeight(50)
         self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.download_pdf_btn.setStyleSheet("""
             QPushButton {
@@ -218,25 +293,26 @@ class SteamPropertyCalculator(QWidget):
             }
             QPushButton:hover {
                 background-color: #c0392b;
-            }
-        """)
+            } """)
         
-        download_layout.addWidget(self.download_txt_btn)
-        download_layout.addWidget(self.download_pdf_btn)
-        left_layout.addLayout(download_layout)
+        bottom_layout.addWidget(self.clear_btn)
+        bottom_layout.addStretch()
+        bottom_layout.addWidget(self.download_txt_btn)
+        bottom_layout.addWidget(self.download_pdf_btn)
+        left_layout.addLayout(bottom_layout)
         
         # 6. 在底部添加拉伸因子
         left_layout.addStretch()
         
         # ==================== 右侧：结果显示区域 ====================
         right_widget = QWidget()
-        right_widget.setMinimumWidth(300)
+        right_widget.setMinimumWidth(300)  # 设置最小宽度
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
         
         # 结果显示
         self.result_group = QGroupBox("计算结果")
-        self.result_group.setStyleSheet(self.get_groupbox_style())
+        self.result_group.setStyleSheet(GROUP_STYLE)
         result_layout = QVBoxLayout(self.result_group)
         
         self.result_text = QTextEdit()
@@ -246,65 +322,40 @@ class SteamPropertyCalculator(QWidget):
             QTextEdit {
                 border: 1px solid #ecf0f1;
                 border-radius: 6px;
-                padding: 12px;
+                padding: 8px;
                 background-color: #f8f9fa;
-                min-height: 600px;
+                min-height: 500px;
                 font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif;
                 font-size: 12px;
                 line-height: 1.4;
-            }
-        """)
+            } """)
         result_layout.addWidget(self.result_text)
         
         right_layout.addWidget(self.result_group)
         
         # ==================== 添加左右布局 ====================
-        main_layout.addWidget(left_widget, 2)  # 左侧占2/3权重
+        scroll_left.setWidget(left_widget)
+        main_layout.addWidget(scroll_left, 2)  # 左侧占2/3权重
         main_layout.addWidget(right_widget, 1)  # 右侧占1/3权重
     
     def create_saturation_page(self):
-        """创建饱和状态输入页面 - 简化布局，去掉双层框"""
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
-        layout.setSpacing(10)
-        
-        # 输入组 - 不再使用GroupBox，直接使用GridLayout
-        input_widget = QWidget()
-        input_layout = QGridLayout(input_widget)
-        input_layout.setVerticalSpacing(12)
-        input_layout.setHorizontalSpacing(10)
-        
-        # 设置列宽比例
-        input_layout.setColumnStretch(0, 1)  # 标签列
-        input_layout.setColumnStretch(1, 2)  # 输入框列
-        input_layout.setColumnStretch(2, 2)  # 下拉菜单列
-        
-        # 标签样式
-        label_style = "QLabel { font-weight: bold; padding-right: 10px; }"
-        
-        row = 0
-        
-        # 已知参数选择 - 改为按钮组
-        known_label = QLabel("已知参数:")
-        known_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        known_label.setStyleSheet(label_style)
-        input_layout.addWidget(known_label, row, 0)
-        
-        # 创建按钮组
-        known_widget = QWidget()
-        known_btn_layout = QHBoxLayout(known_widget)
-        known_btn_layout.setSpacing(5)
-        known_btn_layout.setContentsMargins(0, 0, 0, 0)
-        
+        """创建饱和状态的已知参数 + 输入参数两个框，直接加入 left_layout"""
+        # --- 框1：已知参数选择 ---
+        self.sat_known_group = QGroupBox("已知参数")
+        self.sat_known_group.setStyleSheet(GROUP_STYLE)
+        known_btn_layout = QHBoxLayout(self.sat_known_group)
+        known_btn_layout.setSpacing(8)
+
         self.sat_known_button_group = QButtonGroup(self)
         self.sat_known_buttons = {}
-        
+
         known_options = ["压力 P", "温度 T"]
-        
+
         for i, option in enumerate(known_options):
             btn = QPushButton(option)
             btn.setCheckable(True)
-            btn.setMinimumWidth(80)
+            btn.setMinimumWidth(120)
+            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             btn.setStyleSheet("""
                 QPushButton {
                     background-color: #ecf0f1;
@@ -318,44 +369,44 @@ class SteamPropertyCalculator(QWidget):
                     background-color: #3498db;
                     color: white;
                 }
-                QPushButton:hover {
+                QPushButton:hover:!checked {
                     background-color: #d5dbdb;
-                }
-            """)
+                } """)
             self.sat_known_button_group.addButton(btn, i)
             known_btn_layout.addWidget(btn)
             self.sat_known_buttons[option] = btn
-        
-        # 默认选择第一个
+
         self.sat_known_buttons["压力 P"].setChecked(True)
         self.sat_known_button_group.buttonClicked.connect(self.on_sat_known_button_clicked)
-        
+
         known_btn_layout.addStretch()
-        input_layout.addWidget(known_widget, row, 1, 1, 2)
-        
-        row += 1
-        
-        # 添加分隔线
-        separator = QFrame()
-        separator.setFrameShape(QFrame.HLine)
-        separator.setFrameShadow(QFrame.Sunken)
-        separator.setStyleSheet("background-color: #bdc3c7;")
-        input_layout.addWidget(separator, row, 0, 1, 3)
-        
-        row += 1
-        
-        # 参数输入
+        self.left_layout.addWidget(self.sat_known_group)
+
+        # --- 框2：输入参数 ---
+        self.sat_input_group = QGroupBox("输入参数")
+        self.sat_input_group.setStyleSheet(GROUP_STYLE)
+        input_layout = QGridLayout(self.sat_input_group)
+        input_layout.setVerticalSpacing(12)
+        input_layout.setHorizontalSpacing(10)
+        input_layout.setColumnStretch(0, 4)
+        input_layout.setColumnStretch(1, 8)
+        input_layout.setColumnStretch(2, 5)
+
+        row = 0
+
+        # 参数1输入
         self.sat_param1_label = QLabel("压力 (MPa):")
         self.sat_param1_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.sat_param1_label.setStyleSheet(label_style)
+        self.sat_param1_label.setStyleSheet("font-weight: bold; padding-right: 10px;")
+        self.sat_param1_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.sat_param1_label, row, 0)
-        
+
         self.sat_param1_input = QLineEdit()
         self.sat_param1_input.setPlaceholderText("例如: 0.6")
         self.sat_param1_input.setValidator(QDoubleValidator(0.001, 30.0, 6))
         self.sat_param1_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.sat_param1_input, row, 1)
-        
+
         self.sat_param1_combo = QComboBox()
         self.setup_pressure_options(self.sat_param1_combo)
         self.sat_param1_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -363,130 +414,102 @@ class SteamPropertyCalculator(QWidget):
             lambda text: self.on_param_combo_changed(text, self.sat_param1_input)
         )
         input_layout.addWidget(self.sat_param1_combo, row, 2)
-        
+
         row += 1
-        
+
         # 干度输入
         dryness_label = QLabel("干度 (0-1):")
         dryness_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        dryness_label.setStyleSheet(label_style)
+        dryness_label.setStyleSheet("font-weight: bold; padding-right: 10px;")
+        dryness_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(dryness_label, row, 0)
-        
+
         self.dryness_input = QLineEdit()
         self.dryness_input.setPlaceholderText("例如: 0.9")
         self.dryness_input.setValidator(QDoubleValidator(0.0, 1.0, 3))
         self.dryness_input.setText("1.0")  # 默认干饱和蒸汽
         self.dryness_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.dryness_input, row, 1)
-        
+
         # 干度说明
         self.dryness_hint = QLabel("干度=0:饱和水，干度=1:干饱和蒸汽")
         self.dryness_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
         self.dryness_hint.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.dryness_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.dryness_hint, row, 2)
-        
-        layout.addWidget(input_widget)
-        layout.addStretch()
-        
-        return widget
-    
+
+        self.left_layout.addWidget(self.sat_input_group)
+
     def create_other_page(self):
-        """创建其他状态输入页面 - 简化布局，去掉双层框"""
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
-        layout.setSpacing(10)
-        
-        # 输入组 - 不再使用GroupBox，直接使用GridLayout
-        input_widget = QWidget()
-        input_layout = QGridLayout(input_widget)
-        input_layout.setVerticalSpacing(12)
-        input_layout.setHorizontalSpacing(10)
-        
-        # 设置列宽比例
-        input_layout.setColumnStretch(0, 1)  # 标签列
-        input_layout.setColumnStretch(1, 2)  # 输入框列
-        input_layout.setColumnStretch(2, 2)  # 下拉菜单列
-        
-        # 标签样式
-        label_style = "QLabel { font-weight: bold; padding-right: 10px; }"
-        
-        row = 0
-        
-        # 已知参数组合选择 - 改为按钮组
-        known_label = QLabel("已知参数组合:")
-        known_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        known_label.setStyleSheet(label_style)
-        input_layout.addWidget(known_label, row, 0)
-        
-        # 创建按钮组
-        known_widget = QWidget()
-        known_btn_layout = QVBoxLayout(known_widget)
-        known_btn_layout.setSpacing(5)
-        known_btn_layout.setContentsMargins(0, 0, 0, 0)
-        
+        """创建其他状态的已知参数组合 + 输入参数两个框，直接加入 left_layout"""
+        # --- 框1：已知参数组合选择 ---
+        self.other_known_group = QGroupBox("已知参数组合")
+        self.other_known_group.setStyleSheet(GROUP_STYLE)
+        known_btn_layout = QHBoxLayout(self.other_known_group)
+        known_btn_layout.setSpacing(8)
+
         self.other_known_button_group = QButtonGroup(self)
         self.other_known_buttons = {}
-        
-        known_options = [
-            "压力 P 和温度 T",
-            "压力 P 和比焓 H",
+
+        known_options = [ "压力 P 和温度 T", "压力 P 和比焓 H",
             "压力 P 和比熵 S"
         ]
-        
+
         for i, option in enumerate(known_options):
             btn = QPushButton(option)
             btn.setCheckable(True)
-            btn.setMinimumHeight(30)
+            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             btn.setStyleSheet("""
                 QPushButton {
                     background-color: #ecf0f1;
                     border: 1px solid #bdc3c7;
                     border-radius: 4px;
                     padding: 6px;
-                    text-align: left;
+                    text-align: center;
                     color: black;
                 }
                 QPushButton:checked {
                     background-color: #3498db;
                     color: white;
                 }
-                QPushButton:hover {
+                QPushButton:hover:!checked {
                     background-color: #d5dbdb;
-                }
-            """)
+                } """)
             self.other_known_button_group.addButton(btn, i)
             known_btn_layout.addWidget(btn)
             self.other_known_buttons[option] = btn
-        
-        # 默认选择第一个
+
         self.other_known_buttons["压力 P 和温度 T"].setChecked(True)
         self.other_known_button_group.buttonClicked.connect(self.on_other_known_button_clicked)
-        
-        input_layout.addWidget(known_widget, row, 1, 1, 2)
-        
-        row += 1
-        
-        # 添加分隔线
-        separator = QFrame()
-        separator.setFrameShape(QFrame.HLine)
-        separator.setFrameShadow(QFrame.Sunken)
-        separator.setStyleSheet("background-color: #bdc3c7;")
-        input_layout.addWidget(separator, row, 0, 1, 3)
-        
-        row += 1
-        
+
+        known_btn_layout.addStretch()
+        self.left_layout.addWidget(self.other_known_group)
+
+        # --- 框2：输入参数 ---
+        self.other_input_group = QGroupBox("输入参数")
+        self.other_input_group.setStyleSheet(GROUP_STYLE)
+        input_layout = QGridLayout(self.other_input_group)
+        input_layout.setVerticalSpacing(12)
+        input_layout.setHorizontalSpacing(10)
+        input_layout.setColumnStretch(0, 4)
+        input_layout.setColumnStretch(1, 8)
+        input_layout.setColumnStretch(2, 5)
+
+        row = 0
+
         # 参数1输入
         self.other_param1_label = QLabel("压力 (MPa):")
         self.other_param1_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.other_param1_label.setStyleSheet(label_style)
+        self.other_param1_label.setStyleSheet("font-weight: bold; padding-right: 10px;")
+        self.other_param1_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.other_param1_label, row, 0)
-        
+
         self.other_param1_input = QLineEdit()
         self.other_param1_input.setPlaceholderText("例如: 0.6")
         self.other_param1_input.setValidator(QDoubleValidator(0.001, 30.0, 6))
         self.other_param1_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.other_param1_input, row, 1)
-        
+
         self.other_param1_combo = QComboBox()
         self.setup_pressure_options(self.other_param1_combo)
         self.other_param1_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -494,21 +517,22 @@ class SteamPropertyCalculator(QWidget):
             lambda text: self.on_param_combo_changed(text, self.other_param1_input)
         )
         input_layout.addWidget(self.other_param1_combo, row, 2)
-        
+
         row += 1
-        
+
         # 参数2输入
         self.other_param2_label = QLabel("温度 (°C):")
         self.other_param2_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.other_param2_label.setStyleSheet(label_style)
+        self.other_param2_label.setStyleSheet("font-weight: bold; padding-right: 10px;")
+        self.other_param2_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.other_param2_label, row, 0)
-        
+
         self.other_param2_input = QLineEdit()
         self.other_param2_input.setPlaceholderText("例如: 165")
         self.other_param2_input.setValidator(QDoubleValidator(0.01, 800.0, 6))
         self.other_param2_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.other_param2_input, row, 1)
-        
+
         self.other_param2_combo = QComboBox()
         self.setup_temperature_options(self.other_param2_combo)
         self.other_param2_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -516,20 +540,15 @@ class SteamPropertyCalculator(QWidget):
             lambda text: self.on_param_combo_changed(text, self.other_param2_input)
         )
         input_layout.addWidget(self.other_param2_combo, row, 2)
-        
-        layout.addWidget(input_widget)
-        layout.addStretch()
-        
-        return widget
+
+        self.left_layout.addWidget(self.other_input_group)
     
     def setup_mode_dependencies(self):
         """设置计算模式的依赖关系"""
-        # 初始状态 - 饱和状态
         self.on_mode_changed("饱和状态")
     
     def setup_connections(self):
         """设置信号连接"""
-        # 计算按钮连接已在setup_ui中设置
         pass
     
     def initialize_values(self):
@@ -542,36 +561,9 @@ class SteamPropertyCalculator(QWidget):
         self.other_param1_input.setText("0.6")
         self.other_param2_input.setText("165")
     
-    def get_groupbox_style(self):
-        """获取GroupBox样式 - 与压降计算模块完全一致"""
-        return """
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """
-    
     def setup_pressure_options(self, combo_box):
         """设置压力选项"""
-        options = [
-            "- 请选择压力 -",
-            "0.1013 MPa - 常压",
-            "0.1 MPa - 低压蒸汽",
-            "0.3 MPa - 低压蒸汽",
-            "0.6 MPa - 中压蒸汽",
-            "1.0 MPa - 中压蒸汽",
-            "1.6 MPa - 高压蒸汽",
-            "2.5 MPa - 高压蒸汽",
-            "4.0 MPa - 超高压蒸汽",
-            "10.0 MPa - 超高压蒸汽",
+        options = [ "- 请选择压力 -", "0.1013 MPa - 常压", "0.1 MPa - 低压蒸汽", "0.3 MPa - 低压蒸汽", "0.6 MPa - 中压蒸汽", "1.0 MPa - 中压蒸汽", "1.6 MPa - 高压蒸汽", "2.5 MPa - 高压蒸汽", "4.0 MPa - 超高压蒸汽", "10.0 MPa - 超高压蒸汽",
             "自定义压力"
         ]
         combo_box.addItems(options)
@@ -579,19 +571,7 @@ class SteamPropertyCalculator(QWidget):
     
     def setup_temperature_options(self, combo_box):
         """设置温度选项"""
-        options = [
-            "- 请选择温度 -",
-            "100 °C - 饱和蒸汽",
-            "120 °C - 饱和蒸汽",
-            "150 °C - 饱和蒸汽",
-            "165 °C - 饱和蒸汽",
-            "180 °C - 饱和蒸汽",
-            "200 °C - 过热蒸汽",
-            "250 °C - 过热蒸汽",
-            "300 °C - 过热蒸汽",
-            "400 °C - 高温蒸汽",
-            "500 °C - 高温蒸汽",
-            "600 °C - 超高温蒸汽",
+        options = [ "- 请选择温度 -", "100 °C - 饱和蒸汽", "120 °C - 饱和蒸汽", "150 °C - 饱和蒸汽", "165 °C - 饱和蒸汽", "180 °C - 饱和蒸汽", "200 °C - 过热蒸汽", "250 °C - 过热蒸汽", "300 °C - 过热蒸汽", "400 °C - 高温蒸汽", "500 °C - 高温蒸汽", "600 °C - 超高温蒸汽",
             "自定义温度"
         ]
         combo_box.addItems(options)
@@ -617,16 +597,22 @@ class SteamPropertyCalculator(QWidget):
         checked_button = self.mode_button_group.checkedButton()
         if checked_button:
             return checked_button.text()
-        return "饱和状态"  # 默认值
+        return "饱和状态"
     
     def on_mode_changed(self, mode):
-        """处理计算模式变化"""
+        """处理计算模式变化：用 show/hide 切换对应 GroupBox"""
         self.current_mode = mode
-        
+
         if mode == "饱和状态":
-            self.input_stack.setCurrentWidget(self.saturation_page)
-        else:  # 其他状态
-            self.input_stack.setCurrentWidget(self.other_page)
+            self.sat_known_group.show()
+            self.sat_input_group.show()
+            self.other_known_group.hide()
+            self.other_input_group.hide()
+        else:
+            self.sat_known_group.hide()
+            self.sat_input_group.hide()
+            self.other_known_group.show()
+            self.other_input_group.show()
     
     def update_sat_known_ui(self, param_type):
         """更新饱和状态已知参数UI"""
@@ -637,7 +623,7 @@ class SteamPropertyCalculator(QWidget):
             self.sat_param1_input.setValidator(QDoubleValidator(0.001, 30.0, 6))
             self.sat_param1_input.setPlaceholderText("例如: 0.6")
             self.sat_param1_input.setText("0.6")
-        else:  # 温度
+        else:
             self.sat_param1_label.setText("温度 (°C):")
             self.sat_param1_combo.clear()
             self.setup_temperature_options(self.sat_param1_combo)
@@ -647,7 +633,6 @@ class SteamPropertyCalculator(QWidget):
     
     def update_other_known_ui(self, param_combo):
         """更新其他状态已知参数组合UI"""
-        # 根据选择的参数组合更新标签
         if "压力 P 和温度 T" in param_combo:
             self.other_param1_label.setText("压力 (MPa):")
             self.other_param2_label.setText("温度 (°C):")
@@ -672,15 +657,7 @@ class SteamPropertyCalculator(QWidget):
             self.other_param1_input.setPlaceholderText("例如: 0.6")
             
             self.other_param2_combo.clear()
-            enthalpy_options = [
-                "- 请选择比焓 -",
-                "500 kJ/kg - 过冷水",
-                "1000 kJ/kg - 湿蒸汽",
-                "2000 kJ/kg - 湿蒸汽",
-                "2675 kJ/kg - 饱和蒸汽",
-                "2800 kJ/kg - 过热蒸汽",
-                "3000 kJ/kg - 过热蒸汽",
-                "3500 kJ/kg - 高温蒸汽",
+            enthalpy_options = [ "- 请选择比焓 -", "500 kJ/kg - 过冷水", "1000 kJ/kg - 湿蒸汽", "2000 kJ/kg - 湿蒸汽", "2675 kJ/kg - 饱和蒸汽", "2800 kJ/kg - 过热蒸汽", "3000 kJ/kg - 过热蒸汽", "3500 kJ/kg - 高温蒸汽",
                 "自定义比焓"
             ]
             self.other_param2_combo.addItems(enthalpy_options)
@@ -697,14 +674,7 @@ class SteamPropertyCalculator(QWidget):
             self.other_param1_input.setPlaceholderText("例如: 0.6")
             
             self.other_param2_combo.clear()
-            entropy_options = [
-                "- 请选择比熵 -",
-                "1.0 kJ/(kg·K) - 过冷水",
-                "3.0 kJ/(kg·K) - 湿蒸汽",
-                "5.0 kJ/(kg·K) - 湿蒸汽",
-                "6.5 kJ/(kg·K) - 饱和蒸汽",
-                "7.0 kJ/(kg·K) - 过热蒸汽",
-                "8.0 kJ/(kg·K) - 过热蒸汽",
+            entropy_options = [ "- 请选择比熵 -", "1.0 kJ/(kg·K) - 过冷水", "3.0 kJ/(kg·K) - 湿蒸汽", "5.0 kJ/(kg·K) - 湿蒸汽", "6.5 kJ/(kg·K) - 饱和蒸汽", "7.0 kJ/(kg·K) - 过热蒸汽", "8.0 kJ/(kg·K) - 过热蒸汽",
                 "自定义比熵"
             ]
             self.other_param2_combo.addItems(entropy_options)
@@ -713,7 +683,6 @@ class SteamPropertyCalculator(QWidget):
     
     def on_param_combo_changed(self, text, input_widget):
         """处理参数下拉菜单变化"""
-        # 检查是否为空值选项
         if text.startswith("-") or not text.strip():
             input_widget.clear()
             input_widget.setReadOnly(False)
@@ -726,11 +695,9 @@ class SteamPropertyCalculator(QWidget):
         else:
             input_widget.setReadOnly(True)
             try:
-                # 从文本中提取数字
-                match = re.search(r'(\d+\.?\d*)', text)
+                match = re.search(r"(\d+\.?\d*)", text)
                 if match:
                     value = float(match.group(1))
-                    # 根据单位确定显示格式
                     if "MPa" in text:
                         input_widget.setText(f"{value:.4f}")
                     elif "°C" in text:
@@ -746,8 +713,8 @@ class SteamPropertyCalculator(QWidget):
     
     # ==================== 计算函数 ====================
     
-    def calculate_steam_properties(self):
-        """计算水蒸气性质"""
+    def calculate(self):
+        """计算水蒸气性质 - 统一方法名"""
         try:
             if self.current_mode == "饱和状态":
                 self.calculate_saturation_properties()
@@ -760,13 +727,19 @@ class SteamPropertyCalculator(QWidget):
             QMessageBox.critical(self, "计算错误", "计算过程中出现除零错误")
         except Exception as e:
             QMessageBox.critical(self, "计算错误", f"计算过程中发生错误: {str(e)}")
-
+    
+    def clear_inputs(self):
+        """清空输入和结果"""
+        self.sat_param1_input.clear()
+        self.dryness_input.setText("1.0")
+        self.other_param1_input.clear()
+        self.other_param2_input.clear()
+        self.result_text.clear()
+    
     def _get_history_data(self):
         """提供历史记录数据"""
         mode = self.current_mode
-
         inputs = {"计算模式": mode}
-
         outputs = {}
         try:
             if mode == "饱和状态":
@@ -790,44 +763,83 @@ class SteamPropertyCalculator(QWidget):
                     sat = iapws_sat_props(P_MPa=pressure_mpa)
                     if dryness < 1:
                         ws = iapws_wet_steam(P_MPa=pressure_mpa, dryness=dryness)
-                        density = ws['rho']
-                        enthalpy = ws['h']
-                        entropy = ws['s']
+                        density = ws["rho"]
+                        enthalpy = ws["h"]
+                        entropy = ws["s"]
                     else:
-                        density = sat['rho_g']
-                        enthalpy = sat['h_g']
-                        entropy = sat['s_g']
+                        density = sat["rho_g"]
+                        enthalpy = sat["h_g"]
+                        entropy = sat["s_g"]
 
-                except Exception as e:
+                except Exception:
                     density = 0; enthalpy = 0; entropy = 0; saturation_temp = 0; pressure_mpa = 0
 
-                outputs = {
-                    "压力_MPa": round(pressure_mpa, 4),
-                    "温度_C": round(saturation_temp, 2),
-                    "密度_kg_m3": round(density, 5),
-                    "比容_m3_kg": round(1/density, 5) if density > 0 else 0,
-                    "焓_kJ_kg": round(enthalpy, 2),
-                    "熵_kJ_kgK": round(entropy, 4)
+                outputs = { "压力_MPa": round(pressure_mpa, 4), "温度_C": round(saturation_temp, 2), "密度_kg_m3": round(density, 5), "比容_m3_kg": round(1/density, 5) if density > 0 else 0, "焓_kJ_kg": round(enthalpy, 2), "熵_kJ_kgK": round(entropy, 4)
                 }
         except Exception as e:
             outputs["计算错误"] = str(e)
 
         return {"inputs": inputs, "outputs": outputs}
+    
+    def get_project_info(self):
+        """获取项目信息 - 用于报告生成"""
+        return { "project_name": "水蒸气性质查询", "calculation_type": self.calculation_type, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "operator": "User"
+        }
+    
+    def generate_report(self):
+        """生成计算结果报告"""
+        result_text = self.result_text.toPlainText()
+        
+        if not result_text or "计算结果" not in result_text:
+            QMessageBox.warning(self, "生成失败", "请先进行计算再生成报告")
+            return None
+        
+        project_info = self.get_project_info()
+        
+        report = f"""
+========================================
+           水蒸气性质查询计算书
+========================================
 
+项目信息:
+    项目名称: {project_info["project_name"]}
+    计算类型: {project_info["calculation_type"]}
+    计算时间: {project_info["timestamp"]}
+    操作人: {project_info["operator"]}
+
+========================================
+          计算结果
+========================================
+
+{result_text}
+
+========================================
+          计算说明
+========================================
+
+1. 本计算基于 IAPWS-IF97 工业标准
+2. 计算结果仅供参考，实际应用请参考相关标准
+3. 对于精确计算，建议使用专业物性软件
+4. 在临界点附近物性变化剧烈，需要特别注意
+
+========================================
+          结束
+========================================
+"""
+        return report
+    
     def calculate_saturation_properties(self):
         """计算饱和状态水蒸气性质"""
-        # 获取输入值
-        # 获取当前选中的已知参数按钮
         checked_button = self.sat_known_button_group.checkedButton()
         if checked_button:
             param_type = checked_button.text()
         else:
-            param_type = "压力 P"  # 默认值
+            param_type = "压力 P"
         
         param_value = float(self.sat_param1_input.text() or 0)
         dryness = float(self.dryness_input.text() or 0)
         
-        # 验证输入
         if not param_value:
             QMessageBox.warning(self, "输入错误", "请输入参数值")
             return
@@ -836,22 +848,19 @@ class SteamPropertyCalculator(QWidget):
             QMessageBox.warning(self, "输入错误", "干度必须在0~1之间")
             return
         
-        # 计算饱和性质
         if "压力" in param_type:
             pressure_mpa = param_value
             saturation_temp = self.calculate_saturation_temperature(pressure_mpa)
-        else:  # 温度
+        else:
             temperature_c = param_value
             pressure_mpa = self.calculate_saturation_pressure(temperature_c)
             saturation_temp = temperature_c
         
-        # 计算物性
         density = self.calculate_steam_density(pressure_mpa, saturation_temp, dryness)
         enthalpy = self.calculate_enthalpy(pressure_mpa, saturation_temp, dryness)
         entropy = self.calculate_entropy(pressure_mpa, saturation_temp, dryness)
         specific_volume = 1 / density if density > 0 else 0
         
-        # 判断蒸汽状态
         if dryness == 0:
             state = "饱和水"
             state_icon = ""
@@ -862,54 +871,40 @@ class SteamPropertyCalculator(QWidget):
             state = f"湿蒸汽 (干度={dryness:.3f})"
             state_icon = ""
         
-        # 格式化结果
         result = self.format_saturation_result(
             param_type, param_value, dryness, pressure_mpa, saturation_temp,
             state, state_icon, density, specific_volume, enthalpy, entropy
         )
         
-        self.result_text.setText(result)
+        # 使用 setPlainText 输出结果
+        self.result_text.setPlainText(result)
         
-        # 发射信号
-        if hasattr(self, 'calculation_completed'):
-            self.calculation_completed.emit({
-                'mode': 'saturation',
-                'pressure': pressure_mpa,
-                'temperature': saturation_temp,
-                'dryness': dryness,
-                'state': state,
-                'density': density,
-                'enthalpy': enthalpy,
-                'entropy': entropy
+        if hasattr(self, "calculation_completed"):
+            self.calculation_completed.emit({ "mode": "saturation", "pressure": pressure_mpa, "temperature": saturation_temp, "dryness": dryness, "state": state, "density": density, "enthalpy": enthalpy, "entropy": entropy
             })
     
     def calculate_other_properties(self):
         """计算其他状态水蒸气性质"""
-        # 获取输入值
-        # 获取当前选中的已知参数组合按钮
         checked_button = self.other_known_button_group.checkedButton()
         if checked_button:
             param_combo = checked_button.text()
         else:
-            param_combo = "压力 P 和温度 T"  # 默认值
+            param_combo = "压力 P 和温度 T"
         
         param1_value = float(self.other_param1_input.text() or 0)
         param2_value = float(self.other_param2_input.text() or 0)
         
-        # 验证输入
         if not param1_value or not param2_value:
             QMessageBox.warning(self, "输入错误", "请输入所有参数值")
             return
         
-        # 根据参数组合计算
         if "压力 P 和温度 T" in param_combo:
             pressure_mpa = param1_value
             temperature_c = param2_value
             
-            # 使用 IAPWS 判断状态
             try:
                 sat = iapws_sat_props(P_MPa=pressure_mpa)
-                saturation_temp = sat['T_C']
+                saturation_temp = sat["T_C"]
             except Exception:
                 saturation_temp = self.calculate_saturation_temperature(pressure_mpa)
             
@@ -920,7 +915,7 @@ class SteamPropertyCalculator(QWidget):
             elif abs(temperature_c - saturation_temp) < 0.1:
                 state = "饱和状态"
                 state_icon = ""
-                dryness = 1  # 默认干饱和蒸汽
+                dryness = 1
             else:
                 state = "过热蒸汽"
                 state_icon = ""
@@ -930,20 +925,15 @@ class SteamPropertyCalculator(QWidget):
             pressure_mpa = param1_value
             enthalpy_kjkg = param2_value
             
-            # 使用 IAPWS P-H 反推函数
             try:
                 result_ph = iapws_from_ph(pressure_mpa, enthalpy_kjkg)
-                temperature_c = result_ph['T_C']
-                dryness = result_ph['dryness']
-                state = result_ph['phase']
+                temperature_c = result_ph["T_C"]
+                dryness = result_ph["dryness"]
+                state_en = result_ph["phase"]
 
-                # 中文状态名映射
-                state_map = {
-                    'subcooled_liquid': "过冷水",
-                    'wet_steam': "湿蒸汽",
-                    'superheated_steam': "过热蒸汽",
+                state_map = { "subcooled_liquid": "过冷水", "wet_steam": "湿蒸汽", "superheated_steam": "过热蒸汽",
                 }
-                state = state_map.get(state, state)
+                state = state_map.get(state_en, state_en)
                 state_icon = ""
                 saturation_temp = self.calculate_saturation_temperature(pressure_mpa)
             except Exception as e:
@@ -954,282 +944,265 @@ class SteamPropertyCalculator(QWidget):
             pressure_mpa = param1_value
             entropy_kjkgk = param2_value
             
-            # 使用 IAPWS P-S 反推函数
             try:
                 result_ps = iapws_from_ps(pressure_mpa, entropy_kjkgk)
-                temperature_c = result_ps['T_C']
-                dryness = result_ps['dryness']
-                state = result_ps['phase']
+                temperature_c = result_ps["T_C"]
+                dryness = result_ps["dryness"]
+                state_en = result_ps["phase"]
 
-                state_map = {
-                    'subcooled_liquid': "过冷水",
-                    'wet_steam': "湿蒸汽",
-                    'superheated_steam': "过热蒸汽",
+                state_map = { "subcooled_liquid": "过冷水", "wet_steam": "湿蒸汽", "superheated_steam": "过热蒸汽",
                 }
-                state = state_map.get(state, state)
+                state = state_map.get(state_en, state_en)
                 state_icon = ""
                 saturation_temp = self.calculate_saturation_temperature(pressure_mpa)
             except Exception as e:
                 QMessageBox.critical(self, "计算错误", f"IAPWS P-S 求解失败: {str(e)}")
                 return
         
-        # 计算物性
         density = self.calculate_steam_density(pressure_mpa, temperature_c, dryness)
         enthalpy = self.calculate_enthalpy(pressure_mpa, temperature_c, dryness)
         entropy = self.calculate_entropy(pressure_mpa, temperature_c, dryness)
         specific_volume = 1 / density if density > 0 else 0
-        
-        # 计算过热度（如果是过热蒸汽）
         superheat = temperature_c - saturation_temp if temperature_c > saturation_temp else 0
         
-        # 格式化结果
         result = self.format_other_result(
             param_combo, pressure_mpa, param2_value, temperature_c, saturation_temp,
             state, state_icon, dryness, density, specific_volume, enthalpy, entropy, superheat
         )
         
-        self.result_text.setText(result)
+        self.result_text.setPlainText(result)
         
-        # 发射信号
-        if hasattr(self, 'calculation_completed'):
-            self.calculation_completed.emit({
-                'mode': 'other',
-                'param_combo': param_combo,
-                'pressure': pressure_mpa,
-                'param2': param2_value,
-                'temperature': temperature_c,
-                'dryness': dryness,
-                'state': state,
-                'density': density,
-                'enthalpy': enthalpy,
-                'entropy': entropy
+        if hasattr(self, "calculation_completed"):
+            self.calculation_completed.emit({ "mode": "other", "param_combo": param_combo, "pressure": pressure_mpa, "param2": param2_value, "temperature": temperature_c, "dryness": dryness, "state": state, "density": density, "enthalpy": enthalpy, "entropy": entropy
             })
     
     def calculate_saturation_temperature(self, pressure_mpa):
-        """计算饱和温度 [°C]
-
-        基于 IAPWS-IF97 工业标准方程 (Eq.31)。
-        精度: ±0.005K, 范围: 0.000611 ~ 22.064 MPa。
-        """
+        """计算饱和温度 [°C]"""
         try:
             return iapws_T_sat(pressure_mpa)
         except Exception:
-            # 降级: 超出 IAPWS 范围时返回临界温度
             return 373.95
     
     def calculate_saturation_pressure(self, temperature_c):
-        """计算饱和压力 [MPa]
-
-        基于 IAPWS-IF97 工业标准方程 (Eq.30)。
-        精度: ±0.02%, 范围: 0.01 ~ 373.95 °C。
-        """
+        """计算饱和压力 [MPa]"""
         try:
             return iapws_P_sat(temperature_c)
         except Exception:
             return 22.064
     
     def calculate_steam_density(self, pressure_mpa, temperature_c, dryness=1):
-        """计算蒸汽/水密度 [kg/m³]
-
-        基于 IAPWS-IF97 工业标准。
-        - 干度 < 1: 湿蒸汽密度由饱和水/气混合计算
-        - 干度 = 1: 判断过冷/饱和/过热后调用对应区域方程
-        """
+        """计算蒸汽/水密度 [kg/m³]"""
         try:
             if dryness < 1:
                 ws = iapws_wet_steam(P_MPa=pressure_mpa, dryness=dryness)
-                return ws['rho']
+                return ws["rho"]
             else:
-                # 需要判断饱和温度
                 T_sat = iapws_T_sat(pressure_mpa)
                 if abs(temperature_c - T_sat) < 0.1:
-                    # 饱和状态, 取蒸汽侧
                     sat = iapws_sat_props(P_MPa=pressure_mpa)
-                    return sat['rho_g']
+                    return sat["rho_g"]
                 else:
                     props = iapws_steam_props(pressure_mpa, temperature_c)
-                    return props['rho']
+                    return props["rho"]
         except Exception:
             return 0.5
     
     def calculate_enthalpy(self, pressure_mpa, temperature_c, dryness=1):
-        """计算比焓 [kJ/kg]
-
-        基于 IAPWS-IF97 工业标准。
-        精度: ±0.5 kJ/kg。
-        """
+        """计算比焓 [kJ/kg]"""
         try:
             if dryness < 1:
                 ws = iapws_wet_steam(P_MPa=pressure_mpa, dryness=dryness)
-                return ws['h']
+                return ws["h"]
             else:
                 T_sat = iapws_T_sat(pressure_mpa)
                 if abs(temperature_c - T_sat) < 0.1:
                     sat = iapws_sat_props(P_MPa=pressure_mpa)
-                    return sat['h_g']
+                    return sat["h_g"]
                 else:
                     props = iapws_steam_props(pressure_mpa, temperature_c)
-                    return props['h']
+                    return props["h"]
         except Exception:
             return 2700.0
     
     def calculate_entropy(self, pressure_mpa, temperature_c, dryness=1):
-        """计算比熵 [kJ/(kg·K)]
-
-        基于 IAPWS-IF97 工业标准。
-        精度: ±0.1%。
-        """
+        """计算比熵 [kJ/(kg·K)]"""
         try:
             if dryness < 1:
                 ws = iapws_wet_steam(P_MPa=pressure_mpa, dryness=dryness)
-                return ws['s']
+                return ws["s"]
             else:
                 T_sat = iapws_T_sat(pressure_mpa)
                 if abs(temperature_c - T_sat) < 0.1:
                     sat = iapws_sat_props(P_MPa=pressure_mpa)
-                    return sat['s_g']
+                    return sat["s_g"]
                 else:
                     props = iapws_steam_props(pressure_mpa, temperature_c)
-                    return props['s']
+                    return props["s"]
         except Exception:
             return 7.0
-    
-    # ==================== 结果格式化函数 ====================
     
     def format_saturation_result(self, param_type, param_value, dryness, pressure, temperature,
                                 state, state_icon, density, specific_volume, enthalpy, entropy):
         """格式化饱和状态结果"""
+        unit = param_type.split()[-1]
+        dryness_desc = ""
+        if 0 < dryness < 1:
+            dryness_desc = "\n\n* 干度 {:.3f} 表示蒸汽中含有 {:.1f}% 的饱和蒸汽".format(dryness, dryness*100)
+        elif dryness == 0:
+            dryness_desc = "\n\n* 饱和水状态，可用于加热或传热计算"
+        elif dryness == 1:
+            dryness_desc = "\n\n* 干饱和蒸汽，可用于动力或工艺过程"
+        
+        latent_heat = self.calculate_enthalpy(pressure, temperature, 1) - self.calculate_enthalpy(pressure, temperature, 0)
+        
         return f"""═══════════════════════════════════════════════════
                          输入参数
 ═══════════════════════════════════════════════════
 
-• 查询模式: 饱和状态
-• 已知参数: {param_type}
-• 参数值: {param_value:.4f} {param_type.split()[-1]}
-• 干度: {dryness:.3f}
+* 查询模式: 饱和状态
+* 已知参数: {param_type}
+* 参数值: {param_value:.4f} {unit}
+* 干度: {dryness:.3f}
 
 ═══════════════════════════════════════════════════
                         计算结果
 ═══════════════════════════════════════════════════
 
-• 压力: {pressure:.4f} MPa
-• 温度: {temperature:.2f} °C
-• 状态: {state_icon} {state}
+* 压力: {pressure:.4f} MPa
+* 温度: {temperature:.2f} C
+* 状态: {state_icon} {state}
 
 物性参数:
-• 密度: {density:.4f} kg/m³
-• 比容: {specific_volume:.6f} m³/kg
-• 比焓: {enthalpy:.2f} kJ/kg
-• 比熵: {entropy:.4f} kJ/(kg·K)
+* 密度: {density:.4f} kg/m3
+* 比容: {specific_volume:.6f} m3/kg
+* 比焓: {enthalpy:.2f} kJ/kg
+* 比熵: {entropy:.4f} kJ/(kg.K)
 
 饱和参数对比:
-• 饱和压力: {pressure:.4f} MPa
-• 饱和温度: {temperature:.2f} °C
-• 汽化潜热: {self.calculate_enthalpy(pressure, temperature, 1) - self.calculate_enthalpy(pressure, temperature, 0):.1f} kJ/kg
+* 饱和压力: {pressure:.4f} MPa
+* 饱和温度: {temperature:.2f} C
+* 汽化潜热: {latent_heat:.1f} kJ/kg
 
 ═══════════════════════════════════════════════════
                         状态说明
 ═══════════════════════════════════════════════════
 
-{state_icon} {state}
-
-{f"• 干度 {dryness:.3f} 表示蒸汽中含有 {dryness*100:.1f}% 的饱和蒸汽" if 0 < dryness < 1 else ""}
-{f"• 饱和水状态，可用于加热或传热计算" if dryness == 0 else ""}
-{f"• 干饱和蒸汽，可用于动力或工艺过程" if dryness == 1 else ""}
+{state_icon} {state}{dryness_desc}
 
 ═══════════════════════════════════════════════════
                         应用建议
 ═══════════════════════════════════════════════════
 
-• 以上数据为工程近似值
-• 实际应用请参考IAPWS-IF97标准
-• 对于精确计算，建议使用专业物性软件
-• 在临界点附近物性变化剧烈，需要特别注意"""
+* 以上数据为工程近似值
+* 实际应用请参考IAPWS-IF97标准
+* 对于精确计算，建议使用专业物性软件
+* 在临界点附近物性变化剧烈，需要特别注意"""
     
     def format_other_result(self, param_combo, pressure, param2_value, temperature, saturation_temp,
                            state, state_icon, dryness, density, specific_volume, enthalpy, entropy, superheat):
         """格式化其他状态结果"""
-        return f"""═══════════════════════════════════════════════════
+        param2_name = param_combo.split("和")[1].strip()
+        state_desc = ""
+        if superheat > 0:
+            if 10 < superheat <= 50:
+                state_desc = "\n\n* 过热度 {:.1f}C，属于中等过热蒸汽".format(superheat)
+            elif superheat > 50:
+                state_desc = "\n\n* 过热度 {:.1f}C，属于高度过热蒸汽".format(superheat)
+            if abs(temperature - saturation_temp) < 5:
+                state_desc += "\n* 接近饱和状态，需要注意汽水分离"
+        elif temperature < saturation_temp - 0.1:
+            state_desc = "\n\n* 处于过冷水状态，需要加热才能产生蒸汽"
+        
+        temp_diff = superheat if superheat > 0 else saturation_temp - temperature
+        diff_label = "过热度" if superheat > 0 else "过冷度"
+        
+        dryness_line = ""
+        if 0 < dryness < 1:
+            dryness_line = "\n* 干度: {:.3f}".format(dryness)
+        superheat_line = ""
+        if superheat > 0:
+            superheat_line = "\n* 过热度: {:.2f} C".format(superheat)
+        
+        return """============================================================
                          输入参数
-═══════════════════════════════════════════════════
+============================================================
 
-• 查询模式: 其他状态
-• 已知参数: {param_combo}
-• 压力 P: {pressure:.4f} MPa
-• {param_combo.split("和")[1].strip()}: {param2_value:.4f}
+* 查询模式: 其他状态
+* 已知参数: {}
+* 压力 P: {:.4f} MPa
+* {}: {:.4f}
 
-═══════════════════════════════════════════════════
+============================================================
                         计算结果
-═══════════════════════════════════════════════════
+============================================================
 
-• 压力: {pressure:.4f} MPa
-• 温度: {temperature:.2f} °C
-• 状态: {state_icon} {state}
-{f"• 干度: {dryness:.3f}" if 0 < dryness < 1 else ""}
-{f"• 过热度: {superheat:.2f} °C" if superheat > 0 else ""}
+* 压力: {:.4f} MPa
+* 温度: {:.2f} C
+* 状态: {} {}{}{}
 
 物性参数:
-• 密度: {density:.4f} kg/m³
-• 比容: {specific_volume:.6f} m³/kg
-• 比焓: {enthalpy:.2f} kJ/kg
-• 比熵: {entropy:.4f} kJ/(kg·K)
+* 密度: {:.4f} kg/m3
+* 比容: {:.6f} m3/kg
+* 比焓: {:.2f} kJ/kg
+* 比熵: {:.4f} kJ/(kg.K)
 
 参考数据:
-• 饱和温度: {saturation_temp:.2f} °C
-• 当前温度: {temperature:.2f} °C
-{f"• 过热度: {superheat:.2f} °C" if superheat > 0 else f"• 过冷度: {saturation_temp - temperature:.2f} °C" if temperature < saturation_temp else ""}
+* 饱和温度: {:.2f} C
+* 当前温度: {:.2f} C
+* {}: {:.2f} C
 
-═══════════════════════════════════════════════════
+============================================================
                         状态说明
-═══════════════════════════════════════════════════
+============================================================
 
-{state_icon} {state}
+{} {}{}
 
-{f"• 过热度 {superheat:.1f}°C，属于中等过热蒸汽" if 10 < superheat <= 50 else ""}
-{f"• 过热度 {superheat:.1f}°C，属于高度过热蒸汽" if superheat > 50 else ""}
-{f"• 接近饱和状态，需要注意汽水分离" if abs(temperature - saturation_temp) < 5 and temperature >= saturation_temp else ""}
-{f"• 处于过冷水状态，需要加热才能产生蒸汽" if temperature < saturation_temp - 0.1 else ""}
-
-═══════════════════════════════════════════════════
+============================================================
                         应用建议
-═══════════════════════════════════════════════════
+============================================================
 
-• 以上数据为工程近似值
-• 实际应用请参考IAPWS-IF97标准
-• 对于精确计算，建议使用专业物性软件
-• 在临界点附近物性变化剧烈，需要特别注意"""
-    
-    # ==================== 报告生成函数 ====================
-    
+* 以上数据为工程近似值
+* 实际应用请参考IAPWS-IF97标准
+* 对于精确计算，建议使用专业物性软件
+* 在临界点附近物性变化剧烈，需要特别注意""".format(
+            param_combo, pressure, param2_name, param2_value,
+            pressure, temperature, state_icon, state, dryness_line, superheat_line,
+            density, specific_volume, enthalpy, entropy,
+            saturation_temp, temperature,
+            diff_label, temp_diff,
+            state_icon, state, state_desc
+        )
+
+
+
+# ==================== 报告生成函数 ====================
+
     def download_txt_report(self):
         """下载TXT格式计算书"""
         try:
-            # 获取当前结果文本
             result_text = self.result_text.toPlainText()
-            
+
             if not result_text or "计算结果" not in result_text:
                 QMessageBox.warning(self, "生成失败", "请先进行计算再生成计算书")
                 return
-            
-            # 选择保存路径
+
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             default_name = f"水蒸气性质计算书_{timestamp}.txt"
             file_path, _ = QFileDialog.getSaveFileName(
                 self, "保存计算书", default_name, "Text Files (*.txt)"
             )
-            
+
             if file_path:
-                with open(file_path, 'w', encoding='utf-8') as f:
+                with open(file_path, "w", encoding="utf-8") as f:
                     f.write(result_text)
                 QMessageBox.information(self, "下载成功", f"计算书已保存到:\n{file_path}")
-                
+
         except Exception as e:
             QMessageBox.critical(self, "下载失败", f"保存计算书时发生错误: {str(e)}")
     
     def download_pdf_report(self):
         """下载PDF格式计算书"""
         try:
-            # 获取当前结果文本
             result_text = self.result_text.toPlainText()
             
             if not result_text or "计算结果" not in result_text:
@@ -1245,93 +1218,51 @@ class SteamPropertyCalculator(QWidget):
             if not file_path:
                 return
             
-            # 尝试导入reportlab
+            # 尝试导入fpdf
             try:
-                from reportlab.lib.pagesizes import A4
-                from reportlab.pdfgen import canvas
-                from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-                from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-                from reportlab.lib.units import inch
-                from reportlab.pdfbase import pdfmetrics
-                from reportlab.pdfbase.ttfonts import TTFont
-                import os
+                from fpdf import FPDF
                 
-                # 注册中文字体
+                class PDF(FPDF):
+                    def header(self):
+                        self.set_font("Helvetica", "B", 16)
+                        self.cell(0, 10, "水蒸气性质查询计算书", 0, 1, "C")
+                        self.ln(5)
+                    
+                    def footer(self):
+                        self.set_y(-15)
+                        self.set_font("Helvetica", "I", 8)
+                        self.cell(0, 10, f"Page {self.page_no()}", 0, 0, "C")
+                
+                pdf = PDF()
+                pdf.add_page()
+                
+                # 添加中文字体支持
                 try:
-                    font_paths = [
-                        "C:/Windows/Fonts/simhei.ttf",
-                        "C:/Windows/Fonts/simsun.ttc",
-                        "C:/Windows/Fonts/msyh.ttc",
-                        "/Library/Fonts/Arial Unicode.ttf",
-                        "/System/Library/Fonts/Arial.ttf",
-                    ]
-                    
-                    chinese_font_registered = False
-                    for font_path in font_paths:
-                        if os.path.exists(font_path):
-                            try:
-                                pdfmetrics.registerFont(TTFont('ChineseFont', font_path))
-                                chinese_font_registered = True
-                                break
-                            except:
-                                continue
-                    
-                    if not chinese_font_registered:
-                        pdfmetrics.registerFont(TTFont('ChineseFont', 'Helvetica'))
-                except:
-                    pass
+                    pdf.add_font("Microsoft", "", "C:/Windows/Fonts/msyh.ttc", uni=True)
+                    pdf.set_font("Microsoft", "", 10)
+                except Exception:
+                    pdf.set_font("Helvetica", "", 10)
                 
-                # 创建PDF文档
-                doc = SimpleDocTemplate(file_path, pagesize=A4)
-                styles = getSampleStyleSheet()
+                # 处理内容
+                processed_content = result_text.replace("═", "=").replace("─", "-")
+                processed_content = processed_content.replace("m3", "m3").replace("kg/m3", "kg/m3")
+                processed_content = processed_content.replace("kJ/(kg.K)", "kJ/(kg.K)")
+                processed_content = processed_content.replace("C", "C")
                 
-                # 创建支持中文的样式
-                chinese_style_normal = ParagraphStyle(
-                    'ChineseNormal',
-                    parent=styles['Normal'],
-                    fontName='ChineseFont',
-                    fontSize=10,
-                    leading=14,
-                )
-                
-                chinese_style_heading = ParagraphStyle(
-                    'ChineseHeading',
-                    parent=styles['Heading1'],
-                    fontName='ChineseFont',
-                    fontSize=16,
-                    leading=20,
-                    spaceAfter=12,
-                )
-                
-                story = []
-                
-                # 添加标题
-                title = Paragraph("工程计算书 - 水蒸气性质查询", chinese_style_heading)
-                story.append(title)
-                story.append(Spacer(1, 0.2*inch))
-                
-                # 处理报告内容
-                processed_content = self.process_content_for_pdf(result_text)
-                
-                # 添加内容
-                for line in processed_content.split('\n'):
+                for line in processed_content.split("\n"):
                     if line.strip():
-                        line = line.replace(' ', '&nbsp;')
-                        line = line.replace('═', '=').replace('─', '-')
-                        para = Paragraph(line, chinese_style_normal)
-                        story.append(para)
-                        story.append(Spacer(1, 0.05*inch))
+                        self._pdf_add_line(pdf, line)
+                    else:
+                        pdf.ln(3)
                 
-                # 生成PDF
-                doc.build(story)
+                pdf.output(file_path)
                 QMessageBox.information(self, "生成成功", f"PDF计算书已保存到:\n{file_path}")
                 return True
                 
             except ImportError:
                 QMessageBox.warning(
-                    self, 
-                    "功能不可用", 
-                    "PDF生成功能需要安装reportlab库\n\n请运行: pip install reportlab"
+                    self, "功能不可用",
+                    "PDF生成功能需要安装fpdf库\n\n请运行: pip install fpdf"
                 )
                 return False
                 
@@ -1339,14 +1270,22 @@ class SteamPropertyCalculator(QWidget):
             QMessageBox.critical(self, "生成失败", f"生成PDF时发生错误: {str(e)}")
             return False
     
-    def process_content_for_pdf(self, content):
-        """处理内容，使其适合PDF显示"""
-        # 替换单位符号
-        content = content.replace("m³", "m3")
-        content = content.replace("kg/m³", "kg/m3")
-        content = content.replace("kJ/(kg·K)", "kJ/(kg.K)")
-        
-        return content
+    def _pdf_add_line(self, pdf, line):
+        """PDF添加单行文本"""
+        try:
+            if line.startswith("==="):
+                pdf.ln(3)
+                return
+            
+            if line.strip().startswith("*") or line.strip().startswith("物性") or line.strip().startswith("饱和") or line.strip().startswith("应用") or line.strip().startswith("状态"):
+                pdf.set_font("Helvetica", "B", 10)
+            else:
+                pdf.set_font("Helvetica", "", 10)
+            
+            line_text = line.replace("*", " ").strip()
+            pdf.multi_cell(0, 5, line_text)
+        except Exception:
+            pass
 
 
 # ==================== 测试代码 ====================

@@ -35,7 +35,9 @@ class AccessoriesDialog(QDialog):
         layout.addWidget(desc)
 
         scroll = QScrollArea()
+        scroll.setStyleSheet("QScrollArea { border: none; background: transparent; } QScrollBar:vertical { background: transparent; width: 8px; margin: 0; } QScrollBar::handle:vertical { background: #c0c0c0; border-radius: 4px; min-height: 30px; } QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }")
         scroll_widget = QWidget()
+        scroll_widget.setStyleSheet("QWidget { background: transparent; }")
         scroll_layout = QVBoxLayout(scroll_widget)
 
         # ----- 支腿 -----
@@ -194,7 +196,15 @@ class 设备尺寸计算(QWidget):
         main_layout.setContentsMargins(10, 10, 10, 10)
 
         # 左侧输入区域
+        scroll_left = QScrollArea()
+        scroll_left.setStyleSheet("QScrollArea { border: none; background: transparent; } QScrollBar:vertical { background: transparent; width: 8px; margin: 0; } QScrollBar::handle:vertical { background: #c0c0c0; border-radius: 4px; min-height: 30px; } QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }")
+
+        scroll_left.setWidgetResizable(True)
+
+        scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
         left_widget = QWidget()
+        left_widget.setStyleSheet("QWidget { background: transparent; }")
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
 
@@ -467,7 +477,8 @@ class 设备尺寸计算(QWidget):
         result_layout.addWidget(self.result_text)
         right_layout.addWidget(self.result_group)
 
-        main_layout.addWidget(left_widget, 2)
+        scroll_left.setWidget(left_widget)
+        main_layout.addWidget(scroll_left, 2)
         main_layout.addWidget(right_widget, 1)
 
     def group_box_style(self):

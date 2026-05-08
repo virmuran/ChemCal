@@ -33,6 +33,7 @@ class FittingsDialog(QDialog):
         # 创建滚动区域
         scroll_area = QScrollArea()
         scroll_widget = QWidget()
+        scroll_widget.setStyleSheet("QWidget { background: transparent; }")
         scroll_layout = QVBoxLayout(scroll_widget)
         
         # 管件和阀门数据

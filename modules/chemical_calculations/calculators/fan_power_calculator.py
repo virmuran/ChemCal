@@ -1,238 +1,339 @@
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, 
-                              QLabel, QLineEdit, QPushButton, QComboBox, 
-                              QFormLayout, QTextEdit, QGridLayout, QScrollArea)
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
+    QGroupBox, QTextEdit, QComboBox, QMessageBox, QButtonGroup,
+    QGridLayout, QFileDialog, QDialog, QDialogButtonBox,
+    QScrollArea,
+
+)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
 import math
+from datetime import datetime
+
+
+# 标准 QGroupBox 样式
+_GROUP_STYLE = """
+    QGroupBox {
+        font-weight: bold;
+        border: 1px solid #bdc3c7;
+        border-radius: 8px;
+        margin-top: 10px;
+        padding-top: 10px;
+    }
+    QGroupBox::title {
+        subcontrol-origin: margin;
+        left: 10px;
+        padding: 0 8px 0 8px;
+    }
+"""
 
 
 class FanPowerCalculator(QWidget):
-    """风机功率计算器"""
-    
-    def __init__(self, parent=None):
+    """风机功率计算器（统一UI风格版）"""
+
+    def __init__(self, parent=None, data_manager=None):
         super().__init__(parent)
+
+        if data_manager is not None:
+            self.data_manager = data_manager
+        else:
+            self.init_data_manager()
+
         self.setup_ui()
-        
+
+    def init_data_manager(self):
+        try:
+            from data_manager import DataManager
+            self.data_manager = DataManager.get_instance()
+        except Exception as e:
+            print(f"数据管理器初始化失败: {e}")
+            self.data_manager = None
+
+    # ────────────────────────────────────────────────────────────
+    # UI 构建
+    # ────────────────────────────────────────────────────────────
     def setup_ui(self):
-        """设置风机功率计算界面"""
-        main_layout = QVBoxLayout(self)
+        main_layout = QHBoxLayout(self)
         main_layout.setSpacing(15)
-        
-        # 标题
-        title_label = QLabel("风机功率计算")
-        title_label.setFont(QFont("Arial", 14, QFont.Bold))
-        title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("color: #2c3e50; margin: 10px;")
-        main_layout.addWidget(title_label)
-        
-        # 说明文本
-        desc_label = QLabel("计算风机的轴功率、电机功率、能耗和运行成本")
-        desc_label.setWordWrap(True)
-        desc_label.setStyleSheet("color: #7f8c8d; margin: 5px;")
-        main_layout.addWidget(desc_label)
-        
-        # 创建滚动区域
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_content = QWidget()
-        scroll_layout = QVBoxLayout(scroll_content)
-        
-        # 风机参数组
-        fan_group = QGroupBox("风机参数")
-        fan_layout = QGridLayout(fan_group)
-        
+        main_layout.setContentsMargins(10, 10, 10, 10)
+
+        # ── 左侧：输入区 ──────────────────────────────────────────
+        scroll_left = QScrollArea()
+        scroll_left.setStyleSheet("QScrollArea { border: none; background: transparent; } QScrollBar:vertical { background: transparent; width: 8px; margin: 0; } QScrollBar::handle:vertical { background: #c0c0c0; border-radius: 4px; min-height: 30px; } QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }")
+
+        scroll_left.setWidgetResizable(True)
+
+        scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        left_widget = QWidget()
+        left_widget.setStyleSheet("QWidget { background: transparent; }")
+        left_layout = QVBoxLayout(left_widget)
+        left_layout.setSpacing(15)
+
+        desc = QLabel(
+            "根据风量、风压、效率参数计算风机轴功率和电机功率，并估算能耗与运行成本。"
+        )
+        desc.setWordWrap(True)
+        desc.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
+        left_layout.addWidget(desc)
+
+        # ── 输入参数 GroupBox ─────────────────────────────────────
+        input_group = QGroupBox("输入参数")
+        input_group.setStyleSheet(_GROUP_STYLE)
+        grid = QGridLayout(input_group)
+        grid.setVerticalSpacing(12)
+        grid.setHorizontalSpacing(10)
+
+        lbl = "QLabel { font-weight: bold; padding-right: 10px; }"
+        W_MIN, W_MAX = 150, 400   # 输入框宽度范围
+        C_MIN, C_MAX = 100, 250   # 第三列宽度范围
+
+        grid.setColumnStretch(0, 2)
+        grid.setColumnStretch(1, 3)
+        grid.setColumnStretch(2, 2)
+
+        row = 0
+
+        # 风机类型
+        self._add_label(grid, row, "风机类型:", lbl)
         self.fan_type = QComboBox()
         self.fan_type.addItems(["离心风机", "轴流风机", "混流风机", "罗茨风机"])
-        
+        self.fan_type.setMinimumWidth(W_MIN)
+        self.fan_type.setMaximumWidth(W_MAX)
+        grid.addWidget(self.fan_type, row, 1)
+        grid.addWidget(self._hint("", C_MAX), row, 2)
+        row += 1
+
+        # 风量
+        self._add_label(grid, row, "风量:", lbl)
         self.flow_rate_input = QLineEdit()
         self.flow_rate_input.setPlaceholderText("例如：10000")
         self.flow_rate_input.setValidator(QDoubleValidator(1, 1000000, 1))
-        
+        self.flow_rate_input.setMinimumWidth(W_MIN)
+        self.flow_rate_input.setMaximumWidth(W_MAX)
+        grid.addWidget(self.flow_rate_input, row, 1)
         self.flow_rate_unit = QComboBox()
         self.flow_rate_unit.addItems(["m³/h", "m³/min", "m³/s"])
-        
+        self.flow_rate_unit.setMinimumWidth(C_MIN)
+        self.flow_rate_unit.setMaximumWidth(C_MAX)
+        grid.addWidget(self.flow_rate_unit, row, 2)
+        row += 1
+
+        # 全压
+        self._add_label(grid, row, "全压:", lbl)
         self.pressure_input = QLineEdit()
         self.pressure_input.setPlaceholderText("例如：1000")
         self.pressure_input.setValidator(QDoubleValidator(10, 50000, 1))
-        
+        self.pressure_input.setMinimumWidth(W_MIN)
+        self.pressure_input.setMaximumWidth(W_MAX)
+        grid.addWidget(self.pressure_input, row, 1)
         self.pressure_unit = QComboBox()
         self.pressure_unit.addItems(["Pa", "kPa", "mmH₂O"])
+        self.pressure_unit.setMinimumWidth(C_MIN)
+        self.pressure_unit.setMaximumWidth(C_MAX)
+        grid.addWidget(self.pressure_unit, row, 2)
+        row += 1
 
+        # 介质温度
+        self._add_label(grid, row, "介质温度 (°C):", lbl)
         self.temperature_input = QLineEdit()
         self.temperature_input.setText("20")
         self.temperature_input.setValidator(QDoubleValidator(-50, 200, 1))
+        self.temperature_input.setMinimumWidth(W_MIN)
+        self.temperature_input.setMaximumWidth(W_MAX)
+        grid.addWidget(self.temperature_input, row, 1)
+        grid.addWidget(self._hint("标准：20 °C", C_MAX), row, 2)
+        row += 1
 
+        # 海拔高度
+        self._add_label(grid, row, "海拔高度 (m):", lbl)
         self.altitude_input = QLineEdit()
         self.altitude_input.setText("0")
         self.altitude_input.setValidator(QDoubleValidator(-100, 5000, 0))
-        
-        fan_layout.addWidget(QLabel("风机类型:"), 0, 0)
-        fan_layout.addWidget(self.fan_type, 0, 1)
-        fan_layout.addWidget(QLabel(""), 0, 2)  # 占位
-        
-        fan_layout.addWidget(QLabel("风量:"), 0, 3)
-        fan_layout.addWidget(self.flow_rate_input, 0, 4)
-        fan_layout.addWidget(self.flow_rate_unit, 0, 5)
-        
-        fan_layout.addWidget(QLabel("风压:"), 1, 0)
-        fan_layout.addWidget(self.pressure_input, 1, 1)
-        fan_layout.addWidget(self.pressure_unit, 1, 2)
-        
-        fan_layout.addWidget(QLabel("介质温度:"), 1, 3)
-        fan_layout.addWidget(self.temperature_input, 1, 4)
-        fan_layout.addWidget(QLabel("°C"), 1, 5)
-        
-        fan_layout.addWidget(QLabel("海拔高度:"), 2, 0)
-        fan_layout.addWidget(self.altitude_input, 2, 1)
-        fan_layout.addWidget(QLabel("m"), 2, 2)
-        
-        scroll_layout.addWidget(fan_group)
-        
-        # 效率参数组
-        efficiency_group = QGroupBox("效率参数")
-        efficiency_layout = QGridLayout(efficiency_group)
-        
+        self.altitude_input.setMinimumWidth(W_MIN)
+        self.altitude_input.setMaximumWidth(W_MAX)
+        grid.addWidget(self.altitude_input, row, 1)
+        grid.addWidget(self._hint("影响空气密度", C_MAX), row, 2)
+        row += 1
+
+        # 风机效率
+        self._add_label(grid, row, "风机效率 (%):", lbl)
         self.fan_efficiency_input = QLineEdit()
         self.fan_efficiency_input.setPlaceholderText("例如：75")
         self.fan_efficiency_input.setValidator(QDoubleValidator(10, 95, 1))
-        
+        self.fan_efficiency_input.setMinimumWidth(W_MIN)
+        self.fan_efficiency_input.setMaximumWidth(W_MAX)
+        grid.addWidget(self.fan_efficiency_input, row, 1)
+        grid.addWidget(self._hint("离心风机典型：70~85 %", C_MAX), row, 2)
+        row += 1
+
+        # 电机效率
+        self._add_label(grid, row, "电机效率 (%):", lbl)
         self.motor_efficiency_input = QLineEdit()
         self.motor_efficiency_input.setPlaceholderText("例如：92")
         self.motor_efficiency_input.setValidator(QDoubleValidator(50, 98, 1))
-        
+        self.motor_efficiency_input.setMinimumWidth(W_MIN)
+        self.motor_efficiency_input.setMaximumWidth(W_MAX)
+        grid.addWidget(self.motor_efficiency_input, row, 1)
+        grid.addWidget(self._hint("典型值：88~95 %", C_MAX), row, 2)
+        row += 1
+
+        # 传动效率
+        self._add_label(grid, row, "传动效率 (%):", lbl)
         self.transmission_efficiency_input = QLineEdit()
         self.transmission_efficiency_input.setText("98")
         self.transmission_efficiency_input.setValidator(QDoubleValidator(80, 100, 1))
-        
+        self.transmission_efficiency_input.setMinimumWidth(W_MIN)
+        self.transmission_efficiency_input.setMaximumWidth(W_MAX)
+        grid.addWidget(self.transmission_efficiency_input, row, 1)
         self.transmission_type = QComboBox()
         self.transmission_type.addItems(["直联", "皮带传动", "联轴器"])
-        
-        efficiency_layout.addWidget(QLabel("风机效率:"), 0, 0)
-        efficiency_layout.addWidget(self.fan_efficiency_input, 0, 1)
-        efficiency_layout.addWidget(QLabel("%"), 0, 2)
-        
-        efficiency_layout.addWidget(QLabel("电机效率:"), 0, 3)
-        efficiency_layout.addWidget(self.motor_efficiency_input, 0, 4)
-        efficiency_layout.addWidget(QLabel("%"), 0, 5)
-        
-        efficiency_layout.addWidget(QLabel("传动效率:"), 1, 0)
-        efficiency_layout.addWidget(self.transmission_efficiency_input, 1, 1)
-        efficiency_layout.addWidget(QLabel("%"), 1, 2)
-        
-        efficiency_layout.addWidget(QLabel("传动方式:"), 1, 3)
-        efficiency_layout.addWidget(self.transmission_type, 1, 4)
-        efficiency_layout.addWidget(QLabel(""), 1, 5)
-        
-        scroll_layout.addWidget(efficiency_group)
-        
-        # 运行参数组
-        operation_group = QGroupBox("运行参数")
-        operation_layout = QGridLayout(operation_group)
-        
+        self.transmission_type.setMinimumWidth(C_MIN)
+        self.transmission_type.setMaximumWidth(C_MAX)
+        grid.addWidget(self.transmission_type, row, 2)
+        row += 1
+
+        # 日运行时间
+        self._add_label(grid, row, "日运行时间 (h/天):", lbl)
         self.operation_hours_input = QLineEdit()
         self.operation_hours_input.setPlaceholderText("例如：24")
-        self.operation_hours_input.setValidator(QDoubleValidator(1, 8760, 1))
-        
+        self.operation_hours_input.setValidator(QDoubleValidator(1, 24, 1))
+        self.operation_hours_input.setMinimumWidth(W_MIN)
+        self.operation_hours_input.setMaximumWidth(W_MAX)
+        grid.addWidget(self.operation_hours_input, row, 1)
+        grid.addWidget(self._hint("用于能耗估算（可选）", C_MAX), row, 2)
+        row += 1
+
+        # 年运行天数
+        self._add_label(grid, row, "年运行天数 (天/年):", lbl)
         self.days_per_year_input = QLineEdit()
-        self.days_per_year_input.setPlaceholderText("例如：365")
+        self.days_per_year_input.setPlaceholderText("例如：330")
         self.days_per_year_input.setValidator(QDoubleValidator(1, 365, 0))
-        
+        self.days_per_year_input.setMinimumWidth(W_MIN)
+        self.days_per_year_input.setMaximumWidth(W_MAX)
+        grid.addWidget(self.days_per_year_input, row, 1)
+        grid.addWidget(self._hint("用于能耗估算（可选）", C_MAX), row, 2)
+        row += 1
+
+        # 电价
+        self._add_label(grid, row, "电价 (元/kWh):", lbl)
         self.electricity_price_input = QLineEdit()
         self.electricity_price_input.setPlaceholderText("例如：0.8")
         self.electricity_price_input.setValidator(QDoubleValidator(0.1, 10, 3))
-        
-        operation_layout.addWidget(QLabel("日运行时间:"), 0, 0)
-        operation_layout.addWidget(self.operation_hours_input, 0, 1)
-        operation_layout.addWidget(QLabel("小时/天"), 0, 2)
-        
-        operation_layout.addWidget(QLabel("年运行天数:"), 0, 3)
-        operation_layout.addWidget(self.days_per_year_input, 0, 4)
-        operation_layout.addWidget(QLabel("天/年"), 0, 5)
-        
-        operation_layout.addWidget(QLabel("电价:"), 1, 0)
-        operation_layout.addWidget(self.electricity_price_input, 1, 1)
-        operation_layout.addWidget(QLabel("元/kWh"), 1, 2)
-        
-        scroll_layout.addWidget(operation_group)
-        
-        # 按钮组
-        button_layout = QHBoxLayout()
-        
-        self.calc_btn = QPushButton("计算")
-        self.calc_btn.setStyleSheet("QPushButton { background-color: #3498db; color: white; padding: 8px; border-radius: 4px; }"
-                                  "QPushButton:hover { background-color: #2980b9; }")
-        self.calc_btn.clicked.connect(self.calculate)
-        
-        self.clear_btn = QPushButton("清空")
-        self.clear_btn.setStyleSheet("QPushButton { background-color: #95a5a6; color: white; padding: 8px; border-radius: 4px; }"
-                                   "QPushButton:hover { background-color: #7f8c8d; }")
-        self.clear_btn.clicked.connect(self.clear_inputs)
-        
-        button_layout.addWidget(self.calc_btn)
-        button_layout.addWidget(self.clear_btn)
-        button_layout.addStretch()
-        
-        scroll_layout.addLayout(button_layout)
-        
-        # 功率计算结果
-        power_result_group = QGroupBox("功率计算结果")
-        power_result_layout = QFormLayout(power_result_group)
-        
-        self.shaft_power_result = QLabel("--")
-        self.motor_power_result = QLabel("--")
-        self.selected_motor_result = QLabel("--")
-        self.specific_power_result = QLabel("--")
-        self.air_density_result = QLabel("--")
-        
-        power_result_layout.addRow("轴功率:", self.shaft_power_result)
-        power_result_layout.addRow("电机功率:", self.motor_power_result)
-        power_result_layout.addRow("建议电机规格:", self.selected_motor_result)
-        power_result_layout.addRow("比功率:", self.specific_power_result)
-        power_result_layout.addRow("空气密度:", self.air_density_result)
-        
-        scroll_layout.addWidget(power_result_group)
-        
-        # 能耗计算结果
-        energy_result_group = QGroupBox("能耗与成本")
-        energy_result_layout = QFormLayout(energy_result_group)
-        
-        self.hourly_energy_result = QLabel("--")
-        self.daily_energy_result = QLabel("--")
-        self.yearly_energy_result = QLabel("--")
-        self.hourly_cost_result = QLabel("--")
-        self.daily_cost_result = QLabel("--")
-        self.yearly_cost_result = QLabel("--")
-        
-        energy_result_layout.addRow("小时耗电量:", self.hourly_energy_result)
-        energy_result_layout.addRow("日耗电量:", self.daily_energy_result)
-        energy_result_layout.addRow("年耗电量:", self.yearly_energy_result)
-        energy_result_layout.addRow("小时电费:", self.hourly_cost_result)
-        energy_result_layout.addRow("日电费:", self.daily_cost_result)
-        energy_result_layout.addRow("年电费:", self.yearly_cost_result)
-        
-        scroll_layout.addWidget(energy_result_group)
-        
-        # 计算说明
-        info_text = QTextEdit()
-        info_text.setMaximumHeight(150)
-        info_text.setHtml("""
-        <h4>计算说明:</h4>
-        <ul>
-        <li>轴功率 = (风量 × 风压) / (3600 × 1000 × 风机效率)</li>
-        <li>电机功率 = 轴功率 / (传动效率 × 电机效率)</li>
-        <li>空气密度根据温度和海拔高度进行修正</li>
-        <li>标准空气密度: 1.2 kg/m³ (20°C, 海平面)</li>
-        <li>建议电机规格按1.1-1.2倍安全系数选择</li>
-        </ul>
+        self.electricity_price_input.setMinimumWidth(W_MIN)
+        self.electricity_price_input.setMaximumWidth(W_MAX)
+        grid.addWidget(self.electricity_price_input, row, 1)
+        grid.addWidget(self._hint("用于费用估算（可选）", C_MAX), row, 2)
+
+        left_layout.addWidget(input_group)
+
+        # ── 计算按钮 ──────────────────────────────────────────────
+        calc_btn = QPushButton("计算")
+        calc_btn.setFont(QFont("Arial", 12, QFont.Bold))
+        calc_btn.setMinimumHeight(50)
+        calc_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                padding: 12px;
+                font-weight: bold;
+            }
+            QPushButton:hover { background-color: #2980b9; }
         """)
-        info_text.setReadOnly(True)
-        scroll_layout.addWidget(info_text)
-        
-        scroll_area.setWidget(scroll_content)
-        main_layout.addWidget(scroll_area)
-        
+        calc_btn.clicked.connect(self.calculate)
+        left_layout.addWidget(calc_btn)
+
+        # ── 底部按钮行 ────────────────────────────────────────────
+        btn_row = QHBoxLayout()
+
+        clear_btn = QPushButton("清空")
+        clear_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #95a5a6; color: white; border: none;
+                border-radius: 6px; padding: 8px; font-weight: bold;
+            }
+            QPushButton:hover { background-color: #7f8c8d; }
+        """)
+        clear_btn.clicked.connect(self.clear_inputs)
+        btn_row.addWidget(clear_btn)
+        btn_row.addStretch()
+
+        txt_btn = QPushButton("下载计算书(TXT)")
+        txt_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60; color: white; border: none;
+                border-radius: 6px; padding: 8px; font-weight: bold;
+            }
+            QPushButton:hover { background-color: #219653; }
+        """)
+        txt_btn.clicked.connect(self.download_txt_report)
+        btn_row.addWidget(txt_btn)
+
+        pdf_btn = QPushButton("下载计算书(PDF)")
+        pdf_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e74c3c; color: white; border: none;
+                border-radius: 6px; padding: 8px; font-weight: bold;
+            }
+            QPushButton:hover { background-color: #c0392b; }
+        """)
+        pdf_btn.clicked.connect(self.generate_pdf_report)
+        btn_row.addWidget(pdf_btn)
+
+        left_layout.addLayout(btn_row)
+        left_layout.addStretch()
+
+        # ── 右侧：结果区 ──────────────────────────────────────────
+        right_widget = QWidget()
+        right_widget.setMinimumWidth(400)
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setSpacing(15)
+
+        result_group = QGroupBox("计算结果")
+        result_group.setStyleSheet(_GROUP_STYLE)
+        rlayout = QVBoxLayout(result_group)
+
+        self.result_text = QTextEdit()
+        self.result_text.setReadOnly(True)
+        self.result_text.setStyleSheet("""
+            QTextEdit {
+                border: 1px solid #ecf0f1;
+                border-radius: 6px;
+                padding: 8px;
+                background-color: #f8f9fa;
+                min-height: 500px;
+            }
+        """)
+        rlayout.addWidget(self.result_text)
+        right_layout.addWidget(result_group)
+
+        # ── 组装主布局 ────────────────────────────────────────────
+        scroll_left.setWidget(left_widget)
+        main_layout.addWidget(scroll_left, 2)
+        main_layout.addWidget(right_widget, 1)
+
+    # ── 辅助函数 ─────────────────────────────────────────────────
+    def _add_label(self, grid, row, text, style):
+        lbl = QLabel(text)
+        lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        lbl.setStyleSheet(style)
+        lbl.setMinimumWidth(120)
+        lbl.setMaximumWidth(200)
+        grid.addWidget(lbl, row, 0)
+
+    def _hint(self, text, w=250):
+        lbl = QLabel(text)
+        lbl.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        lbl.setMinimumWidth(100)
+        lbl.setMaximumWidth(w)
+        return lbl
+
+    # ────────────────────────────────────────────────────────────
+    # 清空
+    # ────────────────────────────────────────────────────────────
     def clear_inputs(self):
-        """清空所有输入"""
         self.flow_rate_input.clear()
         self.pressure_input.clear()
         self.temperature_input.setText("20")
@@ -243,230 +344,413 @@ class FanPowerCalculator(QWidget):
         self.operation_hours_input.clear()
         self.days_per_year_input.clear()
         self.electricity_price_input.clear()
-        
-        # 清空结果
-        for label in [self.shaft_power_result, self.motor_power_result, 
-                     self.selected_motor_result, self.specific_power_result,
-                     self.air_density_result, self.hourly_energy_result,
-                     self.daily_energy_result, self.yearly_energy_result,
-                     self.hourly_cost_result, self.daily_cost_result,
-                     self.yearly_cost_result]:
-            label.setText("--")
-    
+        self.result_text.clear()
+
+    # ────────────────────────────────────────────────────────────
+    # 核心计算
+    # ────────────────────────────────────────────────────────────
+    def _parse_flow_to_m3h(self):
+        """解析风量，统一转为 m³/h"""
+        q = float(self.flow_rate_input.text())
+        unit = self.flow_rate_unit.currentText()
+        if unit == "m³/min":
+            return q * 60
+        elif unit == "m³/s":
+            return q * 3600
+        return q  # m³/h
+
+    def _parse_pressure_to_pa(self):
+        """解析风压，统一转为 Pa"""
+        p = float(self.pressure_input.text())
+        unit = self.pressure_unit.currentText()
+        if unit == "kPa":
+            return p * 1000
+        elif unit == "mmH₂O":
+            return p * 9.80665
+        return p  # Pa
+
+    def _calc_air_density(self, temperature, altitude):
+        """ISA 幂律修正空气密度 (kg/m³)"""
+        T_K = temperature + 273.15
+        rho_temp = 1.293 * (273.15 / T_K)
+        rho_alt = (1 - altitude / 44300) ** 5.255 if altitude < 44300 else 0.01
+        return rho_temp * rho_alt
+
     def calculate(self):
-        """执行风机功率计算"""
         try:
-            # 获取输入值
-            flow_rate = float(self.flow_rate_input.text())
-            flow_unit = self.flow_rate_unit.currentText()
-            # 转换为m³/h
-            if flow_unit == "m³/min":
-                flow_rate_m3h = flow_rate * 60
-            elif flow_unit == "m³/s":
-                flow_rate_m3h = flow_rate * 3600
-            else:  # m³/h
-                flow_rate_m3h = flow_rate
-                
-            pressure = float(self.pressure_input.text())
-            pressure_unit = self.pressure_unit.currentText()
-            # 转换为Pa
-            if pressure_unit == "kPa":
-                pressure_pa = pressure * 1000
-            elif pressure_unit == "mmH₂O":
-                pressure_pa = pressure * 9.80665
-            else:  # Pa
-                pressure_pa = pressure
-                
-            temperature = float(self.temperature_input.text())
-            altitude = float(self.altitude_input.text())
-            
-            fan_efficiency = float(self.fan_efficiency_input.text()) / 100
-            motor_efficiency = float(self.motor_efficiency_input.text()) / 100
-            transmission_efficiency = float(self.transmission_efficiency_input.text()) / 100
-            
-            operation_hours = float(self.operation_hours_input.text())
-            days_per_year = float(self.days_per_year_input.text())
-            electricity_price = float(self.electricity_price_input.text())
-            
-            # 执行计算
-            results = self.calculate_fan_power(
-                flow_rate_m3h, pressure_pa, temperature, altitude,
-                fan_efficiency, motor_efficiency, transmission_efficiency,
-                operation_hours, days_per_year, electricity_price
-            )
-            
-            # 显示结果
-            self.display_results(results)
-            
-        except ValueError as e:
-            self.show_error("输入参数格式错误，请检查输入值")
+            # ── 读取输入 ──────────────────────────────────────────
+            if not self.flow_rate_input.text():
+                QMessageBox.warning(self, "输入错误", "请输入风量")
+                return
+            if not self.pressure_input.text():
+                QMessageBox.warning(self, "输入错误", "请输入全压")
+                return
+            if not self.fan_efficiency_input.text():
+                QMessageBox.warning(self, "输入错误", "请输入风机效率")
+                return
+            if not self.motor_efficiency_input.text():
+                QMessageBox.warning(self, "输入错误", "请输入电机效率")
+                return
+
+            Q_m3h = self._parse_flow_to_m3h()
+            P_pa  = self._parse_pressure_to_pa()
+            T     = float(self.temperature_input.text())
+            alt   = float(self.altitude_input.text())
+            eta_f = float(self.fan_efficiency_input.text()) / 100
+            eta_m = float(self.motor_efficiency_input.text()) / 100
+            eta_t = float(self.transmission_efficiency_input.text()) / 100
+
+            # 可选能耗/成本参数
+            has_energy = bool(self.operation_hours_input.text() and
+                              self.days_per_year_input.text())
+            has_cost   = has_energy and bool(self.electricity_price_input.text())
+
+            # ── 计算 ──────────────────────────────────────────────
+            rho   = self._calc_air_density(T, alt)
+            Q_m3s = Q_m3h / 3600
+
+            # 轴功率 = Q × p / η_fan  (W → kW)
+            shaft_kW  = Q_m3s * P_pa / eta_f / 1000
+
+            # 电机功率 = 轴功率 / (η_trans × η_motor)
+            motor_kW  = shaft_kW / (eta_t * eta_m)
+
+            # 推荐电机规格（1.15 安全系数）
+            std_motors = [0.75, 1.1, 1.5, 2.2, 3, 4, 5.5, 7.5, 11, 15, 18.5, 22,
+                          30, 37, 45, 55, 75, 90, 110, 132, 160, 200, 250, 315, 355]
+            candidates = [m for m in std_motors if m >= motor_kW * 1.15]
+            selected   = candidates[0] if candidates else std_motors[-1]
+
+            # 比功率 kW/(m³/s)
+            spec_power = motor_kW / Q_m3s
+
+            # 能耗/成本（可选）
+            energy_lines = ""
+            if has_energy:
+                op_h   = float(self.operation_hours_input.text())
+                op_d   = float(self.days_per_year_input.text())
+                hourly = motor_kW            # kWh/h
+                daily  = hourly * op_h       # kWh/d
+                yearly = daily * op_d        # kWh/a
+                energy_lines = f"""
+══════════
+能耗估算
+══════════
+
+    小时耗电量: {hourly:.2f} kWh/h
+    日耗电量:   {daily:.2f} kWh/d
+    年耗电量:   {yearly:.0f} kWh/a"""
+
+                if has_cost:
+                    price = float(self.electricity_price_input.text())
+                    energy_lines += f"""
+
+══════════
+费用估算
+══════════
+
+    小时电费: {hourly * price:.2f} 元/h
+    日电费:   {daily * price:.2f} 元/d
+    年电费:   {yearly * price:.0f} 元/a"""
+
+            fan_type = self.fan_type.currentText()
+            trans    = self.transmission_type.currentText()
+            q_disp   = f"{self.flow_rate_input.text()} {self.flow_rate_unit.currentText()}"
+            p_disp   = f"{self.pressure_input.text()} {self.pressure_unit.currentText()}"
+
+            result = f"""══════════
+ 输入参数
+══════════
+
+    风机类型:   {fan_type}
+    风量:       {q_disp}  ({Q_m3h:.1f} m³/h)
+    全压:       {p_disp}  ({P_pa:.1f} Pa)
+    介质温度:   {T:.1f} °C
+    海拔高度:   {alt:.0f} m
+    风机效率:   {eta_f*100:.1f} %
+    电机效率:   {eta_m*100:.1f} %
+    传动效率:   {eta_t*100:.1f} %  [{trans}]
+
+══════════
+计算结果
+══════════
+
+    实际空气密度:   {rho:.4f} kg/m³
+    轴功率:         {shaft_kW:.2f} kW
+    电机输入功率:   {motor_kW:.2f} kW
+    推荐电机规格:   {selected} kW  (安全系数 1.15)
+    比功率:         {spec_power:.2f} kW/(m³/s)
+
+══════════
+计算公式
+══════════
+
+    轴功率  P_s = Q × p / η_fan
+          = {Q_m3s:.4f} × {P_pa:.1f} / {eta_f:.3f}
+          = {shaft_kW:.2f} kW
+
+    电机功率 P_m = P_s / (η_trans × η_motor)
+           = {shaft_kW:.2f} / ({eta_t:.3f} × {eta_m:.3f})
+           = {motor_kW:.2f} kW
+
+    空气密度 ρ = 1.293 × (273.15/T_K) × (1 - H/44300)^5.255
+           = {rho:.4f} kg/m³{energy_lines}
+
+══════════
+工程建议
+══════════
+
+    • 推荐选用 {selected} kW 电机（已含 1.15 安全系数）
+    • 高温或高海拔工况下，密度修正对轴功率有显著影响
+    • 计算结果仅供参考，实际选型应结合厂家特性曲线"""
+
+            self.result_text.setText(result)
+
+        except ValueError:
+            QMessageBox.critical(self, "输入错误", "参数格式错误，请检查输入值")
+        except ZeroDivisionError:
+            QMessageBox.critical(self, "计算错误", "效率参数不能为零")
         except Exception as e:
-            self.show_error(f"计算错误: {str(e)}")
+            QMessageBox.critical(self, "计算错误", f"计算过程中发生错误: {str(e)}")
 
+    # ────────────────────────────────────────────────────────────
+    # 历史记录数据
+    # ────────────────────────────────────────────────────────────
     def _get_history_data(self):
-        """提供历史记录数据"""
-        flow_rate = float(self.flow_rate_input.text() or 0)
-        flow_unit = self.flow_rate_unit.currentText()
-        if flow_unit == "m³/min":
-            flow_rate_m3h = flow_rate * 60
-        elif flow_unit == "m³/s":
-            flow_rate_m3h = flow_rate * 3600
-        else:
-            flow_rate_m3h = flow_rate
-
-        pressure = float(self.pressure_input.text() or 0)
-        pressure_unit = self.pressure_unit.currentText()
-        if pressure_unit == "kPa":
-            pressure_pa = pressure * 1000
-        elif pressure_unit == "mmH₂O":
-            pressure_pa = pressure * 9.80665
-        else:
-            pressure_pa = pressure
-
-        temperature = float(self.temperature_input.text() or 0)
-        altitude = float(self.altitude_input.text() or 0)
-        fan_efficiency = float(self.fan_efficiency_input.text() or 0) / 100
-        motor_efficiency = float(self.motor_efficiency_input.text() or 0) / 100
-        transmission_efficiency = float(self.transmission_efficiency_input.text() or 0) / 100
-        operation_hours = float(self.operation_hours_input.text() or 0)
-        days_per_year = float(self.days_per_year_input.text() or 0)
-        electricity_price = float(self.electricity_price_input.text() or 0)
-
-        inputs = {
-            f"流量_{flow_unit}": flow_rate,
-            f"全压_{pressure_unit}": pressure,
-            "温度_C": temperature,
-            "海拔_m": altitude,
-            "风机效率_%": fan_efficiency * 100,
-            "电机效率_%": motor_efficiency * 100,
-            "传动效率_%": transmission_efficiency * 100,
-            "年运行小时_h": operation_hours * days_per_year if days_per_year else 0,
-            "电费_元_kWh": electricity_price
-        }
-
-        outputs = {}
         try:
-            # 空气密度计算：以标准状态(0°C, 101.325kPa)为基准
-            T_kelvin = temperature + 273.15
-            rho_temp = 1.293 * (273.15 / T_kelvin)  # 温度修正
-            # 海拔修正：国际标准大气(ISA)幂律公式
-            rho_altitude = (1 - altitude / 44300) ** 5.255 if altitude < 44300 else 0.01
-            rho = rho_temp * rho_altitude
-            flow_m3s = flow_rate_m3h / 3600
-            shaft_power = flow_m3s * pressure_pa / fan_efficiency if fan_efficiency > 0 else 0
-            motor_power = shaft_power / motor_efficiency if motor_efficiency > 0 else 0
-            total_efficiency = fan_efficiency * motor_efficiency * transmission_efficiency
-            power_consumption = flow_m3s * pressure_pa / total_efficiency if total_efficiency > 0 else 0
-            annual_energy = power_consumption * operation_hours * days_per_year / 1000 if days_per_year else 0
-            annual_cost = annual_energy * electricity_price
+            Q_m3h = self._parse_flow_to_m3h()
+            P_pa  = self._parse_pressure_to_pa()
+            T     = float(self.temperature_input.text() or 20)
+            alt   = float(self.altitude_input.text() or 0)
+            eta_f = float(self.fan_efficiency_input.text() or 0) / 100
+            eta_m = float(self.motor_efficiency_input.text() or 0) / 100
+            eta_t = float(self.transmission_efficiency_input.text() or 98) / 100
+
+            inputs = {
+                "风机类型": self.fan_type.currentText(),
+                f"风量_{self.flow_rate_unit.currentText()}": float(self.flow_rate_input.text() or 0),
+                f"全压_{self.pressure_unit.currentText()}": float(self.pressure_input.text() or 0),
+                "温度_C": T,
+                "海拔_m": alt,
+                "风机效率_%": eta_f * 100,
+                "电机效率_%": eta_m * 100,
+                "传动效率_%": eta_t * 100,
+            }
+
+            rho = self._calc_air_density(T, alt)
+            Q_m3s = Q_m3h / 3600
+            shaft_kW = Q_m3s * P_pa / eta_f / 1000
+            motor_kW = shaft_kW / (eta_t * eta_m)
+            std_motors = [0.75, 1.1, 1.5, 2.2, 3, 4, 5.5, 7.5, 11, 15, 18.5, 22,
+                          30, 37, 45, 55, 75, 90, 110, 132, 160, 200, 250, 315, 355]
+            candidates = [m for m in std_motors if m >= motor_kW * 1.15]
+            selected = candidates[0] if candidates else std_motors[-1]
 
             outputs = {
-                "实际空气密度_kg_m3": round(rho, 3),
-                "轴功率_kW": round(shaft_power / 1000, 2),
-                "电机功率_kW": round(motor_power / 1000, 2),
-                "年耗电量_kWh": round(annual_energy, 0),
-                "年电费_万元": round(annual_cost / 10000, 2)
+                "实际空气密度_kg_m3": round(rho, 4),
+                "轴功率_kW": round(shaft_kW, 2),
+                "电机输入功率_kW": round(motor_kW, 2),
+                "推荐电机规格_kW": selected,
+                "比功率_kW_m3_s": round(motor_kW / Q_m3s, 2),
             }
         except Exception as e:
-            outputs["计算错误"] = str(e)
+            inputs = {}
+            outputs = {"计算错误": str(e)}
 
         return {"inputs": inputs, "outputs": outputs}
 
-    def calculate_fan_power(self, flow_rate, pressure, temperature, altitude,
-                           fan_efficiency, motor_efficiency, transmission_efficiency,
-                           operation_hours, days_per_year, electricity_price):
-        """计算风机功率和能耗"""
-        # 计算空气密度修正
-        # 标准空气密度 (0°C, 101.325kPa): 1.293 kg/m³
+    # ────────────────────────────────────────────────────────────
+    # 工程信息 & 报告
+    # ────────────────────────────────────────────────────────────
+    def get_project_info(self):
+        try:
+            class _Dialog(QDialog):
+                def __init__(self, parent, saved, report_number):
+                    super().__init__(parent)
+                    self.setWindowTitle("工程信息")
+                    self.setFixedSize(400, 350)
+                    lay = QVBoxLayout(self)
+                    title = QLabel("请输入工程信息")
+                    title.setStyleSheet("font-weight: bold; font-size: 14px; margin: 10px;")
+                    lay.addWidget(title)
 
-        # 温度修正
-        T_kelvin = temperature + 273.15
-        rho_temp = 1.293 * (273.15 / T_kelvin)
+                    def row(label, placeholder, default=""):
+                        h = QHBoxLayout()
+                        l = QLabel(label); l.setFixedWidth(80); h.addWidget(l)
+                        e = QLineEdit(); e.setPlaceholderText(placeholder); e.setText(default)
+                        h.addWidget(e); lay.addLayout(h); return e
 
-        # 海拔修正：国际标准大气(ISA)幂律公式
-        rho_altitude = (1 - altitude / 44300) ** 5.255 if altitude < 44300 else 0.01
-        rho_actual = rho_temp * rho_altitude
-        
-        # 计算轴功率 (kW)
-        # P_shaft = (Q × p) / (3600 × 1000 × η_fan)
-        shaft_power = (flow_rate * pressure) / (3600 * 1000 * fan_efficiency)
-        
-        # 计算电机功率 (kW)
-        motor_power = shaft_power / (transmission_efficiency * motor_efficiency)
-        
-        # 选择标准电机规格
-        standard_motors = [0.75, 1.1, 1.5, 2.2, 3, 4, 5.5, 7.5, 11, 15, 18.5, 22, 
-                          30, 37, 45, 55, 75, 90, 110, 132, 160, 200, 250, 315, 355]
-        selected_motor = min([m for m in standard_motors if m >= motor_power * 1.15], 
-                            default=standard_motors[-1])
-        
-        # 计算比功率 (kW/(m³/s))
-        flow_rate_m3s = flow_rate / 3600
-        specific_power = motor_power / flow_rate_m3s
-        
-        # 计算能耗
-        hourly_energy = motor_power  # kWh
-        daily_energy = hourly_energy * operation_hours
-        yearly_energy = daily_energy * days_per_year
-        
-        # 计算电费
-        hourly_cost = hourly_energy * electricity_price
-        daily_cost = daily_energy * electricity_price
-        yearly_cost = yearly_energy * electricity_price
-        
-        return {
-            'shaft_power': shaft_power,
-            'motor_power': motor_power,
-            'selected_motor': selected_motor,
-            'specific_power': specific_power,
-            'air_density': rho_actual,
-            'hourly_energy': hourly_energy,
-            'daily_energy': daily_energy,
-            'yearly_energy': yearly_energy,
-            'hourly_cost': hourly_cost,
-            'daily_cost': daily_cost,
-            'yearly_cost': yearly_cost
-        }
-    
-    def display_results(self, results):
-        """显示计算结果"""
-        self.shaft_power_result.setText(f"{results['shaft_power']:.2f} kW")
-        self.motor_power_result.setText(f"{results['motor_power']:.2f} kW")
-        self.selected_motor_result.setText(f"{results['selected_motor']} kW")
-        self.specific_power_result.setText(f"{results['specific_power']:.2f} kW/(m³/s)")
-        self.air_density_result.setText(f"{results['air_density']:.3f} kg/m³")
-        
-        self.hourly_energy_result.setText(f"{results['hourly_energy']:.2f} kWh")
-        self.daily_energy_result.setText(f"{results['daily_energy']:.2f} kWh")
-        self.yearly_energy_result.setText(f"{results['yearly_energy']:.0f} kWh")
-        
-        self.hourly_cost_result.setText(f"{results['hourly_cost']:.2f} 元")
-        self.daily_cost_result.setText(f"{results['daily_cost']:.2f} 元")
-        self.yearly_cost_result.setText(f"{results['yearly_cost']:.0f} 元")
-    
-    def show_error(self, message):
-        """显示错误信息"""
-        for label in [self.shaft_power_result, self.motor_power_result, 
-                     self.selected_motor_result, self.specific_power_result,
-                     self.air_density_result, self.hourly_energy_result,
-                     self.daily_energy_result, self.yearly_energy_result,
-                     self.hourly_cost_result, self.daily_cost_result,
-                     self.yearly_cost_result]:
-            label.setText("计算错误")
-        
-        # 在实际应用中，这里可以显示一个错误对话框
-        print(f"错误: {message}")
+                    self.company  = row("公司名称:", "XX建筑工程有限公司",   saved.get("company_name", ""))
+                    self.proj_no  = row("工程编号:", "2024-FAN-001",         saved.get("project_number", ""))
+                    self.proj_name= row("工程名称:", "化工厂风机系统",        saved.get("project_name", ""))
+                    self.sub_name = row("子项名称:", "主生产区通风",          saved.get("subproject_name", ""))
+                    self.rpt_no   = row("计算书编号:", "",                   report_number)
+
+                    bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+                    bb.accepted.connect(self.accept); bb.rejected.connect(self.reject)
+                    lay.addWidget(bb)
+
+                def get_info(self):
+                    return {
+                        "company_name":    self.company.text().strip(),
+                        "project_number":  self.proj_no.text().strip(),
+                        "project_name":    self.proj_name.text().strip(),
+                        "subproject_name": self.sub_name.text().strip(),
+                        "report_number":   self.rpt_no.text().strip(),
+                    }
+
+            saved  = self.data_manager.get_project_info() if self.data_manager else {}
+            rpt_no = self.data_manager.get_next_report_number("FAN") if self.data_manager else ""
+
+            dlg = _Dialog(self, saved, rpt_no)
+            if dlg.exec() == QDialog.Accepted:
+                info = dlg.get_info()
+                if not info["company_name"]:
+                    QMessageBox.warning(self, "输入错误", "公司名称不能为空")
+                    return self.get_project_info()
+                if self.data_manager:
+                    self.data_manager.update_project_info({
+                        k: info[k] for k in ("company_name", "project_number",
+                                              "project_name", "subproject_name")
+                    })
+                return info
+        except Exception as e:
+            print(f"获取工程信息失败: {e}")
+        return None
+
+    def generate_report(self):
+        result_text = self.result_text.toPlainText()
+        if not result_text or "计算结果" not in result_text:
+            QMessageBox.warning(self, "生成失败", "请先进行计算再生成计算书")
+            return None
+        info = self.get_project_info()
+        if not info:
+            return None
+
+        report = (
+            f"工程计算书 - 风机功率计算\n"
+            f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+            f"计算工具: CalcE 工程计算模块\n"
+            f"{'='*40}\n\n"
+            + result_text
+            + f"""
+
+══════════
+ 工程信息
+══════════
+
+    公司名称: {info['company_name']}
+    工程编号: {info['project_number']}
+    工程名称: {info['project_name']}
+    子项名称: {info['subproject_name']}
+    计算日期: {datetime.now().strftime('%Y-%m-%d')}
+
+══════════
+计算书标识
+══════════
+
+    计算书编号: {info['report_number']}
+    版本: 1.0
+    状态: 正式计算书
+
+══════════
+备注说明
+══════════
+
+    1. 本计算书基于流体力学基本原理
+    2. 空气密度按 ISA 标准大气幂律公式修正
+    3. 计算结果仅供参考，实际选型应结合厂家特性曲线
+    4. 重要工程参数应经专业工程师审核确认
+
+---
+生成于 CalcE 工程计算模块
+"""
+        )
+        return report
+
+    def download_txt_report(self):
+        try:
+            report = self.generate_report()
+            if report is None:
+                return
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            path, _ = QFileDialog.getSaveFileName(
+                self, "保存计算书", f"风机功率计算书_{ts}.txt", "Text Files (*.txt)")
+            if path:
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(report)
+                QMessageBox.information(self, "下载成功", f"计算书已保存到:\n{path}")
+        except Exception as e:
+            QMessageBox.critical(self, "下载失败", f"保存时发生错误: {str(e)}")
+
+    def generate_pdf_report(self):
+        try:
+            report = self.generate_report()
+            if report is None:
+                return False
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            path, _ = QFileDialog.getSaveFileName(
+                self, "保存PDF计算书", f"风机功率计算书_{ts}.pdf", "PDF Files (*.pdf)")
+            if not path:
+                return False
+
+            try:
+                from reportlab.lib.pagesizes import A4
+                from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+                from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+                from reportlab.lib.units import inch
+                from reportlab.pdfbase import pdfmetrics
+                from reportlab.pdfbase.ttfonts import TTFont
+                import os
+
+                font_paths = [
+                    "C:/Windows/Fonts/simhei.ttf",
+                    "C:/Windows/Fonts/simsun.ttc",
+                    "C:/Windows/Fonts/msyh.ttc",
+                ]
+                for fp in font_paths:
+                    if os.path.exists(fp):
+                        try:
+                            pdfmetrics.registerFont(TTFont("ChineseFont", fp))
+                            break
+                        except Exception:
+                            continue
+
+                doc    = SimpleDocTemplate(path, pagesize=A4)
+                styles = getSampleStyleSheet()
+                s_norm = ParagraphStyle("CN", parent=styles["Normal"],
+                                        fontName="ChineseFont", fontSize=10, leading=14)
+                s_head = ParagraphStyle("CNH", parent=styles["Heading1"],
+                                        fontName="ChineseFont", fontSize=16, leading=20,
+                                        spaceAfter=12)
+                story  = [Paragraph("工程计算书 - 风机功率计算", s_head),
+                          Spacer(1, 0.2 * inch)]
+                for line in report.split("\n"):
+                    if line.strip():
+                        line = (line.replace(" ", "&nbsp;")
+                                    .replace("═", "=").replace("─", "-")
+                                    .replace("•", ""))
+                        story.append(Paragraph(line, s_norm))
+                        story.append(Spacer(1, 0.05 * inch))
+                doc.build(story)
+                QMessageBox.information(self, "生成成功", f"PDF计算书已保存到:\n{path}")
+                return True
+            except ImportError:
+                QMessageBox.warning(self, "功能不可用",
+                                    "PDF生成需要安装 reportlab\n\n请运行: pip install reportlab")
+                return False
+        except Exception as e:
+            QMessageBox.critical(self, "生成失败", f"生成PDF时发生错误: {str(e)}")
+            return False
 
 
 if __name__ == "__main__":
-    # 测试代码
     import sys
     from PySide6.QtWidgets import QApplication
-    
+
     app = QApplication(sys.argv)
-    
-    calculator = FanPowerCalculator()
-    calculator.resize(700, 800)
-    calculator.show()
-    
+    w = FanPowerCalculator()
+    w.resize(1200, 800)
+    w.setWindowTitle("风机功率计算器")
+    w.show()
     sys.exit(app.exec())

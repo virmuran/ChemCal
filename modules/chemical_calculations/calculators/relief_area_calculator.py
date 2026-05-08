@@ -1,653 +1,906 @@
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, 
-                              QLabel, QLineEdit, QPushButton, QComboBox, 
-                              QFormLayout, QTextEdit, QGridLayout, QScrollArea,
-                              QTableWidget, QTableWidgetItem, QHeaderView,
-                              QTabWidget, QCheckBox)
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QDoubleValidator
+import os
 import math
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
+    QLabel, QLineEdit, QPushButton, QComboBox,
+    QTextEdit, QGridLayout, QTableWidget, QTableWidgetItem,
+    QHeaderView, QFileDialog, QMessageBox,
+    QScrollArea,
+
+)
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QDoubleValidator
 
 
 class ReliefAreaCalculator(QWidget):
-    """泄压面积计算器"""
-    
-    def __init__(self, parent=None):
+    """泄压面积计算器（统一 UI 规范版）
+
+    计算安全阀、爆破片等泄压装置的所需泄放面积。
+    基于 ASME VIII / API 520 / API 521 标准，
+    支持气体/蒸汽临界流与亚临界流、液体泄放、两相流简化计算。
+    """
+
+    # ── 标准安全阀喉径规格表 (DN, 喉径mm, 面积mm²) ──
+    STANDARD_VALVES = [
+        ("DN15", 11, 95),
+        ("DN20", 16, 201),
+        ("DN25", 19, 284),
+        ("DN32", 23, 415),
+        ("DN40", 26, 531),
+        ("DN50", 33, 855),
+        ("DN65", 47, 1735),
+        ("DN80", 52, 2124),
+        ("DN100", 68, 3631),
+        ("DN125", 83, 5410),
+        ("DN150", 102, 8171),
+    ]
+
+    def __init__(self, parent=None, data_manager=None):
         super().__init__(parent)
+        if data_manager is not None:
+            self.data_manager = data_manager
+        else:
+            self.data_manager = None
+        self._last_result = {}
+        self._last_params = {}
         self.setup_ui()
-        
+
+    # ─────────────────────── UI ───────────────────────────
     def setup_ui(self):
-        """设置泄压面积计算界面"""
-        main_layout = QVBoxLayout(self)
+        group_style = """
+            QGroupBox {
+                font-weight: bold;
+                border: 1px solid #bdc3c7;
+                border-radius: 8px;
+                margin-top: 10px;
+                padding-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 8px 0 8px;
+            }
+        """
+        main_layout = QHBoxLayout(self)
         main_layout.setSpacing(15)
-        
-        # 标题
-        title_label = QLabel("泄压面积计算")
-        title_label.setFont(QFont("Arial", 14, QFont.Bold))
-        title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("color: #2c3e50; margin: 10px;")
-        main_layout.addWidget(title_label)
-        
-        # 说明文本
-        desc_label = QLabel("计算安全阀、爆破片等泄压装置的所需泄放面积，依据ASME、API等标准")
-        desc_label.setWordWrap(True)
-        desc_label.setStyleSheet("color: #7f8c8d; margin: 5px;")
-        main_layout.addWidget(desc_label)
-        
-        # 创建滚动区域
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_content = QWidget()
-        scroll_layout = QVBoxLayout(scroll_content)
-        
-        # 创建标签页
-        self.tab_widget = QTabWidget()
-        
-        # 基本参数标签页
-        basic_tab = QWidget()
-        basic_layout = QVBoxLayout(basic_tab)
-        
-        # 泄放场景组
+        main_layout.setContentsMargins(10, 10, 10, 10)
+
+        # ──────────────── 左侧输入区 ────────────────
+        scroll_left = QScrollArea()
+        scroll_left.setStyleSheet("QScrollArea { border: none; background: transparent; } QScrollBar:vertical { background: transparent; width: 8px; margin: 0; } QScrollBar::handle:vertical { background: #c0c0c0; border-radius: 4px; min-height: 30px; } QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }")
+
+        scroll_left.setWidgetResizable(True)
+
+        scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        left_widget = QWidget()
+        left_widget.setStyleSheet("QWidget { background: transparent; }")
+        left_layout = QVBoxLayout(left_widget)
+        left_layout.setSpacing(15)
+
+        # 说明文字
+        desc = QLabel(
+            "计算安全阀、爆破片等泄压装置的所需泄放面积。"
+            "依据 ASME VIII / API 520 / API 521 标准，"
+            "支持气体/蒸汽临界流与亚临界流、液体泄放、两相流计算。"
+        )
+        desc.setWordWrap(True)
+        desc.setStyleSheet("color: #7f8c8d; font-size: 12px;")
+        left_layout.addWidget(desc)
+
+        label_style = "font-weight: bold; padding-right: 10px;"
+
+        def make_lbl(text):
+            lbl = QLabel(text)
+            lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            lbl.setMinimumWidth(120)
+            lbl.setMaximumWidth(200)
+            lbl.setStyleSheet(label_style)
+            return lbl
+
+        def make_hint(text, grey=True):
+            lbl = QLabel(text)
+            lbl.setMinimumWidth(100)
+            lbl.setMaximumWidth(250)
+            if grey:
+                lbl.setStyleSheet("color: #95a5a6; font-size: 11px;")
+            return lbl
+
+        # ── 泄放场景组 ──
         scenario_group = QGroupBox("泄放场景")
-        scenario_layout = QGridLayout(scenario_group)
-        
-        self.scenario_type = QComboBox()
-        self.scenario_type.addItems([
-            "火灾工况", 
-            "操作故障", 
-            "热膨胀", 
-            "化学反应失控",
-            "外部火灾",
-            "换热管破裂"
-        ])
-        
-        self.fluid_type = QComboBox()
-        self.fluid_type.addItems(["气体/蒸汽", "液体", "两相流"])
-        
-        self.standard_selection = QComboBox()
-        self.standard_selection.addItems(["ASME VIII", "API 520", "API 521", "ISO 4126"])
-        
-        scenario_layout.addWidget(QLabel("泄放场景:"), 0, 0)
-        scenario_layout.addWidget(self.scenario_type, 0, 1, 1, 2)
-        
-        scenario_layout.addWidget(QLabel("介质类型:"), 1, 0)
-        scenario_layout.addWidget(self.fluid_type, 1, 1, 1, 2)
-        
-        scenario_layout.addWidget(QLabel("设计标准:"), 2, 0)
-        scenario_layout.addWidget(self.standard_selection, 2, 1, 1, 2)
-        
-        basic_layout.addWidget(scenario_group)
-        
-        # 设备参数组
+        scenario_group.setStyleSheet(group_style)
+        sg = QGridLayout(scenario_group)
+        sg.setHorizontalSpacing(10)
+        sg.setVerticalSpacing(10)
+        sg.setColumnStretch(0, 2)  # 标签列可伸缩
+
+        sg.setColumnStretch(1, 3)  # 输入框列可伸缩
+
+        sg.setColumnStretch(2, 2)  # 提示列可伸缩
+
+
+        # 行0：泄放场景
+        self.scenario_combo = QComboBox()
+        self.scenario_combo.addItems([
+            "火灾工况", "操作故障", "热膨胀",
+            "化学反应失控", "外部火灾", "换热管破裂"])
+        self.scenario_combo.setMinimumWidth(150)
+        self.scenario_combo.setMaximumWidth(400)
+        sg.addWidget(make_lbl("泄放场景:"), 0, 0)
+        sg.addWidget(self.scenario_combo, 0, 1)
+        sg.addWidget(make_hint("选择泄放工况"), 0, 2)
+
+        # 行1：介质类型
+        self.fluid_combo = QComboBox()
+        self.fluid_combo.addItems(["气体/蒸汽", "液体", "两相流"])
+        self.fluid_combo.setMinimumWidth(150)
+        self.fluid_combo.setMaximumWidth(400)
+        self.fluid_combo.currentTextChanged.connect(self._on_fluid_changed)
+        sg.addWidget(make_lbl("介质类型:"), 1, 0)
+        sg.addWidget(self.fluid_combo, 1, 1)
+        sg.addWidget(make_hint("气体/液体/两相流"), 1, 2)
+
+        # 行2：设计标准
+        self.standard_combo = QComboBox()
+        self.standard_combo.addItems(["ASME VIII", "API 520", "API 521", "ISO 4126"])
+        self.standard_combo.setMinimumWidth(150)
+        self.standard_combo.setMaximumWidth(400)
+        sg.addWidget(make_lbl("设计标准:"), 2, 0)
+        sg.addWidget(self.standard_combo, 2, 1)
+        sg.addWidget(make_hint("选择计算标准"), 2, 2)
+
+        left_layout.addWidget(scenario_group)
+
+        # ── 设备参数组 ──
         vessel_group = QGroupBox("设备参数")
-        vessel_layout = QGridLayout(vessel_group)
-        
-        self.vessel_volume_input = QLineEdit()
-        self.vessel_volume_input.setPlaceholderText("例如：10")
-        self.vessel_volume_input.setValidator(QDoubleValidator(0.1, 100000, 2))
-        
-        self.vessel_volume_unit = QComboBox()
-        self.vessel_volume_unit.addItems(["m³", "L"])
-        
-        self.vessel_pressure_input = QLineEdit()
-        self.vessel_pressure_input.setPlaceholderText("例如：1000")
-        self.vessel_pressure_input.setValidator(QDoubleValidator(0.1, 100000, 1))
-        
-        self.vessel_pressure_unit = QComboBox()
-        self.vessel_pressure_unit.addItems(["kPa", "bar", "MPa"])
-        
-        self.design_pressure_input = QLineEdit()
-        self.design_pressure_input.setPlaceholderText("例如：1100")
-        self.design_pressure_input.setValidator(QDoubleValidator(0.1, 100000, 1))
-        
-        self.operating_pressure_input = QLineEdit()
-        self.operating_pressure_input.setPlaceholderText("例如：800")
-        self.operating_pressure_input.setValidator(QDoubleValidator(0.1, 100000, 1))
-        
-        vessel_layout.addWidget(QLabel("容器容积:"), 0, 0)
-        vessel_layout.addWidget(self.vessel_volume_input, 0, 1)
-        vessel_layout.addWidget(self.vessel_volume_unit, 0, 2)
-        
-        vessel_layout.addWidget(QLabel("设计压力:"), 0, 3)
-        vessel_layout.addWidget(self.design_pressure_input, 0, 4)
-        vessel_layout.addWidget(self.vessel_pressure_unit, 0, 5)
-        
-        vessel_layout.addWidget(QLabel("操作压力:"), 1, 0)
-        vessel_layout.addWidget(self.operating_pressure_input, 1, 1)
-        vessel_layout.addWidget(QLabel(""), 1, 2)  # 占位
-        
-        vessel_layout.addWidget(QLabel("最大允许压力:"), 1, 3)
-        vessel_layout.addWidget(self.vessel_pressure_input, 1, 4)
-        vessel_layout.addWidget(QLabel(""), 1, 5)  # 占位
-        
-        basic_layout.addWidget(vessel_group)
-        
-        # 介质参数组
+        vessel_group.setStyleSheet(group_style)
+        vg = QGridLayout(vessel_group)
+        vg.setHorizontalSpacing(10)
+        vg.setVerticalSpacing(10)
+
+        # 行0：容器容积
+        self.volume_input = QLineEdit("10")
+        self.volume_input.setMinimumWidth(150)
+        self.volume_input.setMaximumWidth(400)
+        self.volume_input.setValidator(QDoubleValidator(0.01, 100000, 2))
+        vg.addWidget(make_lbl("容器容积:"), 0, 0)
+        vg.addWidget(self.volume_input, 0, 1)
+        self.volume_unit_combo = QComboBox()
+        self.volume_unit_combo.addItems(["m\u00b3", "L"])
+        self.volume_unit_combo.setMinimumWidth(100)
+        self.volume_unit_combo.setMaximumWidth(250)
+        vg.addWidget(self.volume_unit_combo, 0, 2)
+
+        # 行1：设计压力
+        self.design_p_input = QLineEdit("1.1")
+        self.design_p_input.setMinimumWidth(150)
+        self.design_p_input.setMaximumWidth(400)
+        self.design_p_input.setValidator(QDoubleValidator(0.001, 100, 3))
+        vg.addWidget(make_lbl("设计压力:"), 1, 0)
+        vg.addWidget(self.design_p_input, 1, 1)
+        self.design_p_unit_combo = QComboBox()
+        self.design_p_unit_combo.addItems(["kPa", "MPa", "bar"])
+        self.design_p_unit_combo.setMinimumWidth(100)
+        self.design_p_unit_combo.setMaximumWidth(250)
+        vg.addWidget(self.design_p_unit_combo, 1, 2)
+
+        # 行2：操作压力
+        self.oper_p_input = QLineEdit("0.8")
+        self.oper_p_input.setMinimumWidth(150)
+        self.oper_p_input.setMaximumWidth(400)
+        self.oper_p_input.setValidator(QDoubleValidator(0.001, 100, 3))
+        vg.addWidget(make_lbl("操作压力:"), 2, 0)
+        vg.addWidget(self.oper_p_input, 2, 1)
+        self.oper_p_unit_combo = QComboBox()
+        self.oper_p_unit_combo.addItems(["kPa", "MPa", "bar"])
+        self.oper_p_unit_combo.setMinimumWidth(100)
+        self.oper_p_unit_combo.setMaximumWidth(250)
+        vg.addWidget(self.oper_p_unit_combo, 2, 2)
+
+        # 行3：最大允许工作压力
+        self.mawp_input = QLineEdit("1.0")
+        self.mawp_input.setMinimumWidth(150)
+        self.mawp_input.setMaximumWidth(400)
+        self.mawp_input.setValidator(QDoubleValidator(0.001, 100, 3))
+        vg.addWidget(make_lbl("最大允许压力:"), 3, 0)
+        vg.addWidget(self.mawp_input, 3, 1)
+        self.mawp_unit_combo = QComboBox()
+        self.mawp_unit_combo.addItems(["kPa", "MPa", "bar"])
+        self.mawp_unit_combo.setMinimumWidth(100)
+        self.mawp_unit_combo.setMaximumWidth(250)
+        vg.addWidget(self.mawp_unit_combo, 3, 2)
+
+        left_layout.addWidget(vessel_group)
+
+        # ── 介质参数组 ──
         fluid_group = QGroupBox("介质参数")
-        fluid_layout = QGridLayout(fluid_group)
-        
+        fluid_group.setStyleSheet(group_style)
+        fg = QGridLayout(fluid_group)
+        fg.setHorizontalSpacing(10)
+        fg.setVerticalSpacing(10)
+
+        # 行0：介质名称
         self.fluid_name_input = QLineEdit()
+        self.fluid_name_input.setMinimumWidth(150)
+        self.fluid_name_input.setMaximumWidth(400)
         self.fluid_name_input.setPlaceholderText("例如：蒸汽")
-        
-        self.molecular_weight_input = QLineEdit()
-        self.molecular_weight_input.setPlaceholderText("例如：18")
-        self.molecular_weight_input.setValidator(QDoubleValidator(1, 500, 2))
-        
-        self.temperature_input = QLineEdit()
-        self.temperature_input.setPlaceholderText("例如：200")
-        self.temperature_input.setValidator(QDoubleValidator(-273, 1000, 1))
-        
-        self.compressibility_input = QLineEdit()
-        self.compressibility_input.setText("1.0")
-        self.compressibility_input.setValidator(QDoubleValidator(0.1, 2, 3))
-        
-        self.specific_heat_ratio_input = QLineEdit()
-        self.specific_heat_ratio_input.setText("1.3")
-        self.specific_heat_ratio_input.setValidator(QDoubleValidator(1, 2, 3))
-        
-        self.density_input = QLineEdit()
-        self.density_input.setPlaceholderText("例如：1.2")
-        self.density_input.setValidator(QDoubleValidator(0.1, 2000, 3))
-        
-        fluid_layout.addWidget(QLabel("介质名称:"), 0, 0)
-        fluid_layout.addWidget(self.fluid_name_input, 0, 1, 1, 2)
-        
-        fluid_layout.addWidget(QLabel("分子量:"), 0, 3)
-        fluid_layout.addWidget(self.molecular_weight_input, 0, 4)
-        fluid_layout.addWidget(QLabel("g/mol"), 0, 5)
-        
-        fluid_layout.addWidget(QLabel("温度:"), 1, 0)
-        fluid_layout.addWidget(self.temperature_input, 1, 1)
-        fluid_layout.addWidget(QLabel("°C"), 1, 2)
-        
-        fluid_layout.addWidget(QLabel("压缩因子:"), 1, 3)
-        fluid_layout.addWidget(self.compressibility_input, 1, 4)
-        fluid_layout.addWidget(QLabel(""), 1, 5)
-        
-        fluid_layout.addWidget(QLabel("比热比:"), 2, 0)
-        fluid_layout.addWidget(self.specific_heat_ratio_input, 2, 1)
-        fluid_layout.addWidget(QLabel(""), 2, 2)
-        
-        fluid_layout.addWidget(QLabel("密度:"), 2, 3)
-        fluid_layout.addWidget(self.density_input, 2, 4)
-        fluid_layout.addWidget(QLabel("kg/m³"), 2, 5)
-        
-        basic_layout.addWidget(fluid_group)
-        
-        # 泄放参数组
+        fg.addWidget(make_lbl("介质名称:"), 0, 0)
+        fg.addWidget(self.fluid_name_input, 0, 1)
+        fg.addWidget(make_hint("填写介质名称"), 0, 2)
+
+        # 行1：分子量
+        self.mw_input = QLineEdit("18")
+        self.mw_input.setMinimumWidth(150)
+        self.mw_input.setMaximumWidth(400)
+        self.mw_input.setValidator(QDoubleValidator(1, 500, 2))
+        fg.addWidget(make_lbl("分子量 (g/mol):"), 1, 0)
+        fg.addWidget(self.mw_input, 1, 1)
+        fg.addWidget(make_hint("蒸汽=18, 空气=29"), 1, 2)
+
+        # 行2：温度
+        self.temp_input = QLineEdit("200")
+        self.temp_input.setMinimumWidth(150)
+        self.temp_input.setMaximumWidth(400)
+        self.temp_input.setValidator(QDoubleValidator(-273, 2000, 1))
+        fg.addWidget(make_lbl("温度 (\u00b0C):"), 2, 0)
+        fg.addWidget(self.temp_input, 2, 1)
+        fg.addWidget(make_hint("操作温度"), 2, 2)
+
+        # 行3：压缩因子
+        self.z_input = QLineEdit("1.0")
+        self.z_input.setMinimumWidth(150)
+        self.z_input.setMaximumWidth(400)
+        self.z_input.setValidator(QDoubleValidator(0.1, 2.0, 3))
+        fg.addWidget(make_lbl("压缩因子 Z:"), 3, 0)
+        fg.addWidget(self.z_input, 3, 1)
+        fg.addWidget(make_hint("理想气体=1.0"), 3, 2)
+
+        # 行4：比热比
+        self.gamma_input = QLineEdit("1.3")
+        self.gamma_input.setMinimumWidth(150)
+        self.gamma_input.setMaximumWidth(400)
+        self.gamma_input.setValidator(QDoubleValidator(1.0, 2.0, 3))
+        fg.addWidget(make_lbl("绝热指数 \u03b3:"), 4, 0)
+        fg.addWidget(self.gamma_input, 4, 1)
+        fg.addWidget(make_hint("双原子=1.4"), 4, 2)
+
+        # 行5：密度
+        self.density_input = QLineEdit("1.2")
+        self.density_input.setMinimumWidth(150)
+        self.density_input.setMaximumWidth(400)
+        self.density_input.setValidator(QDoubleValidator(0.01, 20000, 3))
+        fg.addWidget(make_lbl("密度 (kg/m\u00b3):"), 5, 0)
+        fg.addWidget(self.density_input, 5, 1)
+        fg.addWidget(make_hint("液体~1000, 气体~1.2"), 5, 2)
+
+        left_layout.addWidget(fluid_group)
+
+        # ── 泄放参数组 ──
         relief_group = QGroupBox("泄放参数")
-        relief_layout = QGridLayout(relief_group)
-        
-        self.relief_rate_input = QLineEdit()
-        self.relief_rate_input.setPlaceholderText("例如：1000")
-        self.relief_rate_input.setValidator(QDoubleValidator(0.1, 1000000, 1))
-        
-        self.relief_rate_unit = QComboBox()
-        self.relief_rate_unit.addItems(["kg/h", "kg/s", "m³/h"])
-        
-        self.back_pressure_input = QLineEdit()
-        self.back_pressure_input.setText("0")
-        self.back_pressure_input.setValidator(QDoubleValidator(0, 10000, 1))
-        
-        self.overpressure_input = QLineEdit()
-        self.overpressure_input.setText("10")
-        self.overpressure_input.setValidator(QDoubleValidator(1, 100, 1))
-        
-        self.discharge_coeff_input = QLineEdit()
-        self.discharge_coeff_input.setText("0.65")
-        self.discharge_coeff_input.setValidator(QDoubleValidator(0.1, 1, 3))
-        
-        relief_layout.addWidget(QLabel("泄放速率:"), 0, 0)
-        relief_layout.addWidget(self.relief_rate_input, 0, 1)
-        relief_layout.addWidget(self.relief_rate_unit, 0, 2)
-        
-        relief_layout.addWidget(QLabel("背压:"), 0, 3)
-        relief_layout.addWidget(self.back_pressure_input, 0, 4)
-        relief_layout.addWidget(QLabel("kPa"), 0, 5)
-        
-        relief_layout.addWidget(QLabel("超压百分比:"), 1, 0)
-        relief_layout.addWidget(self.overpressure_input, 1, 1)
-        relief_layout.addWidget(QLabel("%"), 1, 2)
-        
-        relief_layout.addWidget(QLabel("排放系数:"), 1, 3)
-        relief_layout.addWidget(self.discharge_coeff_input, 1, 4)
-        relief_layout.addWidget(QLabel(""), 1, 5)
-        
-        basic_layout.addWidget(relief_group)
-        basic_layout.addStretch()
-        
-        # 结果标签页
-        result_tab = QWidget()
-        result_layout = QVBoxLayout(result_tab)
-        
-        # 按钮组
-        button_layout = QHBoxLayout()
-        
-        self.calc_btn = QPushButton("计算")
-        self.calc_btn.setStyleSheet("QPushButton { background-color: #3498db; color: white; padding: 8px; border-radius: 4px; }"
-                                  "QPushButton:hover { background-color: #2980b9; }")
-        self.calc_btn.clicked.connect(self.calculate)
-        
-        self.clear_btn = QPushButton("清空")
-        self.clear_btn.setStyleSheet("QPushButton { background-color: #95a5a6; color: white; padding: 8px; border-radius: 4px; }"
-                                   "QPushButton:hover { background-color: #7f8c8d; }")
-        self.clear_btn.clicked.connect(self.clear_inputs)
-        
-        button_layout.addWidget(self.calc_btn)
-        button_layout.addWidget(self.clear_btn)
-        button_layout.addStretch()
-        
-        result_layout.addLayout(button_layout)
-        
-        # 计算结果
-        result_display_group = QGroupBox("计算结果")
-        result_display_layout = QGridLayout(result_display_group)
-        
-        self.required_area_result = QLabel("--")
-        self.required_diameter_result = QLabel("--")
-        self.relief_pressure_result = QLabel("--")
-        self.critical_flow_result = QLabel("--")
-        self.actual_flow_result = QLabel("--")
-        self.recommended_size_result = QLabel("--")
-        
-        result_display_layout.addWidget(QLabel("所需泄放面积:"), 0, 0)
-        result_display_layout.addWidget(self.required_area_result, 0, 1)
-        result_display_layout.addWidget(QLabel("mm²"), 0, 2)
-        
-        result_display_layout.addWidget(QLabel("等效直径:"), 0, 3)
-        result_display_layout.addWidget(self.required_diameter_result, 0, 4)
-        result_display_layout.addWidget(QLabel("mm"), 0, 5)
-        
-        result_display_layout.addWidget(QLabel("泄放压力:"), 1, 0)
-        result_display_layout.addWidget(self.relief_pressure_result, 1, 1)
-        result_display_layout.addWidget(QLabel("kPa"), 1, 2)
-        
-        result_display_layout.addWidget(QLabel("临界流动:"), 1, 3)
-        result_display_layout.addWidget(self.critical_flow_result, 1, 4)
-        result_display_layout.addWidget(QLabel(""), 1, 5)
-        
-        result_display_layout.addWidget(QLabel("实际流量:"), 2, 0)
-        result_display_layout.addWidget(self.actual_flow_result, 2, 1)
-        result_display_layout.addWidget(QLabel("kg/s"), 2, 2)
-        
-        result_display_layout.addWidget(QLabel("建议规格:"), 2, 3)
-        result_display_layout.addWidget(self.recommended_size_result, 2, 4)
-        result_display_layout.addWidget(QLabel(""), 2, 5)
-        
-        result_layout.addWidget(result_display_group)
-        
-        # 标准阀门规格表
-        valve_table_group = QGroupBox("标准安全阀规格")
-        valve_table_layout = QVBoxLayout(valve_table_group)
-        
+        relief_group.setStyleSheet(group_style)
+        rg = QGridLayout(relief_group)
+        rg.setHorizontalSpacing(10)
+        rg.setVerticalSpacing(10)
+
+        # 行0：泄放速率
+        self.relief_rate_input = QLineEdit("1000")
+        self.relief_rate_input.setMinimumWidth(150)
+        self.relief_rate_input.setMaximumWidth(400)
+        self.relief_rate_input.setValidator(QDoubleValidator(0.001, 1e8, 1))
+        rg.addWidget(make_lbl("泄放速率:"), 0, 0)
+        rg.addWidget(self.relief_rate_input, 0, 1)
+        self.rate_unit_combo = QComboBox()
+        self.rate_unit_combo.addItems(["kg/h", "kg/s", "m\u00b3/h"])
+        self.rate_unit_combo.setMinimumWidth(100)
+        self.rate_unit_combo.setMaximumWidth(250)
+        rg.addWidget(self.rate_unit_combo, 0, 2)
+
+        # 行1：背压
+        self.back_p_input = QLineEdit("101.325")
+        self.back_p_input.setMinimumWidth(150)
+        self.back_p_input.setMaximumWidth(400)
+        self.back_p_input.setValidator(QDoubleValidator(0, 100000, 3))
+        rg.addWidget(make_lbl("背压:"), 1, 0)
+        rg.addWidget(self.back_p_input, 1, 1)
+        rg.addWidget(make_hint("大气压=101.325"), 1, 2)
+
+        # 行2：超压百分比
+        self.over_p_input = QLineEdit("10")
+        self.over_p_input.setMinimumWidth(150)
+        self.over_p_input.setMaximumWidth(400)
+        self.over_p_input.setValidator(QDoubleValidator(1, 100, 1))
+        rg.addWidget(make_lbl("超压百分比:"), 2, 0)
+        rg.addWidget(self.over_p_input, 2, 1)
+        rg.addWidget(make_hint("通常10%, 火灾21%"), 2, 2)
+
+        # 行3：排放系数
+        self.kd_input = QLineEdit("0.65")
+        self.kd_input.setMinimumWidth(150)
+        self.kd_input.setMaximumWidth(400)
+        self.kd_input.setValidator(QDoubleValidator(0.1, 1.0, 3))
+        rg.addWidget(make_lbl("排放系数 Kd:"), 3, 0)
+        rg.addWidget(self.kd_input, 3, 1)
+        rg.addWidget(make_hint("弹簧式0.65, 先导0.9"), 3, 2)
+
+        left_layout.addWidget(relief_group)
+
+        # ── 计算按钮 ──
+        calc_btn = QPushButton("\u25b6  计算泄压面积")
+        calc_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                font-weight: bold;
+                font-size: 14px;
+                border-radius: 8px;
+                min-height: 50px;
+            }
+            QPushButton:hover { background-color: #2980b9; }
+        """)
+        calc_btn.clicked.connect(self.calculate)
+        left_layout.addWidget(calc_btn)
+
+        # ── 标准安全阀规格表 ──
+        valve_group = QGroupBox("标准安全阀喉径规格")
+        valve_group.setStyleSheet(group_style)
+        valve_vbox = QVBoxLayout(valve_group)
+
         self.valve_table = QTableWidget()
         self.valve_table.setColumnCount(4)
-        self.valve_table.setHorizontalHeaderLabels(["公称尺寸", "喉径(mm)", "泄放面积(mm²)", "适用压力(kPa)"])
-        self.populate_valve_table()
-        valve_table_layout.addWidget(self.valve_table)
-        
-        result_layout.addWidget(valve_table_group)
-        
-        # 添加标签页
-        self.tab_widget.addTab(basic_tab, "基本参数")
-        self.tab_widget.addTab(result_tab, "计算结果")
-        
-        scroll_layout.addWidget(self.tab_widget)
-        
-        # 计算说明
-        info_text = QTextEdit()
-        info_text.setMaximumHeight(150)
-        info_text.setHtml("""
-        <h4>计算说明:</h4>
-        <ul>
-        <li>气体/蒸汽泄放面积计算基于ASME VIII和API 520标准</li>
-        <li>液体泄放面积计算基于不可压缩流体理论</li>
-        <li>两相流计算采用均相平衡模型</li>
-        <li>火灾工况计算基于API 521标准的热量输入计算</li>
-        <li>排放系数通常取0.65-0.97，取决于阀门类型和设计</li>
-        <li>超压百分比通常为10%，对于火灾工况可到21%</li>
-        </ul>
+        self.valve_table.setHorizontalHeaderLabels(
+            ["公称尺寸", "喉径 (mm)", "泄放面积 (mm\u00b2)", "适用压力 (kPa)"])
+        self.valve_table.setMaximumHeight(200)
+        self._populate_valve_table()
+        vh = self.valve_table.horizontalHeader()
+        vh.setSectionResizeMode(QHeaderView.Stretch)
+        valve_vbox.addWidget(self.valve_table)
+        left_layout.addWidget(valve_group)
+
+        # ── 底部按钮行 ──
+        btn_row = QHBoxLayout()
+
+        clear_btn = QPushButton("清空")
+        clear_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #95a5a6; color: white;
+                font-weight: bold; border-radius: 6px;
+                padding: 8px 20px;
+            }
+            QPushButton:hover { background-color: #7f8c8d; }
         """)
-        info_text.setReadOnly(True)
-        scroll_layout.addWidget(info_text)
-        
-        scroll_area.setWidget(scroll_content)
-        main_layout.addWidget(scroll_area)
-        
-    def populate_valve_table(self):
+        clear_btn.clicked.connect(self.clear_inputs)
+
+        dl_txt_btn = QPushButton("\u2b07 下载TXT报告")
+        dl_txt_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60; color: white;
+                font-weight: bold; border-radius: 6px;
+                padding: 8px 20px;
+            }
+            QPushButton:hover { background-color: #219a52; }
+        """)
+        dl_txt_btn.clicked.connect(self.download_txt_report)
+
+        dl_pdf_btn = QPushButton("\u2b07 下载PDF报告")
+        dl_pdf_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e74c3c; color: white;
+                font-weight: bold; border-radius: 6px;
+                padding: 8px 20px;
+            }
+            QPushButton:hover { background-color: #c0392b; }
+        """)
+        dl_pdf_btn.clicked.connect(self.generate_pdf_report)
+
+        btn_row.addWidget(clear_btn)
+        btn_row.addStretch()
+        btn_row.addWidget(dl_txt_btn)
+        btn_row.addWidget(dl_pdf_btn)
+        left_layout.addLayout(btn_row)
+
+        # ──────────────── 右侧结果区 ────────────────
+        right_widget = QWidget()
+        right_widget.setMinimumWidth(400)
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setSpacing(10)
+
+        result_group = QGroupBox("计算结果")
+        result_group.setStyleSheet(group_style)
+        result_vbox = QVBoxLayout(result_group)
+
+        self.result_text = QTextEdit()
+        self.result_text.setReadOnly(True)
+        self.result_text.setMinimumHeight(500)
+        self.result_text.setStyleSheet("""
+            QTextEdit {
+                background-color: #f8f9fa;
+                border: 1px solid #dee2e6;
+                border-radius: 6px;
+                font-family: Consolas, monospace;
+                font-size: 13px;
+                padding: 10px;
+            }
+        """)
+        self.result_text.setPlaceholderText("计算结果将在此显示……")
+        result_vbox.addWidget(self.result_text)
+        right_layout.addWidget(result_group)
+
+        # 拼合
+        scroll_left.setWidget(left_widget)
+        main_layout.addWidget(scroll_left, 2)
+        main_layout.addWidget(right_widget, 1)
+
+    # ──────────────────── 辅助 ───────────────────────────
+    def _populate_valve_table(self):
         """填充标准安全阀规格表"""
-        # 标准安全阀规格数据
-        valve_sizes = [
-            ["DN15", "11", "95", "≤1600"],
-            ["DN20", "16", "201", "≤1600"],
-            ["DN25", "19", "284", "≤1600"],
-            ["DN32", "23", "415", "≤1600"],
-            ["DN40", "26", "531", "≤1600"],
-            ["DN50", "33", "855", "≤1600"],
-            ["DN65", "47", "1735", "≤1600"],
-            ["DN80", "52", "2124", "≤1600"],
-            ["DN100", "68", "3631", "≤1600"],
-            ["DN125", "83", "5410", "≤1600"],
-            ["DN150", "102", "8171", "≤1600"]
-        ]
-        
-        self.valve_table.setRowCount(len(valve_sizes))
-        for i, size in enumerate(valve_sizes):
-            for j, value in enumerate(size):
-                item = QTableWidgetItem(value)
+        self.valve_table.setRowCount(len(self.STANDARD_VALVES))
+        for i, (dn, d, a) in enumerate(self.STANDARD_VALVES):
+            items = [dn, str(d), str(a), "\u22641600"]
+            for j, val in enumerate(items):
+                item = QTableWidgetItem(val)
+                item.setTextAlignment(Qt.AlignCenter)
                 self.valve_table.setItem(i, j, item)
-        
-        # 设置表格列宽
-        header = self.valve_table.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.Stretch)
-    
-    def clear_inputs(self):
-        """清空所有输入"""
-        self.vessel_volume_input.clear()
-        self.vessel_pressure_input.clear()
-        self.design_pressure_input.clear()
-        self.operating_pressure_input.clear()
-        self.fluid_name_input.clear()
-        self.molecular_weight_input.clear()
-        self.temperature_input.clear()
-        self.compressibility_input.setText("1.0")
-        self.specific_heat_ratio_input.setText("1.3")
-        self.density_input.clear()
-        self.relief_rate_input.clear()
-        self.back_pressure_input.setText("0")
-        self.overpressure_input.setText("10")
-        self.discharge_coeff_input.setText("0.65")
-        
-        # 清空结果
-        for label in [self.required_area_result, self.required_diameter_result,
-                     self.relief_pressure_result, self.critical_flow_result,
-                     self.actual_flow_result, self.recommended_size_result]:
-            label.setText("--")
-    
+
+    def _on_fluid_changed(self, fluid_type):
+        """介质类型切换时更新默认值"""
+        if fluid_type == "液体":
+            self.density_input.setText("1000")
+            self.gamma_input.setText("1.0")
+            self.mw_input.setText("18")
+        elif fluid_type == "气体/蒸汽":
+            self.density_input.setText("1.2")
+            self.gamma_input.setText("1.3")
+            self.mw_input.setText("18")
+        else:  # 两相流
+            self.density_input.setText("50")
+            self.gamma_input.setText("1.3")
+            self.mw_input.setText("18")
+
+    @staticmethod
+    def _pressure_to_kpa(value, unit):
+        """统一转为 kPa"""
+        if unit == "MPa":
+            return value * 1000
+        elif unit == "bar":
+            return value * 100
+        return value  # kPa
+
+    # ──────────────────── 计算 ───────────────────────────
     def calculate(self):
-        """执行泄压面积计算"""
         try:
-            # 获取计算条件
-            scenario = self.scenario_type.currentText()
-            fluid_type = self.fluid_type.currentText()
-            standard = self.standard_selection.currentText()
-            
-            # 获取设备参数
-            vessel_volume = float(self.vessel_volume_input.text())
-            volume_unit = self.vessel_volume_unit.currentText()
-            if volume_unit == "L":
-                vessel_volume = vessel_volume / 1000  # 转换为m³
-                
-            max_pressure = float(self.vessel_pressure_input.text())
-            design_pressure = float(self.design_pressure_input.text())
-            operating_pressure = float(self.operating_pressure_input.text())
-            
-            # 获取介质参数
-            molecular_weight = float(self.molecular_weight_input.text())
-            temperature = float(self.temperature_input.text())
-            compressibility = float(self.compressibility_input.text())
-            specific_heat_ratio = float(self.specific_heat_ratio_input.text())
+            # 场景与标准
+            scenario = self.scenario_combo.currentText()
+            fluid_type = self.fluid_combo.currentText()
+            standard = self.standard_combo.currentText()
+
+            # 设备参数
+            vessel_vol = float(self.volume_input.text())
+            vessel_vol_unit = self.volume_unit_combo.currentText()
+            vessel_vol_m3 = vessel_vol / 1000 if vessel_vol_unit == "L" else vessel_vol
+
+            design_p = float(self.design_p_input.text())
+            design_p_kpa = self._pressure_to_kpa(
+                design_p, self.design_p_unit_combo.currentText())
+
+            oper_p = float(self.oper_p_input.text())
+            oper_p_kpa = self._pressure_to_kpa(
+                oper_p, self.oper_p_unit_combo.currentText())
+
+            mawp = float(self.mawp_input.text())
+            mawp_kpa = self._pressure_to_kpa(
+                mawp, self.mawp_unit_combo.currentText())
+
+            # 介质参数
+            fluid_name = self.fluid_name_input.text() or "未命名"
+            mw = float(self.mw_input.text())
+            temp_c = float(self.temp_input.text())
+            z = float(self.z_input.text())
+            gamma = float(self.gamma_input.text())
             density = float(self.density_input.text())
-            
-            # 获取泄放参数
+
+            # 泄放参数
             relief_rate = float(self.relief_rate_input.text())
-            rate_unit = self.relief_rate_unit.currentText()
+            rate_unit = self.rate_unit_combo.currentText()
             if rate_unit == "kg/h":
-                relief_rate = relief_rate / 3600  # 转换为kg/s
-            elif rate_unit == "m³/h":
-                relief_rate = relief_rate * density / 3600  # 转换为kg/s
-                
-            back_pressure = float(self.back_pressure_input.text())
-            overpressure_percent = float(self.overpressure_input.text())
-            discharge_coeff = float(self.discharge_coeff_input.text())
-            
-            # 计算泄放压力
-            relief_pressure = max_pressure * (1 + overpressure_percent / 100)
-            
-            # 根据介质类型选择计算方法
-            if fluid_type == "气体/蒸汽":
-                results = self.calculate_gas_relief_area(
-                    relief_rate, relief_pressure, back_pressure, temperature,
-                    molecular_weight, compressibility, specific_heat_ratio,
-                    discharge_coeff
-                )
-            elif fluid_type == "液体":
-                results = self.calculate_liquid_relief_area(
-                    relief_rate, relief_pressure, back_pressure, density,
-                    discharge_coeff
-                )
-            else:  # 两相流
-                results = self.calculate_two_phase_relief_area(
-                    relief_rate, relief_pressure, back_pressure, temperature,
-                    molecular_weight, density, discharge_coeff
-                )
-            
-            # 计算等效直径和推荐规格
-            diameter = math.sqrt(results['area'] / math.pi) * 2
-            recommended_size = self.get_recommended_size(results['area'])
-            
-            results['diameter'] = diameter
-            results['recommended_size'] = recommended_size
-            results['relief_pressure'] = relief_pressure
-            
-            # 显示结果
-            self.display_results(results)
-            
-        except ValueError as e:
-            self.show_error("输入参数格式错误，请检查输入值")
-        except Exception as e:
-            self.show_error(f"计算错误: {str(e)}")
-
-    def _get_history_data(self):
-        """提供历史记录数据"""
-        scenario = self.scenario_type.currentText()
-        fluid_type = self.fluid_type.currentText()
-        standard = self.standard_selection.currentText()
-        vessel_volume = float(self.vessel_volume_input.text() or 0)
-        volume_unit = self.vessel_volume_unit.currentText()
-        if volume_unit == "L":
-            vessel_volume = vessel_volume / 1000
-        max_pressure = float(self.vessel_pressure_input.text() or 0)
-        design_pressure = float(self.design_pressure_input.text() or 0)
-        operating_pressure = float(self.operating_pressure_input.text() or 0)
-        molecular_weight = float(self.molecular_weight_input.text() or 0)
-        temperature = float(self.temperature_input.text() or 0)
-        compressibility = float(self.compressibility_input.text() or 0)
-        specific_heat_ratio = float(self.specific_heat_ratio_input.text() or 0)
-        density = float(self.density_input.text() or 0)
-        relief_rate = float(self.relief_rate_input.text() or 0)
-        rate_unit = self.relief_rate_unit.currentText()
-        if rate_unit == "kg/h":
-            relief_rate_kg_s = relief_rate / 3600
-        elif rate_unit == "m³/h":
-            relief_rate_kg_s = relief_rate * density / 3600
-        else:
-            relief_rate_kg_s = relief_rate
-        back_pressure = float(self.back_pressure_input.text() or 0)
-        overpressure_percent = float(self.overpressure_input.text() or 0)
-        discharge_coeff = float(self.discharge_coeff_input.text() or 0)
-
-        inputs = {
-            "场景类型": scenario,
-            "介质类型": fluid_type,
-            "设计标准": standard,
-            "设备容积_m3": vessel_volume,
-            "最大压力_MPa": max_pressure,
-            "设计压力_MPa": design_pressure,
-            "操作压力_MPa": operating_pressure,
-            "分子量": molecular_weight,
-            "温度_C": temperature,
-            "压缩系数": compressibility,
-            "绝热指数": specific_heat_ratio,
-            "密度_kg_m3": density,
-            "泄放速率": relief_rate,
-            "泄放速率单位": rate_unit,
-            "背压_MPa": back_pressure,
-            "超压_%": overpressure_percent,
-            "泄放系数": discharge_coeff
-        }
-
-        outputs = {}
-        try:
-            relief_pressure = max_pressure * (1 + overpressure_percent / 100)
-            if fluid_type == "气体/蒸汽":
-                results = self.calculate_gas_relief_area(
-                    relief_rate_kg_s, relief_pressure, back_pressure, temperature,
-                    molecular_weight, compressibility, specific_heat_ratio, discharge_coeff
-                )
-            elif fluid_type == "液体":
-                results = self.calculate_liquid_relief_area(
-                    relief_rate_kg_s, relief_pressure, back_pressure, density, discharge_coeff
-                )
+                relief_rate_kgs = relief_rate / 3600.0
+            elif rate_unit == "m\u00b3/h":
+                relief_rate_kgs = relief_rate * density / 3600.0
             else:
-                results = self.calculate_two_phase_relief_area(
-                    relief_rate_kg_s, relief_pressure, back_pressure, temperature,
-                    molecular_weight, density, discharge_coeff
-                )
-            diameter = math.sqrt(results['area'] / math.pi) * 2
-            recommended_size = self.get_recommended_size(results['area'])
-            outputs = {
-                "泄放压力_MPa": round(relief_pressure, 3),
-                "喉部面积_mm2": round(results['area'] * 1e6, 2),
-                "喉部直径_mm": round(diameter * 1000, 2),
-                "推荐规格": recommended_size
+                relief_rate_kgs = relief_rate
+
+            back_p_kpa = float(self.back_p_input.text())
+            over_p_pct = float(self.over_p_input.text())
+            kd = float(self.kd_input.text())
+
+            # 泄放压力 (MAWP × (1 + 超压%))
+            relief_p_kpa = mawp_kpa * (1 + over_p_pct / 100.0)
+
+            # 火灾工况泄放量估算（API 521: Q = 43.2·F·A^0.82）
+            fire_rate_kgs = None
+            if "火灾" in scenario:
+                env_f = 1.0  # 裸露容器环境因子
+                # 估算润湿面积（简化：按容器体积粗估）
+                if vessel_vol_m3 > 0:
+                    assumed_wetted_a = 2.0 * (vessel_vol_m3 ** (2.0 / 3.0)) * 3.1416
+                    heat_input = 43.2 * env_f * (assumed_wetted_a ** 0.82)
+                    latent_heat = 300.0  # 假设潜热 kJ/kg
+                    fire_rate_kgs = heat_input / latent_heat
+
+            # 根据介质类型计算泄放面积
+            if fluid_type == "气体/蒸汽":
+                area_mm2 = self._calc_gas_area(
+                    relief_rate_kgs, relief_p_kpa, back_p_kpa,
+                    temp_c, mw, z, gamma, kd)
+            elif fluid_type == "液体":
+                area_mm2 = self._calc_liquid_area(
+                    relief_rate_kgs, relief_p_kpa, back_p_kpa,
+                    density, kd)
+            else:
+                area_mm2 = self._calc_two_phase_area(
+                    relief_rate_kgs, relief_p_kpa, back_p_kpa,
+                    temp_c, mw, density, kd)
+
+            diameter_mm = math.sqrt(area_mm2 / math.pi) * 2
+            recommended = self._recommend_size(area_mm2)
+
+            # 临界流动判断（仅气体）
+            critical_ratio = 0
+            actual_ratio = 0
+            is_choked = False
+            if fluid_type == "气体/蒸汽":
+                critical_ratio = (2 / (gamma + 1)) ** (gamma / (gamma - 1))
+                actual_ratio = back_p_kpa / relief_p_kpa if relief_p_kpa > 0 else 1
+                is_choked = actual_ratio <= critical_ratio
+
+            self._last_result = {
+                "area_mm2": area_mm2,
+                "diameter_mm": diameter_mm,
+                "recommended": recommended,
+                "relief_p_kpa": relief_p_kpa,
+                "relief_rate_kgh": relief_rate_kgs * 3600,
+                "flow_type": self._flow_type_label(fluid_type, is_choked),
+                "is_choked": is_choked,
+                "critical_ratio": critical_ratio,
+                "actual_ratio": actual_ratio,
+                "fire_rate_kgs": fire_rate_kgs,
             }
+            self._last_params = {
+                "scenario": scenario,
+                "fluid_type": fluid_type,
+                "standard": standard,
+                "fluid_name": fluid_name,
+                "vessel_vol_m3": vessel_vol_m3,
+                "design_p_kpa": design_p_kpa,
+                "oper_p_kpa": oper_p_kpa,
+                "mawp_kpa": mawp_kpa,
+                "mw": mw,
+                "temp_c": temp_c,
+                "z": z,
+                "gamma": gamma,
+                "density": density,
+                "relief_rate": relief_rate,
+                "rate_unit": rate_unit,
+                "back_p_kpa": back_p_kpa,
+                "over_p_pct": over_p_pct,
+                "kd": kd,
+            }
+
+            self._display()
+
+            if self.data_manager:
+                try:
+                    self.data_manager.add_record(
+                        "relief_area", self._get_history_data())
+                except Exception:
+                    pass
+
+        except ValueError as e:
+            self._show_error(f"输入错误：{e}")
         except Exception as e:
-            outputs["计算错误"] = str(e)
+            self._show_error(f"计算错误：{e}")
 
-        return {"inputs": inputs, "outputs": outputs}
+    # ── 气体/蒸汽泄放面积 (ASME VIII / API 520, SI) ──
+    @staticmethod
+    def _calc_gas_area(W, P1_kpa, P2_kpa, T_c, M, Z, k, Kd):
+        """返回所需泄放面积 (mm²)"""
+        T_k = T_c + 273.15
+        C = 0.03948 * math.sqrt(k * (2 / (k + 1)) ** ((k + 1) / (k - 1)))
+        sqrt_M_TZ = math.sqrt(M / (T_k * Z))
 
-    def calculate_gas_relief_area(self, W, P1, P2, T, M, Z, k, Kd):
-        """计算气体/蒸汽泄放面积"""
-        # 转换为绝对温度
-        T_abs = T + 273.15
-        
-        # 计算临界压力比
-        critical_pressure_ratio = (2 / (k + 1)) ** (k / (k - 1))
-        
-        # 判断流动状态
-        if P2 / P1 <= critical_pressure_ratio:
-            # 临界流动
-            flow_type = "临界流动"
-            # ASME VIII 气体临界流动公式
-            C = 0.03948 * math.sqrt(k * (2 / (k + 1)) ** ((k + 1) / (k - 1)))
-            A = W / (C * Kd * P1 * math.sqrt(M / (T_abs * Z)))
+        critical_ratio = (2 / (k + 1)) ** (k / (k - 1))
+        ratio = P2_kpa / P1_kpa if P1_kpa > 0 else 1.0
+
+        if ratio <= critical_ratio:
+            # 临界流（阻塞流）
+            A_m2 = W / (C * Kd * P1_kpa * 1000 * sqrt_M_TZ)
         else:
-            # 亚临界流动
-            flow_type = "亚临界流动"
-            # ASME VIII 气体亚临界流动公式
-            r = P2 / P1
-            C1 = 0.03948 * math.sqrt(k * (2 / (k + 1)) ** ((k + 1) / (k - 1)))
-            F = math.sqrt((k / (k - 1)) * (r ** (2 / k) - r ** ((k + 1) / k)))
-            A = W / (C1 * Kd * P1 * F * math.sqrt(M / (T_abs * Z)))
-        
-        return {
-            'area': A * 1e6,  # 转换为mm²
-            'flow_type': flow_type,
-            'actual_flow': W
-        }
-    
-    def calculate_liquid_relief_area(self, W, P1, P2, rho, Kd):
-        """计算液体泄放面积（ASME VIII / API 520）"""
-        delta_P = P1 - P2  # kPa
-        delta_P_pa = delta_P * 1000  # 转换为Pa
+            # 亚临界流
+            r = ratio
+            F = math.sqrt(
+                (k / (k - 1)) * (r ** (2 / k) - r ** ((k + 1) / k)))
+            A_m2 = W / (C * Kd * P1_kpa * 1000 * F * sqrt_M_TZ)
 
-        if delta_P_pa <= 0:
-            return {
-                'area': float('inf'),
-                'flow_type': "背压过高，无法泄放",
-                'actual_flow': W
+        return A_m2 * 1e6  # m² → mm²
+
+    # ── 液体泄放面积 (ASME VIII / API 520, SI) ──
+    @staticmethod
+    def _calc_liquid_area(W, P1_kpa, P2_kpa, rho, Kd):
+        """返回所需泄放面积 (mm²)"""
+        delta_p = (P1_kpa - P2_kpa) * 1000  # kPa → Pa
+        if delta_p <= 0:
+            return float("inf")
+        A_m2 = W / (Kd * math.sqrt(2 * rho * delta_p))
+        return A_m2 * 1e6
+
+    # ── 两相流泄放面积（均相平衡模型简化） ──
+    @staticmethod
+    def _calc_two_phase_area(W, P1_kpa, P2_kpa, T_c, M, rho, Kd):
+        """两相流简化计算，使用气体公式近似"""
+        T_k = T_c + 273.15
+        k = 1.3
+        Z = 1.0
+        C = 0.03948 * math.sqrt(k * (2 / (k + 1)) ** ((k + 1) / (k - 1)))
+        sqrt_M_TZ = math.sqrt(M / (T_k * Z))
+
+        critical_ratio = (2 / (k + 1)) ** (k / (k - 1))
+        ratio = P2_kpa / P1_kpa if P1_kpa > 0 else 1.0
+
+        if ratio <= critical_ratio:
+            A_m2 = W / (C * Kd * P1_kpa * 1000 * sqrt_M_TZ)
+        else:
+            r = ratio
+            F = math.sqrt(
+                (k / (k - 1)) * (r ** (2 / k) - r ** ((k + 1) / k)))
+            A_m2 = W / (C * Kd * P1_kpa * 1000 * F * sqrt_M_TZ)
+
+        return A_m2 * 1e6
+
+    # ── 推荐标准阀门规格 ──
+    def _recommend_size(self, area_mm2):
+        """根据计算面积推荐满足 10% 安全余量的最小标准规格"""
+        for dn, d, a in self.STANDARD_VALVES:
+            if a >= area_mm2 * 1.1:
+                return dn
+        return "DN150 或定制"
+
+    @staticmethod
+    def _flow_type_label(fluid_type, is_choked):
+        if fluid_type == "气体/蒸汽":
+            return "临界流（阻塞流）" if is_choked else "亚临界流"
+        elif fluid_type == "液体":
+            return "不可压缩流动"
+        return "两相流（HEM简化）"
+
+    # ──────────────────── 显示 ───────────────────────────
+    def _display(self):
+        r = self._last_result
+        p = self._last_params
+        lines = [
+            "=" * 55,
+            "          泄压面积计算结果",
+            "=" * 55,
+            "",
+            "【工况条件】",
+            f"  泄放场景       : {p['scenario']}",
+            f"  介质类型       : {p['fluid_type']}",
+            f"  设计标准       : {p['standard']}",
+            f"  介质名称       : {p['fluid_name']}",
+            "",
+            "【设备参数】",
+            f"  容器容积       : {p['vessel_vol_m3']:.2f} m\u00b3",
+            f"  设计压力       : {p['design_p_kpa']:.1f} kPa",
+            f"  操作压力       : {p['oper_p_kpa']:.1f} kPa",
+            f"  MAWP           : {p['mawp_kpa']:.1f} kPa",
+            "",
+            "【介质参数】",
+            f"  分子量         : {p['mw']} g/mol",
+            f"  温度           : {p['temp_c']} \u00b0C",
+            f"  压缩因子 Z     : {p['z']}",
+            f"  绝热指数 \u03b3     : {p['gamma']}",
+            f"  密度           : {p['density']} kg/m\u00b3",
+            "",
+            "【泄放参数】",
+            f"  泄放速率       : {p['relief_rate']} {p['rate_unit']}",
+            f"  背压           : {p['back_p_kpa']} kPa",
+            f"  超压百分比     : {p['over_p_pct']} %",
+            f"  排放系数 Kd    : {p['kd']}",
+            "",
+            "【计算结果】",
+            f"  \u2605 所需泄放面积   : {r['area_mm2']:.2f} mm\u00b2",
+            f"  \u2605 等效喉径       : {r['diameter_mm']:.2f} mm",
+            f"    推荐规格       : {r['recommended']}",
+            f"    泄放压力       : {r['relief_p_kpa']:.1f} kPa",
+            f"    泄放量         : {r['relief_rate_kgh']:.2f} kg/h",
+            f"    流动状态       : {r['flow_type']}",
+        ]
+
+        # 气体临界流信息
+        if p['fluid_type'] == "气体/蒸汽":
+            lines.append(f"    临界压比       : {r['critical_ratio']:.4f}")
+            lines.append(f"    实际背压比     : {r['actual_ratio']:.4f}")
+            if r['is_choked']:
+                lines.append("    \u26a0 当前为临界流（阻塞流），背压不影响泄放量")
+            else:
+                lines.append("    \u26a0 当前为亚临界流，背压降低泄放能力")
+
+        # 火灾工况信息
+        if r['fire_rate_kgs'] is not None:
+            lines += [
+                "",
+                "【火灾工况估算】",
+                "  按 API 521 火灾热输入公式估算：",
+                f"    Q = 43.2 \u00d7 F \u00d7 A^0.82",
+                f"    估算火灾泄放量   : {r['fire_rate_kgs']:.2f} kg/s",
+                f"    折合             : {r['fire_rate_kgs']*3600:.1f} kg/h",
+            ]
+
+        lines += [
+            "",
+            "【选型建议】",
+            f"  1. 所需泄放面积 {r['area_mm2']:.2f} mm\u00b2",
+            f"     推荐选用 {r['recommended']} 安全阀或等效泄压装置",
+            "  2. 排放系数 Kd 应按阀门制造商提供值选取",
+            "  3. 实际泄压装置的认证排量应大于计算泄放量",
+            "  4. 背压修正：背压 > 10% 泄放压力时需选平衡式",
+            "  5. 火灾工况下超压百分比可取 21%",
+            "",
+            "【标准依据】",
+            "  ASME BPVC Section VIII Div.1 UG-131/132",
+            "  API RP 520 Part I - Sizing & Selection",
+            "  API RP 521 - Pressure-Relieving Systems",
+            "  ISO 4126 - Safety Devices for Pressure Protection",
+            "",
+            "  * 本结果为理论计算值，实际选型需由",
+            "    专业工程师结合工况确认设计方案。",
+            "=" * 55,
+        ]
+        self.result_text.setPlainText("\n".join(lines))
+
+    def _show_error(self, msg):
+        self.result_text.setPlainText(f"\u26a0\ufe0f  错误：{msg}")
+
+    # ──────────────────── 清空 ───────────────────────────
+    def clear_inputs(self):
+        self.scenario_combo.setCurrentIndex(0)
+        self.fluid_combo.setCurrentIndex(0)
+        self.standard_combo.setCurrentIndex(0)
+        self.volume_input.setText("10")
+        self.volume_unit_combo.setCurrentIndex(0)
+        self.design_p_input.setText("1.1")
+        self.design_p_unit_combo.setCurrentIndex(0)
+        self.oper_p_input.setText("0.8")
+        self.oper_p_unit_combo.setCurrentIndex(0)
+        self.mawp_input.setText("1.0")
+        self.mawp_unit_combo.setCurrentIndex(0)
+        self.fluid_name_input.clear()
+        self.mw_input.setText("18")
+        self.temp_input.setText("200")
+        self.z_input.setText("1.0")
+        self.gamma_input.setText("1.3")
+        self.density_input.setText("1.2")
+        self.relief_rate_input.setText("1000")
+        self.rate_unit_combo.setCurrentIndex(0)
+        self.back_p_input.setText("101.325")
+        self.over_p_input.setText("10")
+        self.kd_input.setText("0.65")
+        self.result_text.clear()
+        self._last_result = {}
+        self._last_params = {}
+
+    # ──────────────────── 历史数据 ──────────────────────
+    def _get_history_data(self):
+        r = self._last_result
+        p = self._last_params
+        return {
+            "inputs": {
+                "场景类型": p.get("scenario", ""),
+                "介质类型": p.get("fluid_type", ""),
+                "设计标准": p.get("standard", ""),
+                "容器容积_m3": p.get("vessel_vol_m3", 0),
+                "MAWP_kPa": p.get("mawp_kpa", 0),
+                "分子量": p.get("mw", 0),
+                "温度_C": p.get("temp_c", 0),
+                "绝热指数": p.get("gamma", 0),
+                "泄放速率": p.get("relief_rate", 0),
+                "速率单位": p.get("rate_unit", ""),
+                "超压_%": p.get("over_p_pct", 0),
+                "排放系数": p.get("kd", 0),
+            },
+            "outputs": {
+                "泄放面积_mm2": round(r.get("area_mm2", 0), 2),
+                "等效喉径_mm": round(r.get("diameter_mm", 0), 2),
+                "推荐规格": r.get("recommended", ""),
+                "泄放压力_kPa": round(r.get("relief_p_kpa", 0), 1),
             }
+        }
 
-        # ASME VIII 液体泄放公式 (SI单位)
-        # A = W / (Kd * sqrt(2 * rho * delta_P))
-        A = W / (Kd * math.sqrt(2 * rho * delta_P_pa))
-        
+    def get_project_info(self):
         return {
-            'area': A * 1e6,  # 转换为mm²
-            'flow_type': "不可压缩流动",
-            'actual_flow': W
+            "calculator": "ReliefAreaCalculator",
+            "name": "泄压面积计算",
         }
-    
-    def calculate_two_phase_relief_area(self, W, P1, P2, T, M, rho, Kd):
-        """计算两相流泄放面积（简化计算）"""
-        # 简化计算，使用均相平衡模型
-        # 实际应用中应使用更精确的方法如DIERS方法
-        
-        # 使用气体公式作为近似
-        T_abs = T + 273.15
-        k = 1.3  # 假设值
-        Z = 1.0  # 假设值
-        
-        critical_pressure_ratio = (2 / (k + 1)) ** (k / (k - 1))
-        
-        if P2 / P1 <= critical_pressure_ratio:
-            C = 0.03948 * math.sqrt(k * (2 / (k + 1)) ** ((k + 1) / (k - 1)))
-            A = W / (C * Kd * P1 * math.sqrt(M / (T_abs * Z)))
-        else:
-            r = P2 / P1
-            C1 = 0.03948 * math.sqrt(k * (2 / (k + 1)) ** ((k + 1) / (k - 1)))
-            F = math.sqrt((k / (k - 1)) * (r ** (2 / k) - r ** ((k + 1) / k)))
-            A = W / (C1 * Kd * P1 * F * math.sqrt(M / (T_abs * Z)))
-        
-        return {
-            'area': A * 1e6,  # 转换为mm²
-            'flow_type': "两相流",
-            'actual_flow': W
-        }
-    
-    def get_recommended_size(self, area):
-        """根据计算面积推荐标准阀门规格"""
-        # 标准阀门面积表 (mm²)
-        standard_areas = {
-            "DN15": 95,
-            "DN20": 201,
-            "DN25": 284,
-            "DN32": 415,
-            "DN40": 531,
-            "DN50": 855,
-            "DN65": 1735,
-            "DN80": 2124,
-            "DN100": 3631,
-            "DN125": 5410,
-            "DN150": 8171
-        }
-        
-        # 找到最小能满足要求的规格
-        for size, standard_area in standard_areas.items():
-            if standard_area >= area * 1.1:  # 10%安全余量
-                return size
-        
-        # 如果所有标准规格都不满足，返回最大规格
-        return "DN150或定制"
-    
-    def display_results(self, results):
-        """显示计算结果"""
-        self.required_area_result.setText(f"{results['area']:.1f}")
-        self.required_diameter_result.setText(f"{results['diameter']:.1f}")
-        self.relief_pressure_result.setText(f"{results['relief_pressure']:.1f}")
-        self.critical_flow_result.setText(results['flow_type'])
-        self.actual_flow_result.setText(f"{results['actual_flow']:.3f}")
-        self.recommended_size_result.setText(results['recommended_size'])
-    
-    def show_error(self, message):
-        """显示错误信息"""
-        for label in [self.required_area_result, self.required_diameter_result,
-                     self.relief_pressure_result, self.critical_flow_result,
-                     self.actual_flow_result, self.recommended_size_result]:
-            label.setText("计算错误")
-        
-        print(f"错误: {message}")
+
+    # ──────────────────── 报告 ───────────────────────────
+    def generate_report(self):
+        return self.result_text.toPlainText()
+
+    def download_txt_report(self):
+        content = self.result_text.toPlainText()
+        if not content.strip():
+            QMessageBox.warning(self, "提示", "请先计算，再下载报告。")
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "保存TXT报告", "泄压面积计算报告.txt", "文本文件 (*.txt)")
+        if path:
+            try:
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(content)
+                QMessageBox.information(self, "成功", f"报告已保存到：\n{path}")
+            except Exception as e:
+                QMessageBox.critical(self, "错误", f"保存失败：{e}")
+
+    def generate_pdf_report(self):
+        content = self.result_text.toPlainText()
+        if not content.strip():
+            QMessageBox.warning(self, "提示", "请先计算，再下载PDF。")
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "保存PDF报告", "泄压面积计算报告.pdf", "PDF文件 (*.pdf)")
+        if not path:
+            return
+        try:
+            from reportlab.lib.pagesizes import A4
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib.units import mm
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+            from reportlab.lib.enums import TA_LEFT
+            from reportlab.pdfbase import pdfmetrics
+            from reportlab.pdfbase.ttfonts import TTFont
+
+            font_paths = [
+                "C:/Windows/Fonts/simhei.ttf",
+                "C:/Windows/Fonts/msyh.ttc",
+                "C:/Windows/Fonts/simsun.ttc",
+            ]
+            font_name = "Helvetica"
+            for fp in font_paths:
+                if os.path.exists(fp):
+                    try:
+                        pdfmetrics.registerFont(TTFont("CF", fp))
+                        font_name = "CF"
+                        break
+                    except Exception:
+                        continue
+
+            doc = SimpleDocTemplate(
+                path, pagesize=A4,
+                leftMargin=20 * mm, rightMargin=20 * mm,
+                topMargin=20 * mm, bottomMargin=20 * mm)
+            styles = getSampleStyleSheet()
+            st = ParagraphStyle(
+                "Body", fontName=font_name, fontSize=10,
+                leading=16, alignment=TA_LEFT)
+            story = []
+            for line in content.split("\n"):
+                safe = line.replace("&", "&amp;").replace(
+                    "<", "&lt;").replace(">", "&gt;")
+                story.append(
+                    Paragraph(safe if safe.strip() else "&nbsp;", st))
+                story.append(Spacer(1, 1))
+            doc.build(story)
+            QMessageBox.information(self, "成功", f"PDF已保存到：\n{path}")
+        except ImportError:
+            QMessageBox.critical(
+                self, "错误", "缺少 reportlab 库，请运行：pip install reportlab")
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"PDF生成失败：{e}")
 
 
 if __name__ == "__main__":
-    # 测试代码
     import sys
     from PySide6.QtWidgets import QApplication
-    
     app = QApplication(sys.argv)
-    
-    calculator = ReliefAreaCalculator()
-    calculator.resize(900, 800)
-    calculator.show()
-    
+    w = ReliefAreaCalculator()
+    w.resize(1200, 800)
+    w.show()
     sys.exit(app.exec())

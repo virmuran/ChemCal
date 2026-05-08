@@ -1,441 +1,455 @@
-from threading import Thread
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
-    QGroupBox, QTextEdit, QComboBox, QMessageBox, QFrame,
-    QScrollArea, QDialog, QSpinBox, QButtonGroup, QGridLayout,
-    QTableWidget, QTableWidgetItem, QHeaderView, QProgressBar
-)
-from PySide6.QtCore import Qt, Signal, QThread  # 修复：使用 Signal 和 QThread
-from PySide6.QtGui import QFont, QDoubleValidator
+import os
 import math
-import json
-import time
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
+    QLabel, QLineEdit, QPushButton, QComboBox,
+    QTextEdit, QGridLayout, QTableWidget, QTableWidgetItem,
+    QHeaderView, QFileDialog, QMessageBox, QProgressBar,
+    QScrollArea,
+
+)
+from PySide6.QtCore import Qt, Signal, QThread
+from PySide6.QtGui import QFont, QDoubleValidator
 
 
-class SolubilityWorker(QThread):  # 修复：继承自 QThread 而不是 Thread
+class SolubilityWorker(QThread):
     """溶解度查询工作线程"""
-    finished = Signal(dict)  # 修复：使用 Signal 而不是 pyqtSignal
-    error = Signal(str)      # 修复：使用 Signal 而不是 pyqtSignal
-    
+    finished = Signal(dict)
+    error = Signal(str)
+
     def __init__(self, compound, solvent, temperature):
         super().__init__()
         self.compound = compound
         self.solvent = solvent
         self.temperature = temperature
-    
+
     def run(self):
         try:
-            # 模拟数据查询过程
-            self.msleep(500)  # 使用 QThread 的 msleep
-            
+            self.msleep(400)
             result = self.query_solubility_data(
-                self.compound, self.solvent, self.temperature
-            )
+                self.compound, self.solvent, self.temperature)
             self.finished.emit(result)
         except Exception as e:
             self.error.emit(str(e))
-    
+
     def query_solubility_data(self, compound, solvent, temperature):
         """查询溶解度数据"""
-        # 这里使用内置的溶解度数据库
-        # 实际应用中可以从外部数据库或API获取数据
-        solubility_data = self.get_solubility_database()
-        
+        db = self.get_solubility_database()
         key = f"{compound}_{solvent}"
-        if key in solubility_data:
-            base_data = solubility_data[key]
-            solubility = self.calculate_temperature_effect(
-                base_data, temperature
-            )
+        if key in db:
+            base = db[key]
+            sol = self.calculate_temperature_effect(base, temperature)
             return {
-                'compound': compound,
-                'solvent': solvent,
-                'temperature': temperature,
-                'solubility': solubility,
-                'unit': base_data['unit'],
-                'temperature_range': base_data.get('temperature_range', '0-100'),
-                'source': base_data.get('source', 'Handbook'),
-                'notes': base_data.get('notes', ''),
-                'confidence': 'High'
+                "compound": compound,
+                "solvent": solvent,
+                "temperature": temperature,
+                "solubility": sol,
+                "unit": base["unit"],
+                "temperature_range": base.get("temperature_range", "0-100"),
+                "source": base.get("source", "Handbook"),
+                "notes": base.get("notes", ""),
+                "confidence": "High",
             }
-        else:
-            return {
-                'compound': compound,
-                'solvent': solvent,
-                'temperature': temperature,
-                'solubility': 'N/A',
-                'unit': 'g/100g',
-                'temperature_range': 'N/A',
-                'source': 'Not Found',
-                'notes': 'No data available for this compound-solvent pair',
-                'confidence': 'Low'
-            }
-    
-    def calculate_temperature_effect(self, base_data, temperature):
-        """计算温度对溶解度的影响"""
-        if 'solubility' not in base_data:
-            return 'N/A'
-        
-        base_temp = base_data.get('base_temperature', 25)
-        base_solubility = base_data['solubility']
-        
-        # 如果请求温度与基础温度相同，直接返回基础溶解度
-        if temperature == base_temp:
-            return base_solubility
-        
-        # 使用简化的温度影响模型
-        # 实际应用中应使用更精确的模型或实验数据
-        temp_coeff = base_data.get('temperature_coefficient', 0.02)  # 默认2%/°C
-        
-        if isinstance(base_solubility, (int, float)):
-            # 数值型溶解度数据
-            delta_temp = temperature - base_temp
-            adjusted_solubility = base_solubility * (1 + temp_coeff * delta_temp)
-            return max(0, adjusted_solubility)  # 确保非负
-        else:
-            # 字符串型数据（如"可溶"、"微溶"等）
-            return base_solubility
-    
-    def get_solubility_database(self):
-        """获取内置溶解度数据库"""
         return {
-            # 无机盐在水中的溶解度
+            "compound": compound,
+            "solvent": solvent,
+            "temperature": temperature,
+            "solubility": "N/A",
+            "unit": "g/100g",
+            "temperature_range": "N/A",
+            "source": "Not Found",
+            "notes": "No data available for this compound-solvent pair",
+            "confidence": "Low",
+        }
+
+    def calculate_temperature_effect(self, base_data, temperature):
+        """温度修正（指数型模型）"""
+        if "solubility" not in base_data:
+            return "N/A"
+        base_temp = base_data.get("base_temperature", 25)
+        base_sol = base_data["solubility"]
+        if abs(temperature - base_temp) < 0.1:
+            return base_sol
+        if not isinstance(base_sol, (int, float)):
+            return base_sol
+        tc = base_data.get("temperature_coefficient", 0.02)
+        tc = max(-0.05, min(0.10, tc))
+        return max(0, base_sol * math.exp(tc * (temperature - base_temp)))
+
+    @staticmethod
+    def get_solubility_database():
+        """内置溶解度数据库"""
+        return {
             "氯化钠_水": {
-                "solubility": 35.7,
-                "unit": "g/100g",
-                "base_temperature": 20,
-                "temperature_coefficient": 0.005,
-                "temperature_range": "0-100",
-                "source": "CRC Handbook",
+                "solubility": 35.7, "unit": "g/100g",
+                "base_temperature": 20, "temperature_coefficient": 0.005,
+                "temperature_range": "0-100", "source": "CRC Handbook",
                 "notes": "温度对溶解度影响较小"
             },
             "氯化钾_水": {
-                "solubility": 34.0,
-                "unit": "g/100g", 
-                "base_temperature": 20,
-                "temperature_coefficient": 0.008,
-                "temperature_range": "0-100",
-                "source": "CRC Handbook",
+                "solubility": 34.0, "unit": "g/100g",
+                "base_temperature": 20, "temperature_coefficient": 0.008,
+                "temperature_range": "0-100", "source": "CRC Handbook",
                 "notes": "溶解度随温度升高而增加"
             },
             "硫酸钠_水": {
-                "solubility": 19.5,
-                "unit": "g/100g",
-                "base_temperature": 20,
-                "temperature_coefficient": 0.015,
-                "temperature_range": "0-32.4",
-                "source": "CRC Handbook", 
+                "solubility": 19.5, "unit": "g/100g",
+                "base_temperature": 20, "temperature_coefficient": 0.015,
+                "temperature_range": "0-32.4", "source": "CRC Handbook",
                 "notes": "在32.4°C时溶解度最大"
             },
             "碳酸钙_水": {
-                "solubility": 0.0014,
-                "unit": "g/100g",
-                "base_temperature": 25,
-                "temperature_coefficient": -0.02,
-                "temperature_range": "0-100",
-                "source": "CRC Handbook",
+                "solubility": 0.0014, "unit": "g/100g",
+                "base_temperature": 25, "temperature_coefficient": -0.02,
+                "temperature_range": "0-100", "source": "CRC Handbook",
                 "notes": "溶解度随温度升高而降低"
             },
-            
-            # 有机化合物在水中的溶解度
             "蔗糖_水": {
-                "solubility": 211.5,
-                "unit": "g/100g",
-                "base_temperature": 20,
-                "temperature_coefficient": 0.025,
-                "temperature_range": "0-100", 
-                "source": "CRC Handbook",
+                "solubility": 211.5, "unit": "g/100g",
+                "base_temperature": 20, "temperature_coefficient": 0.025,
+                "temperature_range": "0-100", "source": "CRC Handbook",
                 "notes": "溶解度随温度显著增加"
             },
             "苯甲酸_水": {
-                "solubility": 0.34,
-                "unit": "g/100g",
-                "base_temperature": 25,
-                "temperature_coefficient": 0.03,
-                "temperature_range": "0-100",
-                "source": "Merck Index",
+                "solubility": 0.34, "unit": "g/100g",
+                "base_temperature": 25, "temperature_coefficient": 0.03,
+                "temperature_range": "0-100", "source": "Merck Index",
                 "notes": "微溶于冷水，易溶于热水"
             },
             "阿司匹林_水": {
-                "solubility": 0.33,
-                "unit": "g/100g", 
-                "base_temperature": 25,
-                "temperature_coefficient": 0.02,
-                "temperature_range": "15-40",
-                "source": "Merck Index",
+                "solubility": 0.33, "unit": "g/100g",
+                "base_temperature": 25, "temperature_coefficient": 0.02,
+                "temperature_range": "15-40", "source": "Merck Index",
                 "notes": "微溶于水"
             },
             "咖啡因_水": {
-                "solubility": 2.17,
-                "unit": "g/100g",
-                "base_temperature": 25,
-                "temperature_coefficient": 0.04,
-                "temperature_range": "0-100",
-                "source": "Merck Index", 
+                "solubility": 2.17, "unit": "g/100g",
+                "base_temperature": 25, "temperature_coefficient": 0.04,
+                "temperature_range": "0-100", "source": "Merck Index",
                 "notes": "溶解度随温度显著增加"
             },
-            
-            # 在不同溶剂中的溶解度
             "氯化钠_乙醇": {
-                "solubility": 0.065,
-                "unit": "g/100g",
-                "base_temperature": 25,
-                "temperature_coefficient": 0.01,
-                "temperature_range": "0-78",
-                "source": "Handbook",
+                "solubility": 0.065, "unit": "g/100g",
+                "base_temperature": 25, "temperature_coefficient": 0.01,
+                "temperature_range": "0-78", "source": "Handbook",
                 "notes": "在乙醇中溶解度很低"
             },
             "蔗糖_乙醇": {
-                "solubility": 0.6,
-                "unit": "g/100g",
-                "base_temperature": 20,
-                "temperature_coefficient": 0.015,
-                "temperature_range": "0-78", 
-                "source": "Handbook",
+                "solubility": 0.6, "unit": "g/100g",
+                "base_temperature": 20, "temperature_coefficient": 0.015,
+                "temperature_range": "0-78", "source": "Handbook",
                 "notes": "在乙醇中微溶"
             },
             "碘_乙醇": {
-                "solubility": 20.5,
-                "unit": "g/100g",
-                "base_temperature": 25,
-                "temperature_coefficient": 0.02,
-                "temperature_range": "0-78",
-                "source": "Handbook",
+                "solubility": 20.5, "unit": "g/100g",
+                "base_temperature": 25, "temperature_coefficient": 0.02,
+                "temperature_range": "0-78", "source": "Handbook",
                 "notes": "易溶于乙醇"
             },
             "萘_乙醇": {
-                "solubility": 19.5,
-                "unit": "g/100g",
-                "base_temperature": 25, 
-                "temperature_coefficient": 0.025,
-                "temperature_range": "0-78",
-                "source": "Handbook",
+                "solubility": 19.5, "unit": "g/100g",
+                "base_temperature": 25, "temperature_coefficient": 0.025,
+                "temperature_range": "0-78", "source": "Handbook",
                 "notes": "在乙醇中溶解度较高"
             },
-            
-            # 定性溶解度描述
             "碳酸钙_盐酸": {
-                "solubility": "可溶",
-                "unit": "定性",
-                "base_temperature": 25,
-                "temperature_range": "0-100", 
+                "solubility": "可溶", "unit": "定性",
+                "base_temperature": 25, "temperature_range": "0-100",
                 "source": "Chemical Properties",
                 "notes": "与酸反应生成可溶性盐"
             },
             "氢氧化铝_氢氧化钠": {
-                "solubility": "可溶",
-                "unit": "定性",
-                "base_temperature": 25,
-                "temperature_range": "0-100",
+                "solubility": "可溶", "unit": "定性",
+                "base_temperature": 25, "temperature_range": "0-100",
                 "source": "Chemical Properties",
                 "notes": "两性氢氧化物，溶于强碱"
-            }
+            },
         }
 
 
 class SolidSolubilityCalculator(QWidget):
-    """固体溶解度查询计算器"""
-    
-    def __init__(self, parent=None):
+    """固体溶解度查询计算器（统一 UI 规范版）"""
+
+    def __init__(self, parent=None, data_manager=None):
         super().__init__(parent)
+        if data_manager is not None:
+            self.data_manager = data_manager
+        else:
+            self.data_manager = None
         self.worker = None
+        self._last_result = {}
         self.setup_ui()
-        
+
+    # ─────────────────────────── UI ─────────────────────────────
     def setup_ui(self):
-        """设置固体溶解度查询界面"""
-        main_layout = QVBoxLayout(self)
+        group_style = """
+            QGroupBox {
+                font-weight: bold;
+                border: 1px solid #bdc3c7;
+                border-radius: 8px;
+                margin-top: 10px;
+                padding-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 8px 0 8px;
+            }
+        """
+        main_layout = QHBoxLayout(self)
         main_layout.setSpacing(15)
-        
-        # 标题
-        title_label = QLabel("固体溶解度查询")
-        title_label.setFont(QFont("Arial", 14, QFont.Bold))
-        title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("color: #2c3e50; margin: 10px;")
-        main_layout.addWidget(title_label)
-        
-        # 说明文本
-        desc_label = QLabel("查询固体在不同溶剂和温度条件下的溶解度数据")
-        desc_label.setWordWrap(True)
-        desc_label.setStyleSheet("color: #7f8c8d; margin: 5px;")
-        main_layout.addWidget(desc_label)
-        
-        # 创建滚动区域
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_content = QWidget()
-        scroll_layout = QVBoxLayout(scroll_content)
-        
-        # 查询条件组
+        main_layout.setContentsMargins(10, 10, 10, 10)
+
+        # ──────────────── 左侧输入区 ────────────────
+        scroll_left = QScrollArea()
+        scroll_left.setStyleSheet("QScrollArea { border: none; background: transparent; } QScrollBar:vertical { background: transparent; width: 8px; margin: 0; } QScrollBar::handle:vertical { background: #c0c0c0; border-radius: 4px; min-height: 30px; } QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }")
+
+        scroll_left.setWidgetResizable(True)
+
+        scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        left_widget = QWidget()
+        left_widget.setStyleSheet("QWidget { background: transparent; }")
+        left_layout = QVBoxLayout(left_widget)
+        left_layout.setSpacing(15)
+
+        # 说明文字
+        desc = QLabel(
+            "查询固体在不同溶剂和温度条件下的溶解度数据。"
+            "支持单次查询和批量查询，数据来源包括 CRC Handbook、Merck Index 等。"
+        )
+        desc.setWordWrap(True)
+        desc.setStyleSheet("color: #7f8c8d; font-size: 12px;")
+        left_layout.addWidget(desc)
+
+        # ── 查询条件组 ──
         query_group = QGroupBox("查询条件")
-        query_layout = QGridLayout(query_group)
-        
+        query_group.setStyleSheet(group_style)
+        grid = QGridLayout(query_group)
+        grid.setHorizontalSpacing(10)
+        grid.setVerticalSpacing(10)
+        grid.setColumnStretch(0, 2)
+        grid.setColumnStretch(1, 3)
+        grid.setColumnStretch(2, 2)
+
+        label_style = "font-weight: bold; padding-right: 10px;"
+
+        def make_lbl(text):
+            lbl = QLabel(text)
+            lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            lbl.setMinimumWidth(120)
+            lbl.setMaximumWidth(200)
+            lbl.setStyleSheet(label_style)
+            return lbl
+
+        # 行0：化合物
         self.compound_input = QComboBox()
         self.compound_input.setEditable(True)
+        self.compound_input.setMinimumWidth(150)
+        self.compound_input.setMaximumWidth(400)
         self.compound_input.addItems([
-            "氯化钠", "氯化钾", "硫酸钠", "碳酸钙", 
+            "氯化钠", "氯化钾", "硫酸钠", "碳酸钙",
             "蔗糖", "苯甲酸", "阿司匹林", "咖啡因",
-            "碘", "萘", "氢氧化铝", "硫酸钡"
+            "碘", "萘", "氢氧化铝", "硫酸钡",
         ])
-        
+        grid.addWidget(make_lbl("化合物:"), 0, 0)
+        grid.addWidget(self.compound_input, 0, 1)
+        hint_c = QLabel("可选列表或手动输入")
+        hint_c.setMinimumWidth(100)
+        hint_c.setMaximumWidth(250)
+        hint_c.setStyleSheet("color: #95a5a6; font-size: 11px;")
+        grid.addWidget(hint_c, 0, 2)
+
+        # 行1：溶剂
         self.solvent_input = QComboBox()
         self.solvent_input.setEditable(True)
+        self.solvent_input.setMinimumWidth(150)
+        self.solvent_input.setMaximumWidth(400)
         self.solvent_input.addItems([
-            "水", "乙醇", "甲醇", "丙酮", 
+            "水", "乙醇", "甲醇", "丙酮",
             "乙醚", "苯", "氯仿", "盐酸",
-            "氢氧化钠", "硫酸"
+            "氢氧化钠", "硫酸",
         ])
-        
-        self.temperature_input = QLineEdit()
-        self.temperature_input.setText("25")
+        grid.addWidget(make_lbl("溶剂:"), 1, 0)
+        grid.addWidget(self.solvent_input, 1, 1)
+        hint_s = QLabel("可选列表或手动输入")
+        hint_s.setMinimumWidth(100)
+        hint_s.setMaximumWidth(250)
+        hint_s.setStyleSheet("color: #95a5a6; font-size: 11px;")
+        grid.addWidget(hint_s, 1, 2)
+
+        # 行2：温度
+        self.temperature_input = QLineEdit("25")
+        self.temperature_input.setMinimumWidth(150)
+        self.temperature_input.setMaximumWidth(400)
         self.temperature_input.setValidator(QDoubleValidator(-273, 500, 1))
-        
-        self.pressure_input = QLineEdit()
-        self.pressure_input.setText("101.3")
-        self.pressure_input.setValidator(QDoubleValidator(50, 10000, 1))
-        
-        query_layout.addWidget(QLabel("化合物:"), 0, 0)
-        query_layout.addWidget(self.compound_input, 0, 1, 1, 2)
-        
-        query_layout.addWidget(QLabel("溶剂:"), 0, 3)
-        query_layout.addWidget(self.solvent_input, 0, 4, 1, 2)
-        
-        query_layout.addWidget(QLabel("温度:"), 1, 0)
-        query_layout.addWidget(self.temperature_input, 1, 1)
-        query_layout.addWidget(QLabel("°C"), 1, 2)
-        
-        query_layout.addWidget(QLabel("压力:"), 1, 3)
-        query_layout.addWidget(self.pressure_input, 1, 4)
-        query_layout.addWidget(QLabel("kPa"), 1, 5)
-        
-        scroll_layout.addWidget(query_group)
-        
-        # 按钮组
-        button_layout = QHBoxLayout()
-        
-        self.query_btn = QPushButton("查询溶解度")
-        self.query_btn.setStyleSheet("QPushButton { background-color: #3498db; color: white; padding: 8px; border-radius: 4px; }"
-                                   "QPushButton:hover { background-color: #2980b9; }")
-        self.query_btn.clicked.connect(self.query_solubility)
-        
-        self.clear_btn = QPushButton("清空")
-        self.clear_btn.setStyleSheet("QPushButton { background-color: #95a5a6; color: white; padding: 8px; border-radius: 4px; }"
-                                   "QPushButton:hover { background-color: #7f8c8d; }")
-        self.clear_btn.clicked.connect(self.clear_inputs)
-        
-        button_layout.addWidget(self.query_btn)
-        button_layout.addWidget(self.clear_btn)
-        button_layout.addStretch()
-        
-        scroll_layout.addLayout(button_layout)
-        
+        grid.addWidget(make_lbl("温度:"), 2, 0)
+        grid.addWidget(self.temperature_input, 2, 1)
+        hint_t = QLabel("°C")
+        hint_t.setMinimumWidth(100)
+        hint_t.setMaximumWidth(250)
+        grid.addWidget(hint_t, 2, 2)
+
+        left_layout.addWidget(query_group)
+
+        # ── 查询按钮 ──
+        calc_btn = QPushButton("▶  查询溶解度")
+        calc_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                font-weight: bold;
+                font-size: 14px;
+                border-radius: 8px;
+                min-height: 50px;
+            }
+            QPushButton:hover { background-color: #2980b9; }
+        """)
+        calc_btn.clicked.connect(self.query_solubility)
+        left_layout.addWidget(calc_btn)
+
         # 进度条
-        self.progress_bar = QProgressBar()  # 修复：使用 QProgressBar
+        self.progress_bar = QProgressBar()
         self.progress_bar.setVisible(False)
-        scroll_layout.addWidget(self.progress_bar)
-        
-        # 查询结果
-        result_group = QGroupBox("查询结果")
-        result_layout = QGridLayout(result_group)  # 使用 GridLayout 替代 FormLayout
-        
-        self.compound_result = QLabel("--")
-        self.solvent_result = QLabel("--")
-        self.temperature_result = QLabel("--")
-        self.solubility_result = QLabel("--")
-        self.unit_result = QLabel("--")
-        self.temperature_range_result = QLabel("--")
-        self.source_result = QLabel("--")
-        self.confidence_result = QLabel("--")
-        self.notes_result = QLabel("--")
-        
-        result_layout.addWidget(QLabel("化合物:"), 0, 0)
-        result_layout.addWidget(self.compound_result, 0, 1)
-        result_layout.addWidget(QLabel("溶剂:"), 1, 0)
-        result_layout.addWidget(self.solvent_result, 1, 1)
-        result_layout.addWidget(QLabel("温度:"), 2, 0)
-        result_layout.addWidget(self.temperature_result, 2, 1)
-        result_layout.addWidget(QLabel("溶解度:"), 3, 0)
-        result_layout.addWidget(self.solubility_result, 3, 1)
-        result_layout.addWidget(QLabel("单位:"), 4, 0)
-        result_layout.addWidget(self.unit_result, 4, 1)
-        result_layout.addWidget(QLabel("温度范围:"), 5, 0)
-        result_layout.addWidget(self.temperature_range_result, 5, 1)
-        result_layout.addWidget(QLabel("数据来源:"), 6, 0)
-        result_layout.addWidget(self.source_result, 6, 1)
-        result_layout.addWidget(QLabel("置信度:"), 7, 0)
-        result_layout.addWidget(self.confidence_result, 7, 1)
-        result_layout.addWidget(QLabel("备注:"), 8, 0)
-        result_layout.addWidget(self.notes_result, 8, 1)
-        
-        scroll_layout.addWidget(result_group)
-        
-        # 批量查询组
+        left_layout.addWidget(self.progress_bar)
+
+        # ── 批量查询组 ──
         batch_group = QGroupBox("批量查询")
-        batch_layout = QVBoxLayout(batch_group)
-        
-        # 批量查询表格
+        batch_group.setStyleSheet(group_style)
+        batch_vbox = QVBoxLayout(batch_group)
+
         self.batch_table = QTableWidget()
         self.batch_table.setColumnCount(4)
-        self.batch_table.setHorizontalHeaderLabels(["化合物", "溶剂", "温度(°C)", "溶解度"])
-        batch_layout.addWidget(self.batch_table)
-        
-        # 批量查询按钮
-        batch_button_layout = QHBoxLayout()
-        
-        self.add_row_btn = QPushButton("添加行")
-        self.add_row_btn.clicked.connect(self.add_batch_row)
-        
-        self.batch_query_btn = QPushButton("批量查询")
-        self.batch_query_btn.clicked.connect(self.batch_query)
-        
-        self.clear_batch_btn = QPushButton("清空表格")
-        self.clear_batch_btn.clicked.connect(self.clear_batch_table)
-        
-        batch_button_layout.addWidget(self.add_row_btn)
-        batch_button_layout.addWidget(self.batch_query_btn)
-        batch_button_layout.addWidget(self.clear_batch_btn)
-        batch_button_layout.addStretch()
-        
-        batch_layout.addLayout(batch_button_layout)
-        
-        scroll_layout.addWidget(batch_group)
-        
-        # 溶解度数据表
-        data_table_group = QGroupBox("常见固体溶解度参考表")
-        data_table_layout = QVBoxLayout(data_table_group)
-        
+        self.batch_table.setHorizontalHeaderLabels(
+            ["化合物", "溶剂", "温度(°C)", "溶解度"])
+        header = self.batch_table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.Stretch)
+        batch_vbox.addWidget(self.batch_table)
+
+        batch_btn_row = QHBoxLayout()
+        add_btn = QPushButton("添加行")
+        add_btn.setStyleSheet(
+            "QPushButton{background:#ecf0f1;border:1px solid #bdc3c7;"
+            "border-radius:6px;padding:6px 14px;}"
+            "QPushButton:hover{background:#d5dbdb;}")
+        add_btn.clicked.connect(self.add_batch_row)
+
+        batch_btn = QPushButton("批量查询")
+        batch_btn.setStyleSheet(
+            "QPushButton{background:#ecf0f1;border:1px solid #bdc3c7;"
+            "border-radius:6px;padding:6px 14px;}"
+            "QPushButton:hover{background:#d5dbdb;}")
+        batch_btn.clicked.connect(self.batch_query)
+
+        clear_batch_btn = QPushButton("清空表格")
+        clear_batch_btn.setStyleSheet(
+            "QPushButton{background:#ecf0f1;border:1px solid #bdc3c7;"
+            "border-radius:6px;padding:6px 14px;}"
+            "QPushButton:hover{background:#d5dbdb;}")
+        clear_batch_btn.clicked.connect(self.clear_batch_table)
+
+        batch_btn_row.addWidget(add_btn)
+        batch_btn_row.addWidget(batch_btn)
+        batch_btn_row.addWidget(clear_batch_btn)
+        batch_btn_row.addStretch()
+        batch_vbox.addLayout(batch_btn_row)
+        left_layout.addWidget(batch_group)
+
+        # ── 参考数据表 ──
+        ref_group = QGroupBox("常见固体溶解度参考表")
+        ref_group.setStyleSheet(group_style)
+        ref_vbox = QVBoxLayout(ref_group)
+
         self.data_table = QTableWidget()
         self.data_table.setColumnCount(5)
-        self.data_table.setHorizontalHeaderLabels(["化合物", "溶剂", "温度(°C)", "溶解度", "单位"])
-        self.populate_reference_table()
-        data_table_layout.addWidget(self.data_table)
-        
-        scroll_layout.addWidget(data_table_group)
-        
-        # 计算说明
-        info_text = QTextEdit()
-        info_text.setMaximumHeight(150)
-        info_text.setHtml("""
-        <h4>计算说明:</h4>
-        <ul>
-        <li>溶解度定义：在一定温度和压力下，某固态物质在100克溶剂里达到饱和状态时所溶解的质量</li>
-        <li>温度影响：大多数固体的溶解度随温度升高而增加，少数物质溶解度随温度变化不大或降低</li>
-        <li>压力影响：压力对固体溶解度影响很小，通常可以忽略</li>
-        <li>数据来源：CRC Handbook、Merck Index、化学性质手册等权威参考资料</li>
-        <li>定性描述："易溶"（>10g/100g）、"可溶"（1-10g/100g）、"微溶"（0.1-1g/100g）、"难溶"（<0.1g/100g）</li>
-        </ul>
+        self.data_table.setHorizontalHeaderLabels(
+            ["化合物", "溶剂", "温度(°C)", "溶解度", "单位"])
+        ref_header = self.data_table.horizontalHeader()
+        ref_header.setSectionResizeMode(QHeaderView.Stretch)
+        self._populate_reference_table()
+        ref_vbox.addWidget(self.data_table)
+        left_layout.addWidget(ref_group)
+
+        # ── 底部按钮行 ──
+        btn_row = QHBoxLayout()
+
+        clear_btn = QPushButton("清空")
+        clear_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #95a5a6; color: white;
+                font-weight: bold; border-radius: 6px;
+                padding: 8px 20px;
+            }
+            QPushButton:hover { background-color: #7f8c8d; }
         """)
-        info_text.setReadOnly(True)
-        scroll_layout.addWidget(info_text)
-        
-        scroll_area.setWidget(scroll_content)
-        main_layout.addWidget(scroll_area)
-        
-        # 初始化批量查询表格
+        clear_btn.clicked.connect(self.clear_inputs)
+
+        dl_txt_btn = QPushButton("⬇ 下载TXT报告")
+        dl_txt_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60; color: white;
+                font-weight: bold; border-radius: 6px;
+                padding: 8px 20px;
+            }
+            QPushButton:hover { background-color: #219a52; }
+        """)
+        dl_txt_btn.clicked.connect(self.download_txt_report)
+
+        dl_pdf_btn = QPushButton("⬇ 下载PDF报告")
+        dl_pdf_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e74c3c; color: white;
+                font-weight: bold; border-radius: 6px;
+                padding: 8px 20px;
+            }
+            QPushButton:hover { background-color: #c0392b; }
+        """)
+        dl_pdf_btn.clicked.connect(self.generate_pdf_report)
+
+        btn_row.addWidget(clear_btn)
+        btn_row.addStretch()
+        btn_row.addWidget(dl_txt_btn)
+        btn_row.addWidget(dl_pdf_btn)
+        left_layout.addLayout(btn_row)
+
+        # ──────────────── 右侧结果区 ────────────────
+        right_widget = QWidget()
+        right_widget.setMinimumWidth(400)
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setSpacing(10)
+
+        result_group = QGroupBox("查询结果")
+        result_group.setStyleSheet(group_style)
+        result_vbox = QVBoxLayout(result_group)
+
+        self.result_text = QTextEdit()
+        self.result_text.setReadOnly(True)
+        self.result_text.setMinimumHeight(500)
+        self.result_text.setStyleSheet("""
+            QTextEdit {
+                background-color: #f8f9fa;
+                border: 1px solid #dee2e6;
+                border-radius: 6px;
+                font-family: Consolas, monospace;
+                font-size: 13px;
+                padding: 10px;
+            }
+        """)
+        self.result_text.setPlaceholderText("查询结果将在此显示……")
+        result_vbox.addWidget(self.result_text)
+        right_layout.addWidget(result_group)
+
+        # 拼合
+        scroll_left.setWidget(left_widget)
+        main_layout.addWidget(scroll_left, 2)
+        main_layout.addWidget(right_widget, 1)
+
+        # 初始化批量查询表
         self.add_batch_row()
-        
-    def populate_reference_table(self):
-        """填充参考数据表"""
-        reference_data = [
+
+    # ──────────────────── 参考表 ────────────────────────────────
+    def _populate_reference_table(self):
+        rows = [
             ["氯化钠", "水", "20", "35.7", "g/100g"],
             ["氯化钾", "水", "20", "34.0", "g/100g"],
             ["硫酸钠", "水", "20", "19.5", "g/100g"],
@@ -444,207 +458,277 @@ class SolidSolubilityCalculator(QWidget):
             ["苯甲酸", "水", "25", "0.34", "g/100g"],
             ["氯化钠", "乙醇", "25", "0.065", "g/100g"],
             ["碘", "乙醇", "25", "20.5", "g/100g"],
-            ["萘", "乙醇", "25", "19.5", "g/100g"]
+            ["萘", "乙醇", "25", "19.5", "g/100g"],
         ]
-        
-        self.data_table.setRowCount(len(reference_data))
-        for i, row_data in enumerate(reference_data):
-            for j, value in enumerate(row_data):
-                item = QTableWidgetItem(str(value))
-                self.data_table.setItem(i, j, item)
-        
-        # 设置表格列宽
-        header = self.data_table.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.Stretch)
-    
+        self.data_table.setRowCount(len(rows))
+        for i, rd in enumerate(rows):
+            for j, v in enumerate(rd):
+                self.data_table.setItem(i, j, QTableWidgetItem(str(v)))
+
+    # ──────────────────── 批量查询 ──────────────────────────────
     def add_batch_row(self):
-        """添加批量查询行"""
-        row_count = self.batch_table.rowCount()
-        self.batch_table.setRowCount(row_count + 1)
-        
-        # 化合物列（下拉框）
-        compound_combo = QComboBox()
-        compound_combo.setEditable(True)
-        compound_combo.addItems([
-            "氯化钠", "氯化钾", "硫酸钠", "碳酸钙", 
-            "蔗糖", "苯甲酸", "阿司匹林", "咖啡因"
-        ])
-        self.batch_table.setCellWidget(row_count, 0, compound_combo)
-        
-        # 溶剂列（下拉框）
-        solvent_combo = QComboBox()
-        solvent_combo.setEditable(True)
-        solvent_combo.addItems(["水", "乙醇", "甲醇", "丙酮"])
-        self.batch_table.setCellWidget(row_count, 1, solvent_combo)
-        
-        # 温度列（输入框）
-        temp_edit = QLineEdit()
-        temp_edit.setText("25")
-        temp_edit.setValidator(QDoubleValidator(-273, 500, 1))
-        self.batch_table.setCellWidget(row_count, 2, temp_edit)
-        
-        # 溶解度列（结果，初始为空）
-        result_item = QTableWidgetItem("--")
-        self.batch_table.setItem(row_count, 3, result_item)
-    
+        n = self.batch_table.rowCount()
+        self.batch_table.setRowCount(n + 1)
+
+        cc = QComboBox()
+        cc.setEditable(True)
+        cc.addItems([
+            "氯化钠", "氯化钾", "硫酸钠", "碳酸钙",
+            "蔗糖", "苯甲酸", "阿司匹林", "咖啡因"])
+        self.batch_table.setCellWidget(n, 0, cc)
+
+        sc = QComboBox()
+        sc.setEditable(True)
+        sc.addItems(["水", "乙醇", "甲醇", "丙酮"])
+        self.batch_table.setCellWidget(n, 1, sc)
+
+        te = QLineEdit("25")
+        te.setValidator(QDoubleValidator(-273, 500, 1))
+        self.batch_table.setCellWidget(n, 2, te)
+
+        self.batch_table.setItem(n, 3, QTableWidgetItem("--"))
+
     def clear_batch_table(self):
-        """清空批量查询表格"""
         self.batch_table.setRowCount(0)
         self.add_batch_row()
-    
+
+    def batch_query(self):
+        for row in range(self.batch_table.rowCount()):
+            cw = self.batch_table.cellWidget(row, 0)
+            sw = self.batch_table.cellWidget(row, 1)
+            tw = self.batch_table.cellWidget(row, 2)
+            if cw and sw and tw:
+                c = cw.currentText().strip()
+                s = sw.currentText().strip()
+                try:
+                    t = float(tw.text())
+                except ValueError:
+                    t = 25
+                w = SolubilityWorker(c, s, t)
+                r = w.query_solubility_data(c, s, t)
+                txt = (f"{r['solubility']} {r['unit']}"
+                       if r["solubility"] != "N/A" else "N/A")
+                self.batch_table.item(row, 3).setText(txt)
+
+    # ──────────────────── 单次查询 ──────────────────────────────
+    def query_solubility(self):
+        compound = self.compound_input.currentText().strip()
+        solvent = self.solvent_input.currentText().strip()
+        try:
+            temperature = float(self.temperature_input.text())
+        except ValueError:
+            self._show_error("请输入有效的温度数值")
+            return
+        if not compound or not solvent:
+            self._show_error("请输入化合物和溶剂名称")
+            return
+
+        self.progress_bar.setVisible(True)
+        self.progress_bar.setRange(0, 0)
+
+        # 禁用所有按钮，查询中
+        sender = self.sender()
+        if sender:
+            sender.setEnabled(False)
+
+        self.worker = SolubilityWorker(compound, solvent, temperature)
+        self.worker.finished.connect(self._on_finished)
+        self.worker.error.connect(self._on_error)
+        self._query_btn_ref = sender
+        self.worker.start()
+
+    def _on_finished(self, result):
+        self.progress_bar.setVisible(False)
+        if hasattr(self, "_query_btn_ref") and self._query_btn_ref:
+            self._query_btn_ref.setEnabled(True)
+        self._last_result = result
+        self._display(result)
+
+        if self.data_manager:
+            try:
+                self.data_manager.add_record(
+                    "solid_solubility", self._get_history_data())
+            except Exception:
+                pass
+
+    def _on_error(self, msg):
+        self.progress_bar.setVisible(False)
+        if hasattr(self, "_query_btn_ref") and self._query_btn_ref:
+            self._query_btn_ref.setEnabled(True)
+        self._show_error(f"查询错误：{msg}")
+
+    # ──────────────────── 结果显示 ──────────────────────────────
+    def _display(self, r):
+        sol_val = r["solubility"]
+        sol_str = (f"{sol_val:.4f}" if isinstance(sol_val, (int, float))
+                   else str(sol_val))
+
+        # 溶解度分级
+        grade = ""
+        if isinstance(sol_val, (int, float)):
+            if sol_val >= 10:
+                grade = "易溶"
+            elif sol_val >= 1:
+                grade = "可溶"
+            elif sol_val >= 0.1:
+                grade = "微溶"
+            elif sol_val > 0:
+                grade = "难溶"
+            else:
+                grade = "不溶"
+
+        conf_icon = {"High": "✅", "Medium": "⚠️", "Low": "❌"}.get(
+            r["confidence"], "")
+
+        lines = [
+            "=" * 50,
+            "       固体溶解度查询结果",
+            "=" * 50,
+            "",
+            "【查询条件】",
+            f"  化合物       : {r['compound']}",
+            f"  溶剂         : {r['solvent']}",
+            f"  温度         : {r['temperature']} °C",
+            "",
+            "【查询结果】",
+            f"  溶解度       : {sol_str} {r['unit']}",
+        ]
+        if grade:
+            lines.append(f"  溶解度分级   : {grade}")
+        lines += [
+            f"  适用温度范围 : {r['temperature_range']} °C",
+            f"  数据来源     : {r['source']}",
+            f"  置信度       : {conf_icon} {r['confidence']}",
+            f"  备注         : {r['notes']}",
+            "",
+            "【溶解度分级标准】",
+            "  易溶  : > 10 g/100g 溶剂",
+            "  可溶  : 1 ~ 10 g/100g 溶剂",
+            "  微溶  : 0.1 ~ 1 g/100g 溶剂",
+            "  难溶  : < 0.1 g/100g 溶剂",
+            "",
+            "【数据说明】",
+            "  温度修正模型 : S(T) = S(T0) * exp(α·(T - T0))",
+            "  α 为温度系数，基于基准温度 T0 处的溶解度值",
+            "=" * 50,
+        ]
+        self.result_text.setPlainText("\n".join(lines))
+
+    def _show_error(self, msg):
+        self.result_text.setPlainText(f"⚠️  错误：{msg}")
+
+    # ──────────────────── 清空 ───────────────────────────────────
     def clear_inputs(self):
-        """清空所有输入"""
         self.compound_input.setCurrentIndex(0)
         self.solvent_input.setCurrentIndex(0)
         self.temperature_input.setText("25")
-        self.pressure_input.setText("101.3")
-        
-        # 清空结果
-        for label in [self.compound_result, self.solvent_result,
-                     self.temperature_result, self.solubility_result,
-                     self.unit_result, self.temperature_range_result,
-                     self.source_result, self.confidence_result,
-                     self.notes_result]:
-            label.setText("--")
-    
-    def query_solubility(self):
-        """查询溶解度数据"""
-        compound = self.compound_input.currentText().strip()
-        solvent = self.solvent_input.currentText().strip()
-        temperature = float(self.temperature_input.text())
-        
-        if not compound or not solvent:
-            self.show_error("请输入化合物和溶剂名称")
-            return
-        
-        # 显示进度条
-        self.progress_bar.setVisible(True)
-        self.progress_bar.setRange(0, 0)  # 无限进度条
-        self.query_btn.setEnabled(False)
-        
-        # 创建工作线程
-        self.worker = SolubilityWorker(compound, solvent, temperature)
-        self.worker.finished.connect(self.on_query_finished)
-        self.worker.error.connect(self.on_query_error)
-        self.worker.start()
+        self.result_text.clear()
+        self._last_result = {}
 
+    # ──────────────────── 历史数据 ──────────────────────────────
     def _get_history_data(self):
-        """提供历史记录数据"""
-        compound = self.compound_input.currentText().strip()
-        solvent = self.solvent_input.currentText().strip()
-        temperature = float(self.temperature_input.text() or 0)
-        pressure = float(self.pressure_input.text() or 101.3)
-
-        inputs = {
-            "化合物": compound,
-            "溶剂": solvent,
-            "温度_C": temperature,
-            "压力_kPa": pressure
+        r = self._last_result
+        return {
+            "inputs": {
+                "化合物": r.get("compound", ""),
+                "溶剂": r.get("solvent", ""),
+                "温度_C": r.get("temperature", 0),
+            },
+            "outputs": {
+                "溶解度": r.get("solubility", "N/A"),
+                "单位": r.get("unit", ""),
+                "数据来源": r.get("source", ""),
+                "置信度": r.get("confidence", ""),
+            }
         }
 
-        outputs = {}
-        solubility = self.solubility_result.text()
-        if solubility and solubility != "--":
+    def get_project_info(self):
+        return {
+            "calculator": "SolidSolubilityCalculator",
+            "name": "固体溶解度查询",
+        }
+
+    # ──────────────────── 报告 ───────────────────────────────────
+    def generate_report(self):
+        return self.result_text.toPlainText()
+
+    def download_txt_report(self):
+        content = self.result_text.toPlainText()
+        if not content.strip():
+            QMessageBox.warning(self, "提示", "请先查询，再下载报告。")
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "保存TXT报告", "溶解度查询报告.txt", "文本文件 (*.txt)")
+        if path:
             try:
-                outputs["溶解度"] = float(solubility)
-                outputs["单位"] = self.unit_result.text()
-                outputs["数据来源"] = self.source_result.text()
-            except ValueError:
-                outputs["溶解度"] = solubility
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(content)
+                QMessageBox.information(self, "成功", f"报告已保存到：\n{path}")
+            except Exception as e:
+                QMessageBox.critical(self, "错误", f"保存失败：{e}")
 
-        return {"inputs": inputs, "outputs": outputs}
+    def generate_pdf_report(self):
+        content = self.result_text.toPlainText()
+        if not content.strip():
+            QMessageBox.warning(self, "提示", "请先查询，再下载PDF。")
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "保存PDF报告", "溶解度查询报告.pdf", "PDF文件 (*.pdf)")
+        if not path:
+            return
+        try:
+            from reportlab.lib.pagesizes import A4
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib.units import mm
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+            from reportlab.lib.enums import TA_LEFT
+            from reportlab.pdfbase import pdfmetrics
+            from reportlab.pdfbase.ttfonts import TTFont
 
-    def batch_query(self):
-        """批量查询溶解度"""
-        row_count = self.batch_table.rowCount()
-        
-        for row in range(row_count):
-            compound_widget = self.batch_table.cellWidget(row, 0)
-            solvent_widget = self.batch_table.cellWidget(row, 1)
-            temp_widget = self.batch_table.cellWidget(row, 2)
-            
-            if compound_widget and solvent_widget and temp_widget:
-                compound = compound_widget.currentText().strip()
-                solvent = solvent_widget.currentText().strip()
-                
-                try:
-                    temperature = float(temp_widget.text())
-                except ValueError:
-                    temperature = 25
-                
-                # 执行查询（简化版本，实际应该使用工作线程）
-                worker = SolubilityWorker(compound, solvent, temperature)
-                result = worker.query_solubility_data(compound, solvent, temperature)
-                
-                # 更新表格
-                solubility_text = f"{result['solubility']} {result['unit']}" if result['solubility'] != 'N/A' else "N/A"
-                self.batch_table.item(row, 3).setText(solubility_text)
-    
-    def on_query_finished(self, result):
-        """查询完成处理"""
-        # 隐藏进度条
-        self.progress_bar.setVisible(False)
-        self.query_btn.setEnabled(True)
-        
-        # 显示结果
-        self.display_results(result)
-    
-    def on_query_error(self, error_message):
-        """查询错误处理"""
-        self.progress_bar.setVisible(False)
-        self.query_btn.setEnabled(True)
-        self.show_error(f"查询错误: {error_message}")
-    
-    def display_results(self, result):
-        """显示查询结果"""
-        self.compound_result.setText(result['compound'])
-        self.solvent_result.setText(result['solvent'])
-        self.temperature_result.setText(f"{result['temperature']} °C")
-        
-        if isinstance(result['solubility'], (int, float)):
-            self.solubility_result.setText(f"{result['solubility']:.4f}")
-        else:
-            self.solubility_result.setText(result['solubility'])
-            
-        self.unit_result.setText(result['unit'])
-        self.temperature_range_result.setText(result['temperature_range'])
-        self.source_result.setText(result['source'])
-        self.confidence_result.setText(result['confidence'])
-        self.notes_result.setText(result['notes'])
-        
-        # 根据置信度设置颜色
-        if result['confidence'] == 'High':
-            self.confidence_result.setStyleSheet("color: green; font-weight: bold;")
-        elif result['confidence'] == 'Medium':
-            self.confidence_result.setStyleSheet("color: orange; font-weight: bold;")
-        else:
-            self.confidence_result.setStyleSheet("color: red; font-weight: bold;")
-    
-    def show_error(self, message):
-        """显示错误信息"""
-        for label in [self.compound_result, self.solvent_result,
-                     self.temperature_result, self.solubility_result,
-                     self.unit_result, self.temperature_range_result,
-                     self.source_result, self.confidence_result,
-                     self.notes_result]:
-            label.setText("查询错误")
-        
-        self.confidence_result.setStyleSheet("color: red; font-weight: bold;")
-        self.confidence_result.setText("Error")
-        self.notes_result.setText(message)
-        
-        print(f"错误: {message}")
+            font_paths = [
+                "C:/Windows/Fonts/simhei.ttf",
+                "C:/Windows/Fonts/msyh.ttc",
+                "C:/Windows/Fonts/simsun.ttc",
+            ]
+            font_name = "Helvetica"
+            for fp in font_paths:
+                if os.path.exists(fp):
+                    try:
+                        pdfmetrics.registerFont(TTFont("CF", fp))
+                        font_name = "CF"
+                        break
+                    except Exception:
+                        continue
+
+            doc = SimpleDocTemplate(
+                path, pagesize=A4,
+                leftMargin=20 * mm, rightMargin=20 * mm,
+                topMargin=20 * mm, bottomMargin=20 * mm)
+            styles = getSampleStyleSheet()
+            st = ParagraphStyle(
+                "Body", fontName=font_name, fontSize=10,
+                leading=16, alignment=TA_LEFT)
+            story = []
+            for line in content.split("\n"):
+                safe = line.replace("&", "&amp;").replace(
+                    "<", "&lt;").replace(">", "&gt;")
+                story.append(
+                    Paragraph(safe if safe.strip() else "&nbsp;", st))
+                story.append(Spacer(1, 1))
+            doc.build(story)
+            QMessageBox.information(self, "成功", f"PDF已保存到：\n{path}")
+        except ImportError:
+            QMessageBox.critical(
+                self, "错误", "缺少 reportlab 库，请运行：pip install reportlab")
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"PDF生成失败：{e}")
 
 
 if __name__ == "__main__":
-    # 测试代码
     import sys
     from PySide6.QtWidgets import QApplication
-    
     app = QApplication(sys.argv)
-    
-    calculator = SolidSolubilityCalculator()
-    calculator.resize(900, 800)
-    calculator.show()
-    
+    w = SolidSolubilityCalculator()
+    w.resize(1200, 800)
+    w.show()
     sys.exit(app.exec())

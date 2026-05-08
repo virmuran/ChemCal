@@ -139,8 +139,15 @@ class 换热器计算(QWidget):
         main_layout.setContentsMargins(10, 10, 10, 10)
         
         # 左侧：输入参数区域 (占2/3宽度)
+        scroll_left = QScrollArea()
+        scroll_left.setStyleSheet("QScrollArea { border: none; background: transparent; } QScrollBar:vertical { background: transparent; width: 8px; margin: 0; } QScrollBar::handle:vertical { background: #c0c0c0; border-radius: 4px; min-height: 30px; } QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }")
+
+        scroll_left.setWidgetResizable(True)
+
+        scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
         left_widget = QWidget()
-        left_widget.setMaximumWidth(900)
+        left_widget.setStyleSheet("QWidget { background: transparent; }")
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
         
@@ -230,6 +237,9 @@ class 换热器计算(QWidget):
         self.input_layout = QGridLayout(input_group)
         self.input_layout.setVerticalSpacing(12)
         self.input_layout.setHorizontalSpacing(10)
+        self.input_layout.setColumnStretch(0, 2)  # 标签列可伸缩
+        self.input_layout.setColumnStretch(1, 3)  # 输入框列可伸缩
+        self.input_layout.setColumnStretch(2, 2)  # 提示列可伸缩
         
         # 标签样式 - 右对齐
         label_style = """
@@ -366,7 +376,8 @@ class 换热器计算(QWidget):
         right_layout.addWidget(self.result_group)
         
         # 将左右两部分添加到主布局
-        main_layout.addWidget(left_widget, 2)  # 左侧占2/3
+        scroll_left.setWidget(left_widget)
+        main_layout.addWidget(scroll_left, 2)  # 左侧占2/3
         main_layout.addWidget(right_widget, 1)  # 右侧占1/3
     
     def on_mode_changed(self, index):
@@ -417,9 +428,10 @@ class 换热器计算(QWidget):
         label = QLabel(label_text)
         label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         label.setStyleSheet("QLabel { font-weight: bold; padding-right: 10px; }")
-        label.setFixedWidth(200)
+        label.setMinimumWidth(120)
+        label.setMaximumWidth(200)
         self.input_layout.addWidget(label, row, 0)
-        
+
         # 输入框 - 第1列
         widget = QLineEdit()
         if default_value:
@@ -428,13 +440,15 @@ class 换热器计算(QWidget):
             widget.setPlaceholderText(placeholder)
         if validator:
             widget.setValidator(validator)
-        widget.setFixedWidth(400)
+        widget.setMinimumWidth(150)
+        widget.setMaximumWidth(400)
         self.input_layout.addWidget(widget, row, 1)
-        
+
         # 提示标签 - 第2列
         hint_label = QLabel("直接输入数值")
         hint_label.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        hint_label.setFixedWidth(250)
+        hint_label.setMinimumWidth(100)
+        hint_label.setMaximumWidth(250)
         self.input_layout.addWidget(hint_label, row, 2)
         
         # 存储控件引用
@@ -449,24 +463,27 @@ class 换热器计算(QWidget):
         label = QLabel(label_text)
         label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         label.setStyleSheet("QLabel { font-weight: bold; padding-right: 10px; }")
-        label.setFixedWidth(200)
+        label.setMinimumWidth(120)
+        label.setMaximumWidth(200)
         self.input_layout.addWidget(label, row, 0)
-        
+
         # 输入框 - 第1列
         lineedit = QLineEdit()
         if default_value:
             lineedit.setText(str(default_value))
         lineedit.setPlaceholderText("输入或选择后自动填充")
         lineedit.setValidator(QDoubleValidator(0.1, 100.0, 2))
-        lineedit.setFixedWidth(400)
+        lineedit.setMinimumWidth(150)
+        lineedit.setMaximumWidth(400)
         self.input_layout.addWidget(lineedit, row, 1)
-        
+
         # 下拉菜单 - 第2列
         combobox = QComboBox()
         combobox.addItem("- 请选择流体比热容 -")
         for fluid in self.specific_heat_data.keys():
             combobox.addItem(fluid)
-        combobox.setFixedWidth(250)
+        combobox.setMinimumWidth(100)
+        combobox.setMaximumWidth(250)
         combobox.currentTextChanged.connect(lambda text, le=lineedit: self.on_cp_selected(text, le))
         self.input_layout.addWidget(combobox, row, 2)
         
@@ -483,14 +500,16 @@ class 换热器计算(QWidget):
         label = QLabel(label_text)
         label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         label.setStyleSheet("QLabel { font-weight: bold; padding-right: 10px; }")
-        label.setFixedWidth(200)
+        label.setMinimumWidth(120)
+        label.setMaximumWidth(200)
         self.input_layout.addWidget(label, row, 0)
         
         # 输入框 - 第1列
         manual_input = QLineEdit()
         manual_input.setPlaceholderText("输入或选择后自动填充")
         manual_input.setValidator(QDoubleValidator(1, 10000, 1))
-        manual_input.setFixedWidth(400)
+        manual_input.setMinimumWidth(150)
+        manual_input.setMaximumWidth(400)
         self.input_layout.addWidget(manual_input, row, 1)
         self.input_widgets["k_manual"] = manual_input
         
@@ -509,7 +528,8 @@ class 换热器计算(QWidget):
             option_text = f"{hot_fluid} → {cold_fluid} | {min_val:.1f}~{max_val:.1f} W/K·m² | {exchanger}"
             combo.addItem(option_text)
         
-        combo.setFixedWidth(250)
+        combo.setMinimumWidth(100)
+        combo.setMaximumWidth(250)
         combo.currentTextChanged.connect(self.on_heat_transfer_coeff_selected)
         self.input_layout.addWidget(combo, row, 2)
         self.input_widgets["k_combo"] = combo

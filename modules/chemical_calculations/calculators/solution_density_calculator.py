@@ -455,6 +455,7 @@ class SolutionDensityCalculator(QWidget):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         inner = QWidget()
+        inner.setStyleSheet("QWidget { background: transparent; }")
         layout = QVBoxLayout(inner)
         layout.setSpacing(12)
         layout.setContentsMargins(15, 15, 15, 15)

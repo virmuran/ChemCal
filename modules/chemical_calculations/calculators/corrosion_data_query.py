@@ -1,38 +1,314 @@
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, 
-                              QLabel, QLineEdit, QComboBox, QPushButton, 
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
+                              QLabel, QLineEdit, QComboBox, QPushButton,
                               QTextEdit, QTableWidget, QTableWidgetItem,
                               QHeaderView, QMessageBox, QTabWidget, QDoubleSpinBox,
-                              QCheckBox, QRadioButton, QButtonGroup, QScrollArea)
+                              QCheckBox, QRadioButton, QButtonGroup, QScrollArea,
+                              QFileDialog)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
+from fpdf import FPDF
 import math
+import os
+import datetime
+
+# 统一GroupBox样式
+GROUP_STYLE = """
+    QGroupBox {
+        font-weight: bold;
+        border: 1px solid #bdc3c7;
+        border-radius: 8px;
+        margin-top: 10px;
+        padding-top: 10px;
+    }
+    QGroupBox::title {
+        subcontrol-origin: margin;
+        left: 10px;
+        padding: 0 8px 0 8px;
+    }
+"""
+
 
 class CorrosionDataQuery(QWidget):
     """腐蚀数据查询计算器"""
     
-    def __init__(self, parent=None):
+    # 计算类型标识
+    calculation_type = "腐蚀数据查询"
+    
+    def __init__(self, parent=None, data_manager=None):
+        """构造函数
+        
+        Args:
+            parent: 父窗口
+            data_manager: 数据管理器（可选）
+        """
         super().__init__(parent)
+        if data_manager is not None:
+            self.data_manager = data_manager
+        else:
+            self.init_data_manager()
         self.corrosion_data = self.load_corrosion_data()
         self.setup_ui()
-    
+
+    def init_data_manager(self):
+        """初始化数据管理器"""
+        try:
+            from modules.data_manager import DataManager
+            self.data_manager = DataManager.get_instance()
+        except Exception:
+            self.data_manager = None
+        
     def setup_ui(self):
-        """设置UI"""
-        main_layout = QVBoxLayout(self)
+        """构建统一风格的UI布局"""
+        # 外层主布局：水平布局，间距15，边距10
+        main_layout = QHBoxLayout(self)
         main_layout.setSpacing(15)
+        main_layout.setContentsMargins(10, 10, 10, 10)
         
-        # 标题
-        title_label = QLabel("腐蚀数据查询")
-        title_label.setFont(QFont("Arial", 14, QFont.Bold))
-        title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("color: #2c3e50; margin: 10px;")
-        main_layout.addWidget(title_label)
+        # ========= 左侧输入区（QScrollArea包裹） =========
+        left_scroll = QScrollArea()
+        left_scroll.setWidgetResizable(True)
+        left_scroll.setMaximumWidth(900)
+        left_scroll.setStyleSheet(
+            "QScrollArea { border: none; background: transparent; } "
+            "QScrollBar:vertical { background: transparent; width: 8px; margin: 0; } "
+            "QScrollBar::handle:vertical { background: #c0c0c0; border-radius: 4px; min-height: 30px; } "
+            "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }"
+        )
         
-        # 创建标签页
+        # 左侧内部容器
+        left_widget = QWidget()
+        left_layout = QVBoxLayout(left_widget)
+        left_layout.setSpacing(15)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # 顶部说明文字
+        desc_label = QLabel("查询工程材料和腐蚀介质的组合腐蚀数据，提供腐蚀速率、耐蚀评级和使用建议。支持多种材料和介质的腐蚀性能查询。")
+        desc_label.setWordWrap(True)
+        desc_label.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
+        left_layout.addWidget(desc_label)
+        
+        # 查询条件组
+        query_group = QGroupBox("查询条件")
+        query_group.setStyleSheet(GROUP_STYLE)
+        query_layout = QVBoxLayout(query_group)
+        
+        # 材料类别选择
+        material_cat_layout = QHBoxLayout()
+        material_cat_label = QLabel("材料类别:")
+        material_cat_label.setFixedWidth(200)
+        material_cat_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        material_cat_label.setStyleSheet("font-weight: bold;")
+        material_cat_layout.addWidget(material_cat_label)
+        
+        self.material_category_combo = QComboBox()
+        self.material_category_combo.setFixedWidth(400)
+        self.material_category_combo.addItems([
+            "碳钢", "不锈钢", "合金钢", "铜及铜合金", "铝及铝合金",
+            "钛及钛合金", "镍基合金", "塑料", "橡胶", "陶瓷"
+        ])
+        self.material_category_combo.currentTextChanged.connect(self.on_material_category_changed)
+        material_cat_layout.addWidget(self.material_category_combo)
+        
+        material_cat_hint = QLabel("选择材料大类")
+        material_cat_hint.setFixedWidth(250)
+        material_cat_hint.setStyleSheet("color: #95a5a6; font-size: 11px;")
+        material_cat_layout.addWidget(material_cat_hint)
+        query_layout.addLayout(material_cat_layout)
+        
+        # 具体材料选择
+        material_layout = QHBoxLayout()
+        material_label = QLabel("具体材料:")
+        material_label.setFixedWidth(200)
+        material_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        material_label.setStyleSheet("font-weight: bold;")
+        material_layout.addWidget(material_label)
+        
+        self.material_combo = QComboBox()
+        self.material_combo.setFixedWidth(400)
+        material_layout.addWidget(self.material_combo)
+        
+        material_hint = QLabel("选择具体材料")
+        material_hint.setFixedWidth(250)
+        material_hint.setStyleSheet("color: #95a5a6; font-size: 11px;")
+        material_layout.addWidget(material_hint)
+        query_layout.addLayout(material_layout)
+        
+        # 介质类别选择
+        medium_cat_layout = QHBoxLayout()
+        medium_cat_label = QLabel("介质类别:")
+        medium_cat_label.setFixedWidth(200)
+        medium_cat_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        medium_cat_label.setStyleSheet("font-weight: bold;")
+        medium_cat_layout.addWidget(medium_cat_label)
+        
+        self.medium_category_combo = QComboBox()
+        self.medium_category_combo.setFixedWidth(400)
+        self.medium_category_combo.addItems([
+            "酸类", "碱类", "盐类", "有机溶剂", "气体", "水及水溶液"
+        ])
+        self.medium_category_combo.currentTextChanged.connect(self.on_medium_category_changed)
+        medium_cat_layout.addWidget(self.medium_category_combo)
+        
+        medium_cat_hint = QLabel("选择介质大类")
+        medium_cat_hint.setFixedWidth(250)
+        medium_cat_hint.setStyleSheet("color: #95a5a6; font-size: 11px;")
+        medium_cat_layout.addWidget(medium_cat_hint)
+        query_layout.addLayout(medium_cat_layout)
+        
+        # 具体介质选择
+        medium_layout = QHBoxLayout()
+        medium_label = QLabel("具体介质:")
+        medium_label.setFixedWidth(200)
+        medium_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        medium_label.setStyleSheet("font-weight: bold;")
+        medium_layout.addWidget(medium_label)
+        
+        self.medium_combo = QComboBox()
+        self.medium_combo.setFixedWidth(400)
+        medium_layout.addWidget(self.medium_combo)
+        
+        medium_hint = QLabel("选择具体介质")
+        medium_hint.setFixedWidth(250)
+        medium_hint.setStyleSheet("color: #95a5a6; font-size: 11px;")
+        medium_layout.addWidget(medium_hint)
+        query_layout.addLayout(medium_layout)
+        
+        # 温度输入
+        temp_layout = QHBoxLayout()
+        temp_label = QLabel("温度 (°C):")
+        temp_label.setFixedWidth(200)
+        temp_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        temp_label.setStyleSheet("font-weight: bold;")
+        temp_layout.addWidget(temp_label)
+        
+        self.temperature_input = QDoubleSpinBox()
+        self.temperature_input.setFixedWidth(400)
+        self.temperature_input.setRange(-50, 500)
+        self.temperature_input.setValue(25)
+        self.temperature_input.setSuffix(" °C")
+        temp_layout.addWidget(self.temperature_input)
+        
+        temp_hint = QLabel("操作温度条件")
+        temp_hint.setFixedWidth(250)
+        temp_hint.setStyleSheet("color: #95a5a6; font-size: 11px;")
+        temp_layout.addWidget(temp_hint)
+        query_layout.addLayout(temp_layout)
+        
+        # 浓度输入
+        conc_layout = QHBoxLayout()
+        conc_label = QLabel("浓度 (%):")
+        conc_label.setFixedWidth(200)
+        conc_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        conc_label.setStyleSheet("font-weight: bold;")
+        conc_layout.addWidget(conc_label)
+        
+        self.concentration_input = QDoubleSpinBox()
+        self.concentration_input.setFixedWidth(400)
+        self.concentration_input.setRange(0, 100)
+        self.concentration_input.setValue(10)
+        self.concentration_input.setSuffix(" %")
+        conc_layout.addWidget(self.concentration_input)
+        
+        conc_hint = QLabel("介质浓度")
+        conc_hint.setFixedWidth(250)
+        conc_hint.setStyleSheet("color: #95a5a6; font-size: 11px;")
+        conc_layout.addWidget(conc_hint)
+        query_layout.addLayout(conc_layout)
+        
+        # pH值输入
+        ph_layout = QHBoxLayout()
+        ph_label = QLabel("pH值:")
+        ph_label.setFixedWidth(200)
+        ph_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        ph_label.setStyleSheet("font-weight: bold;")
+        ph_layout.addWidget(ph_label)
+        
+        self.ph_input = QDoubleSpinBox()
+        self.ph_input.setFixedWidth(400)
+        self.ph_input.setRange(0, 14)
+        self.ph_input.setValue(7)
+        ph_layout.addWidget(self.ph_input)
+        
+        ph_hint = QLabel("介质酸碱度 (0-14)")
+        ph_hint.setFixedWidth(250)
+        ph_hint.setStyleSheet("color: #95a5a6; font-size: 11px;")
+        ph_layout.addWidget(ph_hint)
+        query_layout.addLayout(ph_layout)
+        
+        left_layout.addWidget(query_group)
+        
+        # 查询按钮
+        self.query_btn = QPushButton("查询腐蚀数据")
+        self.query_btn.clicked.connect(self.calculate)
+        self.query_btn.setStyleSheet(
+            "QPushButton { "
+            "background-color: #3498db; "
+            "color: white; "
+            "font-weight: bold; "
+            "font-size: 14px; "
+            "min-height: 50px; "
+            "border-radius: 8px; "
+            "padding: 10px; "
+            "}"
+            "QPushButton:hover { background-color: #2980b9; }"
+        )
+        left_layout.addWidget(self.query_btn)
+        
+        # 搜索功能
+        search_group = QGroupBox("快速搜索")
+        search_group.setStyleSheet(GROUP_STYLE)
+        search_layout = QHBoxLayout(search_group)
+        
+        search_label = QLabel("搜索关键词:")
+        search_label.setStyleSheet("font-weight: bold;")
+        search_layout.addWidget(search_label)
+        
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("输入材料或介质名称进行搜索...")
+        self.search_input.returnPressed.connect(self.on_search)
+        search_layout.addWidget(self.search_input)
+        
+        self.search_btn = QPushButton("搜索")
+        self.search_btn.clicked.connect(self.on_search)
+        self.search_btn.setStyleSheet(
+            "QPushButton { "
+            "background-color: #3498db; "
+            "color: white; "
+            "font-weight: bold; "
+            "padding: 8px 16px; "
+            "border-radius: 8px; "
+            "}"
+            "QPushButton:hover { background-color: #2980b9; }"
+        )
+        search_layout.addWidget(self.search_btn)
+        left_layout.addWidget(search_group)
+        
+        # 标签页组件（材料库、腐蚀类型）
         self.tab_widget = QTabWidget()
-        
-        # 添加查询标签页
-        self.query_tab = self.create_query_tab()
-        self.tab_widget.addTab(self.query_tab, "腐蚀查询")
+        self.tab_widget.setStyleSheet(
+            "QTabWidget::pane { "
+            "border: 1px solid #bdc3c7; "
+            "border-radius: 6px; "
+            "top: -1px; "
+            "}"
+            "QTabBar::tab { "
+            "background: #ecf0f1; "
+            "border: 1px solid #bdc3c7; "
+            "border-bottom: none; "
+            "border-top-left-radius: 6px; "
+            "border-top-right-radius: 6px; "
+            "padding: 8px 16px; "
+            "margin-right: 2px; "
+            "font-weight: bold; "
+            "}"
+            "QTabBar::tab:selected { "
+            "background: #ffffff; "
+            "color: #2980b9; "
+            "}"
+            "QTabBar::tab:hover:!selected { "
+            "background: #d5dbdb; "
+            "}"
+        )
         
         # 添加材料库标签页
         self.material_tab = self.create_material_tab()
@@ -42,125 +318,129 @@ class CorrosionDataQuery(QWidget):
         self.corrosion_types_tab = self.create_corrosion_types_tab()
         self.tab_widget.addTab(self.corrosion_types_tab, "腐蚀类型")
         
-        main_layout.addWidget(self.tab_widget)
-    
-    def create_query_tab(self):
-        """创建查询标签页"""
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
+        left_layout.addWidget(self.tab_widget)
         
-        # 查询条件组
-        query_group = QGroupBox("查询条件")
-        query_layout = QVBoxLayout(query_group)
-        
-        # 材料选择
-        material_layout = QHBoxLayout()
-        material_layout.addWidget(QLabel("材料类型:"))
-        self.material_category_combo = QComboBox()
-        self.material_category_combo.addItems([
-            "碳钢", "不锈钢", "合金钢", "铜及铜合金", "铝及铝合金", 
-            "钛及钛合金", "镍基合金", "塑料", "橡胶", "陶瓷"
-        ])
-        self.material_category_combo.currentTextChanged.connect(self.on_material_category_changed)
-        material_layout.addWidget(self.material_category_combo)
-        
-        material_layout.addWidget(QLabel("具体材料:"))
-        self.material_combo = QComboBox()
-        material_layout.addWidget(self.material_combo)
-        
-        query_layout.addLayout(material_layout)
-        
-        # 介质选择
-        medium_layout = QHBoxLayout()
-        medium_layout.addWidget(QLabel("腐蚀介质:"))
-        self.medium_category_combo = QComboBox()
-        self.medium_category_combo.addItems([
-            "酸类", "碱类", "盐类", "有机溶剂", "气体", "水及水溶液"
-        ])
-        self.medium_category_combo.currentTextChanged.connect(self.on_medium_category_changed)
-        medium_layout.addWidget(self.medium_category_combo)
-        
-        medium_layout.addWidget(QLabel("具体介质:"))
-        self.medium_combo = QComboBox()
-        medium_layout.addWidget(self.medium_combo)
-        
-        query_layout.addLayout(medium_layout)
-        
-        # 条件参数
-        condition_layout = QHBoxLayout()
-        condition_layout.addWidget(QLabel("温度 (°C):"))
-        self.temperature_input = QDoubleSpinBox()
-        self.temperature_input.setRange(-50, 500)
-        self.temperature_input.setValue(25)
-        self.temperature_input.setSuffix(" °C")
-        condition_layout.addWidget(self.temperature_input)
-        
-        condition_layout.addWidget(QLabel("浓度 (%):"))
-        self.concentration_input = QDoubleSpinBox()
-        self.concentration_input.setRange(0, 100)
-        self.concentration_input.setValue(10)
-        self.concentration_input.setSuffix(" %")
-        condition_layout.addWidget(self.concentration_input)
-        
-        condition_layout.addWidget(QLabel("pH值:"))
-        self.ph_input = QDoubleSpinBox()
-        self.ph_input.setRange(0, 14)
-        self.ph_input.setValue(7)
-        condition_layout.addWidget(self.ph_input)
-        
-        query_layout.addLayout(condition_layout)
-        
-        layout.addWidget(query_group)
-        
-        # 按钮组
-        button_layout = QHBoxLayout()
-        self.query_btn = QPushButton("查询腐蚀数据")
-        self.query_btn.clicked.connect(self.query_corrosion_data)
-        self.query_btn.setStyleSheet("QPushButton { background-color: #c0392b; color: white; font-weight: bold; }")
-        button_layout.addWidget(self.query_btn)
-        
-        self.advanced_query_btn = QPushButton("高级查询")
-        self.advanced_query_btn.clicked.connect(self.advanced_query)
-        self.advanced_query_btn.setStyleSheet("QPushButton { background-color: #3498db; color: white; }")
-        button_layout.addWidget(self.advanced_query_btn)
+        # 底部按钮行：清空按钮（灰色）→ Stretch → 下载TXT（绿色）→ 下载PDF（红色）
+        bottom_layout = QHBoxLayout()
         
         self.clear_btn = QPushButton("清空")
         self.clear_btn.clicked.connect(self.clear_inputs)
-        self.clear_btn.setStyleSheet("QPushButton { background-color: #95a5a6; color: white; }")
-        button_layout.addWidget(self.clear_btn)
+        self.clear_btn.setStyleSheet(
+            "QPushButton { "
+            "background-color: #95a5a6; "
+            "color: white; "
+            "font-weight: bold; "
+            "padding: 8px 20px; "
+            "border-radius: 8px; "
+            "}"
+            "QPushButton:hover { background-color: #7f8c8d; }"
+        )
+        bottom_layout.addWidget(self.clear_btn)
         
-        layout.addLayout(button_layout)
+        bottom_layout.addStretch()
         
-        # 结果显示组
-        result_group = QGroupBox("查询结果")
-        result_layout = QVBoxLayout(result_group)
+        self.download_txt_btn = QPushButton("下载TXT")
+        self.download_txt_btn.clicked.connect(self.download_txt_report)
+        self.download_txt_btn.setStyleSheet(
+            "QPushButton { "
+            "background-color: #27ae60; "
+            "color: white; "
+            "font-weight: bold; "
+            "padding: 8px 20px; "
+            "border-radius: 8px; "
+            "}"
+            "QPushButton:hover { background-color: #229954; }"
+        )
+        bottom_layout.addWidget(self.download_txt_btn)
         
+        self.download_pdf_btn = QPushButton("下载PDF")
+        self.download_pdf_btn.clicked.connect(self.generate_pdf_report)
+        self.download_pdf_btn.setStyleSheet(
+            "QPushButton { "
+            "background-color: #e74c3c; "
+            "color: white; "
+            "font-weight: bold; "
+            "padding: 8px 20px; "
+            "border-radius: 8px; "
+            "}"
+            "QPushButton:hover { background-color: #c0392b; }"
+        )
+        bottom_layout.addWidget(self.download_pdf_btn)
+        
+        left_layout.addLayout(bottom_layout)
+        
+        # 弹性空间填充底部
+        left_layout.addStretch()
+        
+        left_scroll.setWidget(left_widget)
+        
+        # ========= 右侧结果区 =========
+        right_widget = QWidget()
+        right_widget.setMinimumWidth(400)
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setSpacing(10)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        
+        result_label = QLabel("查询结果")
+        result_label.setFont(QFont("Arial", 11, QFont.Bold))
+        result_label.setStyleSheet("color: #2c3e50; padding: 5px;")
+        right_layout.addWidget(result_label)
+        
+        # 右侧 QTextEdit：只读、浅灰背景、圆角、最小高度500px
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setMaximumHeight(200)
-        result_layout.addWidget(self.result_text)
+        self.result_text.setMinimumHeight(500)
+        self.result_text.setStyleSheet(
+            "QTextEdit { "
+            "background-color: #f8f9fa; "
+            "border: 1px solid #dee2e6; "
+            "border-radius: 6px; "
+            "padding: 12px; "
+            "font-size: 13px; "
+            "}"
+        )
+        self.result_text.setPlaceholderText("查询结果将在此处显示...")
+        right_layout.addWidget(self.result_text)
         
-        layout.addWidget(result_group)
+        # ========= 按比例添加到主布局 =========
+        main_layout.addWidget(left_scroll, 2)   # 左侧占2份
+        main_layout.addWidget(right_widget, 1)  # 右侧占1份
         
-        # 详细数据表
-        detail_group = QGroupBox(" 详细数据")
-        detail_layout = QVBoxLayout(detail_group)
-        
-        self.detail_table = QTableWidget()
-        self.detail_table.setColumnCount(4)
-        self.detail_table.setHorizontalHeaderLabels(["参数", "数值", "单位", "说明"])
-        detail_layout.addWidget(self.detail_table)
-        
-        layout.addWidget(detail_group)
-        
-        # 初始化下拉框
+        # 初始化下拉框选项
         self.on_material_category_changed(self.material_category_combo.currentText())
         self.on_medium_category_changed(self.medium_category_combo.currentText())
         
-        return tab
-    
+    def calculate(self):
+        """执行计算 - 查询腐蚀数据"""
+        try:
+            # 获取查询条件
+            material = self.material_combo.currentText()
+            medium = self.medium_combo.currentText()
+            temperature = self.temperature_input.value()
+            concentration = self.concentration_input.value()
+            ph = self.ph_input.value()
+            
+            # 构建查询键
+            query_key = f"{material}-{medium}"
+            
+            # 精确匹配查询
+            if query_key in self.corrosion_data:
+                data = self.corrosion_data[query_key]
+                self.display_results(data, material, medium, temperature, concentration)
+            else:
+                # 无精确匹配时尝试模糊查询
+                self.fuzzy_query(material, medium, temperature, concentration)
+                
+            # 保存到历史记录
+            if self.data_manager:
+                history_data = self._get_history_data()
+                self.data_manager.add_record(self.calculation_type, history_data)
+                
+        except Exception as e:
+            QMessageBox.warning(self, "查询错误", f"查询过程中发生错误: {str(e)}")
+        
     def on_material_category_changed(self, category):
-        """材料类别改变事件"""
+        """材料类别改变时更新具体材料下拉框"""
         materials = {
             "碳钢": ["Q235", "Q345", "20#钢", "45#钢", "A36", "A53"],
             "不锈钢": ["304", "304L", "316", "316L", "321", "310S", "2205", "2507"],
@@ -177,9 +457,9 @@ class CorrosionDataQuery(QWidget):
         self.material_combo.clear()
         if category in materials:
             self.material_combo.addItems(materials[category])
-    
+        
     def on_medium_category_changed(self, category):
-        """介质类别改变事件"""
+        """介质类别改变时更新具体介质下拉框"""
         mediums = {
             "酸类": ["盐酸", "硫酸", "硝酸", "磷酸", "醋酸", "氢氟酸", "柠檬酸"],
             "碱类": ["氢氧化钠", "氢氧化钾", "氨水", "碳酸钠", "石灰水"],
@@ -192,17 +472,17 @@ class CorrosionDataQuery(QWidget):
         self.medium_combo.clear()
         if category in mediums:
             self.medium_combo.addItems(mediums[category])
-    
+        
     def create_material_tab(self):
         """创建材料库标签页"""
         tab = QWidget()
         layout = QVBoxLayout(tab)
+        layout.setSpacing(12)
         
         # 材料库说明
-        info_label = QLabel("常用工程材料耐腐蚀性能参考")
-        info_label.setFont(QFont("Arial", 12, QFont.Bold))
-        info_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(info_label)
+        info_group = QGroupBox("常用工程材料耐腐蚀性能参考")
+        info_group.setStyleSheet(GROUP_STYLE)
+        info_layout = QVBoxLayout(info_group)
         
         # 材料参数表
         material_table = QTableWidget()
@@ -235,115 +515,99 @@ class CorrosionDataQuery(QWidget):
         header.setSectionResizeMode(3, QHeaderView.Stretch)
         header.setSectionResizeMode(4, QHeaderView.Stretch)
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        material_table.verticalHeader().setVisible(False)
         
-        layout.addWidget(material_table)
+        info_layout.addWidget(material_table)
+        layout.addWidget(info_group)
         
         return tab
-    
+        
     def create_corrosion_types_tab(self):
         """创建腐蚀类型标签页"""
         tab = QWidget()
         layout = QVBoxLayout(tab)
+        layout.setSpacing(12)
         
-        # 腐蚀类型说明
+        corrosion_group = QGroupBox("常见腐蚀类型知识")
+        corrosion_group.setStyleSheet(GROUP_STYLE)
+        group_layout = QVBoxLayout(corrosion_group)
+        
         corrosion_text = QTextEdit()
         corrosion_text.setReadOnly(True)
-        corrosion_text.setHtml(self.get_corrosion_types_html())
-        layout.addWidget(corrosion_text)
+        corrosion_text.setPlainText(self.get_corrosion_types_text())
+        corrosion_text.setStyleSheet(
+            "QTextEdit { "
+            "background-color: #ffffff; "
+            "border: 1px solid #dee2e6; "
+            "border-radius: 4px; "
+            "padding: 8px; "
+            "}"
+        )
+        group_layout.addWidget(corrosion_text)
+        layout.addWidget(corrosion_group)
         
         return tab
-    
-    def get_corrosion_types_html(self):
-        """获取腐蚀类型HTML内容"""
-        return """
-        <h2>常见腐蚀类型</h2>
         
-        <h3>1. 均匀腐蚀</h3>
-        <p><b>特征：</b>整个金属表面均匀减薄</p>
-        <p><b>原因：</b>化学或电化学反应在整个表面均匀发生</p>
-        <p><b>防护：</b>选用耐腐蚀材料、涂层、缓蚀剂</p>
+    def get_corrosion_types_text(self):
+        """获取腐蚀类型的文本内容"""
+        text = "常见腐蚀类型\n\n"
+        text += "1. 均匀腐蚀\n"
+        text += "   特征：整个金属表面均匀减薄\n"
+        text += "   原因：化学或电化学反应在整个表面均匀发生\n"
+        text += "   防护：选用耐腐蚀材料、涂层、缓蚀剂\n\n"
         
-        <h3>2. 点蚀</h3>
-        <p><b>特征：</b>局部区域形成小孔或凹坑</p>
-        <p><b>原因：</b>局部破坏钝化膜，形成腐蚀电池</p>
-        <p><b>易发材料：</b>不锈钢、铝、钛在含氯离子环境中</p>
+        text += "2. 点蚀\n"
+        text += "   特征：局部区域形成小孔或凹坑\n"
+        text += "   原因：局部破坏钝化膜，形成腐蚀电池\n"
+        text += "   易发材料：不锈钢、铝、钛在含氯离子环境中\n\n"
         
-        <h3>3. 缝隙腐蚀</h3>
-        <p><b>特征：</b>在缝隙或遮蔽区域发生</p>
-        <p><b>原因：</b>缝隙内外氧浓度差异形成浓差电池</p>
-        <p><b>防护：</b>避免缝隙设计、使用密封剂</p>
+        text += "3. 缝隙腐蚀\n"
+        text += "   特征：在缝隙或遮蔽区域发生\n"
+        text += "   原因：缝隙内外氧浓度差异形成浓差电池\n"
+        text += "   防护：避免缝隙设计、使用密封剂\n\n"
         
-        <h3>4. 电偶腐蚀</h3>
-        <p><b>特征：</b>两种不同金属接触处的腐蚀</p>
-        <p><b>原因：</b>电位差驱动电子流动</p>
-        <p><b>防护：</b>避免异种金属接触、使用绝缘材料</p>
+        text += "4. 电偶腐蚀\n"
+        text += "   特征：两种不同金属接触处的腐蚀\n"
+        text += "   原因：电位差驱动电子流动\n"
+        text += "   防护：避免异种金属接触、使用绝缘材料\n\n"
         
-        <h3>5. 应力腐蚀开裂</h3>
-        <p><b>特征：</b>在拉应力和特定介质共同作用下开裂</p>
-        <p><b>原因：</b>应力加速局部腐蚀</p>
-        <p><b>典型组合：</b>奥氏体不锈钢-氯离子、碳钢-硝酸盐</p>
+        text += "5. 应力腐蚀开裂\n"
+        text += "   特征：在拉应力和特定介质共同作用下开裂\n"
+        text += "   原因：应力加速局部腐蚀\n"
+        text += "   典型组合：奥氏体不锈钢-氯离子、碳钢-硝酸盐\n\n"
         
-        <h3>6. 晶间腐蚀</h3>
-        <p><b>特征：</b>沿晶界选择性腐蚀</p>
-        <p><b>原因：</b>晶界区与晶内成分差异</p>
-        <p><b>典型材料：</b>不锈钢敏化态、铝合金</p>
+        text += "6. 晶间腐蚀\n"
+        text += "   特征：沿晶界选择性腐蚀\n"
+        text += "   原因：晶界区与晶内成分差异\n"
+        text += "   典型材料：不锈钢敏化态、铝合金\n\n"
         
-        <h3>7. 腐蚀疲劳</h3>
-        <p><b>特征：</b>交变应力与腐蚀介质共同作用</p>
-        <p><b>原因：</b>腐蚀降低材料疲劳强度</p>
-        <p><b>防护：</b>降低应力集中、表面处理</p>
+        text += "7. 腐蚀疲劳\n"
+        text += "   特征：交变应力与腐蚀介质共同作用\n"
+        text += "   原因：腐蚀降低材料疲劳强度\n"
+        text += "   防护：降低应力集中、表面处理\n\n"
         
-        <h3>8. 冲刷腐蚀</h3>
-        <p><b>特征：</b>流体冲刷加速腐蚀</p>
-        <p><b>原因：</b>机械磨损与化学腐蚀协同作用</p>
-        <p><b>防护：</b>降低流速、选用耐磨材料</p>
+        text += "8. 冲刷腐蚀\n"
+        text += "   特征：流体冲刷加速腐蚀\n"
+        text += "   原因：机械磨损与化学腐蚀协同作用\n"
+        text += "   防护：降低流速、选用耐磨材料\n\n"
         
-        <h3>腐蚀速率等级</h3>
-        <table border="1" style="border-collapse: collapse; width: 100%;">
-        <tr style="background-color: #3498db; color: white;">
-            <th style="padding: 8px;">腐蚀速率(mm/年)</th>
-            <th style="padding: 8px;">等级</th>
-            <th style="padding: 8px;">评价</th>
-        </tr>
-        <tr>
-            <td style="padding: 8px;">&lt; 0.025</td>
-            <td style="padding: 8px;">优秀</td>
-            <td style="padding: 8px;">完全耐蚀</td>
-        </tr>
-        <tr>
-            <td style="padding: 8px;">0.025 - 0.05</td>
-            <td style="padding: 8px;">良好</td>
-            <td style="padding: 8px;">耐蚀</td>
-        </tr>
-        <tr>
-            <td style="padding: 8px;">0.05 - 0.125</td>
-            <td style="padding: 8px;">可用</td>
-            <td style="padding: 8px;">尚耐蚀</td>
-        </tr>
-        <tr>
-            <td style="padding: 8px;">0.125 - 0.25</td>
-            <td style="padding: 8px;">差</td>
-            <td style="padding: 8px;">不耐蚀</td>
-        </tr>
-        <tr>
-            <td style="padding: 8px;">&gt; 0.25</td>
-            <td style="padding: 8px;">很差</td>
-            <td style="padding: 8px;">严重腐蚀</td>
-        </tr>
-        </table>
+        text += "腐蚀速率等级\n\n"
+        text += "   < 0.025 mm/年：优秀（完全耐蚀）\n"
+        text += "   0.025 - 0.05 mm/年：良好（耐蚀）\n"
+        text += "   0.05 - 0.125 mm/年：可用（尚耐蚀）\n"
+        text += "   0.125 - 0.25 mm/年：差（不耐蚀）\n"
+        text += "   > 0.25 mm/年：很差（严重腐蚀）\n\n"
         
-        <h3>参考标准</h3>
-        <ul>
-            <li>GB/T 10123-2001 金属和合金的腐蚀基本术语</li>
-            <li>GB/T 18590-2001 金属和合金的腐蚀点蚀评定方法</li>
-            <li>ASTM G31 实验室浸渍腐蚀试验</li>
-            <li>NACE MR0175 油田设备用金属材料抗硫化物应力开裂</li>
-        </ul>
-        """
-    
+        text += "参考标准\n"
+        text += "   GB/T 10123-2001 金属和合金的腐蚀基本术语\n"
+        text += "   GB/T 18590-2001 金属和合金的腐蚀点蚀评定方法\n"
+        text += "   ASTM G31 实验室浸渍腐蚀试验\n"
+        text += "   NACE MR0175 油田设备用金属材料抗硫化物应力开裂\n"
+        
+        return text
+        
     def load_corrosion_data(self):
-        """加载腐蚀数据"""
-        # 模拟腐蚀数据库
+        """加载腐蚀数据库（内置模拟数据）"""
         corrosion_data = {
             # 碳钢数据
             "Q235-盐酸": {"rate": 12.5, "rating": "很差", "notes": "严重腐蚀，不推荐使用"},
@@ -377,70 +641,35 @@ class CorrosionDataQuery(QWidget):
         }
         
         return corrosion_data
-    
+        
     def query_corrosion_data(self):
-        """查询腐蚀数据"""
-        try:
-            # 获取查询条件
-            material_category = self.material_category_combo.currentText()
-            material = self.material_combo.currentText()
-            medium_category = self.medium_category_combo.currentText()
-            medium = self.medium_combo.currentText()
-            temperature = self.temperature_input.value()
-            concentration = self.concentration_input.value()
-            ph = self.ph_input.value()
-            
-            # 构建查询键
-            query_key = f"{material}-{medium}"
-            
-            # 查询数据
-            if query_key in self.corrosion_data:
-                data = self.corrosion_data[query_key]
-                self.display_results(data, material, medium, temperature, concentration)
-                self.update_detail_table(data, material, medium, temperature, concentration)
-            else:
-                # 如果没有精确匹配，尝试模糊查询
-                self.fuzzy_query(material, medium, temperature, concentration)
-                
-        except Exception as e:
-            QMessageBox.warning(self, "查询错误", f"查询过程中发生错误: {str(e)}")
-    
+        """执行腐蚀数据查询（保留旧接口）"""
+        self.calculate()
+        
     def fuzzy_query(self, material, medium, temperature, concentration):
-        """模糊查询"""
-        # 查找相关数据
+        """模糊查询：查找相关腐蚀数据"""
         related_data = []
         for key, value in self.corrosion_data.items():
             if material in key and medium in key:
                 related_data.append((key, value))
         
         if related_data:
-            # 显示相关数据
-            result_text = f"<h3>相关腐蚀数据</h3>"
-            result_text += f"<p>未找到精确匹配，以下是相关数据：</p>"
-            result_text += "<table border='1' style='border-collapse: collapse; width: 100%;'>"
-            result_text += "<tr style='background-color: #f8f9fa;'><th>材料-介质</th><th>腐蚀速率(mm/年)</th><th>评级</th><th>说明</th></tr>"
+            # 构建模糊查询结果文本
+            result = f"=== 相关腐蚀数据 ===\n\n"
+            result += f"未找到精确匹配「{material}-{medium}」，以下是相关数据：\n\n"
+            result += f"{'材料-介质':<25}{'腐蚀速率(mm/年)':<20}{'评级':<12}{'说明':<30}\n"
+            result += "-" * 90 + "\n"
             
             for key, data in related_data:
-                rate_color = self.get_rate_color(data["rate"])
-                result_text += f"""
-                <tr>
-                    <td style='padding: 8px;'>{key}</td>
-                    <td style='padding: 8px; color: {rate_color};'>{data['rate']}</td>
-                    <td style='padding: 8px;'>{data['rating']}</td>
-                    <td style='padding: 8px;'>{data['notes']}</td>
-                </tr>
-                """
+                result += f"{key:<25}{data['rate']:<20}{data['rating']:<12}{data['notes']:<30}\n"
             
-            result_text += "</table>"
-            self.result_text.setHtml(result_text)
+            self.result_text.setPlainText(result)
             
-            # 清空详细表格
-            self.detail_table.setRowCount(0)
         else:
-            QMessageBox.information(self, "查询结果", "未找到相关腐蚀数据")
-    
+            self.result_text.setPlainText(f"未找到包含「{material}」和「{medium}」的相关腐蚀数据。")
+        
     def get_rate_color(self, rate):
-        """根据腐蚀速率获取颜色"""
+        """根据腐蚀速率返回对应的颜色标记"""
         if rate < 0.025:
             return "green"
         elif rate < 0.05:
@@ -449,143 +678,276 @@ class CorrosionDataQuery(QWidget):
             return "orange"
         else:
             return "red"
-    
+        
     def display_results(self, data, material, medium, temperature, concentration):
-        """显示查询结果"""
+        """显示精确匹配的查询结果"""
         rate_color = self.get_rate_color(data["rate"])
         
-        result_text = f"""
-        <h3>腐蚀数据查询结果</h3>
+        result = f"=== 腐蚀数据查询结果 ===\n\n"
+        result += f"材料-介质: {material} - {medium}\n"
+        result += f"腐蚀速率: {data['rate']} mm/年\n"
+        result += f"耐蚀评级: {data['rating']}\n"
+        result += f"温度条件: {temperature} °C\n"
+        result += f"浓度条件: {concentration} %\n\n"
         
-        <table border="1" style="border-collapse: collapse; width: 100%;">
-        <tr style="background-color: #f8f9fa;">
-            <td style="padding: 8px; font-weight: bold;">项目</td>
-            <td style="padding: 8px;">结果</td>
-            <td style="padding: 8px;">说明</td>
-        </tr>
-        <tr>
-            <td style="padding: 8px; font-weight: bold;">材料-介质</td>
-            <td style="padding: 8px;">{material} - {medium}</td>
-            <td style="padding: 8px;">查询组合</td>
-        </tr>
-        <tr>
-            <td style="padding: 8px; font-weight: bold;">腐蚀速率</td>
-            <td style="padding: 8px; color: {rate_color}; font-weight: bold;">{data['rate']} mm/年</td>
-            <td style="padding: 8px;">年腐蚀深度</td>
-        </tr>
-        <tr>
-            <td style="padding: 8px; font-weight: bold;">耐蚀评级</td>
-            <td style="padding: 8px;">{data['rating']}</td>
-            <td style="padding: 8px;">耐腐蚀性能等级</td>
-        </tr>
-        <tr>
-            <td style="padding: 8px; font-weight: bold;">温度条件</td>
-            <td style="padding: 8px;">{temperature} °C</td>
-            <td style="padding: 8px;">操作温度</td>
-        </tr>
-        <tr>
-            <td style="padding: 8px; font-weight: bold;">浓度条件</td>
-            <td style="padding: 8px;">{concentration} %</td>
-            <td style="padding: 8px;">介质浓度</td>
-        </tr>
-        </table>
+        result += f"说明与建议\n"
+        result += f"{data['notes']}\n\n"
         
-        <h4>说明与建议</h4>
-        <p>{data['notes']}</p>
-        """
-        
-        # 添加建议
+        # 根据腐蚀速率添加使用建议
         if data["rate"] < 0.05:
-            result_text += "<p style='color: green;'><b>建议：</b>该材料在此介质中耐蚀性良好，可以选用。</p>"
+            result += "建议：该材料在此介质中耐蚀性良好，可以选用。\n"
         elif data["rate"] < 0.125:
-            result_text += "<p style='color: orange;'><b>建议：</b>该材料在此介质中耐蚀性一般，需要定期检查和维护。</p>"
+            result += "建议：该材料在此介质中耐蚀性一般，需要定期检查和维护。\n"
         else:
-            result_text += "<p style='color: red;'><b>建议：</b>该材料在此介质中耐蚀性差，不推荐使用，请选用其他材料。</p>"
+            result += "建议：该材料在此介质中耐蚀性差，不推荐使用，请选用其他材料。\n"
         
-        self.result_text.setHtml(result_text)
-    
-    def update_detail_table(self, data, material, medium, temperature, concentration):
-        """更新详细数据表"""
-        # 计算使用寿命估算
+        # 计算不同壁厚下的使用寿命估算
         thickness_options = [3, 5, 8, 10]  # mm
-        service_life = {}
+        result += f"\n使用寿命估算（假设腐蚀均匀）：\n"
         for thickness in thickness_options:
             if data["rate"] > 0:
                 life = thickness / data["rate"]
-                service_life[thickness] = life
+                result += f"  {thickness}mm厚度: 约{life:.1f}年\n"
         
-        detail_data = [
-            ["腐蚀速率", f"{data['rate']}", "mm/年", "年腐蚀深度"],
-            ["耐蚀等级", data["rating"], "-", "耐腐蚀性能评级"],
-            ["操作温度", f"{temperature}", "°C", "介质温度"],
-            ["介质浓度", f"{concentration}", "%", "介质浓度"],
-            ["pH值", f"{self.ph_input.value()}", "-", "介质酸碱度"],
-        ]
+        self.result_text.setPlainText(result)
         
-        # 添加使用寿命估算
-        for thickness, life in service_life.items():
-            detail_data.append([
-                f"{thickness}mm厚度寿命", 
-                f"{life:.1f}", 
-                "年", 
-                f"假设腐蚀均匀，{thickness}mm厚度估算寿命"
-            ])
+    def on_search(self):
+        """快速搜索功能"""
+        keyword = self.search_input.text().strip().lower()
+        if not keyword:
+            return
         
-        self.detail_table.setRowCount(len(detail_data))
-        for i, row_data in enumerate(detail_data):
-            for j, data in enumerate(row_data):
-                item = QTableWidgetItem(data)
-                item.setTextAlignment(Qt.AlignCenter)
-                self.detail_table.setItem(i, j, item)
+        results = []
+        for key, value in self.corrosion_data.items():
+            if keyword in key.lower():
+                results.append((key, value))
         
-        # 调整列宽
-        header = self.detail_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.Stretch)
-    
-    def advanced_query(self):
-        """高级查询"""
-        # 这里可以实现更复杂的查询逻辑
-        QMessageBox.information(self, "高级查询", "高级查询功能正在开发中...")
-    
+        if results:
+            result_text = f"=== 搜索结果：「{keyword}」 ===\n\n"
+            result_text += f"{'材料-介质':<25}{'速率(mm/年)':<18}{'评级':<12}{'备注':<30}\n"
+            result_text += "-" * 90 + "\n"
+            for key, data in results:
+                result_text += f"{key:<25}{data['rate']:<18}{data['rating']:<12}{data['notes']:<30}\n"
+            self.result_text.setPlainText(result_text)
+        else:
+            self.result_text.setPlainText(f"未找到包含「{keyword}」的相关数据。")
+        
     def clear_inputs(self):
-        """清空输入"""
+        """清空所有输入和结果"""
         self.material_category_combo.setCurrentIndex(0)
         self.medium_category_combo.setCurrentIndex(0)
         self.temperature_input.setValue(25)
         self.concentration_input.setValue(10)
         self.ph_input.setValue(7)
         self.result_text.clear()
-        self.detail_table.setRowCount(0)
-
+        self.search_input.clear()
+        
     def _get_history_data(self):
-        """提供历史记录数据"""
-        material = self.material_category_combo.currentText()
-        medium = self.medium_category_combo.currentText()
+        """获取当前查询的历史记录数据（供外部调用）
+        
+        Returns:
+            dict: 包含inputs和outputs的字典
+        """
+        material = self.material_combo.currentText()
+        medium = self.medium_combo.currentText()
         temperature = self.temperature_input.value()
         concentration = self.concentration_input.value()
         ph = self.ph_input.value()
-
+        
         inputs = {
-            "材料类别": material,
-            "介质类别": medium,
+            "材料类别": self.material_category_combo.currentText(),
+            "具体材料": material,
+            "介质类别": self.medium_category_combo.currentText(),
+            "具体介质": medium,
             "温度_C": temperature,
             "浓度_%": concentration,
             "pH值": ph
         }
-
+        
         outputs = {}
-        if self.detail_table.rowCount() > 0:
-            for row in range(min(5, self.detail_table.rowCount())):
-                name_item = self.detail_table.item(row, 0)
-                rate_item = self.detail_table.item(row, 2)
-                if name_item and rate_item:
-                    outputs[f"材料{row+1}"] = name_item.text()
-                    outputs[f"腐蚀速率{row+1}"] = rate_item.text()
-
+        # 从查询结果提取输出数据
+        result_text = self.result_text.toPlainText()
+        if result_text and "腐蚀速率:" in result_text:
+            for line in result_text.split("\n"):
+                if "腐蚀速率:" in line:
+                    outputs["腐蚀速率"] = line.split(":")[1].strip()
+                elif "耐蚀评级:" in line:
+                    outputs["耐蚀评级"] = line.split(":")[1].strip()
+        
         return {"inputs": inputs, "outputs": outputs}
+        
+    def get_project_info(self):
+        """获取项目信息（报告生成用）
+        
+        Returns:
+            dict: 项目基本信息字典
+        """
+        return {
+            "project_name": "腐蚀数据查询",
+            "calculation_type": self.calculation_type,
+            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "operator": "用户",
+        }
+        
+    def generate_report(self):
+        """生成完整的查询报告内容
+        
+        Returns:
+            str: 格式化的完整报告文本
+        """
+        history = self._get_history_data()
+        project = self.get_project_info()
+        
+        report_lines = [
+            "=" * 60,
+            "              腐蚀数据查询报告",
+            "=" * 60,
+            "",
+            f"生成时间：{project['timestamp']}",
+            f"计算类型：{project['calculation_type']}",
+            "",
+            "-" * 40,
+            "【查询条件】",
+            "-" * 40,
+        ]
+        for k, v in history["inputs"].items():
+            report_lines.append(f"  {k}: {v}")
+        
+        report_lines.extend([
+            "",
+            "-" * 40,
+            "【查询结果】",
+            "-" * 40,
+        ])
+        for k, v in history["outputs"].items():
+            report_lines.append(f"  {k}: {v}")
+        
+        # 补充详情文本
+        detail_content = self.result_text.toPlainText().strip()
+        if detail_content:
+            report_lines.extend([
+                "",
+                "-" * 40,
+                "【详细信息】",
+                "-" * 40,
+                detail_content
+            ])
+        
+        report_lines.extend([
+            "",
+            "=" * 60,
+            "                     报告结束",
+            "=" * 60,
+        ])
+        
+        return "\n".join(report_lines)
+        
+    def download_txt_report(self):
+        """下载TXT格式报告"""
+        try:
+            file_path, _ = QFileDialog.getSaveFileName(
+                self, "保存TXT报告", "", "Text Files (*.txt)"
+            )
+            
+            if file_path:
+                report_content = self.generate_report()
+                
+                with open(file_path, "w", encoding="utf-8") as f:
+                    f.write(report_content)
+                
+                QMessageBox.information(
+                    self, "导出成功",
+                    f"TXT报告已成功导出至:\n{file_path}"
+                )
+        except Exception as e:
+            QMessageBox.warning(self, "导出失败", f"TXT报告导出失败: {str(e)}")
+        
+    def generate_pdf_report(self):
+        """使用fpdf生成PDF格式报告"""
+        try:
+            file_path, _ = QFileDialog.getSaveFileName(
+                self, "保存PDF报告", "", "PDF Files (*.pdf)"
+            )
+            
+            if file_path:
+                project = self.get_project_info()
+                history = self._get_history_data()
+                
+                # 创建PDF文档
+                pdf = FPDF()
+                pdf.add_page()
+                
+                # 设置中文字体
+                font_path = "C:/Windows/Fonts/msyh.ttc"
+                pdf.add_font("msyh", "", font_path, uni=True)
+                pdf.set_font("msyh", "", 11)
+                
+                # 标题
+                pdf.set_font("msyh", "", 18)
+                pdf.cell(0, 15, "腐蚀数据查询报告", ln=True, align="C")
+                pdf.ln(5)
+                
+                # 基本信息
+                pdf.set_font("msyh", "", 11)
+                pdf.cell(0, 8, f"生成时间：{project['timestamp']}", ln=True)
+                pdf.cell(0, 8, f"计算类型：{project['calculation_type']}", ln=True)
+                pdf.ln(5)
+                
+                # 分隔线
+                pdf.set_draw_color(180, 180, 180)
+                pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+                pdf.ln(5)
+                
+                # 查询条件部分
+                pdf.set_font("msyh", "", 14)
+                pdf.cell(0, 10, "【查询条件】", ln=True)
+                pdf.set_font("msyh", "", 11)
+                for k, v in history["inputs"].items():
+                    pdf.cell(0, 7, f"  {k}: {v}", ln=True)
+                pdf.ln(5)
+                
+                # 查询结果部分
+                pdf.set_font("msyh", "", 14)
+                pdf.cell(0, 10, "【查询结果】", ln=True)
+                pdf.set_font("msyh", "", 11)
+                for k, v in history["outputs"].items():
+                    display_v = str(v)[:80] + ("..." if len(str(v)) > 80 else "")
+                    pdf.cell(0, 7, f"  {k}: {display_v}", ln=True)
+                pdf.ln(5)
+                
+                # 详细信息（从右侧面板取纯文本）
+                detail_text = self.result_text.toPlainText().strip()
+                if detail_text:
+                    pdf.set_font("msyh", "", 14)
+                    pdf.cell(0, 10, "【详细信息】", ln=True)
+                    pdf.set_font("msyh", "", 10)
+                    # 分行写入，处理超长文本
+                    for line in detail_text.split("\n"):
+                        if line.strip():
+                            # PDF单行最大宽度约180mm，截断并换行
+                            while len(line) > 60:
+                                pdf.multi_cell(0, 6, line[:60])
+                                line = line[60:]
+                            if line:
+                                pdf.multi_cell(0, 6, line)
+                
+                # 页脚
+                pdf.ln(10)
+                pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+                pdf.ln(3)
+                pdf.set_font("msyh", "", 9)
+                pdf.cell(0, 8, "CalcE 化工计算工具 - 腐蚀数据查询模块", ln=True, align="C")
+                
+                # 保存文件
+                pdf.output(file_path)
+                
+                QMessageBox.information(
+                    self, "导出成功",
+                    f"PDF报告已成功导出至:\n{file_path}"
+                )
+        except Exception as e:
+            QMessageBox.warning(self, "导出失败", f"PDF报告导出失败: {str(e)}")
+
 
 if __name__ == "__main__":
     # 测试代码
@@ -595,7 +957,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     
     widget = CorrosionDataQuery()
-    widget.resize(900, 700)
+    widget.resize(1300, 700)
     widget.show()
     
     sys.exit(app.exec())

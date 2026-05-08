@@ -1,739 +1,612 @@
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
-                              QLabel, QLineEdit, QComboBox, QPushButton,
-                              QTextEdit, QTableWidget, QTableWidgetItem,
-                              QHeaderView, QMessageBox, QTabWidget, QDoubleSpinBox,
-                              QCheckBox, QRadioButton, QButtonGroup)
+import math, os
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
+    QLabel, QLineEdit, QPushButton, QComboBox,
+    QTextEdit, QGridLayout, QTableWidget, QTableWidgetItem,
+    QHeaderView, QFileDialog, QMessageBox, QButtonGroup,
+    QRadioButton,
+    QScrollArea,
+)
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QDoubleValidator
-import math
+from PySide6.QtGui import QDoubleValidator
 
 
 class CompressibleFlowPressureDrop(QWidget):
-    """可压缩流体压降计算器"""
-
+    """可压缩流体压降计算器（统一 UI 规范版）"""
     calculation_type = "compressible_flow_pressure_drop"
 
-    def __init__(self, parent=None):
+    FLUID_DB = {
+        "air":      {"mw": 28.97, "gamma": 1.40, "R": 287.1,  "mu": 18.27},
+        "nitrogen": {"mw": 28.01, "gamma": 1.40, "R": 296.8,  "mu": 17.90},
+        "oxygen":   {"mw": 32.00, "gamma": 1.40, "R": 259.8,  "mu": 20.80},
+        "hydrogen": {"mw": 2.016, "gamma": 1.41, "R": 4124.0, "mu": 8.90},
+        "co2":      {"mw": 44.01, "gamma": 1.30, "R": 188.9,  "mu": 14.80},
+        "ng":       {"mw": 19.00, "gamma": 1.30, "R": 440.0,  "mu": 11.20},
+        "steam":   {"mw": 18.02, "gamma": 1.33, "R": 461.5,  "mu": 12.30},
+        "methane":  {"mw": 16.04, "gamma": 1.32, "R": 518.3,  "mu": 11.20},
+        "ethane":   {"mw": 30.07, "gamma": 1.20, "R": 276.5,  "mu": 9.50},
+        "propane": {"mw": 44.10, "gamma": 1.13, "R": 188.5,  "mu": 8.10},
+    }
+
+    def __init__(self, parent=None, data_manager=None):
         super().__init__(parent)
+        self.data_manager = data_manager if data_manager is not None else None
+        self._last_result = {}
+        self._last_params = {}
         self.setup_ui()
 
     def setup_ui(self):
-        main_layout = QVBoxLayout(self)
-        main_layout.setSpacing(15)
+        group_style = """
+            QGroupBox {
+                font-weight: bold;
+                border: 1px solid #bdc3c7;
+                border-radius: 8px;
+                margin-top: 10px;
+                padding-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 8px 0 8px;
+            }
+        """
+        main = QHBoxLayout(self)
+        main.setSpacing(15)
+        main.setContentsMargins(10, 10, 10, 10)
 
-        title_label = QLabel("可压缩流体压降计算")
-        title_label.setFont(QFont("Arial", 14, QFont.Bold))
-        title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("color: #2c3e50; margin: 10px;")
-        main_layout.addWidget(title_label)
+        scroll_left = QScrollArea()
+        scroll_left.setStyleSheet("QScrollArea { border: none; background: transparent; } QScrollBar:vertical { background: transparent; width: 8px; margin: 0; } QScrollBar::handle:vertical { background: #c0c0c0; border-radius: 4px; min-height: 30px; } QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }")
+        scroll_left.setWidgetResizable(True)
+        scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        left = QWidget()
+        left.setStyleSheet("QWidget { background: transparent; }")
+        ll = QVBoxLayout(left)
+        ll.setSpacing(15)
 
-        self.tab_widget = QTabWidget()
-        self.calculation_tab = self.create_calculation_tab()
-        self.tab_widget.addTab(self.calculation_tab, "压降计算")
-        self.theory_tab = self.create_theory_tab()
-        self.tab_widget.addTab(self.theory_tab, "理论说明")
-        main_layout.addWidget(self.tab_widget)
+        desc = QLabel(
+            "计算可压缩流体（气体/蒸汽）管道压降。\n"
+            "支持等温积分法（推荐）、平均密度法、Weymouth 公式、Panhandle A 公式。\n"
+            "可反算最大流量及阻塞流检测。"
+        )
+        desc.setWordWrap(True)
+        desc.setStyleSheet("color: #7f8c8d; font-size: 12px;")
+        ll.addWidget(desc)
 
-    def create_calculation_tab(self):
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
+        def L(t):
+            l = QLabel(t)
+            l.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            l.setMinimumWidth(120)
+            l.setMaximumWidth(200)
+            l.setStyleSheet("font-weight: bold; padding-right: 10px;")
+            return l
 
-        # 流体性质
-        fluid_group = QGroupBox("流体性质")
-        fluid_layout = QVBoxLayout(fluid_group)
+        def H(t):
+            l = QLabel(t)
+            l.setMinimumWidth(100)
+            l.setMaximumWidth(250)
+            l.setStyleSheet("color: #95a5a6; font-size: 11px;")
+            return l
 
-        ft_layout = QHBoxLayout()
-        ft_layout.addWidget(QLabel("流体类型:"))
+        # ---- 流体性质 ----
+        fg = QGroupBox("流体性质"); fg.setStyleSheet(group_style)
+        fgrid = QGridLayout(fg); fgrid.setHorizontalSpacing(10); fgrid.setVerticalSpacing(10)
+        fgrid.setColumnStretch(0, 2)  # 标签列可伸缩
+
+        fgrid.setColumnStretch(1, 3)  # 输入框列可伸缩
+
+        fgrid.setColumnStretch(2, 2)  # 提示列可伸缩
+
+
         self.fluid_combo = QComboBox()
-        self.fluid_combo.addItems([
-            "空气", "氮气", "氧气", "氢气", "二氧化碳", "天然气",
-            "蒸汽", "甲烷", "乙烷", "丙烷", "自定义气体"
-        ])
-        self.fluid_combo.currentTextChanged.connect(self.on_fluid_changed)
-        ft_layout.addWidget(self.fluid_combo)
+        self.fluid_combo.addItems(["air","nitrogen","oxygen","hydrogen","co2","ng","steam","methane","ethane","propane","custom"])
+        self.fluid_combo.setMinimumWidth(150)
+        self.fluid_combo.setMaximumWidth(400)
+        self.fluid_combo.currentTextChanged.connect(self._on_fluid)
+        fgrid.addWidget(L("流体类型:"), 0, 0)
+        fgrid.addWidget(self.fluid_combo, 0, 1)
+        fgrid.addWidget(H("选择后自动填充物性"), 0, 2)
 
-        ft_layout.addWidget(QLabel("分子量 (g/mol):"))
-        self.molecular_weight_input = QDoubleSpinBox()
-        self.molecular_weight_input.setRange(1, 200)
-        self.molecular_weight_input.setValue(28.97)
-        self.molecular_weight_input.setSuffix(" g/mol")
-        ft_layout.addWidget(self.molecular_weight_input)
+        self.mw_in = QLineEdit("28.97"); self.mw_in.setMinimumWidth(150)
+        self.mw_in = QLineEdit("28.97"); self.mw_in.setMaximumWidth(400)
+        self.mw_in.setValidator(QDoubleValidator(1, 200, 2))
+        fgrid.addWidget(L("分子量 (g/mol):"), 1, 0)
+        fgrid.addWidget(self.mw_in, 1, 1)
+        fgrid.addWidget(H("air=28.97"), 1, 2)
 
-        ft_layout.addWidget(QLabel("比热比 (γ):"))
-        self.gamma_input = QDoubleSpinBox()
-        self.gamma_input.setRange(1.0, 2.0)
-        self.gamma_input.setValue(1.4)
-        self.gamma_input.setSingleStep(0.01)
-        ft_layout.addWidget(self.gamma_input)
-        fluid_layout.addLayout(ft_layout)
+        self.gamma_in = QLineEdit("1.40"); self.gamma_in.setMinimumWidth(150)
+        self.gamma_in = QLineEdit("1.40"); self.gamma_in.setMaximumWidth(400)
+        self.gamma_in.setValidator(QDoubleValidator(1.0, 2.0, 3))
+        fgrid.addWidget(L("绝热指数 g:"), 2, 0)
+        fgrid.addWidget(self.gamma_in, 2, 1)
+        fgrid.addWidget(H("双原子=1.4"), 2, 2)
 
-        gp_layout = QHBoxLayout()
-        gp_layout.addWidget(QLabel("比气体常数 R (J/(kg·K)):"))
-        self.gas_constant_input = QDoubleSpinBox()
-        self.gas_constant_input.setRange(50, 5000)
-        self.gas_constant_input.setValue(287)
-        self.gas_constant_input.setSuffix(" J/(kg·K)")
-        gp_layout.addWidget(self.gas_constant_input)
+        self.R_in = QLineEdit("287.1"); self.R_in.setMinimumWidth(150)
+        self.R_in = QLineEdit("287.1"); self.R_in.setMaximumWidth(400)
+        self.R_in.setValidator(QDoubleValidator(50, 5000, 1))
+        fgrid.addWidget(L("气体常数 R (J/(kg*K)):"), 3, 0)
+        fgrid.addWidget(self.R_in, 3, 1)
+        fgrid.addWidget(H("air=287.1"), 3, 2)
 
-        gp_layout.addWidget(QLabel("动力粘度 (μPa·s):"))
-        self.viscosity_input = QDoubleSpinBox()
-        self.viscosity_input.setRange(1, 100)
-        self.viscosity_input.setValue(18.27)
-        self.viscosity_input.setSuffix(" μPa·s")
-        gp_layout.addWidget(self.viscosity_input)
-        fluid_layout.addLayout(gp_layout)
-        layout.addWidget(fluid_group)
+        self.mu_in = QLineEdit("18.27"); self.mu_in.setMinimumWidth(150)
+        self.mu_in = QLineEdit("18.27"); self.mu_in.setMaximumWidth(400)
+        self.mu_in.setValidator(QDoubleValidator(1, 100, 2))
+        fgrid.addWidget(L("动力粘度 (uPa*s):"), 4, 0)
+        fgrid.addWidget(self.mu_in, 4, 1)
+        fgrid.addWidget(H("air=18.27"), 4, 2)
+        ll.addWidget(fg)
 
-        # 管道参数
-        pipe_group = QGroupBox("管道参数")
-        pipe_layout = QVBoxLayout(pipe_group)
+        # ---- 管道参数 ----
+        pg = QGroupBox("管道参数"); pg.setStyleSheet(group_style)
+        pgrid = QGridLayout(pg); pgrid.setHorizontalSpacing(10); pgrid.setVerticalSpacing(10)
 
-        ps_layout = QHBoxLayout()
-        ps_layout.addWidget(QLabel("管道内径 (mm):"))
-        self.diameter_input = QDoubleSpinBox()
-        self.diameter_input.setRange(1, 2000)
-        self.diameter_input.setValue(100)
-        self.diameter_input.setSuffix(" mm")
-        ps_layout.addWidget(self.diameter_input)
+        self.dia_in = QLineEdit("100"); self.dia_in.setMinimumWidth(150)
+        self.dia_in = QLineEdit("100"); self.dia_in.setMaximumWidth(400)
+        self.dia_in.setValidator(QDoubleValidator(1, 2000, 1))
+        pgrid.addWidget(L("管道内径 (mm):"), 0, 0)
+        pgrid.addWidget(self.dia_in, 0, 1)
+        pgrid.addWidget(H(""), 0, 2)
 
-        ps_layout.addWidget(QLabel("管道长度 (m):"))
-        self.length_input = QDoubleSpinBox()
-        self.length_input.setRange(1, 10000)
-        self.length_input.setValue(100)
-        self.length_input.setSuffix(" m")
-        ps_layout.addWidget(self.length_input)
+        self.len_in = QLineEdit("100"); self.len_in.setMinimumWidth(150)
+        self.len_in = QLineEdit("100"); self.len_in.setMaximumWidth(400)
+        self.len_in.setValidator(QDoubleValidator(1, 100000, 1))
+        pgrid.addWidget(L("管道长度 (m):"), 1, 0)
+        pgrid.addWidget(self.len_in, 1, 1)
+        pgrid.addWidget(H(""), 1, 2)
 
-        ps_layout.addWidget(QLabel("绝对粗糙度 (mm):"))
-        self.roughness_input = QDoubleSpinBox()
-        self.roughness_input.setRange(0.001, 5)
-        self.roughness_input.setValue(0.046)
-        self.roughness_input.setSuffix(" mm")
-        ps_layout.addWidget(self.roughness_input)
-        pipe_layout.addLayout(ps_layout)
+        self.eps_in = QLineEdit("0.046"); self.eps_in.setMinimumWidth(150)
+        self.eps_in = QLineEdit("0.046"); self.eps_in.setMaximumWidth(400)
+        self.eps_in.setValidator(QDoubleValidator(0.001, 5, 3))
+        pgrid.addWidget(L("绝对粗糙度 (mm):"), 2, 0)
+        pgrid.addWidget(self.eps_in, 2, 1)
+        pgrid.addWidget(H("新钢管=0.046"), 2, 2)
 
-        pc_layout = QHBoxLayout()
-        pc_layout.addWidget(QLabel("管道形状:"))
-        self.pipe_shape_combo = QComboBox()
-        self.pipe_shape_combo.addItems(["圆形", "矩形"])
-        pc_layout.addWidget(self.pipe_shape_combo)
+        self.eqf_in = QLineEdit("1.5"); self.eqf_in.setMinimumWidth(150)
+        self.eqf_in = QLineEdit("1.5"); self.eqf_in.setMaximumWidth(400)
+        self.eqf_in.setValidator(QDoubleValidator(1.0, 3.0, 1))
+        pgrid.addWidget(L("当量长度系数:"), 3, 0)
+        pgrid.addWidget(self.eqf_in, 3, 1)
+        pgrid.addWidget(H("含管件时>1"), 3, 2)
+        ll.addWidget(pg)
 
-        pc_layout.addWidget(QLabel("当量长度系数:"))
-        self.equivalent_length_factor = QDoubleSpinBox()
-        self.equivalent_length_factor.setRange(1.0, 3.0)
-        self.equivalent_length_factor.setValue(1.5)
-        self.equivalent_length_factor.setSingleStep(0.1)
-        pc_layout.addWidget(self.equivalent_length_factor)
-        pc_layout.addStretch()
-        pipe_layout.addLayout(pc_layout)
-        layout.addWidget(pipe_group)
+        # ---- 操作条件 ----
+        cg = QGroupBox("操作条件"); cg.setStyleSheet(group_style)
+        cgrid = QGridLayout(cg); cgrid.setHorizontalSpacing(10); cgrid.setVerticalSpacing(10)
 
-        # 操作条件
-        condition_group = QGroupBox("操作条件")
-        condition_layout = QVBoxLayout(condition_group)
+        self.P1_in = QLineEdit("500"); self.P1_in.setMinimumWidth(150)
+        self.P1_in = QLineEdit("500"); self.P1_in.setMaximumWidth(400)
+        self.P1_in.setValidator(QDoubleValidator(1, 100000, 1))
+        cgrid.addWidget(L("入口压力 (kPa):"), 0, 0)
+        cgrid.addWidget(self.P1_in, 0, 1)
+        cgrid.addWidget(H("绝对压力"), 0, 2)
 
-        pt_layout = QHBoxLayout()
-        pt_layout.addWidget(QLabel("入口压力 (kPa):"))
-        self.inlet_pressure_input = QDoubleSpinBox()
-        self.inlet_pressure_input.setRange(1, 10000)
-        self.inlet_pressure_input.setValue(500)
-        self.inlet_pressure_input.setSuffix(" kPa")
-        pt_layout.addWidget(self.inlet_pressure_input)
+        self.P2_in = QLineEdit("400"); self.P2_in.setMinimumWidth(150)
+        self.P2_in = QLineEdit("400"); self.P2_in.setMaximumWidth(400)
+        self.P2_in.setValidator(QDoubleValidator(1, 100000, 1))
+        cgrid.addWidget(L("出口压力 (kPa):"), 1, 0)
+        cgrid.addWidget(self.P2_in, 1, 1)
+        cgrid.addWidget(H("绝对压力"), 1, 2)
 
-        pt_layout.addWidget(QLabel("出口压力 (kPa):"))
-        self.outlet_pressure_input = QDoubleSpinBox()
-        self.outlet_pressure_input.setRange(1, 10000)
-        self.outlet_pressure_input.setValue(400)
-        self.outlet_pressure_input.setSuffix(" kPa")
-        pt_layout.addWidget(self.outlet_pressure_input)
+        self.temp_in = QLineEdit("20"); self.temp_in.setMinimumWidth(150)
+        self.temp_in = QLineEdit("20"); self.temp_in.setMaximumWidth(400)
+        self.temp_in.setValidator(QDoubleValidator(-200, 1000, 1))
+        cgrid.addWidget(L("温度 (C):"), 2, 0)
+        cgrid.addWidget(self.temp_in, 2, 1)
+        cgrid.addWidget(H("用于密度计算"), 2, 2)
 
-        pt_layout.addWidget(QLabel("温度 (°C):"))
-        self.temperature_input = QDoubleSpinBox()
-        self.temperature_input.setRange(-200, 1000)
-        self.temperature_input.setValue(20)
-        self.temperature_input.setSuffix(" °C")
-        pt_layout.addWidget(self.temperature_input)
-        condition_layout.addLayout(pt_layout)
+        self.flow_in = QLineEdit("1000"); self.flow_in.setMinimumWidth(150)
+        self.flow_in = QLineEdit("1000"); self.flow_in.setMaximumWidth(400)
+        self.flow_in.setValidator(QDoubleValidator(0.1, 1e8, 1))
+        cgrid.addWidget(L("质量流量 (kg/h):"), 3, 0)
+        cgrid.addWidget(self.flow_in, 3, 1)
+        cgrid.addWidget(H("已知流量时填写"), 3, 2)
+        ll.addWidget(cg)
 
-        fl_layout = QHBoxLayout()
-        fl_layout.addWidget(QLabel("质量流量 (kg/h):"))
-        self.mass_flow_input = QDoubleSpinBox()
-        self.mass_flow_input.setRange(0.1, 100000)
-        self.mass_flow_input.setValue(1000)
-        self.mass_flow_input.setSuffix(" kg/h")
-        fl_layout.addWidget(self.mass_flow_input)
-        fl_layout.addStretch()
-        condition_layout.addLayout(fl_layout)
-        layout.addWidget(condition_group)
+        # ---- 计算方法 ----
+        mg = QGroupBox("计算方法"); mg.setStyleSheet(group_style)
+        mgrid = QGridLayout(mg)
+        self.mbg = QButtonGroup(self)
+        self.rb_darcy = QRadioButton("Darcy-Weisbach 等温积分（推荐）")
+        self.rb_darcy.setChecked(True)
+        self.mbg.addButton(self.rb_darcy)
+        mgrid.addWidget(self.rb_darcy, 0, 0)
+        rb2 = QRadioButton("Darcy-Weisbach 平均密度")
+        self.mbg.addButton(rb2); mgrid.addWidget(rb2, 0, 1)
+        rb3 = QRadioButton("Weymouth 公式（天然气）")
+        self.mbg.addButton(rb3); mgrid.addWidget(rb3, 1, 0)
+        rb4 = QRadioButton("Panhandle A 公式（天然气）")
+        self.mbg.addButton(rb4); mgrid.addWidget(rb4, 1, 1)
+        ll.addWidget(mg)
 
-        # 计算方法
-        method_group = QGroupBox("计算方法")
-        method_layout = QHBoxLayout(method_group)
+        # ---- 计算按钮 ----
+        bb = QHBoxLayout()
+        b_calc = QPushButton("计算压降")
+        b_calc.setStyleSheet("QPushButton{background-color:#3498db;color:white;font-weight:bold;font-size:14px;border-radius:8px;min-height:50px;}QPushButton:hover{background-color:#2980b9;}")
+        b_calc.clicked.connect(self.calculate_pressure_drop)
+        b_flow = QPushButton("反算流量")
+        b_flow.setStyleSheet("QPushButton{background-color:#27ae60;color:white;font-weight:bold;font-size:14px;border-radius:8px;min-height:50px;}QPushButton:hover{background-color:#219a52;}")
+        b_flow.clicked.connect(self.auto_calculate_flow)
+        bb.addWidget(b_calc); bb.addWidget(b_flow)
+        ll.addLayout(bb)
 
-        self.method_group = QButtonGroup(self)
-        self.darcy_radio = QRadioButton("Darcy-Weisbach (等温积分)")
-        self.darcy_radio.setChecked(True)
-        self.method_group.addButton(self.darcy_radio)
-        method_layout.addWidget(self.darcy_radio)
+        # ---- 详细参数表 ----
+        dg = QGroupBox("详细参数"); dg.setStyleSheet(group_style)
+        dv = QVBoxLayout(dg)
+        self.dtable = QTableWidget()
+        self.dtable.setColumnCount(3)
+        self.dtable.setHorizontalHeaderLabels(["参数", "数值", "单位"])
+        self.dtable.setMaximumHeight(180)
+        self.dtable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        dv.addWidget(self.dtable)
+        ll.addWidget(dg)
 
-        self.darcy_simple_radio = QRadioButton("Darcy-Weisbach (平均密度)")
-        self.method_group.addButton(self.darcy_simple_radio)
-        method_layout.addWidget(self.darcy_simple_radio)
+        # ---- 底部按钮行 ----
+        br = QHBoxLayout()
+        b_clr = QPushButton("清空")
+        b_clr.setStyleSheet("QPushButton{background-color:#95a5a6;color:white;font-weight:bold;border-radius:6px;padding:8px 20px;}QPushButton:hover{background-color:#7f8c8d;}")
+        b_clr.clicked.connect(self.clear_inputs)
+        b_txt = QPushButton("下载TXT报告")
+        b_txt.setStyleSheet("QPushButton{background-color:#27ae60;color:white;font-weight:bold;border-radius:6px;padding:8px 20px;}QPushButton:hover{background-color:#219a52;}")
+        b_txt.clicked.connect(self.download_txt_report)
+        b_pdf = QPushButton("下载PDF报告")
+        b_pdf.setStyleSheet("QPushButton{background-color:#e74c3c;color:white;font-weight:bold;border-radius:6px;padding:8px 20px;}QPushButton:hover{background-color:#c0392b;}")
+        b_pdf.clicked.connect(self.generate_pdf_report)
+        br.addWidget(b_clr); br.addStretch(); br.addWidget(b_txt); br.addWidget(b_pdf)
+        ll.addLayout(br)
 
-        self.weymouth_radio = QRadioButton("Weymouth公式")
-        self.method_group.addButton(self.weymouth_radio)
-        method_layout.addWidget(self.weymouth_radio)
-
-        self.panhandle_radio = QRadioButton("Panhandle公式")
-        self.method_group.addButton(self.panhandle_radio)
-        method_layout.addWidget(self.panhandle_radio)
-        method_layout.addStretch()
-        layout.addWidget(method_group)
-
-        # 按钮
-        btn_layout = QHBoxLayout()
-        self.calculate_btn = QPushButton("计算压降")
-        self.calculate_btn.clicked.connect(self.calculate_pressure_drop)
-        self.calculate_btn.setStyleSheet("QPushButton { background-color: #9b59b6; color: white; font-weight: bold; }")
-        btn_layout.addWidget(self.calculate_btn)
-
-        self.auto_calc_btn = QPushButton("反算流量")
-        self.auto_calc_btn.clicked.connect(self.auto_calculate_flow)
-        self.auto_calc_btn.setStyleSheet("QPushButton { background-color: #3498db; color: white; }")
-        btn_layout.addWidget(self.auto_calc_btn)
-
-        self.clear_btn = QPushButton("清空")
-        self.clear_btn.clicked.connect(self.clear_inputs)
-        self.clear_btn.setStyleSheet("QPushButton { background-color: #95a5a6; color: white; }")
-        btn_layout.addWidget(self.clear_btn)
-        layout.addLayout(btn_layout)
-
-        # 结果
-        result_group = QGroupBox("计算结果")
-        result_layout = QVBoxLayout(result_group)
+        # ---- 右侧结果区 ----
+        right = QWidget(); right.setMinimumWidth(400)
+        rl = QVBoxLayout(right); rl.setSpacing(10)
+        rg = QGroupBox("计算结果"); rg.setStyleSheet(group_style)
+        rv = QVBoxLayout(rg)
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setMaximumHeight(300)
-        result_layout.addWidget(self.result_text)
-        layout.addWidget(result_group)
+        self.result_text.setMinimumHeight(500)
+        self.result_text.setStyleSheet("QTextEdit{background-color:#f8f9fa;border:1px solid #dee2e6;border-radius:6px;font-family:Consolas,monospace;font-size:13px;padding:10px;}")
+        self.result_text.setPlaceholderText("计算结果将在此显示……")
+        rv.addWidget(self.result_text)
+        rl.addWidget(rg)
 
-        detail_group = QGroupBox("详细参数")
-        detail_layout = QVBoxLayout(detail_group)
-        self.detail_table = QTableWidget()
-        self.detail_table.setColumnCount(3)
-        self.detail_table.setHorizontalHeaderLabels(["参数", "数值", "单位"])
-        detail_layout.addWidget(self.detail_table)
-        layout.addWidget(detail_group)
+        scroll_left.setWidget(left)
+        main.addWidget(scroll_left, 2)
+        main.addWidget(right, 1)
 
-        return tab
+    # ---- 事件 ----
+    def _on_fluid(self, name):
+        d = self.FLUID_DB.get(name)
+        if d:
+            self.mw_in.setText(str(d["mw"]))
+            self.gamma_in.setText(str(d["gamma"]))
+            self.R_in.setText(str(d["R"]))
+            self.mu_in.setText(str(d["mu"]))
 
-    def on_fluid_changed(self, fluid_name):
-        fluid_properties = {
-            "空气":   {"mw": 28.97, "gamma": 1.40, "R": 287.1, "viscosity": 18.27},
-            "氮气":   {"mw": 28.01, "gamma": 1.40, "R": 296.8, "viscosity": 17.90},
-            "氧气":   {"mw": 32.00, "gamma": 1.40, "R": 259.8, "viscosity": 20.80},
-            "氢气":   {"mw": 2.016, "gamma": 1.41, "R": 4124.0, "viscosity": 8.90},
-            "二氧化碳": {"mw": 44.01, "gamma": 1.30, "R": 188.9, "viscosity": 14.80},
-            "天然气": {"mw": 18.00, "gamma": 1.30, "R": 461.5, "viscosity": 11.20},
-            "蒸汽":   {"mw": 18.02, "gamma": 1.33, "R": 461.5, "viscosity": 12.30},
-            "甲烷":   {"mw": 16.04, "gamma": 1.32, "R": 518.3, "viscosity": 11.20},
-            "乙烷":   {"mw": 30.07, "gamma": 1.20, "R": 276.5, "viscosity": 9.50},
-            "丙烷":   {"mw": 44.10, "gamma": 1.13, "R": 188.5, "viscosity": 8.10}
-        }
-        if fluid_name in fluid_properties:
-            p = fluid_properties[fluid_name]
-            self.molecular_weight_input.setValue(p["mw"])
-            self.gamma_input.setValue(p["gamma"])
-            self.gas_constant_input.setValue(p["R"])
-            self.viscosity_input.setValue(p["viscosity"])
-
-    def create_theory_tab(self):
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
-        theory_text = QTextEdit()
-        theory_text.setReadOnly(True)
-        theory_text.setHtml(self.get_theory_html())
-        layout.addWidget(theory_text)
-        return tab
-
-    def get_theory_html(self):
-        return """
-        <h2>可压缩流体压降计算理论</h2>
-
-        <h3>可压缩流体特点</h3>
-        <p>可压缩流体（气体、蒸汽等）在流动过程中密度会随压力和温度变化，需要考虑密度变化、压力变化对物性的影响、音速限制（阻塞流）等。</p>
-
-        <h3>常用计算方法</h3>
-
-        <h4>1. Darcy-Weisbach 等温积分法（推荐）</h4>
-        <p>假设等温流动，对动量方程积分得：</p>
-        <p><b>P₁² - P₂² = (f·L/D)·(ṁ/A)²·(R·T/M)</b></p>
-        <p>适用于长距离管道（ΔP/P₁ > 10% 时比平均密度法准确得多），基于理想气体假设。</p>
-
-        <h4>2. Darcy-Weisbach 平均密度法</h4>
-        <p>ΔP = f × (L/D) × (ρ_avg × v²/2)</p>
-        <p>使用进出口平均密度，适用于 ΔP/P₁ < 10% 的低压降情况。</p>
-
-        <h4>3. Weymouth 公式</h4>
-        <p>Q = C × (P₁² - P₂²)<sup>0.5</sup> × D<sup>2.667</sup> / L<sup>0.5</sup></p>
-        <p>天然气管道经验公式，完全湍流区，C=0.0330（SI）。</p>
-
-        <h4>4. Panhandle A 公式</h4>
-        <p>Q = C × E × (P₁² - P₂²)<sup>0.5394</sup> × D<sup>2.6182</sup> / L<sup>0.4604</sup></p>
-        <p>天然气管道，考虑效率因子 E，C=0.0280（SI），n=0.0793。</p>
-
-        <h3>关键参数</h3>
-        <ul>
-        <li><b>雷诺数 Re</b>: 层流 &lt;2000, 过渡 2000-4000, 湍流 &gt;4000</li>
-        <li><b>马赫数 Ma</b>: Ma&lt;0.3 不可压缩, 0.3-0.8 可压缩, &gt;0.8 高速</li>
-        <li><b>临界压比</b>: P₂/P₁ ≥ (2/(γ+1))<sup>γ/(γ-1)</sup>，否则发生阻塞流</li>
-        </ul>
-
-        <h3>参考标准</h3>
-        <ul>
-        <li>ASME MFC-3M / ISO 5167 流量测量</li>
-        <li>AGA Report No. 3 / API MPMS Chapter 14</li>
-        <li>Crane TP 410 Flow of Fluids</li>
-        </ul>
-        """
-
-    # ------------------------------------------------------------------
-    #  核心计算
-    # ------------------------------------------------------------------
-
-    def get_selected_method(self):
-        if self.darcy_radio.isChecked():
-            return "darcy_integral"
-        elif self.darcy_simple_radio.isChecked():
-            return "darcy_avg"
-        elif self.weymouth_radio.isChecked():
-            return "weymouth"
-        elif self.panhandle_radio.isChecked():
-            return "panhandle"
+    def _method(self):
+        btns = self.mbg.buttons()
+        if btns[0].isChecked(): return "darcy_integral"
+        if btns[1].isChecked(): return "darcy_avg"
+        if btns[2].isChecked(): return "weymouth"
+        if btns[3].isChecked(): return "panhandle"
         return "darcy_integral"
 
+    # ---- 物理工具 ----
     @staticmethod
-    def calculate_density_ideal(pressure_Pa, temperature_K, R_specific):
-        """理想气体密度"""
-        return pressure_Pa / (R_specific * temperature_K)
+    def _rho(P_Pa, T_K, R):
+        return P_Pa / (R * T_K) if R * T_K > 0 else 0
 
     @staticmethod
-    def calculate_reynolds(diameter, velocity, density, viscosity):
-        return density * velocity * diameter / viscosity
+    def _Re(d, v, rho, mu):
+        return rho * v * d / mu if mu > 0 else 0
 
     @staticmethod
-    def calculate_friction_factor(reynolds, roughness, diameter):
-        """Colebrook-White 迭代求解摩擦系数"""
-        if reynolds <= 0:
-            return 0.02
-        if reynolds < 2000:
-            return 64.0 / reynolds
-        rel_roughness = roughness / diameter
-        # Swamee-Jain 初始猜测（更稳定）
-        f = 0.25 / (math.log10(rel_roughness / 3.7 + 5.74 / reynolds ** 0.9)) ** 2
+    def _friction(Re, eps, d):
+        if Re <= 0: return 0.02
+        if Re < 2000: return 64.0 / Re
+        rr = eps / d
+        f = 0.25 / (math.log10(rr / 3.7 + 5.74 / (Re ** 0.9))) ** 2
         for _ in range(50):
-            rhs = rel_roughness / 3.7 + 2.51 / (reynolds * math.sqrt(f))
-            f_new = 1.0 / (-2.0 * math.log10(rhs)) ** 2
-            if abs(f_new - f) < 1e-8:
-                return f_new
+            rhs = rr / 3.7 + 2.51 / (Re * math.sqrt(f))
+            f_new = 1.0 / (2.0 * math.log10(rhs)) ** 2
+            if abs(f_new - f) < 1e-8: return f_new
             f = f_new
         return f
 
+    @staticmethod
+    def _sound(gamma, R, T_K):
+        return math.sqrt(gamma * R * T_K)
+
+    # ---- 主计算 ----
     def calculate_pressure_drop(self):
         try:
-            method = self.get_selected_method()
-            d = self.diameter_input.value() / 1000.0
-            L = self.length_input.value()
-            eps = self.roughness_input.value() / 1000.0
-            P1_kPa = self.inlet_pressure_input.value()
-            P2_kPa = self.outlet_pressure_input.value()
-            T_C = self.temperature_input.value()
-            m_kg_h = self.mass_flow_input.value()
-            gamma = self.gamma_input.value()
-            R = self.gas_constant_input.value()
-            mu = self.viscosity_input.value() * 1e-6
-            equiv_factor = self.equivalent_length_factor.value()
+            mw    = float(self.mw_in.text())
+            gamma = float(self.gamma_in.text())
+            R     = float(self.R_in.text())
+            mu    = float(self.mu_in.text()) * 1e-6
+            d     = float(self.dia_in.text()) / 1000.0
+            L     = float(self.len_in.text())
+            eps   = float(self.eps_in.text()) / 1000.0
+            eqf   = float(self.eqf_in.text())
+            P1    = float(self.P1_in.text()) * 1000.0
+            P2    = float(self.P2_in.text()) * 1000.0
+            T_C   = float(self.temp_in.text())
+            m_kg  = float(self.flow_in.text()) / 3600.0
+            T_K   = T_C + 273.15
+            A     = math.pi * d ** 2 / 4.0
+            L_eq  = L * eqf
 
-            P1_Pa = P1_kPa * 1000.0
-            P2_Pa = P2_kPa * 1000.0
-            T_K = T_C + 273.15
-            m = m_kg_h / 3600.0
-            A = math.pi * d ** 2 / 4.0
+            rho1 = self._rho(P1, T_K, R)
+            v1   = m_kg / (rho1 * A) if rho1 > 0 else 0
+            Re1  = self._Re(d, v1, rho1, mu)
+            f    = self._friction(Re1, eps, d)
+            a    = self._sound(gamma, R, T_K)
+            Ma   = v1 / a if a > 0 else 0
 
-            # 入口密度和流速
-            rho1 = self.calculate_density_ideal(P1_Pa, T_K, R)
-            v1 = m / (rho1 * A) if rho1 > 0 else 0
-            Re1 = self.calculate_reynolds(d, v1, rho1, mu)
-            f = self.calculate_friction_factor(Re1, eps, d)
-            L_eq = L * equiv_factor
-
-            # 马赫数
-            a_sound = math.sqrt(gamma * R * T_K)
-            Ma = v1 / a_sound if a_sound > 0 else 0
-
-            # 临界压比
-            P_crit_ratio = (2.0 / (gamma + 1.0)) ** (gamma / (gamma - 1.0))
-            P2_min = P1_Pa * P_crit_ratio
+            P_crit = P1 * (2.0 / (gamma + 1.0)) ** (gamma / (gamma - 1.0))
+            method = self._method()
+            results = {}
+            dp_kPa = 0.0
 
             if method == "darcy_integral":
-                # 等温积分法: P1² - P2² = (f·L_eq/D)·(m/A)²·R·T
-                # 可以正算 P2 或反算 m
-                dp_squared = (f * L_eq / d) * (m / A) ** 2 * R * T_K
-                P2_calc_Pa = math.sqrt(max(0, P1_Pa ** 2 - dp_squared))
-                delta_P_kPa = (P1_Pa - P2_calc_Pa) / 1000.0
-
-                # 校验阻塞
-                is_choked = P2_calc_Pa < P2_min if P2_min > 0 else False
-
-                # 平均参数
-                P_avg_Pa = (P1_Pa + P2_calc_Pa) / 2.0
-                rho_avg = self.calculate_density_ideal(P_avg_Pa, T_K, R)
-                v_avg = m / (rho_avg * A) if rho_avg > 0 else 0
-
+                dp_sq = (f * L_eq / d) * (m_kg / A) ** 2 * R * T_K
+                P2_calc = math.sqrt(max(0, P1 ** 2 - dp_sq))
+                dp_kPa = (P1 - P2_calc) / 1000.0
+                choked = P2_calc < P_crit
                 results = {
-                    "计算方法": "Darcy-Weisbach (等温积分)",
+                    "计算方法": "Darcy-Weisbach（等温积分）",
                     "摩擦系数 f": f,
-                    "当量长度 Leq": L_eq,
-                    "入口密度": rho1,
-                    "出口密度": self.calculate_density_ideal(P2_calc_Pa, T_K, R),
-                    "平均密度": rho_avg,
-                    "入口流速": v1,
-                    "平均流速": v_avg,
-                    "雷诺数": Re1,
-                    "马赫数": Ma,
-                    "阻塞流": is_choked,
-                    "出口压力_kPa": P2_calc_Pa / 1000.0,
+                    "当量长度 Leq (m)": L_eq,
+                    "入口密度 (kg/m3)": rho1,
+                    "出口压力 (kPa)": P2_calc / 1000.0,
+                    "阻塞流": "是" if choked else "否",
                 }
-                pressure_drop_kPa = delta_P_kPa
-
             elif method == "darcy_avg":
-                # 平均密度法
-                rho2 = self.calculate_density_ideal(P2_Pa, T_K, R)
+                rho2 = self._rho(P2, T_K, R)
                 rho_avg = (rho1 + rho2) / 2.0
-                v_avg = m / (rho_avg * A) if rho_avg > 0 else 0
-                delta_P_Pa = f * (L_eq / d) * (rho_avg * v_avg ** 2) / 2.0
-                pressure_drop_kPa = delta_P_Pa / 1000.0
-
+                v_avg = m_kg / (rho_avg * A) if rho_avg > 0 else 0
+                dp_Pa = f * (L_eq / d) * (rho_avg * v_avg ** 2) / 2.0
+                dp_kPa = dp_Pa / 1000.0
                 results = {
-                    "计算方法": "Darcy-Weisbach (平均密度)",
+                    "计算方法": "Darcy-Weisbach（平均密度）",
                     "摩擦系数 f": f,
-                    "当量长度 Leq": L_eq,
-                    "平均密度": rho_avg,
-                    "平均流速": v_avg,
-                    "雷诺数": Re1,
-                    "马赫数": Ma,
+                    "平均密度 (kg/m3)": rho_avg,
                 }
-
             elif method == "weymouth":
-                # Weymouth 公式 (SI 单位)
-                # Q = 0.0330 * ((P1² - P2²)/L)^(1/2) * D^(8/3)
-                # 其中 P: kPa(abs), L: km, D: mm, Q: m³/s（标准工况 15°C, 101.325 kPa）
                 L_km = L / 1000.0
                 D_mm = d * 1000.0
-                dp_sq = P1_kPa ** 2 - P2_kPa ** 2
-                if dp_sq > 0 and L_km > 0:
-                    Q_std_m3s = 0.0330 * math.sqrt(dp_sq / L_km) * D_mm ** (8.0 / 3.0)
-                    Q_std_m3h = Q_std_m3s * 3600.0
-                else:
-                    Q_std_m3h = 0.0
-                pressure_drop_kPa = P1_kPa - P2_kPa
-
-                # 等效质量流量
-                rho_std = self.calculate_density_ideal(101325.0, 288.15, R)
-                m_calc = Q_std_m3s * rho_std * 3600.0
-
+                dp_sq = (P1/1000.0) ** 2 - (P2/1000.0) ** 2
+                Q = 0.0330 * math.sqrt(max(0, dp_sq / L_km)) * D_mm ** (8.0/3.0) if L_km > 0 else 0
+                dp_kPa = (P1 - P2) / 1000.0
+                rho_std = self._rho(101325, 288.15, R)
                 results = {
-                    "计算方法": "Weymouth公式",
-                    "标准流量": Q_std_m3h,
-                    "等效质量流量": m_calc,
+                    "计算方法": "Weymouth 公式",
+                    "标准体积流量 (m3/h)": Q * 3600,
+                    "等效质量流量 (kg/h)": Q * rho_std * 3600,
                 }
-
             elif method == "panhandle":
-                # Panhandle A 公式 (SI)
-                # Q = 0.0280 * E * ((P1²-P2²)/L)^0.5394 * D^2.6182
-                # P: kPa(abs), L: km, D: mm, Q: m³/s（标准工况）
                 L_km = L / 1000.0
                 D_mm = d * 1000.0
-                dp_sq = P1_kPa ** 2 - P2_kPa ** 2
+                dp_sq = (P1/1000.0) ** 2 - (P2/1000.0) ** 2
                 E = 0.92
-                n_exp = 0.0793  # Panhandle A 效率指数
-                if dp_sq > 0 and L_km > 0:
-                    Q_std_m3s = 0.0280 * E * (dp_sq / L_km) ** 0.5394 * D_mm ** 2.6182
-                    Q_std_m3h = Q_std_m3s * 3600.0
-                else:
-                    Q_std_m3h = 0.0
-                pressure_drop_kPa = P1_kPa - P2_kPa
-
-                rho_std = self.calculate_density_ideal(101325.0, 288.15, R)
-                m_calc = Q_std_m3s * rho_std * 3600.0
-
+                Q = 0.0280 * E * (dp_sq / L_km) ** 0.5394 * D_mm ** 2.6182 if L_km > 0 else 0
+                dp_kPa = (P1 - P2) / 1000.0
+                rho_std = self._rho(101325, 288.15, R)
                 results = {
-                    "计算方法": "Panhandle A公式",
-                    "标准流量": Q_std_m3h,
+                    "计算方法": "Panhandle A 公式",
+                    "标准体积流量 (m3/h)": Q * 3600,
                     "效率因子 E": E,
-                    "等效质量流量": m_calc,
+                    "等效质量流量 (kg/h)": Q * rho_std * 3600,
                 }
-            else:
-                pressure_drop_kPa = 0
-                results = {}
 
-            self.display_results(pressure_drop_kPa, results, Ma, Re1, method)
-            self.update_detail_table(results, Ma, Re1, f, method)
-
+            self._last_result = {"dp_kPa": dp_kPa, "Re": Re1, "f": f, "Ma": Ma,
+                              "is_choked": P2 < P_crit, "P_crit": P_crit / 1000.0}
+            self._last_params = {"method": method, "mw": mw, "gamma": gamma, "R": R}
+            self._display(dp_kPa, results, Re1, Ma, f)
+            self._update_table(results, Re1, Ma, f)
+            if self.data_manager:
+                try:
+                    self.data_manager.add_record("compressible_flow", self._get_history())
+                except Exception:
+                    pass
+        except ValueError as e:
+            self._err("输入错误：" + str(e))
         except Exception as e:
-            QMessageBox.warning(self, "计算错误", f"计算过程中发生错误: {str(e)}")
+            self._err("计算错误：" + str(e))
 
     def auto_calculate_flow(self):
-        """基于等温积分公式反算最大质量流量"""
         try:
-            d = self.diameter_input.value() / 1000.0
-            L = self.length_input.value()
-            eps = self.roughness_input.value() / 1000.0
-            P1_kPa = self.inlet_pressure_input.value()
-            P2_kPa = self.outlet_pressure_input.value()
-            T_C = self.temperature_input.value()
-            gamma = self.gamma_input.value()
-            R = self.gas_constant_input.value()
-            mu = self.viscosity_input.value() * 1e-6
-            equiv_factor = self.equivalent_length_factor.value()
-
-            P1_Pa = P1_kPa * 1000.0
-            P2_Pa = P2_kPa * 1000.0
-            T_K = T_C + 273.15
-            A = math.pi * d ** 2 / 4.0
-            L_eq = L * equiv_factor
-
-            # 临界压比
-            P_crit_ratio = (2.0 / (gamma + 1.0)) ** (gamma / (gamma - 1.0))
-            P2_min_Pa = P1_Pa * P_crit_ratio
-
-            # 先用初始估算计算 f，然后迭代
-            m_est = 1.0  # kg/s 初始估算
+            gamma = float(self.gamma_in.text())
+            R     = float(self.R_in.text())
+            mu    = float(self.mu_in.text()) * 1e-6
+            d     = float(self.dia_in.text()) / 1000.0
+            L     = float(self.len_in.text())
+            eps   = float(self.eps_in.text()) / 1000.0
+            eqf   = float(self.eqf_in.text())
+            P1    = float(self.P1_in.text()) * 1000.0
+            P2    = float(self.P2_in.text()) * 1000.0
+            T_C   = float(self.temp_in.text())
+            T_K   = T_C + 273.15
+            A     = math.pi * d ** 2 / 4.0
+            L_eq  = L * eqf
+            P_crit = P1 * (2.0 / (gamma + 1.0)) ** (gamma / (gamma - 1.0))
+            m_est = 1.0
             for _ in range(30):
-                rho1 = self.calculate_density_ideal(P1_Pa, T_K, R)
+                rho1 = self._rho(P1, T_K, R)
                 v1 = m_est / (rho1 * A)
-                Re = self.calculate_reynolds(d, v1, rho1, mu)
-                f = self.calculate_friction_factor(Re, eps, d)
-
-                # 等温积分反算: m = A * sqrt((P1² - P2²) * D / (f * L_eq * R * T))
-                dp_sq = P1_Pa ** 2 - P2_Pa ** 2
+                Re = self._Re(d, v1, rho1, mu)
+                f = self._friction(Re, eps, d)
+                dp_sq = P1 ** 2 - P2 ** 2
                 if dp_sq <= 0:
-                    QMessageBox.information(self, "提示", "入口压力不大于出口压力，无法计算流量。")
+                    QMessageBox.information(self, "提示", "入口压力不大于出口压力，无法计算。")
                     return
                 m_new = A * math.sqrt(dp_sq * d / (f * L_eq * R * T_K))
-
                 if abs(m_new - m_est) / max(m_new, 1e-10) < 1e-6:
+                    m_est = m_new
                     break
                 m_est = m_new
-
-            # 检查阻塞
-            rho_out = self.calculate_density_ideal(P2_Pa, T_K, R)
+            rho_out = self._rho(P2, T_K, R)
             v_out = m_est / (rho_out * A)
-            a_sound = math.sqrt(gamma * R * T_K)
-            Ma_out = v_out / a_sound
-
-            if P2_Pa < P2_min_Pa:
-                # 阻塞流：重新计算临界出口压力对应的流量
-                P2_choked = P2_min_Pa
-                dp_sq_choked = P1_Pa ** 2 - P2_choked ** 2
-                m_est = A * math.sqrt(dp_sq_choked * d / (f * L_eq * R * T_K))
+            a = self._sound(gamma, R, T_K)
+            Ma_out = v_out / a
+            if P2 < P_crit:
                 QMessageBox.warning(self, "阻塞流警告",
-                    f"给定压差过大，出口发生阻塞流！\n"
-                    f"临界出口压力: {P2_choked/1000:.1f} kPa\n"
-                    f"最大质量流量: {m_est*3600:.1f} kg/h\n"
-                    f"出口马赫数 ≈ 1.0")
+                    f"出口发生阻塞流！\n临界压力: {P_crit/1000:.1f} kPa\n"
+                    f"最大流量: {m_est*3600:.1f} kg/h")
             elif Ma_out > 0.8:
-                QMessageBox.warning(self, "高速流动警告",
-                    f"出口马赫数 {Ma_out:.3f}，接近声速！\n"
-                    f"质量流量: {m_est*3600:.1f} kg/h")
-
-            self.mass_flow_input.setValue(m_est * 3600.0)
-            QMessageBox.information(self, "流量反算结果",
-                f"基于等温积分公式反算：\n"
-                f"质量流量: {m_est*3600:.1f} kg/h\n"
-                f"出口马赫数: {Ma_out:.3f}")
-
+                QMessageBox.warning(self, "高速警告",
+                    f"出口马赫数 {Ma_out:.3f}，接近音速！\n"
+                    f"流量: {m_est*3600:.1f} kg/h")
+            self.flow_in.setText(str(round(m_est * 3600, 2)))
+            QMessageBox.information(self, "完成",
+                f"反算流量: {m_est*3600:.1f} kg/h\n出口马赫数: {Ma_out:.3f}")
         except Exception as e:
-            QMessageBox.warning(self, "计算错误", f"流量反算失败: {str(e)}")
+            QMessageBox.warning(self, "错误", "反算失败：" + str(e))
 
-    # ------------------------------------------------------------------
-    #  显示
-    # ------------------------------------------------------------------
+    # ---- 显示 ----
+    def _display(self, dp_kPa, results, Re, Ma, f):
+        flow_str = "层流" if Re < 2000 else ("过渡流" if Re < 4000 else "湍流")
+        comp_str = "不可压缩" if Ma < 0.3 else ("可压缩" if Ma < 0.8 else "高速")
+        lines = [
+            "=" * 55,
+            "       可压缩流体压降计算结果",
+            "=" * 55, "",
+            f"  计算方法   : {results.get(chr(35746)+chr(31639)+chr(26041)+chr(27861), chr(45))}",
+            f"  压降        : {dp_kPa:.2f} kPa",
+            f"  雷诺数      : {Re:.0f} ({flow_str})",
+            f"  马赫数      : {Ma:.4f} ({comp_str})",
+            f"  摩擦系数 f  : {f:.6f}",
+        ]
+        for k, v in results.items():
+            if k == "计算方法": continue
+            lines.append(f"  {k}  : {v:.4f}" if isinstance(v, float) else f"  {k}  : {v}")
+        if Ma > 0.8:
+            lines += ["", "  警告：马赫数>0.8，等温假设可能不成立！"]
+        lines += ["", "=" * 55]
+        self.result_text.setPlainText("\n".join(lines))
 
-    def display_results(self, pressure_drop, results, mach_number, reynolds, method):
-        flow_regime = "层流" if reynolds < 2000 else ("过渡流" if reynolds < 4000 else "湍流")
-        compressibility = "不可压缩" if mach_number < 0.3 else ("可压缩" if mach_number < 0.8 else "高速可压缩")
-
-        method_name = results.get("计算方法", "未知")
-        html = f"""
-        <h3>可压缩流体压降计算结果</h3>
-        <table border="1" style="border-collapse: collapse; width: 100%;">
-        <tr style="background-color: #f8f9fa;">
-            <td style="padding: 8px; font-weight: bold;">项目</td>
-            <td style="padding: 8px;">计算结果</td>
-            <td style="padding: 8px;">说明</td>
-        </tr>
-        <tr>
-            <td style="padding: 8px; font-weight: bold;">计算方法</td>
-            <td style="padding: 8px;">{method_name}</td>
-            <td style="padding: 8px;">选用的计算公式</td>
-        </tr>
-        <tr>
-            <td style="padding: 8px; font-weight: bold;">压降</td>
-            <td style="padding: 8px; color: #9b59b6; font-weight: bold;">{pressure_drop:.2f} kPa</td>
-            <td style="padding: 8px;">{'积分法精确值' if '积分' in method_name else '压力差值'}</td>
-        </tr>
-        <tr>
-            <td style="padding: 8px; font-weight: bold;">雷诺数</td>
-            <td style="padding: 8px;">{reynolds:.0f}</td>
-            <td style="padding: 8px;">{flow_regime}</td>
-        </tr>
-        <tr>
-            <td style="padding: 8px; font-weight: bold;">马赫数</td>
-            <td style="padding: 8px; {'color: red;' if mach_number > 0.8 else 'color: green;'}">
-                {mach_number:.4f}
-            </td>
-            <td style="padding: 8px;">{compressibility}</td>
-        </tr>
-        """
-
-        # 方法特定结果
-        if "出口密度" in results:
-            html += f"""
-        <tr><td style="padding: 8px; font-weight: bold;">出口压力</td>
-            <td style="padding: 8px;">{results['出口压力_kPa']:.2f} kPa</td>
-            <td style="padding: 8px;">等温积分法计算值</td></tr>
-        <tr><td style="padding: 8px; font-weight: bold;">出口密度</td>
-            <td style="padding: 8px;">{results['出口密度']:.3f} kg/m³</td>
-            <td style="padding: 8px;"></td></tr>"""
-        if "阻塞流" in results and results["阻塞流"]:
-            html += """
-        <tr style="background-color: #ffcccc;"><td colspan="3" style="padding: 8px; color: red; font-weight: bold;">
-            ⚠️ 警告：发生阻塞流！出口马赫数 ≥ 1，实际出口压力高于计算值。</td></tr>"""
-        if "标准流量" in results:
-            html += f"""
-        <tr><td style="padding: 8px; font-weight: bold;">标准体积流量</td>
-            <td style="padding: 8px;">{results['标准流量']:.1f} m³/h</td>
-            <td style="padding: 8px;">标准工况 15°C, 101.325 kPa</td></tr>"""
-
-        html += "</table>"
-
-        if mach_number > 0.8:
-            html += """
-            <h4 style="color: red;">⚠️ 警告：接近/超过音速流动</h4>
-            <p>马赫数大于0.8，等温流动假设可能不成立，建议使用绝热流动模型。</p>"""
-        if reynolds > 100000:
-            html += """
-            <h4 style="color: orange;">提示：完全湍流</h4>
-            <p>雷诺数较高，摩擦系数主要取决于管道粗糙度。</p>"""
-
-        self.result_text.setHtml(html)
-
-    def update_detail_table(self, results, mach_number, reynolds, friction_factor, method):
-        detail_data = [
-            ["马赫数", f"{mach_number:.4f}", "-"],
-            ["雷诺数", f"{reynolds:.0f}", "-"],
-            ["摩擦系数 f", f"{friction_factor:.6f}", "-"],
-            ["流动状态", "层流" if reynolds < 2000 else ("过渡流" if reynolds < 4000 else "湍流"), "-"],
-            ["可压缩性", "不可压缩" if mach_number < 0.3 else ("可压缩" if mach_number < 0.8 else "高速可压缩"), "-"],
+    def _update_table(self, results, Re, Ma, f):
+        data = [
+            ["马赫数", f"{Ma:.4f}", "-"],
+            ["雷诺数", f"{Re:.0f}", "-"],
+            ["摩擦系数 f", f"{f:.6f}", "-"],
+            ["流动状态", "层流" if Re < 2000 else ("过渡流" if Re < 4000 else "湍流"), "-"],
         ]
         unit_map = {
-            "当量长度 Leq": "m",
-            "入口密度": "kg/m³",
-            "出口密度": "kg/m³",
-            "平均密度": "kg/m³",
-            "入口流速": "m/s",
-            "平均流速": "m/s",
-            "标准流量": "m³/h (标况)",
-            "等效质量流量": "kg/h",
-            "效率因子 E": "-",
-            "出口压力_kPa": "kPa",
+            "当量长度 Leq (m)": "m", "入口密度 (kg/m3)": "kg/m3",
+            "出口压力 (kPa)": "kPa", "平均密度 (kg/m3)": "kg/m3",
+            "标准体积流量 (m3/h)": "m3/h", "等效质量流量 (kg/h)": "kg/h", "效率因子 E": "-",
         }
-        for key, value in results.items():
-            if key == "计算方法":
-                continue
-            if isinstance(value, bool):
-                detail_data.append([key, "是" if value else "否", "-"])
-            elif isinstance(value, (int, float)):
-                unit = unit_map.get(key, "-")
-                detail_data.append([key, f"{value:.4f}", unit])
-
-        self.detail_table.setRowCount(len(detail_data))
-        for i, row_data in enumerate(detail_data):
-            for j, data in enumerate(row_data):
-                item = QTableWidgetItem(str(data))
+        for k, v in results.items():
+            if k == "计算方法": continue
+            unit = unit_map.get(k, "-")
+            if isinstance(v, float):
+                data.append([k, f"{v:.4f}", unit])
+            else:
+                data.append([k, str(v), unit])
+        self.dtable.setRowCount(len(data))
+        for i, row in enumerate(data):
+            for j, val in enumerate(row):
+                item = QTableWidgetItem(val)
                 item.setTextAlignment(Qt.AlignCenter)
-                self.detail_table.setItem(i, j, item)
-        header = self.detail_table.horizontalHeader()
-        for col in range(3):
-            header.setSectionResizeMode(col, QHeaderView.ResizeToContents)
+                self.dtable.setItem(i, j, item)
 
+    def _err(self, msg):
+        self.result_text.setPlainText("错误：" + msg)
+
+    # ---- 清空 ----
     def clear_inputs(self):
         self.fluid_combo.setCurrentIndex(0)
-        self.molecular_weight_input.setValue(28.97)
-        self.gamma_input.setValue(1.4)
-        self.gas_constant_input.setValue(287)
-        self.viscosity_input.setValue(18.27)
-        self.diameter_input.setValue(100)
-        self.length_input.setValue(100)
-        self.roughness_input.setValue(0.046)
-        self.pipe_shape_combo.setCurrentIndex(0)
-        self.equivalent_length_factor.setValue(1.5)
-        self.inlet_pressure_input.setValue(500)
-        self.outlet_pressure_input.setValue(400)
-        self.temperature_input.setValue(20)
-        self.mass_flow_input.setValue(1000)
-        self.darcy_radio.setChecked(True)
-        self.result_text.clear()
-        self.detail_table.setRowCount(0)
+        self.mw_in.setText("28.97"); self.gamma_in.setText("1.40")
+        self.R_in.setText("287.1"); self.mu_in.setText("18.27")
+        self.dia_in.setText("100"); self.len_in.setText("100")
+        self.eps_in.setText("0.046"); self.eqf_in.setText("1.5")
+        self.P1_in.setText("500"); self.P2_in.setText("400")
+        self.temp_in.setText("20"); self.flow_in.setText("1000")
+        self.rb_darcy.setChecked(True)
+        self.result_text.clear(); self.dtable.setRowCount(0)
+        self._last_result = {}; self._last_params = {}
 
-    def _get_history_data(self):
-        method = self.get_selected_method()
-        inputs = {
-            "计算方法": method,
-            "管道直径_mm": self.diameter_input.value(),
-            "管道长度_m": self.length_input.value(),
-            "粗糙度_mm": self.roughness_input.value(),
-            "入口压力_kPa": self.inlet_pressure_input.value(),
-            "出口压力_kPa": self.outlet_pressure_input.value(),
-            "温度_C": self.temperature_input.value(),
-            "质量流量_kg_h": self.mass_flow_input.value(),
-            "分子量": self.molecular_weight_input.value(),
-            "绝热指数": self.gamma_input.value(),
-        }
-        outputs = {}
-        try:
-            d = self.diameter_input.value() / 1000.0
-            T_K = self.temperature_input.value() + 273.15
-            R = self.gas_constant_input.value()
-            mu = self.viscosity_input.value() * 1e-6
-            P1 = self.inlet_pressure_input.value() * 1000.0
-            rho1 = P1 / (R * T_K)
-            m = self.mass_flow_input.value() / 3600.0
-            A = math.pi * d ** 2 / 4.0
-            v1 = m / (rho1 * A)
-            Re = self.calculate_reynolds(d, v1, rho1, mu)
-            f = self.calculate_friction_factor(Re, self.roughness_input.value() / 1000.0, d)
-            gamma = self.gamma_input.value()
-            a = math.sqrt(gamma * R * T_K)
-            outputs = {
-                "入口密度_kg_m3": round(rho1, 4),
-                "入口流速_m_s": round(v1, 2),
-                "雷诺数": round(Re, 0),
-                "摩擦系数": round(f, 6),
-                "马赫数": round(v1 / a, 4),
-                "压降_kPa": round(self.inlet_pressure_input.value() - self.outlet_pressure_input.value(), 2),
+    # ---- 历史数据 ----
+    def _get_history(self):
+        r = self._last_result
+        p = self._last_params
+        return {
+            "inputs": {
+                "method": p.get("method", ""),
+                "diameter_mm": float(self.dia_in.text()),
+                "length_m": float(self.len_in.text()),
+                "P1_kPa": float(self.P1_in.text()),
+                "P2_kPa": float(self.P2_in.text()),
+                "temp_C": float(self.temp_in.text()),
+                "flow_kg_h": float(self.flow_in.text()),
+            },
+            "outputs": {
+                "dp_kPa": round(r.get("dp_kPa", 0), 2),
+                "Re": round(r.get("Re", 0), 0),
+                "Ma": round(r.get("Ma", 0), 4),
             }
+        }
+
+    def get_project_info(self):
+        return {"calculator": "CompressibleFlowPressureDrop", "name": "可压缩流体压降"}
+
+    def generate_report(self):
+        return self.result_text.toPlainText()
+
+    # ---- 下载报告 ----
+    def download_txt_report(self):
+        content = self.result_text.toPlainText()
+        if not content.strip():
+            QMessageBox.warning(self, "提示", "请先计算，再下载报告。"); return
+        path, _ = QFileDialog.getSaveFileName(self, "保存TXT报告", "压降计算报告.txt", "文本文件 (*.txt)")
+        if path:
+            try:
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(content)
+                QMessageBox.information(self, "成功", f"报告已保存：\n{path}")
+            except Exception as e:
+                QMessageBox.critical(self, "错误", f"保存失败：{e}")
+
+    def generate_pdf_report(self):
+        content = self.result_text.toPlainText()
+        if not content.strip():
+            QMessageBox.warning(self, "提示", "请先计算，再下载PDF。"); return
+        path, _ = QFileDialog.getSaveFileName(self, "保存PDF报告", "压降计算报告.pdf", "PDF文件 (*.pdf)")
+        if not path: return
+        try:
+            from reportlab.lib.pagesizes import A4
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib.units import mm
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+            from reportlab.lib.enums import TA_LEFT
+            from reportlab.pdfbase import pdfmetrics
+            from reportlab.pdfbase.ttfonts import TTFont
+            font_paths = ["C:/Windows/Fonts/simhei.ttf", "C:/Windows/Fonts/msyh.ttc", "C:/Windows/Fonts/simsun.ttc"]
+            fname = "Helvetica"
+            for fp in font_paths:
+                if os.path.exists(fp):
+                    try:
+                        pdfmetrics.registerFont(TTFont("CF", fp)); fname = "CF"; break
+                    except Exception:
+                        continue
+            doc = SimpleDocTemplate(path, pagesize=A4, leftMargin=20*mm, rightMargin=20*mm, topMargin=20*mm, bottomMargin=20*mm)
+            styles = getSampleStyleSheet()
+            st = ParagraphStyle("B", fontName=fname, fontSize=10, leading=16, alignment=TA_LEFT)
+            story = []
+            for line in content.split("\n"):
+                safe = line.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
+                story.append(Paragraph(safe if safe.strip() else "&nbsp;", st))
+                story.append(Spacer(1, 1))
+            doc.build(story)
+            QMessageBox.information(self, "成功", f"PDF已保存：\n{path}")
+        except ImportError:
+            QMessageBox.critical(self, "错误", "缺少reportlab，请运行：pip install reportlab")
         except Exception as e:
-            outputs["计算错误"] = str(e)
-        return {"inputs": inputs, "outputs": outputs}
+            QMessageBox.critical(self, "错误", f"PDF生成失败：{e}")
 
 
 if __name__ == "__main__":
     import sys
     from PySide6.QtWidgets import QApplication
-
     app = QApplication(sys.argv)
-    widget = CompressibleFlowPressureDrop()
-    widget.resize(900, 750)
-    widget.show()
+    w = CompressibleFlowPressureDrop()
+    w.resize(1200, 800)
+    w.show()
     sys.exit(app.exec())

@@ -251,8 +251,15 @@ class MixedLiquidFlashPointCalculator(QWidget):
         main_layout.setContentsMargins(10, 10, 10, 10)
         
         # 左侧：输入参数区域
+        scroll_left = QScrollArea()
+        scroll_left.setStyleSheet("QScrollArea { border: none; background: transparent; } QScrollBar:vertical { background: transparent; width: 8px; margin: 0; } QScrollBar::handle:vertical { background: #c0c0c0; border-radius: 4px; min-height: 30px; } QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }")
+
+        scroll_left.setWidgetResizable(True)
+
+        scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
         left_widget = QWidget()
-        left_widget.setMaximumWidth(900)
+        left_widget.setStyleSheet("QWidget { background: transparent; }")
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
         
@@ -435,7 +442,8 @@ class MixedLiquidFlashPointCalculator(QWidget):
         right_layout.addWidget(self.result_group)
         
         # 将左右两部分添加到主布局
-        main_layout.addWidget(left_widget, 2)
+        scroll_left.setWidget(left_widget)
+        main_layout.addWidget(scroll_left, 2)
         main_layout.addWidget(right_widget, 1)
     
     def add_component(self, component_data=None):

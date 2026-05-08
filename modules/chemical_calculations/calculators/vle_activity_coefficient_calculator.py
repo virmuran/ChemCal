@@ -2,7 +2,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
                               QLabel, QLineEdit, QPushButton, QComboBox,
                               QFormLayout, QTextEdit, QGridLayout, QScrollArea,
                               QTableWidget, QTableWidgetItem, QHeaderView,
-                              QTabWidget, QCheckBox, QMessageBox)
+                              QTabWidget, QMessageBox)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
 import math
@@ -107,9 +107,6 @@ def _get_binary_params(comp_i, comp_j, model):
 def solve_rachford_rice(z, K, tol=1e-10, max_iter=200):
     """求解 Rachford-Rice 方程 Σ zi(Ki-1)/(1+V(Ki-1)) = 0，返回气相分率 V ∈ [0,1]"""
     n = len(z)
-    # 确定搜索区间
-    # V=0 时函数值 f(0)=Σ zi(Ki-1)=ΣziKi-1
-    # V=1 时函数值 f(1)=Σ zi(Ki-1)/Ki
     f0 = sum(z[i] * (K[i] - 1) for i in range(n))
     f1 = sum(z[i] * (K[i] - 1) / K[i] for i in range(n))
 
@@ -118,10 +115,8 @@ def solve_rachford_rice(z, K, tol=1e-10, max_iter=200):
     if abs(f1) < tol:
         return 1.0
     if f0 * f1 > 0:
-        # 无根在 [0,1]，返回边界
         return 0.0 if abs(f0) < abs(f1) else 1.0
 
-    # Newton 迭代
     V = 0.5
     for _ in range(max_iter):
         f = 0.0
@@ -137,7 +132,6 @@ def solve_rachford_rice(z, K, tol=1e-10, max_iter=200):
             break
         dV = -f / df
         V_new = V + dV
-        # 限制步长
         V_new = max(0.0, min(1.0, V_new))
         if abs(V_new - V) < tol:
             return V_new
@@ -150,11 +144,8 @@ def solve_rachford_rice(z, K, tol=1e-10, max_iter=200):
 # ---------------------------------------------------------------------------
 
 def wilson_ln_gamma(x, T, lambda_mat, n):
-    """
-    Wilson 方程，返回 ln γ 列表。
-    lambda_mat: n×n 列表，Lambda[i][j] = exp(-(λij - λjj)/(R*T))
-    """
-    R = 8.314  # J/(mol·K)
+    """Wilson 方程，返回 ln γ 列表。"""
+    R = 8.314
     ln_gamma = [0.0] * n
     for i in range(n):
         sum_xj_Lij = sum(x[j] * lambda_mat[i][j] for j in range(n) if x[j] > 0)
@@ -173,11 +164,7 @@ def wilson_ln_gamma(x, T, lambda_mat, n):
 
 
 def nrtl_ln_gamma(x, T, tau_mat, G_mat, alpha_mat, n):
-    """
-    NRTL 方程，返回 ln γ 列表。
-    tau_mat[i][j] = Δgij/(R*T)
-    G_mat[i][j] = exp(-αij * τij)
-    """
+    """NRTL 方程，返回 ln γ 列表。"""
     ln_gamma = [0.0] * n
     for i in range(n):
         sum_xj_Gji_tauji = 0.0
@@ -199,14 +186,8 @@ def nrtl_ln_gamma(x, T, tau_mat, G_mat, alpha_mat, n):
 
 
 def uniquac_ln_gamma(x, T, r_list, q_list, tau_mat, n):
-    """
-    UNIQUAC 方程，返回 ln γ 列表。
-    ln γi = ln γi^C + ln γi^R
-    组合项使用 r, q
-    剩余项使用 τij = exp(-uij/(R*T))
-    """
+    """UNIQUAC 方程，返回 ln γ 列表。"""
     R = 8.314
-    # ---- 组合项 ----
     r_avg = sum(x[i] * r_list[i] for i in range(n))
     q_avg = sum(x[i] * q_list[i] for i in range(n))
     if r_avg <= 0 or q_avg <= 0:
@@ -223,7 +204,6 @@ def uniquac_ln_gamma(x, T, r_list, q_list, tau_mat, n):
                          + l_i - phi_i / x[i] * sum(x[j] * l_j for j, l_j in enumerate(
                               [10.0 / 2.0 * (r_list[k] - q_list[k]) - (r_list[k] - 1.0) for k in range(n)])))
 
-    # ---- 剩余项 ----
     ln_gamma_R = [0.0] * n
     for i in range(n):
         if x[i] <= 0:
@@ -248,199 +228,330 @@ def uniquac_ln_gamma(x, T, r_list, q_list, tau_mat, n):
 
 
 # ---------------------------------------------------------------------------
-#  主界面
+#  QGroupBox 统一样式
 # ---------------------------------------------------------------------------
+GROUP_STYLE = """
+    QGroupBox {
+        font-weight: bold;
+        border: 1px solid #bdc3c7;
+        border-radius: 8px;
+        margin-top: 10px;
+        padding-top: 10px;
+    }
+    QGroupBox::title {
+        subcontrol-origin: margin;
+        left: 10px;
+        padding: 0 8px 0 8px;
+    }
+"""
+
 
 class VLEActivityCoefficientCalculator(QWidget):
-    """气液平衡（活度系数法）计算器"""
+    """气液平衡（活度系数法）计算器 - 统一UI风格版"""
 
     calculation_type = "vle_activity_coefficient_calculator"
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, data_manager=None):
         super().__init__(parent)
+
+        if data_manager is not None:
+            self.data_manager = data_manager
+        else:
+            self.init_data_manager()
+
         self.components = []
+        self._current_components = []
+        self._last_calc_results = {}
         self.setup_ui()
 
+    def init_data_manager(self):
+        """初始化数据管理器"""
+        try:
+            from data_manager import DataManager
+            self.data_manager = DataManager.get_instance()
+        except Exception as e:
+            print(f"数据管理器初始化失败: {e}")
+            self.data_manager = None
+
     def setup_ui(self):
-        main_layout = QVBoxLayout(self)
+        """设置UI界面 - 统一风格布局"""
+        main_layout = QHBoxLayout(self)
         main_layout.setSpacing(15)
+        main_layout.setContentsMargins(10, 10, 10, 10)
 
-        title_label = QLabel("气液平衡计算（活度系数法）")
-        title_label.setFont(QFont("Arial", 14, QFont.Bold))
-        title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("color: #2c3e50; margin: 10px;")
-        main_layout.addWidget(title_label)
+        # ====== 左侧：输入参数区域（带滚动） ======
+        scroll_left = QScrollArea()
+        scroll_left.setStyleSheet(
+            "QScrollArea { border: none; background: transparent; } "
+            "QScrollBar:vertical { background: transparent; width: 8px; margin: 0; } "
+            "QScrollBar::handle:vertical { background: #c0c0c0; border-radius: 4px; min-height: 30px; } "
+            "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }"
+        )
+        scroll_left.setWidgetResizable(True)
+        scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
-        desc_label = QLabel("使用活度系数法计算多组分系统的气液平衡，支持 Wilson、NRTL、UNIQUAC 方程（纯 Python，无需 numpy/scipy）")
-        desc_label.setWordWrap(True)
-        desc_label.setStyleSheet("color: #7f8c8d; margin: 5px;")
-        main_layout.addWidget(desc_label)
+        left_widget = QWidget()
+        left_widget.setStyleSheet("QWidget { background: transparent; }")
+        left_widget.setMaximumWidth(900)
+        left_layout = QVBoxLayout(left_widget)
+        left_layout.setSpacing(15)
 
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_content = QWidget()
-        scroll_layout = QVBoxLayout(scroll_content)
+        # 1. 顶部说明文字
+        description = QLabel(
+            "使用活度系数法计算多组分系统的气液平衡，支持 Wilson、NRTL、UNIQUAC 方程（纯 Python，无需 numpy/scipy）。"
+        )
+        description.setWordWrap(True)
+        description.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
+        left_layout.addWidget(description)
 
-        self.tab_widget = QTabWidget()
+        # 2. 计算条件组
+        condition_group = QGroupBox("计算条件")
+        condition_group.setStyleSheet(GROUP_STYLE)
+        condition_layout = QGridLayout(condition_group)
+        condition_layout.setVerticalSpacing(12)
+        condition_layout.setHorizontalSpacing(10)
 
-        # ---- 系统设置标签页 ----
-        system_tab = QWidget()
-        system_layout = QVBoxLayout(system_tab)
+        label_style = "QLabel { font-weight: bold; padding-right: 10px; }"
+        input_width = 400
+        combo_width = 250
 
-        # 组分设置
-        component_group = QGroupBox("组分设置")
-        component_layout = QVBoxLayout(component_group)
+        # 温度
+        temp_label = QLabel("温度:")
+        temp_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        temp_label.setStyleSheet(label_style)
+        condition_layout.addWidget(temp_label, 0, 0)
 
-        cc_layout = QHBoxLayout()
-        cc_layout.addWidget(QLabel("组分数:"))
+        self.temperature_input = QLineEdit()
+        self.temperature_input.setPlaceholderText("例如：78.3")
+        self.temperature_input.setValidator(QDoubleValidator(-100, 500, 2))
+        self.temperature_input.setFixedWidth(input_width)
+        condition_layout.addWidget(self.temperature_input, 0, 1)
+
+        temp_hint = QLabel("°C")
+        temp_hint.setStyleSheet("color: #7f8c8d;")
+        temp_hint.setFixedWidth(combo_width)
+        condition_layout.addWidget(temp_hint, 0, 2)
+
+        # 压力
+        pres_label = QLabel("压力:")
+        pres_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        pres_label.setStyleSheet(label_style)
+        condition_layout.addWidget(pres_label, 1, 0)
+
+        self.pressure_input = QLineEdit()
+        self.pressure_input.setText("101.325")
+        self.pressure_input.setPlaceholderText("例如：101.325")
+        self.pressure_input.setValidator(QDoubleValidator(0.1, 10000, 2))
+        self.pressure_input.setFixedWidth(input_width)
+        condition_layout.addWidget(self.pressure_input, 1, 1)
+
+        pres_hint = QLabel("kPa")
+        pres_hint.setStyleSheet("color: #7f8c8d;")
+        pres_hint.setFixedWidth(combo_width)
+        condition_layout.addWidget(pres_hint, 1, 2)
+
+        # 热力学模型
+        model_label = QLabel("热力学模型:")
+        model_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        model_label.setStyleSheet(label_style)
+        condition_layout.addWidget(model_label, 2, 0)
+
+        self.model_selection = QComboBox()
+        self.model_selection.addItems(["Wilson方程", "NRTL方程", "UNIQUAC方程"])
+        self.model_selection.setFixedWidth(input_width)
+        self.model_selection.currentTextChanged.connect(self._on_model_changed)
+        condition_layout.addWidget(self.model_selection, 2, 1)
+
+        model_hint = QLabel("选择活度系数模型")
+        model_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        model_hint.setFixedWidth(combo_width)
+        condition_layout.addWidget(model_hint, 2, 2)
+
+        # 计算类型
+        ctype_label = QLabel("计算类型:")
+        ctype_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        ctype_label.setStyleSheet(label_style)
+        condition_layout.addWidget(ctype_label, 3, 0)
+
+        self.calc_type = QComboBox()
+        self.calc_type.addItems(["泡点计算", "露点计算", "等温闪蒸"])
+        self.calc_type.setFixedWidth(input_width)
+        condition_layout.addWidget(self.calc_type, 3, 1)
+
+        ctype_hint = QLabel("泡点/露点/闪蒸")
+        ctype_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        ctype_hint.setFixedWidth(combo_width)
+        condition_layout.addWidget(ctype_hint, 3, 2)
+
+        # 组分数
+        comp_label = QLabel("组分数:")
+        comp_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        comp_label.setStyleSheet(label_style)
+        condition_layout.addWidget(comp_label, 4, 0)
+
         self.component_count = QComboBox()
         self.component_count.addItems(["2", "3", "4"])
+        self.component_count.setFixedWidth(input_width)
         self.component_count.currentTextChanged.connect(self.update_component_table)
-        cc_layout.addWidget(self.component_count)
-        cc_layout.addStretch()
-        component_layout.addLayout(cc_layout)
+        condition_layout.addWidget(self.component_count, 4, 1)
 
+        comp_hint = QLabel("2~4组分体系")
+        comp_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        comp_hint.setFixedWidth(combo_width)
+        condition_layout.addWidget(comp_hint, 4, 2)
+
+        left_layout.addWidget(condition_group)
+
+        # 3. 标签页区域：组分设置 / 液相组成
+        self.tab_widget = QTabWidget()
+
+        # ---- Tab 1: 组分设置 ----
+        system_tab = QWidget()
+        system_tab_layout = QVBoxLayout(system_tab)
+
+        # 组分参数表
+        comp_group = QGroupBox("组分参数（Antoine + UNIQUAC）")
+        comp_group.setStyleSheet(GROUP_STYLE)
+        comp_table_layout = QVBoxLayout(comp_group)
         self.component_table = QTableWidget()
         self.component_table.setColumnCount(7)
         self.component_table.setHorizontalHeaderLabels([
             "组分", "Antoine A", "Antoine B", "Antoine C", "摩尔质量", "UNIQUAC r", "UNIQUAC q"
         ])
-        component_layout.addWidget(self.component_table)
-        system_layout.addWidget(component_group)
+        self.component_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        comp_table_layout.addWidget(self.component_table)
+        system_tab_layout.addWidget(comp_group)
 
-        # 计算条件
-        condition_group = QGroupBox("计算条件")
-        condition_layout = QGridLayout(condition_group)
-
-        self.temperature_input = QLineEdit()
-        self.temperature_input.setPlaceholderText("例如：78.3（°C）")
-        self.temperature_input.setValidator(QDoubleValidator(-100, 500, 2))
-
-        self.pressure_input = QLineEdit()
-        self.pressure_input.setText("101.325")
-        self.pressure_input.setValidator(QDoubleValidator(0.1, 10000, 2))
-
-        self.model_selection = QComboBox()
-        self.model_selection.addItems(["Wilson方程", "NRTL方程", "UNIQUAC方程"])
-
-        self.calc_type = QComboBox()
-        self.calc_type.addItems(["泡点计算", "露点计算", "等温闪蒸"])
-
-        condition_layout.addWidget(QLabel("温度:"), 0, 0)
-        condition_layout.addWidget(self.temperature_input, 0, 1)
-        condition_layout.addWidget(QLabel("°C"), 0, 2)
-        condition_layout.addWidget(QLabel("压力:"), 0, 3)
-        condition_layout.addWidget(self.pressure_input, 0, 4)
-        condition_layout.addWidget(QLabel("kPa"), 0, 5)
-        condition_layout.addWidget(QLabel("热力学模型:"), 1, 0)
-        condition_layout.addWidget(self.model_selection, 1, 1, 1, 2)
-        condition_layout.addWidget(QLabel("计算类型:"), 1, 3)
-        condition_layout.addWidget(self.calc_type, 1, 4, 1, 2)
-
-        system_layout.addWidget(condition_group)
-
-        # 二元交互参数
+        # 二元交互参数表
         binary_group = QGroupBox("二元交互参数")
+        binary_group.setStyleSheet(GROUP_STYLE)
         binary_layout = QVBoxLayout(binary_group)
         self.binary_table = QTableWidget()
+        self.binary_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         binary_layout.addWidget(self.binary_table)
-        # 快速加载按钮
-        btn_layout = QHBoxLayout()
-        self.load_preset_btn = QPushButton("加载预设参数")
-        self.load_preset_btn.setStyleSheet("QPushButton { background-color: #27ae60; color: white; padding: 6px; border-radius: 4px; }"
-                                          "QPushButton:hover { background-color: #219a52; }")
-        self.load_preset_btn.clicked.connect(self.load_preset_binary_params)
-        btn_layout.addWidget(self.load_preset_btn)
-        btn_layout.addStretch()
-        binary_layout.addLayout(btn_layout)
-        system_layout.addWidget(binary_group)
-        system_layout.addStretch()
-
-        # ---- 液相组成标签页 ----
-        comp_tab = QWidget()
-        comp_tab_layout = QVBoxLayout(comp_tab)
-        comp_tab_layout.addWidget(QLabel("液相摩尔分数（总和应为 1.0）:"))
-        self.comp_input_table = QTableWidget()
-        self.comp_input_table.setColumnCount(3)
-        self.comp_input_table.setHorizontalHeaderLabels(["组分", "液相摩尔分数 xi", ""])
-        comp_tab_layout.addWidget(self.comp_input_table)
-        system_layout_tab2 = comp_tab
-        # 这里改为在 comp_tab 中
-        comp_tab_layout.addStretch()
-
-        # ---- 结果标签页 ----
-        result_tab = QWidget()
-        result_layout = QVBoxLayout(result_tab)
 
         btn_row = QHBoxLayout()
-        self.calc_btn = QPushButton("计算")
-        self.calc_btn.setStyleSheet("QPushButton { background-color: #3498db; color: white; padding: 8px; border-radius: 4px; }"
-                                  "QPushButton:hover { background-color: #2980b9; }")
-        self.calc_btn.clicked.connect(self.calculate)
-        self.clear_btn = QPushButton("清空")
-        self.clear_btn.setStyleSheet("QPushButton { background-color: #95a5a6; color: white; padding: 8px; border-radius: 4px; }"
-                                   "QPushButton:hover { background-color: #7f8c8d; }")
-        self.clear_btn.clicked.connect(self.clear_inputs)
-        btn_row.addWidget(self.calc_btn)
-        btn_row.addWidget(self.clear_btn)
+        self.load_preset_btn = QPushButton("加载预设参数")
+        self.load_preset_btn.setStyleSheet(
+            "QPushButton { background-color: #27ae60; color: white; border: none; border-radius: 4px; padding: 6px; font-weight: bold; }"
+            "QPushButton:hover { background-color: #219653; }"
+        )
+        self.load_preset_btn.clicked.connect(self.load_preset_binary_params)
+        btn_row.addWidget(self.load_preset_btn)
         btn_row.addStretch()
-        result_layout.addLayout(btn_row)
+        binary_layout.addLayout(btn_row)
+        system_tab_layout.addWidget(binary_group)
 
-        result_display_group = QGroupBox("计算结果")
-        result_display_layout = QVBoxLayout(result_display_group)
+        self.tab_widget.addTab(system_tab, "组分设置")
 
-        self.result_table = QTableWidget()
-        self.result_table.setColumnCount(5)
-        self.result_table.setHorizontalHeaderLabels([
-            "组分", "液相摩尔分数", "气相摩尔分数", "活度系数 γ", "K 值"
-        ])
-        result_display_layout.addWidget(self.result_table)
+        # ---- Tab 2: 液相组成 ----
+        comp_tab = QWidget()
+        comp_tab_layout = QVBoxLayout(comp_tab)
+        comp_input_group = QGroupBox("液相摩尔分数（总和应为 1.0）")
+        comp_input_group.setStyleSheet(GROUP_STYLE)
+        comp_input_inner = QVBoxLayout(comp_input_group)
+        self.comp_input_table = QTableWidget()
+        self.comp_input_table.setColumnCount(3)
+        self.comp_input_table.setHorizontalHeaderLabels(["组分", "液相摩尔分数 xi", "占比"])
+        self.comp_input_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        comp_input_inner.addWidget(self.comp_input_table)
+        comp_tab_layout.addWidget(comp_input_group)
+        comp_tab_layout.addStretch()
 
-        summary_layout = QFormLayout()
-        self.bubble_point_result = QLabel("--")
-        self.dew_point_result = QLabel("--")
-        self.flash_temp_result = QLabel("--")
-        self.vapor_fraction_result = QLabel("--")
-        self.iter_count_result = QLabel("--")
-
-        summary_layout.addRow("泡点温度 (°C):", self.bubble_point_result)
-        summary_layout.addRow("露点温度 (°C):", self.dew_point_result)
-        summary_layout.addRow("闪蒸温度 (°C):", self.flash_temp_result)
-        summary_layout.addRow("气相分率 V:", self.vapor_fraction_result)
-        summary_layout.addRow("迭代次数:", self.iter_count_result)
-
-        result_display_layout.addLayout(summary_layout)
-        result_layout.addWidget(result_display_group)
-
-        # 标签页
-        self.tab_widget.addTab(system_tab, "系统设置")
         self.tab_widget.addTab(comp_tab, "液相组成")
-        self.tab_widget.addTab(result_tab, "计算结果")
+        left_layout.addWidget(self.tab_widget)
 
-        scroll_layout.addWidget(self.tab_widget)
-
-        info_text = QTextEdit()
-        info_text.setMaximumHeight(150)
-        info_text.setHtml("""
-        <h4>计算说明:</h4>
-        <ul>
-        <li><b>Antoine方程</b>: log₁₀(P_sat) = A - B/(T+C)，P 单位 kPa，T 单位 °C</li>
-        <li><b>Wilson方程</b>: 适用于极性/非极性混合物，不含部分互溶系统</li>
-        <li><b>NRTL方程</b>: 适用于非理想体系，包括部分互溶系统；需输入 α₁₂ (非随机性参数)</li>
-        <li><b>UNIQUAC方程</b>: 基于分子结构（r,q）和相互作用能的通用模型</li>
-        <li><b>泡点计算</b>: 给定液相组成和压力，迭代求泡点温度和气相组成</li>
-        <li><b>露点计算</b>: 给定气相组成和压力，迭代求露点温度和液相组成</li>
-        <li><b>等温闪蒸</b>: 给定总组成、温度和压力，Rachford-Rice 方程求气相分率</li>
-        <li>预设 7 组常见二元交互参数（甲醇-水、乙醇-水等），点击「加载预设参数」自动填充</li>
-        </ul>
+        # 4. 计算按钮
+        calculate_btn = QPushButton("计算")
+        calculate_btn.setFont(QFont("Arial", 12, QFont.Bold))
+        calculate_btn.clicked.connect(self.calculate)
+        calculate_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                padding: 12px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            }
         """)
-        info_text.setReadOnly(True)
-        scroll_layout.addWidget(info_text)
+        calculate_btn.setMinimumHeight(50)
+        left_layout.addWidget(calculate_btn)
 
-        scroll_area.setWidget(scroll_content)
-        main_layout.addWidget(scroll_area)
+        # 5. 下载按钮行
+        download_layout = QHBoxLayout()
+        clear_btn = QPushButton("清空")
+        clear_btn.setStyleSheet("""
+            QPushButton { background-color: #95a5a6; color: white; border: none; border-radius: 6px; padding: 8px; font-weight: bold; }
+            QPushButton:hover { background-color: #7f8c8d; }
+        """)
+        clear_btn.clicked.connect(self.clear_inputs)
+        download_layout.addWidget(clear_btn)
 
+        download_layout.addStretch()
+
+        download_txt_btn = QPushButton("下载计算书(TXT)")
+        download_txt_btn.clicked.connect(self.download_txt_report)
+        download_txt_btn.setStyleSheet("""
+            QPushButton { background-color: #27ae60; color: white; border: none; border-radius: 6px; padding: 8px; font-weight: bold; }
+            QPushButton:hover { background-color: #219653; }
+        """)
+
+        download_pdf_btn = QPushButton("下载计算书(PDF)")
+        download_pdf_btn.clicked.connect(self.generate_pdf_report)
+        download_pdf_btn.setStyleSheet("""
+            QPushButton { background-color: #e74c3c; color: white; border: none; border-radius: 6px; padding: 8px; font-weight: bold; }
+            QPushButton:hover { background-color: #c0392b; }
+        """)
+
+        download_layout.addWidget(download_txt_btn)
+        download_layout.addWidget(download_pdf_btn)
+        left_layout.addLayout(download_layout)
+
+        # 底部拉伸
+        left_layout.addStretch()
+
+        # ====== 右侧：结果显示区域 ======
+        right_widget = QWidget()
+        right_widget.setMinimumWidth(400)
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setSpacing(15)
+
+        result_group = QGroupBox("计算结果")
+        result_group.setStyleSheet(GROUP_STYLE)
+        result_inner = QVBoxLayout(result_group)
+
+        self.result_text = QTextEdit()
+        self.result_text.setReadOnly(True)
+        self.result_text.setStyleSheet("""
+            QTextEdit {
+                border: 1px solid #ecf0f1;
+                border-radius: 6px;
+                padding: 8px;
+                background-color: #f8f9fa;
+                min-height: 500px;
+            }
+        """)
+        result_inner.addWidget(self.result_text)
+        right_layout.addWidget(result_group)
+
+        # 将左右添加到主布局
+        scroll_left.setWidget(left_widget)
+        main_layout.addWidget(scroll_left, 2)
+        main_layout.addWidget(right_widget, 1)
+
+        # 初始化组分表
         self.update_component_table()
+
+    # ------------------------------------------------------------------
+    #  模型变更时更新二元参数表
+    # ------------------------------------------------------------------
+    def _on_model_changed(self):
+        """模型切换后更新二元参数表"""
+        self.update_binary_table()
 
     # ------------------------------------------------------------------
     #  组分表管理
@@ -545,7 +656,7 @@ class VLEActivityCoefficientCalculator(QWidget):
                 row += 1
 
     def load_preset_binary_params(self):
-        """重新加载预设参数（切换模型后用）"""
+        """重新加载预设参数"""
         self.update_binary_table()
         QMessageBox.information(self, "已更新", "二元交互参数已根据当前模型和组分自动加载预设值（如有）。")
 
@@ -662,6 +773,7 @@ class VLEActivityCoefficientCalculator(QWidget):
         return 10.0 ** logP
 
     def calculate(self):
+        """执行计算并显示结果"""
         try:
             T_C = float(self.temperature_input.text()) if self.temperature_input.text() else 25.0
             P = float(self.pressure_input.text())
@@ -672,31 +784,32 @@ class VLEActivityCoefficientCalculator(QWidget):
             n = len(components)
             x = self.get_compositions()
             binary_params = self.get_binary_params(components)
-
             T_K = T_C + 273.15
+
+            # 保存计算结果用于报告
+            self._last_calc_results = {
+                "T_C": T_C, "P": P, "model": model, "calc_type": calc_type,
+                "components": components, "n": n
+            }
 
             if calc_type == "泡点计算":
                 T_bub, y, gamma, Psat, iters = self._bubble_point_T(x, P, components, binary_params, model, n, T_C)
-                self.bubble_point_result.setText(f"{T_bub:.2f}")
-                self.dew_point_result.setText("--")
-                self.flash_temp_result.setText("--")
-                self.vapor_fraction_result.setText("0.0000（泡点）")
-                self.iter_count_result.setText(str(iters))
-
                 K = [gamma[i] * Psat[i] / P for i in range(n)]
-                self._show_results(components, x, y, gamma, K)
+                self._last_calc_results.update({
+                    "type": "bubble", "T_bub": T_bub, "y": y, "x": x,
+                    "gamma": gamma, "Psat": Psat, "K": K, "iters": iters
+                })
+                self._format_bubble_result(components, x, y, gamma, K, T_bub, iters, model, P)
 
             elif calc_type == "露点计算":
-                y = x.copy()  # 输入为气相组成
-                T_dew, x_calc, gamma, Psat, iters = self._dew_point_T(y, P, components, binary_params, model, n, T_C)
-                self.dew_point_result.setText(f"{T_dew:.2f}")
-                self.bubble_point_result.setText("--")
-                self.flash_temp_result.setText("--")
-                self.vapor_fraction_result.setText("1.0000（露点）")
-                self.iter_count_result.setText(str(iters))
-
+                y_input = x.copy()  # 输入为气相组成
+                T_dew, x_calc, gamma, Psat, iters = self._dew_point_T(y_input, P, components, binary_params, model, n, T_C)
                 K = [gamma[i] * Psat[i] / P for i in range(n)]
-                self._show_results(components, x_calc, y, gamma, K)
+                self._last_calc_results.update({
+                    "type": "dew", "T_dew": T_dew, "y": y_input, "x": x_calc,
+                    "gamma": gamma, "Psat": Psat, "K": K, "iters": iters
+                })
+                self._format_dew_result(components, x_calc, y_input, gamma, K, T_dew, iters, model, P)
 
             else:  # 等温闪蒸
                 z = x.copy()
@@ -707,18 +820,16 @@ class VLEActivityCoefficientCalculator(QWidget):
                 V = solve_rachford_rice(z, K)
                 x_flash = [z[i] / (1 + V * (K[i] - 1)) for i in range(n)]
                 y_flash = [K[i] * x_flash[i] for i in range(n)]
-
-                self.bubble_point_result.setText("--")
-                self.dew_point_result.setText("--")
-                self.flash_temp_result.setText(f"{T_C:.2f}")
-                self.vapor_fraction_result.setText(f"{V:.4f}")
-                self.iter_count_result.setText("—（Rachford-Rice）")
-                self._show_results(components, x_flash, y_flash, gamma, K)
+                self._last_calc_results.update({
+                    "type": "flash", "T_C": T_C, "z": z, "x": x_flash, "y": y_flash,
+                    "gamma": gamma, "Psat": Psat, "K": K, "V": V
+                })
+                self._format_flash_result(components, z, x_flash, y_flash, gamma, K, V, T_C, model, P)
 
         except ValueError:
-            self.show_error("输入参数格式错误，请检查输入值")
+            self.result_text.setPlainText("⚠ 输入参数格式错误，请检查输入值。")
         except Exception as e:
-            self.show_error(f"计算错误: {str(e)}")
+            self.result_text.setPlainText(f"⚠ 计算错误: {str(e)}")
 
     def _bubble_point_T(self, x, P, components, bp, model, n, T_init_C, tol=1e-4, max_iter=200):
         """Newton-Raphson 泡点温度迭代"""
@@ -733,7 +844,6 @@ class VLEActivityCoefficientCalculator(QWidget):
             if abs(f) < tol:
                 y = [K[i] * x[i] for i in range(n)]
                 return T_C, y, gamma, Psat, iteration + 1
-            # df/dT
             dT = 0.01
             T_C2 = T_C + dT
             T_K2 = T_C2 + 273.15
@@ -747,7 +857,6 @@ class VLEActivityCoefficientCalculator(QWidget):
                 T_C += 0.5
             else:
                 T_C -= f / df
-            # 限制范围
             T_C = max(-50, min(500, T_C))
         y = [K[i] * x[i] for i in range(n)]
         return T_C, y, gamma, Psat, max_iter
@@ -757,10 +866,8 @@ class VLEActivityCoefficientCalculator(QWidget):
         T_C = T_init_C
         for iteration in range(max_iter):
             T_K = T_C + 273.15
-            # 需点需要先估算液相组成来算活度系数
             x_est = [0.0] * n
             Psat = [self._psat(components[i], T_C) for i in range(n)]
-            # 初始估算 x_i = y_i * P / Psat_i
             denom = sum(y[i] * P / Psat[i] if Psat[i] > 0 else 0 for i in range(n))
             x_est = [y[i] * P / Psat[i] / denom if Psat[i] > 0 and denom > 0 else 1.0/n for i in range(n)]
             matrices = self._build_matrices(components, bp, T_K, model, n)
@@ -790,18 +897,88 @@ class VLEActivityCoefficientCalculator(QWidget):
         return T_C, x_calc, gamma, Psat, max_iter
 
     # ------------------------------------------------------------------
-    #  结果显示
+    #  结果格式化（输出到右侧 QTextEdit）
     # ------------------------------------------------------------------
 
-    def _show_results(self, components, x, y, gamma, K):
+    def _format_bubble_result(self, components, x, y, gamma, K, T_bub, iters, model, P):
         n = len(components)
-        self.result_table.setRowCount(n)
+        lines = []
+        lines.append("═══════════════════════════════════════")
+        lines.append("        泡点计算结果")
+        lines.append("═══════════════════════════════════════")
+        lines.append(f"")
+        lines.append(f"热力学模型: {model}")
+        lines.append(f"系统压力:   {P:.2f} kPa")
+        lines.append(f"泡点温度:   {T_bub:.4f} °C")
+        lines.append(f"迭代次数:   {iters}")
+        lines.append(f"")
+        lines.append("─── 各组分结果 ───")
+        lines.append(f"{'组分':<10} {'液相 xi':<12} {'气相 yi':<12} {'γi':<12} {'Ki':<12} {'Psat(kPa)':<12}")
+        lines.append("─" * 68)
         for i in range(n):
-            self.result_table.setItem(i, 0, QTableWidgetItem(components[i]['name']))
-            self.result_table.setItem(i, 1, QTableWidgetItem(f"{x[i]:.6f}"))
-            self.result_table.setItem(i, 2, QTableWidgetItem(f"{y[i]:.6f}"))
-            self.result_table.setItem(i, 3, QTableWidgetItem(f"{gamma[i]:.6f}"))
-            self.result_table.setItem(i, 4, QTableWidgetItem(f"{K[i]:.6f}"))
+            psat = self._psat(components[i], T_bub)
+            lines.append(
+                f"{components[i]['name']:<10} {x[i]:<12.6f} {y[i]:<12.6f} "
+                f"{gamma[i]:<12.6f} {K[i]:<12.6f} {psat:<12.4f}"
+            )
+        lines.append("─" * 68)
+        lines.append(f"{'合计':<10} {sum(x):<12.6f} {sum(y):<12.6f}")
+        lines.append(f"")
+        lines.append(f"说明: Antoine方程 log₁₀(Psat) = A - B/(T+C)")
+        self.result_text.setPlainText("\n".join(lines))
+
+    def _format_dew_result(self, components, x, y, gamma, K, T_dew, iters, model, P):
+        n = len(components)
+        lines = []
+        lines.append("═══════════════════════════════════════")
+        lines.append("        露点计算结果")
+        lines.append("═══════════════════════════════════════")
+        lines.append(f"")
+        lines.append(f"热力学模型: {model}")
+        lines.append(f"系统压力:   {P:.2f} kPa")
+        lines.append(f"露点温度:   {T_dew:.4f} °C")
+        lines.append(f"迭代次数:   {iters}")
+        lines.append(f"")
+        lines.append("─── 各组分结果 ───")
+        lines.append(f"{'组分':<10} {'液相 xi':<12} {'气相 yi':<12} {'γi':<12} {'Ki':<12} {'Psat(kPa)':<12}")
+        lines.append("─" * 68)
+        for i in range(n):
+            psat = self._psat(components[i], T_dew)
+            lines.append(
+                f"{components[i]['name']:<10} {x[i]:<12.6f} {y[i]:<12.6f} "
+                f"{gamma[i]:<12.6f} {K[i]:<12.6f} {psat:<12.4f}"
+            )
+        lines.append("─" * 68)
+        lines.append(f"{'合计':<10} {sum(x):<12.6f} {sum(y):<12.6f}")
+        lines.append(f"")
+        lines.append(f"说明: Antoine方程 log₁₀(Psat) = A - B/(T+C)")
+        self.result_text.setPlainText("\n".join(lines))
+
+    def _format_flash_result(self, components, z, x, y, gamma, K, V, T_C, model, P):
+        n = len(components)
+        lines = []
+        lines.append("═══════════════════════════════════════")
+        lines.append("        等温闪蒸计算结果")
+        lines.append("═══════════════════════════════════════")
+        lines.append(f"")
+        lines.append(f"热力学模型: {model}")
+        lines.append(f"系统压力:   {P:.2f} kPa")
+        lines.append(f"闪蒸温度:   {T_C:.4f} °C")
+        lines.append(f"气相分率 V: {V:.6f}")
+        lines.append(f"")
+        lines.append("─── 各组分结果 ───")
+        lines.append(f"{'组分':<10} {'进料 zi':<12} {'液相 xi':<12} {'气相 yi':<12} {'γi':<12} {'Ki':<12}")
+        lines.append("─" * 68)
+        for i in range(n):
+            lines.append(
+                f"{components[i]['name']:<10} {z[i]:<12.6f} {x[i]:<12.6f} "
+                f"{y[i]:<12.6f} {gamma[i]:<12.6f} {K[i]:<12.6f}"
+            )
+        lines.append("─" * 68)
+        lines.append(f"{'合计':<10} {sum(z):<12.6f} {sum(x):<12.6f} {sum(y):<12.6f}")
+        lines.append(f"")
+        lines.append(f"说明: Rachford-Rice 方程求解气相分率")
+        self.result_text.setPlainText("\n".join(lines))
 
     # ------------------------------------------------------------------
     #  清空 / 错误
@@ -811,21 +988,12 @@ class VLEActivityCoefficientCalculator(QWidget):
         self.temperature_input.clear()
         self.pressure_input.setText("101.325")
         self.update_component_table()
-        self.result_table.setRowCount(0)
-        self.bubble_point_result.setText("--")
-        self.dew_point_result.setText("--")
-        self.flash_temp_result.setText("--")
-        self.vapor_fraction_result.setText("--")
-        self.iter_count_result.setText("--")
+        self.result_text.clear()
+        self._last_calc_results = {}
 
-    def show_error(self, message):
-        self.result_table.setRowCount(0)
-        self.bubble_point_result.setText("计算错误")
-        self.dew_point_result.setText("计算错误")
-        self.flash_temp_result.setText("计算错误")
-        self.vapor_fraction_result.setText("计算错误")
-        self.iter_count_result.setText("--")
-        QMessageBox.critical(self, "计算错误", message)
+    # ------------------------------------------------------------------
+    #  历史数据 / 项目信息 / 报告
+    # ------------------------------------------------------------------
 
     def _get_history_data(self):
         temperature = float(self.temperature_input.text()) if self.temperature_input.text() else 25.0
@@ -844,18 +1012,91 @@ class VLEActivityCoefficientCalculator(QWidget):
             inputs["组分数量"] = len(components)
             for i, comp in enumerate(components):
                 inputs[f"组分{i+1}"] = comp.get("name", "")
-            bub_text = self.bubble_point_result.text()
-            dew_text = self.dew_point_result.text()
-            vf_text = self.vapor_fraction_result.text()
-            if bub_text and bub_text not in ["--", "计算错误"]:
-                outputs["泡点温度_C"] = float(bub_text)
-            if dew_text and dew_text not in ["--", "计算错误"]:
-                outputs["露点温度_C"] = float(dew_text)
-            if vf_text and vf_text not in ["--", "计算错误"]:
-                outputs["气相分率"] = vf_text
+            r = self._last_calc_results
+            if r.get("type") == "bubble":
+                outputs["泡点温度_C"] = r.get("T_bub", 0)
+            elif r.get("type") == "dew":
+                outputs["露点温度_C"] = r.get("T_dew", 0)
+            elif r.get("type") == "flash":
+                outputs["气相分率"] = r.get("V", 0)
         except Exception as e:
             outputs["计算错误"] = str(e)
         return {"inputs": inputs, "outputs": outputs}
+
+    def get_project_info(self):
+        return {
+            "project_name": "气液平衡计算（活度系数法）",
+            "calculator_name": "VLE活度系数计算器",
+            "version": "1.0",
+            "description": "使用活度系数法（Wilson/NRTL/UNIQUAC）计算多组分系统气液平衡"
+        }
+
+    def generate_report(self):
+        """生成文本报告内容"""
+        r = self._last_calc_results
+        if not r:
+            return "尚未进行计算。"
+        lines = []
+        lines.append("气液平衡计算报告（活度系数法）")
+        lines.append("=" * 50)
+        lines.append(f"计算类型: {r.get('calc_type', '')}")
+        lines.append(f"热力学模型: {r.get('model', '')}")
+        lines.append(f"系统压力: {r.get('P', 0):.2f} kPa")
+        lines.append(f"")
+        lines.append(self.result_text.toPlainText())
+        return "\n".join(lines)
+
+    def download_txt_report(self):
+        """下载TXT计算书"""
+        try:
+            from PySide6.QtWidgets import QFileDialog
+            content = self.generate_report()
+            if not content or content == "尚未进行计算。":
+                QMessageBox.warning(self, "提示", "请先进行计算后再下载。")
+                return
+            file_path, _ = QFileDialog.getSaveFileName(
+                self, "保存计算书", "VLE活度系数计算书.txt", "Text Files (*.txt)"
+            )
+            if file_path:
+                from datetime import datetime
+                header = f"CalcE - 气液平衡计算（活度系数法）\n生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n{'='*50}\n\n"
+                with open(file_path, "w", encoding="utf-8") as f:
+                    f.write(header + content)
+                QMessageBox.information(self, "成功", f"计算书已保存至:\n{file_path}")
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"保存失败: {str(e)}")
+
+    def generate_pdf_report(self):
+        """下载PDF计算书"""
+        try:
+            from PySide6.QtWidgets import QFileDialog
+            content = self.generate_report()
+            if not content or content == "尚未进行计算。":
+                QMessageBox.warning(self, "提示", "请先进行计算后再下载。")
+                return
+            file_path, _ = QFileDialog.getSaveFileName(
+                self, "保存PDF计算书", "VLE活度系数计算书.pdf", "PDF Files (*.pdf)"
+            )
+            if file_path:
+                from fpdf import FPDF
+                pdf = FPDF()
+                pdf.add_page()
+                # 尝试使用中文字体
+                try:
+                    font_path = "C:/Windows/Fonts/msyh.ttc"
+                    pdf.add_font("msyh", "", font_path, uni=True)
+                    pdf.set_font("msyh", size=10)
+                except Exception:
+                    pdf.set_font("Helvetica", size=10)
+
+                for line in content.split("\n"):
+                    pdf.cell(0, 6, line, ln=True)
+                pdf.output(file_path)
+                QMessageBox.information(self, "成功", f"PDF计算书已保存至:\n{file_path}")
+        except ImportError:
+            QMessageBox.critical(self, "错误", "需要安装 fpdf 库: pip install fpdf")
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"PDF生成失败: {str(e)}")
 
 
 if __name__ == "__main__":
@@ -864,6 +1105,6 @@ if __name__ == "__main__":
 
     app = QApplication(sys.argv)
     calculator = VLEActivityCoefficientCalculator()
-    calculator.resize(950, 750)
+    calculator.resize(1200, 800)
     calculator.show()
     sys.exit(app.exec())

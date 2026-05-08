@@ -50,7 +50,18 @@ class CalcE(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("CalcE - 个人生产力工具")
-        self.setGeometry(160, 50, 1600, 970)
+        # 自适应屏幕大小，留出边距避免超出
+        from PySide6.QtGui import QScreen
+        screen = QApplication.primaryScreen()
+        if screen:
+            avail = screen.availableGeometry()
+            w = min(1600, avail.width() - 80)
+            h = min(970, avail.height() - 80)
+            x = (avail.width() - w) // 2
+            y = (avail.height() - h) // 2
+            self.setGeometry(x, y, w, h)
+        else:
+            self.setGeometry(160, 50, 1600, 970)
 
         self.theme_manager = ThemeManager()
         self.data_manager = DataManager.get_instance()

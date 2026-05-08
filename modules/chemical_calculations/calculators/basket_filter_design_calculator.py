@@ -2,7 +2,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QGroupBox, QTextEdit, QComboBox, QMessageBox, QGridLayout,
     QFileDialog, QDialog, QDialogButtonBox, QTabWidget, QSpinBox,
-    QButtonGroup, QFrame
+    QButtonGroup, QFrame, QScrollArea
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
@@ -43,8 +43,15 @@ class 篮式过滤器(QWidget):
         main_layout.setContentsMargins(10, 10, 10, 10)
         
         # 左侧：输入参数区域
+        scroll_left = QScrollArea()
+        scroll_left.setStyleSheet("QScrollArea { border: none; background: transparent; } QScrollBar:vertical { background: transparent; width: 8px; margin: 0; } QScrollBar::handle:vertical { background: #c0c0c0; border-radius: 4px; min-height: 30px; } QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }")
+
+        scroll_left.setWidgetResizable(True)
+
+        scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
         left_widget = QWidget()
-        left_widget.setMaximumWidth(900)
+        left_widget.setStyleSheet("QWidget { background: transparent; }")
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
         
@@ -121,7 +128,8 @@ class 篮式过滤器(QWidget):
         right_layout.addWidget(copy_btn)
         
         # 将左右两部分添加到主布局
-        main_layout.addWidget(left_widget, 2)
+        scroll_left.setWidget(left_widget)
+        main_layout.addWidget(scroll_left, 2)
         main_layout.addWidget(right_widget, 1)
     
     def create_group_box(self, title):

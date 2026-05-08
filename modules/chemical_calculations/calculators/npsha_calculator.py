@@ -1,6 +1,8 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
-    QGroupBox, QTextEdit, QComboBox, QGridLayout, QMessageBox
+    QGroupBox, QTextEdit, QComboBox, QGridLayout, QMessageBox,
+    QScrollArea,
+
 )
 from PySide6.QtGui import QFont, QDoubleValidator
 from PySide6.QtCore import Qt
@@ -20,8 +22,15 @@ class NPSHaCalculator(QWidget):
         main_layout.setContentsMargins(10, 10, 10, 10)
         
         # 左侧：输入参数区域 (占2/3宽度)
+        scroll_left = QScrollArea()
+        scroll_left.setStyleSheet("QScrollArea { border: none; background: transparent; } QScrollBar:vertical { background: transparent; width: 8px; margin: 0; } QScrollBar::handle:vertical { background: #c0c0c0; border-radius: 4px; min-height: 30px; } QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }")
+
+        scroll_left.setWidgetResizable(True)
+
+        scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
         left_widget = QWidget()
-        left_widget.setMaximumWidth(900)  # 限制最大宽度
+        left_widget.setStyleSheet("QWidget { background: transparent; }")  # 限制最大宽度
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
         
@@ -54,6 +63,9 @@ class NPSHaCalculator(QWidget):
         input_layout = QGridLayout(input_group)
         input_layout.setVerticalSpacing(12)
         input_layout.setHorizontalSpacing(10)
+        input_layout.setColumnStretch(0, 2)
+        input_layout.setColumnStretch(1, 3)
+        input_layout.setColumnStretch(2, 2)
         
         # 标签样式 - 右对齐
         label_style = """
@@ -78,7 +90,8 @@ class NPSHaCalculator(QWidget):
         self.atm_pressure_input = QLineEdit()
         self.atm_pressure_input.setPlaceholderText("例如: 101.3 (标准大气压)")
         self.atm_pressure_input.setValidator(QDoubleValidator(80.0, 110.0, 6))
-        self.atm_pressure_input.setFixedWidth(input_width)
+        self.atm_pressure_input.setMinimumWidth(150)
+        self.atm_pressure_input.setMaximumWidth(400)
         input_layout.addWidget(self.atm_pressure_input, row, 1)
         
         self.atm_pressure_combo = QComboBox()
@@ -89,7 +102,8 @@ class NPSHaCalculator(QWidget):
             "89.9 kPa - 海拔1000米",
             "自定义大气压力"
         ])
-        self.atm_pressure_combo.setFixedWidth(combo_width)
+        self.atm_pressure_combo.setMinimumWidth(100)
+        self.atm_pressure_combo.setMaximumWidth(250)
         self.atm_pressure_combo.currentTextChanged.connect(self.on_atm_pressure_changed)
         input_layout.addWidget(self.atm_pressure_combo, row, 2)
         
@@ -104,7 +118,8 @@ class NPSHaCalculator(QWidget):
         self.vapor_pressure_input = QLineEdit()
         self.vapor_pressure_input.setPlaceholderText("例如: 2.34 (水在20°C)")
         self.vapor_pressure_input.setValidator(QDoubleValidator(0.001, 22064.0, 6))
-        self.vapor_pressure_input.setFixedWidth(input_width)
+        self.vapor_pressure_input.setMinimumWidth(150)
+        self.vapor_pressure_input.setMaximumWidth(400)
         input_layout.addWidget(self.vapor_pressure_input, row, 1)
         
         self.vapor_pressure_combo = QComboBox()
@@ -122,7 +137,8 @@ class NPSHaCalculator(QWidget):
             "101.33 kPa - 水在100°C",
             "自定义蒸汽压"
         ])
-        self.vapor_pressure_combo.setFixedWidth(combo_width)
+        self.vapor_pressure_combo.setMinimumWidth(100)
+        self.vapor_pressure_combo.setMaximumWidth(250)
         self.vapor_pressure_combo.currentTextChanged.connect(self.on_vapor_pressure_changed)
         input_layout.addWidget(self.vapor_pressure_combo, row, 2)
         
@@ -137,7 +153,8 @@ class NPSHaCalculator(QWidget):
         self.static_head_input = QLineEdit()
         self.static_head_input.setPlaceholderText("正值为灌注，负值为抽吸")
         self.static_head_input.setValidator(QDoubleValidator(-20.0, 50.0, 6))
-        self.static_head_input.setFixedWidth(input_width)
+        self.static_head_input.setMinimumWidth(150)
+        self.static_head_input.setMaximumWidth(400)
         input_layout.addWidget(self.static_head_input, row, 1)
         
         self.static_head_combo = QComboBox()
@@ -146,7 +163,8 @@ class NPSHaCalculator(QWidget):
             "负压头 - 抽吸吸入",
             "零压头 - 水平吸入"
         ])
-        self.static_head_combo.setFixedWidth(combo_width)
+        self.static_head_combo.setMinimumWidth(100)
+        self.static_head_combo.setMaximumWidth(250)
         self.static_head_combo.currentTextChanged.connect(self.on_static_head_changed)
         input_layout.addWidget(self.static_head_combo, row, 2)
         
@@ -161,7 +179,8 @@ class NPSHaCalculator(QWidget):
         self.friction_loss_input = QLineEdit()
         self.friction_loss_input.setPlaceholderText("例如: 1.5")
         self.friction_loss_input.setValidator(QDoubleValidator(0.0, 20.0, 6))
-        self.friction_loss_input.setFixedWidth(input_width)
+        self.friction_loss_input.setMinimumWidth(150)
+        self.friction_loss_input.setMaximumWidth(400)
         input_layout.addWidget(self.friction_loss_input, row, 1)
         
         self.friction_loss_combo = QComboBox()
@@ -172,7 +191,8 @@ class NPSHaCalculator(QWidget):
             "3.0-5.0 m - 复杂管路",
             "自定义管路损失"
         ])
-        self.friction_loss_combo.setFixedWidth(combo_width)
+        self.friction_loss_combo.setMinimumWidth(100)
+        self.friction_loss_combo.setMaximumWidth(250)
         self.friction_loss_combo.currentTextChanged.connect(self.on_friction_loss_changed)
         input_layout.addWidget(self.friction_loss_combo, row, 2)
         
@@ -187,7 +207,8 @@ class NPSHaCalculator(QWidget):
         self.density_input = QLineEdit()
         self.density_input.setPlaceholderText("例如: 1000 (水)")
         self.density_input.setValidator(QDoubleValidator(500.0, 2000.0, 6))
-        self.density_input.setFixedWidth(input_width)
+        self.density_input.setMinimumWidth(150)
+        self.density_input.setMaximumWidth(400)
         input_layout.addWidget(self.density_input, row, 1)
         
         self.density_combo = QComboBox()
@@ -203,7 +224,8 @@ class NPSHaCalculator(QWidget):
             "850 kg/m³ - 柴油",
             "自定义密度"
         ])
-        self.density_combo.setFixedWidth(combo_width)
+        self.density_combo.setMinimumWidth(100)
+        self.density_combo.setMaximumWidth(250)
         self.density_combo.currentTextChanged.connect(self.on_density_changed)
         input_layout.addWidget(self.density_combo, row, 2)
         
@@ -218,7 +240,8 @@ class NPSHaCalculator(QWidget):
         self.npshr_input = QLineEdit()
         self.npshr_input.setPlaceholderText("可选，来自泵性能曲线")
         self.npshr_input.setValidator(QDoubleValidator(0.1, 20.0, 6))
-        self.npshr_input.setFixedWidth(input_width)
+        self.npshr_input.setMinimumWidth(150)
+        self.npshr_input.setMaximumWidth(400)
         input_layout.addWidget(self.npshr_input, row, 1)
         
         self.npshr_combo = QComboBox()
@@ -229,7 +252,8 @@ class NPSHaCalculator(QWidget):
             "6.0-8.0 m - 特殊泵",
             "未知NPSHr"
         ])
-        self.npshr_combo.setFixedWidth(combo_width)
+        self.npshr_combo.setMinimumWidth(100)
+        self.npshr_combo.setMaximumWidth(250)
         self.npshr_combo.currentTextChanged.connect(self.on_npshr_changed)
         input_layout.addWidget(self.npshr_combo, row, 2)
         
@@ -295,7 +319,8 @@ class NPSHaCalculator(QWidget):
         right_layout.addWidget(self.result_group)
         
         # 将左右两部分添加到主布局
-        main_layout.addWidget(left_widget, 2)  # 左侧占2/3
+        scroll_left.setWidget(left_widget)
+        main_layout.addWidget(scroll_left, 2)  # 左侧占2/3
         main_layout.addWidget(right_widget, 1)  # 右侧占1/3
     
     def on_atm_pressure_changed(self, text):

@@ -2,122 +2,242 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
                               QLabel, QLineEdit, QComboBox, QPushButton, 
                               QTextEdit, QTableWidget, QTableWidgetItem,
                               QHeaderView, QMessageBox, QTabWidget, QDoubleSpinBox,
-                              QCheckBox, QRadioButton, QButtonGroup, QScrollArea)
+                              QCheckBox, QRadioButton, QButtonGroup, QScrollArea,
+                              QFileDialog)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
 import math
+from fpdf import FPDF
+
+# QGroupBox统一样式
+GROUP_STYLE = """
+    QGroupBox {
+        font-weight: bold;
+        border: 1px solid #bdc3c7;
+        border-radius: 8px;
+        margin-top: 10px;
+        padding-top: 10px;
+    }
+    QGroupBox::title {
+        subcontrol-origin: margin;
+        left: 10px;
+        padding: 0 8px 0 8px;
+    }
+"""
 
 class PureSubstanceProperties(QWidget):
     """纯物质物性数据查询"""
-    
-    def __init__(self, parent=None):
+
+    # 计算类型类属性
+    calculation_type = "pure_substance_properties"
+
+    def __init__(self, parent=None, data_manager=None):
         super().__init__(parent)
+        if data_manager is not None:
+            self.data_manager = data_manager
+        else:
+            self.init_data_manager()
         self.substance_data = self.load_substance_data()
         self.setup_ui()
+
+    def init_data_manager(self):
+        """初始化数据管理器"""
+        try:
+            from data_manager import DataManager
+            self.data_manager = DataManager.get_instance()
+        except Exception:
+            self.data_manager = None
     
     def setup_ui(self):
-        """设置UI"""
-        main_layout = QVBoxLayout(self)
+        """设置UI - 统一布局规范"""
+        # 主布局为水平布局
+        main_layout = QHBoxLayout(self)
         main_layout.setSpacing(15)
+        main_layout.setContentsMargins(10, 10, 10, 10)
         
-        # 标题
-        title_label = QLabel("纯物质物性数据查询")
-        title_label.setFont(QFont("Arial", 14, QFont.Bold))
-        title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("color: #2c3e50; margin: 10px;")
-        main_layout.addWidget(title_label)
+        # 左侧输入区 - 使用滚动区域
+        left_scroll = QScrollArea()
+        left_scroll.setWidgetResizable(True)
+        left_scroll.setStyleSheet(
+            "QScrollArea { border: none; background: transparent; } "
+            "QScrollBar:vertical { background: transparent; width: 8px; margin: 0; } "
+            "QScrollBar::handle:vertical { background: #c0c0c0; border-radius: 4px; min-height: 30px; } "
+            "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }"
+        )
+        left_scroll.setMaximumWidth(900)
         
-        # 创建标签页
-        self.tab_widget = QTabWidget()
+        left_widget = QWidget()
+        left_layout = QVBoxLayout(left_widget)
+        left_layout.setSpacing(15)
         
-        # 添加查询标签页
-        self.query_tab = self.create_query_tab()
-        self.tab_widget.addTab(self.query_tab, "物性查询")
-        
-        # 添加物质库标签页
-        self.substance_lib_tab = self.create_substance_lib_tab()
-        self.tab_widget.addTab(self.substance_lib_tab, "物质库")
-        
-        # 添加计算公式标签页
-        self.formula_tab = self.create_formula_tab()
-        self.tab_widget.addTab(self.formula_tab, "计算公式")
-        
-        main_layout.addWidget(self.tab_widget)
-    
-    def create_query_tab(self):
-        """创建查询标签页"""
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
+        # 顶部说明文字
+        desc_label = QLabel("查询纯物质的基本物性和热力学性质，支持温度和压力条件设置，提供物性数据计算和温度影响分析。")
+        desc_label.setWordWrap(True)
+        desc_label.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
+        left_layout.addWidget(desc_label)
         
         # 查询条件组
         query_group = QGroupBox("查询条件")
+        query_group.setStyleSheet(GROUP_STYLE)
         query_layout = QVBoxLayout(query_group)
         
-        # 物质选择
+        # 物质选择 - 使用网格布局三列
         substance_layout = QHBoxLayout()
-        substance_layout.addWidget(QLabel("物质类别:"))
+        category_label = QLabel("物质类别:")
+        category_label.setFixedWidth(200)
+        category_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        category_label.setStyleSheet("font-weight: bold;")
+        substance_layout.addWidget(category_label)
+        
         self.category_combo = QComboBox()
+        self.category_combo.setFixedWidth(400)
         self.category_combo.addItems([
             "无机物", "有机物", "金属", "气体", "液体", "固体"
         ])
         self.category_combo.currentTextChanged.connect(self.on_category_changed)
         substance_layout.addWidget(self.category_combo)
         
-        substance_layout.addWidget(QLabel("具体物质:"))
-        self.substance_combo = QComboBox()
-        substance_layout.addWidget(self.substance_combo)
-        
-        substance_layout.addWidget(QLabel("CAS号:"))
-        self.cas_label = QLabel("")
-        substance_layout.addWidget(self.cas_label)
-        
+        category_hint = QLabel("选择物质类别")
+        category_hint.setFixedWidth(250)
+        category_hint.setStyleSheet("color: #95a5a6; font-size: 11px;")
+        substance_layout.addWidget(category_hint)
         query_layout.addLayout(substance_layout)
         
-        # 温度压力条件
-        condition_layout = QHBoxLayout()
-        condition_layout.addWidget(QLabel("温度 (°C):"))
+        # 具体物质选择
+        substance_layout2 = QHBoxLayout()
+        substance_label = QLabel("具体物质:")
+        substance_label.setFixedWidth(200)
+        substance_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        substance_label.setStyleSheet("font-weight: bold;")
+        substance_layout2.addWidget(substance_label)
+        
+        self.substance_combo = QComboBox()
+        self.substance_combo.setFixedWidth(400)
+        self.substance_combo.currentTextChanged.connect(self.on_substance_changed)
+        substance_layout2.addWidget(self.substance_combo)
+        
+        substance_hint = QLabel("选择具体物质")
+        substance_hint.setFixedWidth(250)
+        substance_hint.setStyleSheet("color: #95a5a6; font-size: 11px;")
+        substance_layout2.addWidget(substance_hint)
+        query_layout.addLayout(substance_layout2)
+        
+        # CAS号显示
+        cas_layout = QHBoxLayout()
+        cas_label = QLabel("CAS号:")
+        cas_label.setFixedWidth(200)
+        cas_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        cas_label.setStyleSheet("font-weight: bold;")
+        cas_layout.addWidget(cas_label)
+        
+        self.cas_label = QLabel("")
+        self.cas_label.setFixedWidth(400)
+        cas_layout.addWidget(self.cas_label)
+        
+        cas_hint = QLabel("物质标识符")
+        cas_hint.setFixedWidth(250)
+        cas_hint.setStyleSheet("color: #95a5a6; font-size: 11px;")
+        cas_layout.addWidget(cas_hint)
+        query_layout.addLayout(cas_layout)
+        
+        # 温度输入
+        temp_layout = QHBoxLayout()
+        temp_label = QLabel("温度 (°C):")
+        temp_label.setFixedWidth(200)
+        temp_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        temp_label.setStyleSheet("font-weight: bold;")
+        temp_layout.addWidget(temp_label)
+        
         self.temperature_input = QDoubleSpinBox()
+        self.temperature_input.setFixedWidth(400)
         self.temperature_input.setRange(-273, 5000)
         self.temperature_input.setValue(25)
         self.temperature_input.setSuffix(" °C")
-        condition_layout.addWidget(self.temperature_input)
+        temp_layout.addWidget(self.temperature_input)
         
-        condition_layout.addWidget(QLabel("压力 (kPa):"))
+        temp_hint = QLabel("查询温度条件")
+        temp_hint.setFixedWidth(250)
+        temp_hint.setStyleSheet("color: #95a5a6; font-size: 11px;")
+        temp_layout.addWidget(temp_hint)
+        query_layout.addLayout(temp_layout)
+        
+        # 压力输入
+        pressure_layout = QHBoxLayout()
+        pressure_label = QLabel("压力 (kPa):")
+        pressure_label.setFixedWidth(200)
+        pressure_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        pressure_label.setStyleSheet("font-weight: bold;")
+        pressure_layout.addWidget(pressure_label)
+        
         self.pressure_input = QDoubleSpinBox()
+        self.pressure_input.setFixedWidth(400)
         self.pressure_input.setRange(0.1, 100000)
         self.pressure_input.setValue(101.3)
         self.pressure_input.setSuffix(" kPa")
-        condition_layout.addWidget(self.pressure_input)
+        pressure_layout.addWidget(self.pressure_input)
         
-        condition_layout.addWidget(QLabel("状态:"))
+        pressure_hint = QLabel("查询压力条件")
+        pressure_hint.setFixedWidth(250)
+        pressure_hint.setStyleSheet("color: #95a5a6; font-size: 11px;")
+        pressure_layout.addWidget(pressure_hint)
+        query_layout.addLayout(pressure_layout)
+        
+        # 状态显示
+        state_layout = QHBoxLayout()
+        state_label = QLabel("当前状态:")
+        state_label.setFixedWidth(200)
+        state_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        state_label.setStyleSheet("font-weight: bold;")
+        state_layout.addWidget(state_label)
+        
         self.state_label = QLabel("液态")
-        condition_layout.addWidget(self.state_label)
+        self.state_label.setFixedWidth(400)
+        state_layout.addWidget(self.state_label)
         
-        query_layout.addLayout(condition_layout)
+        state_hint = QLabel("根据温度自动判断")
+        state_hint.setFixedWidth(250)
+        state_hint.setStyleSheet("color: #95a5a6; font-size: 11px;")
+        state_layout.addWidget(state_hint)
+        query_layout.addLayout(state_layout)
         
-        layout.addWidget(query_group)
+        left_layout.addWidget(query_group)
         
-        # 按钮组
-        button_layout = QHBoxLayout()
+        # 计算按钮
         self.query_btn = QPushButton("查询物性数据")
-        self.query_btn.clicked.connect(self.query_properties)
-        self.query_btn.setStyleSheet("QPushButton { background-color: #8e44ad; color: white; font-weight: bold; }")
-        button_layout.addWidget(self.query_btn)
+        self.query_btn.clicked.connect(self.calculate)
+        self.query_btn.setStyleSheet(
+            "QPushButton { "
+            "background-color: #3498db; "
+            "color: white; "
+            "font-weight: bold; "
+            "font-size: 14px; "
+            "min-height: 50px; "
+            "border-radius: 8px; "
+            "padding: 10px; "
+            "}"
+            "QPushButton:hover { background-color: #2980b9; }"
+        )
+        left_layout.addWidget(self.query_btn)
         
+        # 温度影响计算按钮
         self.temp_calc_btn = QPushButton("温度影响计算")
         self.temp_calc_btn.clicked.connect(self.temperature_calculation)
-        self.temp_calc_btn.setStyleSheet("QPushButton { background-color: #3498db; color: white; }")
-        button_layout.addWidget(self.temp_calc_btn)
-        
-        self.clear_btn = QPushButton("清空")
-        self.clear_btn.clicked.connect(self.clear_inputs)
-        self.clear_btn.setStyleSheet("QPushButton { background-color: #95a5a6; color: white; }")
-        button_layout.addWidget(self.clear_btn)
-        
-        layout.addLayout(button_layout)
+        self.temp_calc_btn.setStyleSheet(
+            "QPushButton { "
+            "background-color: #8e44ad; "
+            "color: white; "
+            "font-weight: bold; "
+            "min-height: 40px; "
+            "border-radius: 8px; "
+            "padding: 8px; "
+            "}"
+            "QPushButton:hover { background-color: #7d3c98; }"
+        )
+        left_layout.addWidget(self.temp_calc_btn)
         
         # 基本物性组
         basic_prop_group = QGroupBox("基本物性")
+        basic_prop_group.setStyleSheet(GROUP_STYLE)
         basic_prop_layout = QVBoxLayout(basic_prop_group)
         
         self.basic_prop_table = QTableWidget()
@@ -125,10 +245,11 @@ class PureSubstanceProperties(QWidget):
         self.basic_prop_table.setHorizontalHeaderLabels(["物性", "数值", "单位"])
         basic_prop_layout.addWidget(self.basic_prop_table)
         
-        layout.addWidget(basic_prop_group)
+        left_layout.addWidget(basic_prop_group)
         
         # 热力学性质组
         thermo_prop_group = QGroupBox("热力学性质")
+        thermo_prop_group.setStyleSheet(GROUP_STYLE)
         thermo_prop_layout = QVBoxLayout(thermo_prop_group)
         
         self.thermo_prop_table = QTableWidget()
@@ -136,12 +257,280 @@ class PureSubstanceProperties(QWidget):
         self.thermo_prop_table.setHorizontalHeaderLabels(["物性", "数值", "单位"])
         thermo_prop_layout.addWidget(self.thermo_prop_table)
         
-        layout.addWidget(thermo_prop_group)
+        left_layout.addWidget(thermo_prop_group)
+        
+        left_layout.addStretch()
+        
+        # 设置左侧滚动区域
+        left_scroll.setWidget(left_widget)
+        main_layout.addWidget(left_scroll, 2)
+        
+        # 右侧结果区
+        right_widget = QWidget()
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setSpacing(15)
+        right_widget.setMinimumWidth(400)
+        
+        # 结果标题
+        result_title = QLabel("查询结果")
+        result_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #2c3e50; padding: 5px;")
+        right_layout.addWidget(result_title)
+        
+        # 结果文本区
+        self.result_text = QTextEdit()
+        self.result_text.setReadOnly(True)
+        self.result_text.setStyleSheet(
+            "QTextEdit { "
+            "background-color: #f8f9fa; "
+            "border-radius: 6px; "
+            "padding: 10px; "
+            "font-size: 13px; "
+            "}"
+        )
+        self.result_text.setMinimumHeight(500)
+        right_layout.addWidget(self.result_text)
+        
+        # 底部按钮行
+        button_layout = QHBoxLayout()
+        
+        # 清空按钮
+        self.clear_btn = QPushButton("清空")
+        self.clear_btn.clicked.connect(self.clear_inputs)
+        self.clear_btn.setStyleSheet(
+            "QPushButton { "
+            "background-color: #95a5a6; "
+            "color: white; "
+            "font-weight: bold; "
+            "padding: 8px 20px; "
+            "border-radius: 8px; "
+            "}"
+            "QPushButton:hover { background-color: #7f8c8d; }"
+        )
+        button_layout.addWidget(self.clear_btn)
+        
+        button_layout.addStretch()
+        
+        # 下载TXT按钮
+        self.download_txt_btn = QPushButton("下载TXT")
+        self.download_txt_btn.clicked.connect(self.download_txt_report)
+        self.download_txt_btn.setStyleSheet(
+            "QPushButton { "
+            "background-color: #27ae60; "
+            "color: white; "
+            "font-weight: bold; "
+            "padding: 8px 20px; "
+            "border-radius: 8px; "
+            "}"
+            "QPushButton:hover { background-color: #229954; }"
+        )
+        button_layout.addWidget(self.download_txt_btn)
+        
+        # 下载PDF按钮
+        self.download_pdf_btn = QPushButton("下载PDF")
+        self.download_pdf_btn.clicked.connect(self.generate_pdf_report)
+        self.download_pdf_btn.setStyleSheet(
+            "QPushButton { "
+            "background-color: #e74c3c; "
+            "color: white; "
+            "font-weight: bold; "
+            "padding: 8px 20px; "
+            "border-radius: 8px; "
+            "}"
+            "QPushButton:hover { background-color: #c0392b; }"
+        )
+        button_layout.addWidget(self.download_pdf_btn)
+        
+        right_layout.addLayout(button_layout)
+        
+        main_layout.addWidget(right_widget, 1)
         
         # 初始化下拉框
         self.on_category_changed(self.category_combo.currentText())
+    
+    def calculate(self):
+        """执行计算 - 查询物性数据"""
+        try:
+            # 获取查询条件
+            substance = self.substance_combo.currentText()
+            temperature = self.temperature_input.value()
+            pressure = self.pressure_input.value()
+            
+            # 查询数据
+            if substance in self.substance_data:
+                data = self.substance_data[substance]
+                self.update_state_label(substance, temperature)
+                self.display_basic_properties(data["basic"])
+                self.display_thermal_properties(data["thermal"], temperature, pressure)
+                self.update_result_text(substance, data, temperature, pressure)
+                
+                # 保存到历史记录
+                if self.data_manager:
+                    history_data = self._get_history_data()
+                    self.data_manager.add_record(self.calculation_type, history_data)
+            else:
+                QMessageBox.information(self, "查询结果", f"未找到物质 '{substance}' 的物性数据")
+                
+        except Exception as e:
+            QMessageBox.warning(self, "查询错误", f"查询过程中发生错误: {str(e)}")
+    
+    def update_result_text(self, substance, data, temperature, pressure):
+        """更新结果文本区"""
+        basic = data.get("basic", {})
+        thermal = data.get("thermal", {})
         
-        return tab
+        result = f"=== {substance} 物性数据查询结果 ===\n\n"
+        result += f"查询条件: 温度 = {temperature}°C, 压力 = {pressure} kPa\n\n"
+        
+        result += "【基本物性】\n"
+        result += f"  分子式: {basic.get('分子式', 'N/A')}\n"
+        result += f"  分子量: {basic.get('分子量', 0):.3f} g/mol\n"
+        result += f"  CAS号: {basic.get('CAS号', 'N/A')}\n"
+        result += f"  沸点: {basic.get('沸点', 0)} °C\n"
+        result += f"  熔点: {basic.get('熔点', 0)} °C\n"
+        result += f"  临界温度: {basic.get('临界温度', 'N/A')} K\n"
+        result += f"  临界压力: {basic.get('临界压力', 'N/A')} kPa\n"
+        result += f"  临界密度: {basic.get('临界密度', 'N/A')} g/cm³\n"
+        if basic.get('偏心因子') is not None:
+            result += f"  偏心因子: {basic.get('偏心因子', 0):.3f}\n"
+        
+        result += "\n【热力学性质】\n"
+        result += f"  密度: {thermal.get('密度', 0)} kg/m³\n"
+        result += f"  粘度: {thermal.get('粘度', 0)} mPa·s\n"
+        result += f"  热导率: {thermal.get('热导率', 0)} W/m·K\n"
+        result += f"  比热容: {thermal.get('比热容', 0)} kJ/(kg·K)\n"
+        result += f"  蒸发热: {thermal.get('蒸发热', 0)} kJ/kg\n"
+        result += f"  表面张力: {thermal.get('表面张力', 0)} mN/m\n"
+        result += f"  基准温度: {thermal.get('基准温度', 25.0)} °C\n"
+        
+        result += f"\n【当前状态】\n"
+        result += f"  {self.state_label.text()}\n"
+        
+        self.result_text.setPlainText(result)
+    
+    def _get_history_data(self):
+        """提供历史记录数据"""
+        substance = self.substance_combo.currentText()
+        temperature = self.temperature_input.value()
+        pressure = self.pressure_input.value()
+
+        inputs = {
+            "物质名称": substance,
+            "温度_C": temperature,
+            "压力": pressure
+        }
+
+        outputs = {}
+        if substance in self.substance_data:
+            data = self.substance_data[substance]
+            basic = data.get("basic", {})
+            thermal = data.get("thermal", {})
+            boiling_point = basic.get("沸点", 0)
+            state = "气态" if temperature > boiling_point else ("固态" if temperature < basic.get("熔点", 0) else "液态")
+
+            outputs = {
+                "分子式": basic.get("分子式", ""),
+                "分子量": basic.get("分子量", 0),
+                "沸点_C": basic.get("沸点", 0),
+                "熔点_C": basic.get("熔点", 0),
+                "临界温度_K": basic.get("临界温度", 0),
+                "临界压力_kPa": basic.get("临界压力", 0),
+                "物态": state,
+                "密度_kg_L": thermal.get("密度", 0),
+                "比热容_kJ_kgK": thermal.get("比热容", 0)
+            }
+
+        return {"inputs": inputs, "outputs": outputs}
+    
+    def get_project_info(self):
+        """获取项目信息"""
+        return {
+            "name": self.calculation_type,
+            "description": "纯物质物性数据查询与计算",
+            "parameters": {
+                "物质": self.substance_combo.currentText(),
+                "温度": self.temperature_input.value(),
+                "压力": self.pressure_input.value()
+            }
+        }
+    
+    def generate_report(self):
+        """生成报告数据"""
+        substance = self.substance_combo.currentText()
+        temperature = self.temperature_input.value()
+        pressure = self.pressure_input.value()
+        
+        report = {
+            "title": f"{self.calculation_type}报告",
+            "substance": substance,
+            "temperature": temperature,
+            "pressure": pressure,
+            "history_data": self._get_history_data()
+        }
+        
+        if substance in self.substance_data:
+            report["basic_data"] = self.substance_data[substance]["basic"]
+            report["thermal_data"] = self.substance_data[substance]["thermal"]
+        
+        return report
+    
+    def download_txt_report(self):
+        """下载TXT格式报告"""
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "保存TXT报告", "", "Text Files (*.txt)"
+        )
+        
+        if file_path:
+            try:
+                report = self.generate_report()
+                result_text = self.result_text.toPlainText()
+                
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.write(f"{report['title']}\n")
+                    f.write("=" * 50 + "\n\n")
+                    f.write(f"物质: {report['substance']}\n")
+                    f.write(f"温度: {report['temperature']} °C\n")
+                    f.write(f"压力: {report['pressure']} kPa\n\n")
+                    f.write(result_text)
+                
+                QMessageBox.information(self, "下载成功", f"TXT报告已保存到:\n{file_path}")
+            except Exception as e:
+                QMessageBox.warning(self, "下载失败", f"保存TXT报告时发生错误:\n{str(e)}")
+    
+    def generate_pdf_report(self):
+        """生成PDF格式报告"""
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "保存PDF报告", "", "PDF Files (*.pdf)"
+        )
+        
+        if file_path:
+            try:
+                report = self.generate_report()
+                pdf = FPDF()
+                pdf.add_page()
+                
+                # 使用微软雅黑字体
+                pdf.add_font('MicrosoftYaHei', '', 'C:/Windows/Fonts/msyh.ttc', uni=True)
+                pdf.set_font('MicrosoftYaHei', '', 12)
+                
+                # 标题
+                pdf.cell(200, 10, text=report['title'], ln=True, align='C')
+                pdf.ln(10)
+                
+                # 基本信息
+                pdf.cell(200, 10, text=f"物质: {report['substance']}", ln=True)
+                pdf.cell(200, 10, text=f"温度: {report['temperature']} °C", ln=True)
+                pdf.cell(200, 10, text=f"压力: {report['pressure']} kPa", ln=True)
+                pdf.ln(5)
+                
+                # 查询结果
+                pdf.cell(200, 10, text="查询结果:", ln=True)
+                result_text = self.result_text.toPlainText()
+                pdf.multi_cell(0, 10, text=result_text)
+                
+                pdf.output(file_path)
+                QMessageBox.information(self, "生成成功", f"PDF报告已保存到:\n{file_path}")
+            except Exception as e:
+                QMessageBox.warning(self, "生成失败", f"生成PDF报告时发生错误:\n{str(e)}")
     
     def on_category_changed(self, category):
         """类别改变事件"""
@@ -162,6 +551,10 @@ class PureSubstanceProperties(QWidget):
         if self.substance_combo.count() > 0:
             self.substance_combo.setCurrentIndex(0)
             self.update_cas_number()
+    
+    def on_substance_changed(self, substance):
+        """物质改变事件"""
+        self.update_cas_number()
     
     def update_cas_number(self):
         """更新CAS号"""
@@ -193,168 +586,6 @@ class PureSubstanceProperties(QWidget):
         }
         
         self.cas_label.setText(cas_numbers.get(substance, "未知"))
-    
-    def create_substance_lib_tab(self):
-        """创建物质库标签页"""
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
-        
-        # 物质库说明
-        info_label = QLabel("常见纯物质物性数据参考")
-        info_label.setFont(QFont("Arial", 12, QFont.Bold))
-        info_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(info_label)
-        
-        # 物质参数表
-        substance_table = QTableWidget()
-        substance_table.setColumnCount(7)
-        substance_table.setHorizontalHeaderLabels(["物质", "分子式", "分子量", "沸点(°C)", "熔点(°C)", "密度(g/cm³)", "CAS号"])
-        
-        substance_data = [
-            ["水", "H₂O", "18.015", "100.0", "0.0", "0.997", "7732-18-5"],
-            ["氨", "NH₃", "17.031", "-33.3", "-77.7", "0.602", "7664-41-7"],
-            ["二氧化碳", "CO₂", "44.010", "-78.5", "-56.6", "0.776", "124-38-9"],
-            ["硫酸", "H₂SO₄", "98.079", "337.0", "10.4", "1.835", "7664-93-9"],
-            ["氯化钠", "NaCl", "58.44", "1465", "801", "2.165", "7647-14-5"],
-            ["甲醇", "CH₃OH", "32.042", "64.7", "-97.6", "0.787", "67-56-1"],
-            ["乙醇", "C₂H₅OH", "46.069", "78.4", "-114.1", "0.785", "64-17-5"],
-            ["丙酮", "CH₃COCH₃", "58.080", "56.1", "-94.7", "0.784", "67-64-1"],
-            ["苯", "C₆H₆", "78.114", "80.1", "5.5", "0.876", "71-43-2"],
-            ["甲苯", "C₇H₈", "92.141", "110.6", "-95.0", "0.862", "108-88-3"],
-            ["乙酸", "CH₃COOH", "60.052", "118.0", "16.6", "1.044", "64-19-7"],
-            ["正己烷", "C₆H₁₄", "86.178", "68.7", "-95.3", "0.655", "110-54-3"],
-            ["环己烷", "C₆H₁₂", "84.162", "80.7", "6.5", "0.774", "110-82-7"],
-            ["甲烷", "CH₄", "16.043", "-161.5", "-182.5", "0.424", "74-82-8"],
-            ["乙烷", "C₂H₆", "30.070", "-88.6", "-182.8", "0.546", "74-84-0"],
-            ["丙烷", "C₃H₈", "44.096", "-42.1", "-187.7", "0.493", "74-98-6"],
-            ["乙烯", "C₂H₄", "28.054", "-103.7", "-169.2", "0.610", "74-85-1"],
-            ["丙烯", "C₃H₆", "42.081", "-47.6", "-185.2", "0.519", "115-07-1"],
-            ["空气", "混合", "28.966", "-194.3", "-", "0.001", "132259-10-0"],
-            ["氧气", "O₂", "31.999", "-183.0", "-218.8", "0.001", "7782-44-7"],
-            ["氮气", "N₂", "28.014", "-195.8", "-210.0", "0.001", "7727-37-9"],
-            ["氢气", "H₂", "2.016", "-252.9", "-259.2", "0.000", "1333-74-0"],
-            ["铁", "Fe", "55.845", "2862", "1538", "7.874", "7439-89-6"],
-            ["铜", "Cu", "63.546", "2562", "1085", "8.960", "7440-50-8"],
-            ["铝", "Al", "26.982", "2467", "660", "2.700", "7429-90-5"],
-        ]
-        
-        substance_table.setRowCount(len(substance_data))
-        for i, row_data in enumerate(substance_data):
-            for j, data in enumerate(row_data):
-                item = QTableWidgetItem(data)
-                item.setTextAlignment(Qt.AlignCenter)
-                substance_table.setItem(i, j, item)
-        
-        # 调整列宽
-        header = substance_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(6, QHeaderView.ResizeToContents)
-        
-        layout.addWidget(substance_table)
-        
-        return tab
-    
-    def create_formula_tab(self):
-        """创建计算公式标签页"""
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
-        
-        # 计算公式说明
-        formula_text = QTextEdit()
-        formula_text.setReadOnly(True)
-        formula_text.setHtml(self.get_formula_html())
-        layout.addWidget(formula_text)
-        
-        return tab
-    
-    def get_formula_html(self):
-        """获取计算公式HTML内容"""
-        return """
-        <h2>物性计算公式</h2>
-        
-        <h3>1. 密度计算</h3>
-        <p><b>理想气体密度：</b>ρ = P × M / (R × T)</p>
-        <p>其中：P-压力(Pa)，M-分子量(kg/mol)，R-气体常数(8.314 J/mol·K)，T-温度(K)</p>
-        
-        <h3>2. 蒸气压计算</h3>
-        <p><b>Antoine方程：</b>log₁₀(P) = A - B / (T + C)</p>
-        <p>其中：P-蒸气压(mmHg)，T-温度(°C)，A、B、C为物质常数</p>
-        
-        <h3>3. 粘度计算</h3>
-        <p><b>液体粘度：</b>μ = A × exp(B / T)</p>
-        <p><b>气体粘度：</b>μ = μ₀ × (T/T₀)<sup>n</sup></p>
-        <p>其中：A、B、μ₀、T₀、n为物质常数</p>
-        
-        <h3>4. 热导率计算</h3>
-        <p><b>液体热导率：</b>k = A + B × T + C × T²</p>
-        <p><b>气体热导率：</b>k = k₀ × (T/T₀)<sup>m</sup></p>
-        
-        <h3>5. 热容计算</h3>
-        <p><b>定压热容：</b>C<sub>p</sub> = A + B × T + C × T² + D × T³</p>
-        <p><b>定容热容：</b>C<sub>v</sub> = C<sub>p</sub> - R</p>
-        
-        <h3>6. 临界性质关系</h3>
-        <p><b>对比温度：</b>T<sub>r</sub> = T / T<sub>c</sub></p>
-        <p><b>对比压力：</b>P<sub>r</sub> = P / P<sub>c</sub></p>
-        <p><b>对比体积：</b>V<sub>r</sub> = V / V<sub>c</sub></p>
-        
-        <h3>7. 状态方程</h3>
-        <p><b>理想气体：</b>PV = nRT</p>
-        <p><b>van der Waals：</b>(P + a/V²)(V - b) = RT</p>
-        <p><b>Redlich-Kwong：</b>P = RT/(V - b) - a/(√T × V(V + b))</p>
-        
-        <h3>8. 热力学关系</h3>
-        <p><b>焓变：</b>ΔH = ∫C<sub>p</sub>dT</p>
-        <p><b>熵变：</b>ΔS = ∫(C<sub>p</sub>/T)dT</p>
-        <p><b>Gibbs自由能：</b>ΔG = ΔH - TΔS</p>
-        
-        <h3>常用常数</h3>
-        <table border="1" style="border-collapse: collapse; width: 100%;">
-        <tr style="background-color: #3498db; color: white;">
-            <th style="padding: 8px;">常数</th>
-            <th style="padding: 8px;">符号</th>
-            <th style="padding: 8px;">数值</th>
-            <th style="padding: 8px;">单位</th>
-        </tr>
-        <tr>
-            <td style="padding: 8px;">通用气体常数</td>
-            <td style="padding: 8px;">R</td>
-            <td style="padding: 8px;">8.314</td>
-            <td style="padding: 8px;">J/mol·K</td>
-        </tr>
-        <tr>
-            <td style="padding: 8px;">Avogadro常数</td>
-            <td style="padding: 8px;">N<sub>A</sub></td>
-            <td style="padding: 8px;">6.022×10²³</td>
-            <td style="padding: 8px;">mol⁻¹</td>
-        </tr>
-        <tr>
-            <td style="padding: 8px;">Boltzmann常数</td>
-            <td style="padding: 8px;">k</td>
-            <td style="padding: 8px;">1.381×10⁻²³</td>
-            <td style="padding: 8px;">J/K</td>
-        </tr>
-        <tr>
-            <td style="padding: 8px;">标准大气压</td>
-            <td style="padding: 8px;">P<sub>atm</sub></td>
-            <td style="padding: 8px;">101.325</td>
-            <td style="padding: 8px;">kPa</td>
-        </tr>
-        </table>
-        
-        <h3>参考数据源</h3>
-        <ul>
-            <li>CRC Handbook of Chemistry and Physics</li>
-            <li>Perry's Chemical Engineers' Handbook</li>
-            <li>NIST Chemistry WebBook</li>
-            <li>DIPPR Project 801 Database</li>
-        </ul>
-        """
     
     def load_substance_data(self):
         """加载物质物性数据库（扩展版 22 种常见化工物质）
@@ -765,59 +996,9 @@ class PureSubstanceProperties(QWidget):
         return substance_data
     
     def query_properties(self):
-        """查询物性数据"""
-        try:
-            # 获取查询条件
-            substance = self.substance_combo.currentText()
-            temperature = self.temperature_input.value()
-            pressure = self.pressure_input.value()
-            
-            # 查询数据
-            if substance in self.substance_data:
-                data = self.substance_data[substance]
-                self.update_state_label(substance, temperature)
-                self.display_basic_properties(data["basic"])
-                self.display_thermal_properties(data["thermal"], temperature, pressure)
-            else:
-                QMessageBox.information(self, "查询结果", f"未找到物质 '{substance}' 的物性数据")
-                
-        except Exception as e:
-            QMessageBox.warning(self, "查询错误", f"查询过程中发生错误: {str(e)}")
-
-    def _get_history_data(self):
-        """提供历史记录数据"""
-        substance = self.substance_combo.currentText()
-        temperature = self.temperature_input.value()
-        pressure = self.pressure_input.value()
-
-        inputs = {
-            "物质名称": substance,
-            "温度_C": temperature,
-            "压力": pressure
-        }
-
-        outputs = {}
-        if substance in self.substance_data:
-            data = self.substance_data[substance]
-            basic = data.get("basic", {})
-            thermal = data.get("thermal", {})
-            boiling_point = basic.get("沸点", 0)
-            state = "气态" if temperature > boiling_point else ("固态" if temperature < basic.get("熔点", 0) else "液态")
-
-            outputs = {
-                "分子式": basic.get("分子式", ""),
-                "分子量": basic.get("分子量", 0),
-                "沸点_C": basic.get("沸点", 0),
-                "熔点_C": basic.get("熔点", 0),
-                "临界温度_K": basic.get("临界温度", 0),
-                "临界压力_kPa": basic.get("临界压力", 0),
-                "物态": state,
-                "密度_kg_L": thermal.get("密度", 0),
-                "比热容_kJ_kgK": thermal.get("比热容", 0)
-            }
-
-        return {"inputs": inputs, "outputs": outputs}
-
+        """查询物性数据（保留旧接口）"""
+        self.calculate()
+    
     def update_state_label(self, substance, temperature):
         """更新状态标签"""
         if substance in self.substance_data:
@@ -1042,15 +1223,9 @@ class PureSubstanceProperties(QWidget):
             temperatures = [0, 25, 50, 75, 100]
             data = self.substance_data[substance]["thermal"]
             
-            result_text = f"<h3>{substance} 温度影响分析</h3>"
-            result_text += "<table border='1' style='border-collapse: collapse; width: 100%;'>"
-            result_text += "<tr style='background-color: #f8f9fa;'>"
-            result_text += "<th style='padding: 8px;'>温度(°C)</th>"
-            result_text += "<th style='padding: 8px;'>密度(g/cm³)</th>"
-            result_text += "<th style='padding: 8px;'>粘度(mPa·s)</th>"
-            result_text += "<th style='padding: 8px;'>热导率(W/m·K)</th>"
-            result_text += "<th style='padding: 8px;'>比热容(kJ/kg·K)</th>"
-            result_text += "</tr>"
+            result_text = f"=== {substance} 温度影响分析 ===\n\n"
+            result_text += f"{'温度(°C)':<12}{'密度(kg/m³)':<18}{'粘度(mPa·s)':<18}{'热导率(W/m·K)':<20}{'比热容(kJ/kg·K)':<20}\n"
+            result_text += "-" * 90 + "\n"
             
             for temp in temperatures:
                 density = self.calculate_temperature_effect(data["密度"], temp, "density")
@@ -1058,19 +1233,9 @@ class PureSubstanceProperties(QWidget):
                 thermal_cond = self.calculate_temperature_effect(data["热导率"], temp, "thermal_cond")
                 heat_capacity = self.calculate_temperature_effect(data["比热容"], temp, "heat_capacity")
                 
-                result_text += f"""
-                <tr>
-                    <td style='padding: 8px;'>{temp}</td>
-                    <td style='padding: 8px;'>{density:.3f}</td>
-                    <td style='padding: 8px;'>{viscosity:.3f}</td>
-                    <td style='padding: 8px;'>{thermal_cond:.3f}</td>
-                    <td style='padding: 8px;'>{heat_capacity:.3f}</td>
-                </tr>
-                """
+                result_text += f"{temp:<12}{density:<18.3f}{viscosity if viscosity else 'N/A':<18}{thermal_cond if thermal_cond else 'N/A':<20}{heat_capacity:<20.3f}\n"
             
-            result_text += "</table>"
-            
-            QMessageBox.information(self, "温度影响分析", result_text.replace("<table", "<table width='100%'").replace("<h3>", "").replace("</h3>", ""))
+            self.result_text.setPlainText(result_text)
             
         except Exception as e:
             QMessageBox.warning(self, "计算错误", f"温度影响计算失败: {str(e)}")
@@ -1082,6 +1247,7 @@ class PureSubstanceProperties(QWidget):
         self.pressure_input.setValue(101.3)
         self.basic_prop_table.setRowCount(0)
         self.thermo_prop_table.setRowCount(0)
+        self.result_text.clear()
 
 if __name__ == "__main__":
     # 测试代码
@@ -1091,7 +1257,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     
     widget = PureSubstanceProperties()
-    widget.resize(900, 700)
+    widget.resize(1300, 700)
     widget.show()
     
     sys.exit(app.exec())

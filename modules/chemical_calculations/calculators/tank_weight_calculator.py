@@ -40,8 +40,15 @@ class 罐体重量(QWidget):
         main_layout.setContentsMargins(10, 10, 10, 10)
         
         # 左侧：输入参数区域 (占2/3宽度)
+        scroll_left = QScrollArea()
+        scroll_left.setStyleSheet("QScrollArea { border: none; background: transparent; } QScrollBar:vertical { background: transparent; width: 8px; margin: 0; } QScrollBar::handle:vertical { background: #c0c0c0; border-radius: 4px; min-height: 30px; } QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }")
+
+        scroll_left.setWidgetResizable(True)
+
+        scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
         left_widget = QWidget()
-        left_widget.setMaximumWidth(900)  # 限制最大宽度
+        left_widget.setStyleSheet("QWidget { background: transparent; }")  # 限制最大宽度
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
         
@@ -518,7 +525,8 @@ class 罐体重量(QWidget):
         right_layout.addWidget(self.result_group)
         
         # 将左右两部分添加到主布局
-        main_layout.addWidget(left_widget, 2)  # 左侧占2/3
+        scroll_left.setWidget(left_widget)
+        main_layout.addWidget(scroll_left, 2)  # 左侧占2/3
         main_layout.addWidget(right_widget, 1)  # 右侧占1/3
         
         # 设置初始状态 - 锥体罐
