@@ -1,9 +1,9 @@
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, 
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QGroupBox, 
                               QLabel, QLineEdit, QComboBox, QPushButton, 
                               QTextEdit, QTableWidget, QTableWidgetItem,
-                              QHeaderView, QMessageBox, QTabWidget, QDoubleSpinBox,
+                              QHeaderView, QMessageBox, QTabWidget,
                               QCheckBox, QRadioButton, QButtonGroup, QScrollArea,
-                              QFileDialog)
+                              QFileDialog, QSizePolicy, QLineEdit)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
 import math
@@ -83,7 +83,7 @@ class PureSubstanceProperties(QWidget):
             "QScrollBar::handle:vertical { background: #c0c0c0; border-radius: 4px; min-height: 30px; } "
             "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }"
         )
-        left_scroll.setMaximumWidth(900)
+        # 不设置 setMaximumWidth，让左侧动态扩展
         
         left_widget = QWidget()
         left_layout = QVBoxLayout(left_widget)
@@ -98,157 +98,142 @@ class PureSubstanceProperties(QWidget):
         # 查询条件组
         query_group = QGroupBox("查询条件")
         query_group.setStyleSheet(GROUP_STYLE)
-        query_layout = QVBoxLayout(query_group)
+        query_layout = QGridLayout(query_group)
+        query_layout.setSpacing(12)  # 行间距12px
+        query_layout.setHorizontalSpacing(10)  # 列间距10px
         
-        # 物质选择 - 使用网格布局三列
-        substance_layout = QHBoxLayout()
+        # 第0列 stretch=4, 第1列 stretch=8, 第2列 stretch=5
+        query_layout.setColumnStretch(0, 4)
+        query_layout.setColumnStretch(1, 8)
+        query_layout.setColumnStretch(2, 5)
+        
+        # 物质选择 - 第0行
         category_label = QLabel("物质类别:")
-        category_label.setFixedWidth(200)
         category_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        category_label.setStyleSheet("font-weight: bold;")
-        substance_layout.addWidget(category_label)
+        category_label.setStyleSheet("font-weight: bold; padding-right: 10px;")
+        query_layout.addWidget(category_label, 0, 0)
         
         self.category_combo = QComboBox()
         self.category_combo.setStyleSheet(COMBOBOX_STYLE)
-        self.category_combo.setFixedWidth(400)
+        self.category_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.category_combo.addItems([
             "无机物", "有机物", "金属", "气体", "液体", "固体"
         ])
         self.category_combo.currentTextChanged.connect(self.on_category_changed)
-        substance_layout.addWidget(self.category_combo)
+        query_layout.addWidget(self.category_combo, 0, 1)
         
         category_hint = QLabel("选择物质类别")
-        category_hint.setFixedWidth(250)
-        category_hint.setStyleSheet("color: #95a5a6; font-size: 11px;")
-        substance_layout.addWidget(category_hint)
-        query_layout.addLayout(substance_layout)
+        category_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        query_layout.addWidget(category_hint, 0, 2)
         
-        # 具体物质选择
-        substance_layout2 = QHBoxLayout()
+        # 具体物质选择 - 第1行
         substance_label = QLabel("具体物质:")
-        substance_label.setFixedWidth(200)
         substance_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        substance_label.setStyleSheet("font-weight: bold;")
-        substance_layout2.addWidget(substance_label)
+        substance_label.setStyleSheet("font-weight: bold; padding-right: 10px;")
+        query_layout.addWidget(substance_label, 1, 0)
         
         self.substance_combo = QComboBox()
         self.substance_combo.setStyleSheet(COMBOBOX_STYLE)
-        self.substance_combo.setFixedWidth(400)
+        self.substance_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.substance_combo.currentTextChanged.connect(self.on_substance_changed)
-        substance_layout2.addWidget(self.substance_combo)
+        query_layout.addWidget(self.substance_combo, 1, 1)
         
         substance_hint = QLabel("选择具体物质")
-        substance_hint.setFixedWidth(250)
-        substance_hint.setStyleSheet("color: #95a5a6; font-size: 11px;")
-        substance_layout2.addWidget(substance_hint)
-        query_layout.addLayout(substance_layout2)
+        substance_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        query_layout.addWidget(substance_hint, 1, 2)
         
-        # CAS号显示
-        cas_layout = QHBoxLayout()
+        # CAS号显示 - 第2行
         cas_label = QLabel("CAS号:")
-        cas_label.setFixedWidth(200)
         cas_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        cas_label.setStyleSheet("font-weight: bold;")
-        cas_layout.addWidget(cas_label)
+        cas_label.setStyleSheet("font-weight: bold; padding-right: 10px;")
+        query_layout.addWidget(cas_label, 2, 0)
         
         self.cas_label = QLabel("")
-        self.cas_label.setFixedWidth(400)
-        cas_layout.addWidget(self.cas_label)
+        self.cas_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        query_layout.addWidget(self.cas_label, 2, 1)
         
         cas_hint = QLabel("物质标识符")
-        cas_hint.setFixedWidth(250)
-        cas_hint.setStyleSheet("color: #95a5a6; font-size: 11px;")
-        cas_layout.addWidget(cas_hint)
-        query_layout.addLayout(cas_layout)
+        cas_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        query_layout.addWidget(cas_hint, 2, 2)
         
-        # 温度输入
-        temp_layout = QHBoxLayout()
+        # 温度输入 - 第3行（普通输入框）
         temp_label = QLabel("温度 (°C):")
-        temp_label.setFixedWidth(200)
         temp_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        temp_label.setStyleSheet("font-weight: bold;")
-        temp_layout.addWidget(temp_label)
-        
-        self.temperature_input = QDoubleSpinBox()
-        self.temperature_input.setFixedWidth(400)
-        self.temperature_input.setRange(-273, 5000)
-        self.temperature_input.setValue(25)
-        self.temperature_input.setSuffix(" °C")
-        temp_layout.addWidget(self.temperature_input)
-        
+        temp_label.setStyleSheet("font-weight: bold; padding-right: 10px;")
+        query_layout.addWidget(temp_label, 3, 0)
+
+        self.temperature_input = QLineEdit()
+        self.temperature_input.setText("25")
+        self.temperature_input.setPlaceholderText("输入温度值")
+        self.temperature_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        query_layout.addWidget(self.temperature_input, 3, 1)
+
         temp_hint = QLabel("查询温度条件")
-        temp_hint.setFixedWidth(250)
-        temp_hint.setStyleSheet("color: #95a5a6; font-size: 11px;")
-        temp_layout.addWidget(temp_hint)
-        query_layout.addLayout(temp_layout)
+        temp_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        query_layout.addWidget(temp_hint, 3, 2)
         
-        # 压力输入
-        pressure_layout = QHBoxLayout()
+        # 压力输入 - 第4行（普通输入框）
         pressure_label = QLabel("压力 (kPa):")
-        pressure_label.setFixedWidth(200)
         pressure_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        pressure_label.setStyleSheet("font-weight: bold;")
-        pressure_layout.addWidget(pressure_label)
-        
-        self.pressure_input = QDoubleSpinBox()
-        self.pressure_input.setFixedWidth(400)
-        self.pressure_input.setRange(0.1, 100000)
-        self.pressure_input.setValue(101.3)
-        self.pressure_input.setSuffix(" kPa")
-        pressure_layout.addWidget(self.pressure_input)
-        
+        pressure_label.setStyleSheet("font-weight: bold; padding-right: 10px;")
+        query_layout.addWidget(pressure_label, 4, 0)
+
+        self.pressure_input = QLineEdit()
+        self.pressure_input.setText("101.3")
+        self.pressure_input.setPlaceholderText("输入压力值")
+        self.pressure_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        query_layout.addWidget(self.pressure_input, 4, 1)
+
         pressure_hint = QLabel("查询压力条件")
-        pressure_hint.setFixedWidth(250)
-        pressure_hint.setStyleSheet("color: #95a5a6; font-size: 11px;")
-        pressure_layout.addWidget(pressure_hint)
-        query_layout.addLayout(pressure_layout)
+        pressure_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        query_layout.addWidget(pressure_hint, 4, 2)
         
-        # 状态显示
-        state_layout = QHBoxLayout()
+        # 状态显示 - 第5行
         state_label = QLabel("当前状态:")
-        state_label.setFixedWidth(200)
         state_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        state_label.setStyleSheet("font-weight: bold;")
-        state_layout.addWidget(state_label)
+        state_label.setStyleSheet("font-weight: bold; padding-right: 10px;")
+        query_layout.addWidget(state_label, 5, 0)
         
         self.state_label = QLabel("液态")
-        self.state_label.setFixedWidth(400)
-        state_layout.addWidget(self.state_label)
+        self.state_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        query_layout.addWidget(self.state_label, 5, 1)
         
         state_hint = QLabel("根据温度自动判断")
-        state_hint.setFixedWidth(250)
-        state_hint.setStyleSheet("color: #95a5a6; font-size: 11px;")
-        state_layout.addWidget(state_hint)
-        query_layout.addLayout(state_layout)
+        state_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        query_layout.addWidget(state_hint, 5, 2)
         
         left_layout.addWidget(query_group)
         
-        # 计算按钮
+        # 计算按钮（绿色 #27ae60，字号12pt，最小高度50px）
         self.query_btn = QPushButton("查询物性数据")
         self.query_btn.clicked.connect(self.calculate)
+        self.query_btn.setFont(QFont("Arial", 12))
+        self.query_btn.setMinimumHeight(50)
+        self.query_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.query_btn.setStyleSheet(
             "QPushButton { "
-            "background-color: #3498db; "
+            "background-color: #27ae60; "
             "color: white; "
             "font-weight: bold; "
-            "font-size: 14px; "
-            "min-height: 50px; "
+            "border: none; "
             "border-radius: 8px; "
-            "padding: 10px; "
+            "padding: 12px; "
             "}"
-            "QPushButton:hover { background-color: #2980b9; }"
+            "QPushButton:hover { background-color: #219955; }"
         )
         left_layout.addWidget(self.query_btn)
         
         # 温度影响计算按钮
         self.temp_calc_btn = QPushButton("温度影响计算")
         self.temp_calc_btn.clicked.connect(self.temperature_calculation)
+        self.temp_calc_btn.setMinimumHeight(40)
+        self.temp_calc_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.temp_calc_btn.setStyleSheet(
             "QPushButton { "
             "background-color: #8e44ad; "
             "color: white; "
             "font-weight: bold; "
-            "min-height: 40px; "
+            "border: none; "
             "border-radius: 8px; "
             "padding: 8px; "
             "}"
@@ -256,31 +241,43 @@ class PureSubstanceProperties(QWidget):
         )
         left_layout.addWidget(self.temp_calc_btn)
         
-        # 基本物性组
+        # 基本物性 & 热力学性质 - 左右分布
+        tables_layout = QHBoxLayout()
+        tables_layout.setSpacing(15)
+
+        # 基本物性组（左）
         basic_prop_group = QGroupBox("基本物性")
         basic_prop_group.setStyleSheet(GROUP_STYLE)
+        basic_prop_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         basic_prop_layout = QVBoxLayout(basic_prop_group)
-        
+        basic_prop_layout.setContentsMargins(6, 6, 6, 6)
+
         self.basic_prop_table = QTableWidget()
         self.basic_prop_table.setColumnCount(3)
         self.basic_prop_table.setHorizontalHeaderLabels(["物性", "数值", "单位"])
+        self.basic_prop_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.basic_prop_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         basic_prop_layout.addWidget(self.basic_prop_table)
-        
-        left_layout.addWidget(basic_prop_group)
-        
-        # 热力学性质组
+
+        tables_layout.addWidget(basic_prop_group)
+
+        # 热力学性质组（右）
         thermo_prop_group = QGroupBox("热力学性质")
         thermo_prop_group.setStyleSheet(GROUP_STYLE)
+        thermo_prop_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         thermo_prop_layout = QVBoxLayout(thermo_prop_group)
-        
+        thermo_prop_layout.setContentsMargins(6, 6, 6, 6)
+
         self.thermo_prop_table = QTableWidget()
         self.thermo_prop_table.setColumnCount(3)
         self.thermo_prop_table.setHorizontalHeaderLabels(["物性", "数值", "单位"])
+        self.thermo_prop_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.thermo_prop_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         thermo_prop_layout.addWidget(self.thermo_prop_table)
-        
-        left_layout.addWidget(thermo_prop_group)
-        
-        left_layout.addStretch()
+
+        tables_layout.addWidget(thermo_prop_group)
+
+        left_layout.addLayout(tables_layout, 1)
         
         # 设置左侧滚动区域
         left_scroll.setWidget(left_widget)
@@ -290,25 +287,27 @@ class PureSubstanceProperties(QWidget):
         right_widget = QWidget()
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
-        right_widget.setMinimumWidth(400)
+        right_widget.setMinimumWidth(300)
         
         # 结果标题
         result_title = QLabel("查询结果")
         result_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #2c3e50; padding: 5px;")
         right_layout.addWidget(result_title)
         
-        # 结果文本区
+        # 结果文本区（按照规范：背景#f8f9fa，边框1px solid #ecf0f1，圆角6px，padding 8px，minHeight 500px，Expanding/Expanding）
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
+        self.result_text.setMinimumHeight(500)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet(
             "QTextEdit { "
             "background-color: #f8f9fa; "
+            "border: 1px solid #ecf0f1; "
             "border-radius: 6px; "
-            "padding: 10px; "
+            "padding: 8px; "
             "font-size: 13px; "
             "}"
         )
-        self.result_text.setMinimumHeight(500)
         right_layout.addWidget(self.result_text)
         
         # 底部按钮行
@@ -317,13 +316,16 @@ class PureSubstanceProperties(QWidget):
         # 清空按钮
         self.clear_btn = QPushButton("清空")
         self.clear_btn.clicked.connect(self.clear_inputs)
+        self.clear_btn.setMinimumHeight(50)
+        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.clear_btn.setStyleSheet(
             "QPushButton { "
             "background-color: #95a5a6; "
             "color: white; "
             "font-weight: bold; "
-            "padding: 8px 20px; "
-            "border-radius: 8px; "
+            "border: none; "
+            "border-radius: 6px; "
+            "padding: 8px; "
             "}"
             "QPushButton:hover { background-color: #7f8c8d; }"
         )
@@ -331,31 +333,37 @@ class PureSubstanceProperties(QWidget):
         
         button_layout.addStretch()
         
-        # 下载TXT按钮
+        # 下载TXT按钮（绿色 #27ae60，最小高度50px）
         self.download_txt_btn = QPushButton("下载TXT")
         self.download_txt_btn.clicked.connect(self.download_txt_report)
+        self.download_txt_btn.setMinimumHeight(50)
+        self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.download_txt_btn.setStyleSheet(
             "QPushButton { "
             "background-color: #27ae60; "
             "color: white; "
             "font-weight: bold; "
-            "padding: 8px 20px; "
-            "border-radius: 8px; "
+            "border: none; "
+            "border-radius: 6px; "
+            "padding: 8px; "
             "}"
-            "QPushButton:hover { background-color: #229954; }"
+            "QPushButton:hover { background-color: #219653; }"
         )
         button_layout.addWidget(self.download_txt_btn)
         
-        # 下载PDF按钮
+        # 下载PDF按钮（红色 #e74c3c，最小高度50px）
         self.download_pdf_btn = QPushButton("下载PDF")
         self.download_pdf_btn.clicked.connect(self.generate_pdf_report)
+        self.download_pdf_btn.setMinimumHeight(50)
+        self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.download_pdf_btn.setStyleSheet(
             "QPushButton { "
             "background-color: #e74c3c; "
             "color: white; "
             "font-weight: bold; "
-            "padding: 8px 20px; "
-            "border-radius: 8px; "
+            "border: none; "
+            "border-radius: 6px; "
+            "padding: 8px; "
             "}"
             "QPushButton:hover { background-color: #c0392b; }"
         )
@@ -373,8 +381,8 @@ class PureSubstanceProperties(QWidget):
         try:
             # 获取查询条件
             substance = self.substance_combo.currentText()
-            temperature = self.temperature_input.value()
-            pressure = self.pressure_input.value()
+            temperature = float(self.temperature_input.text())
+            pressure = float(self.pressure_input.text())
             
             # 查询数据
             if substance in self.substance_data:
@@ -431,8 +439,8 @@ class PureSubstanceProperties(QWidget):
     def _get_history_data(self):
         """提供历史记录数据"""
         substance = self.substance_combo.currentText()
-        temperature = self.temperature_input.value()
-        pressure = self.pressure_input.value()
+        temperature = float(self.temperature_input.text())
+        pressure = float(self.pressure_input.text())
 
         inputs = {
             "物质名称": substance,
@@ -469,16 +477,16 @@ class PureSubstanceProperties(QWidget):
             "description": "纯物质物性数据查询与计算",
             "parameters": {
                 "物质": self.substance_combo.currentText(),
-                "温度": self.temperature_input.value(),
-                "压力": self.pressure_input.value()
+                "温度": float(self.temperature_input.text()),
+                "压力": float(self.pressure_input.text())
             }
         }
     
     def generate_report(self):
         """生成报告数据"""
         substance = self.substance_combo.currentText()
-        temperature = self.temperature_input.value()
-        pressure = self.pressure_input.value()
+        temperature = float(self.temperature_input.text())
+        pressure = float(self.pressure_input.text())
         
         report = {
             "title": f"{self.calculation_type}报告",
@@ -1225,12 +1233,6 @@ class PureSubstanceProperties(QWidget):
                 item = QTableWidgetItem(data_item)
                 item.setTextAlignment(Qt.AlignCenter)
                 table.setItem(i, j, item)
-        
-        # 调整列宽
-        header = table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
     
     def temperature_calculation(self):
         """温度影响计算"""
@@ -1264,8 +1266,8 @@ class PureSubstanceProperties(QWidget):
     def clear_inputs(self):
         """清空输入"""
         self.category_combo.setCurrentIndex(0)
-        self.temperature_input.setValue(25)
-        self.pressure_input.setValue(101.3)
+        self.temperature_input.setText("25")
+        self.pressure_input.setText("101.3")
         self.basic_prop_table.setRowCount(0)
         self.thermo_prop_table.setRowCount(0)
         self.result_text.clear()
