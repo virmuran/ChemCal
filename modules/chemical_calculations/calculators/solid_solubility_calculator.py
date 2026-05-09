@@ -5,8 +5,7 @@ from PySide6.QtWidgets import (
     QLabel, QLineEdit, QPushButton, QComboBox,
     QTextEdit, QGridLayout, QTableWidget, QTableWidgetItem,
     QHeaderView, QFileDialog, QMessageBox, QProgressBar,
-    QScrollArea,
-
+    QScrollArea, QSizePolicy,
 )
 from PySide6.QtCore import Qt, Signal, QThread
 from PySide6.QtGui import QFont, QDoubleValidator
@@ -31,6 +30,23 @@ COMBOBOX_STYLE = """
         padding: 3px 8px;
     }
 """
+
+GROUP_STYLE = """
+    QGroupBox {
+        font-weight: bold;
+        border: 1px solid #bdc3c7;
+        border-radius: 8px;
+        margin-top: 10px;
+        padding-top: 10px;
+    }
+    QGroupBox::title {
+        subcontrol-origin: margin;
+        left: 10px;
+        padding: 0 8px 0 8px;
+    }
+"""
+
+
 class SolubilityWorker(QThread):
     """溶解度查询工作线程"""
     finished = Signal(dict)
@@ -201,20 +217,6 @@ class SolidSolubilityCalculator(QWidget):
 
     # ─────────────────────────── UI ─────────────────────────────
     def setup_ui(self):
-        group_style = """
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """
         main_layout = QHBoxLayout(self)
         main_layout.setSpacing(15)
         main_layout.setContentsMargins(10, 10, 10, 10)
@@ -222,9 +224,7 @@ class SolidSolubilityCalculator(QWidget):
         # ──────────────── 左侧输入区 ────────────────
         scroll_left = QScrollArea()
         scroll_left.setStyleSheet("QScrollArea { border: none; background: transparent; } QScrollBar:vertical { background: transparent; width: 8px; margin: 0; } QScrollBar::handle:vertical { background: #c0c0c0; border-radius: 4px; min-height: 30px; } QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }")
-
         scroll_left.setWidgetResizable(True)
-
         scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         left_widget = QWidget()
@@ -238,26 +238,25 @@ class SolidSolubilityCalculator(QWidget):
             "支持单次查询和批量查询，数据来源包括 CRC Handbook、Merck Index 等。"
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: #7f8c8d; font-size: 12px;")
+        desc.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
         left_layout.addWidget(desc)
 
         # ── 查询条件组 ──
         query_group = QGroupBox("查询条件")
-        query_group.setStyleSheet(group_style)
+        query_group.setStyleSheet(GROUP_STYLE)
         grid = QGridLayout(query_group)
+        grid.setSpacing(12)
         grid.setHorizontalSpacing(10)
-        grid.setVerticalSpacing(10)
-        grid.setColumnStretch(0, 2)
-        grid.setColumnStretch(1, 3)
-        grid.setColumnStretch(2, 2)
+        grid.setColumnStretch(0, 4)
+        grid.setColumnStretch(1, 8)
+        grid.setColumnStretch(2, 5)
 
         label_style = "font-weight: bold; padding-right: 10px;"
+        hint_style = "color: #7f8c8d; font-style: italic;"
 
         def make_lbl(text):
             lbl = QLabel(text)
             lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            lbl.setMinimumWidth(120)
-            lbl.setMaximumWidth(200)
             lbl.setStyleSheet(label_style)
             return lbl
 
@@ -265,8 +264,7 @@ class SolidSolubilityCalculator(QWidget):
         self.compound_input = QComboBox()
         self.compound_input.setStyleSheet(COMBOBOX_STYLE)
         self.compound_input.setEditable(True)
-        self.compound_input.setMinimumWidth(150)
-        self.compound_input.setMaximumWidth(400)
+        self.compound_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.compound_input.addItems([
             "氯化钠", "氯化钾", "硫酸钠", "碳酸钙",
             "蔗糖", "苯甲酸", "阿司匹林", "咖啡因",
@@ -275,17 +273,14 @@ class SolidSolubilityCalculator(QWidget):
         grid.addWidget(make_lbl("化合物:"), 0, 0)
         grid.addWidget(self.compound_input, 0, 1)
         hint_c = QLabel("可选列表或手动输入")
-        hint_c.setMinimumWidth(100)
-        hint_c.setMaximumWidth(250)
-        hint_c.setStyleSheet("color: #95a5a6; font-size: 11px;")
+        hint_c.setStyleSheet(hint_style)
         grid.addWidget(hint_c, 0, 2)
 
         # 行1：溶剂
         self.solvent_input = QComboBox()
         self.solvent_input.setStyleSheet(COMBOBOX_STYLE)
         self.solvent_input.setEditable(True)
-        self.solvent_input.setMinimumWidth(150)
-        self.solvent_input.setMaximumWidth(400)
+        self.solvent_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.solvent_input.addItems([
             "水", "乙醇", "甲醇", "丙酮",
             "乙醚", "苯", "氯仿", "盐酸",
@@ -294,37 +289,36 @@ class SolidSolubilityCalculator(QWidget):
         grid.addWidget(make_lbl("溶剂:"), 1, 0)
         grid.addWidget(self.solvent_input, 1, 1)
         hint_s = QLabel("可选列表或手动输入")
-        hint_s.setMinimumWidth(100)
-        hint_s.setMaximumWidth(250)
-        hint_s.setStyleSheet("color: #95a5a6; font-size: 11px;")
+        hint_s.setStyleSheet(hint_style)
         grid.addWidget(hint_s, 1, 2)
 
         # 行2：温度
         self.temperature_input = QLineEdit("25")
-        self.temperature_input.setMinimumWidth(150)
-        self.temperature_input.setMaximumWidth(400)
         self.temperature_input.setValidator(QDoubleValidator(-273, 500, 1))
+        self.temperature_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         grid.addWidget(make_lbl("温度:"), 2, 0)
         grid.addWidget(self.temperature_input, 2, 1)
         hint_t = QLabel("°C")
-        hint_t.setMinimumWidth(100)
-        hint_t.setMaximumWidth(250)
+        hint_t.setStyleSheet(hint_style)
         grid.addWidget(hint_t, 2, 2)
 
         left_layout.addWidget(query_group)
 
         # ── 查询按钮 ──
-        calc_btn = QPushButton("▶  查询溶解度")
+        calc_btn = QPushButton("查询溶解度")
+        calc_btn.setFont(QFont("Arial", 12))
+        calc_btn.setMinimumHeight(50)
+        calc_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         calc_btn.setStyleSheet("""
             QPushButton {
-                background-color: #3498db;
+                background-color: #27ae60;
                 color: white;
                 font-weight: bold;
-                font-size: 14px;
+                border: none;
                 border-radius: 8px;
-                min-height: 50px;
+                padding: 12px;
             }
-            QPushButton:hover { background-color: #2980b9; }
+            QPushButton:hover { background-color: #219955; }
         """)
         calc_btn.clicked.connect(self.query_solubility)
         left_layout.addWidget(calc_btn)
@@ -336,7 +330,7 @@ class SolidSolubilityCalculator(QWidget):
 
         # ── 批量查询组 ──
         batch_group = QGroupBox("批量查询")
-        batch_group.setStyleSheet(group_style)
+        batch_group.setStyleSheet(GROUP_STYLE)
         batch_vbox = QVBoxLayout(batch_group)
 
         self.batch_table = QTableWidget()
@@ -378,7 +372,7 @@ class SolidSolubilityCalculator(QWidget):
 
         # ── 参考数据表 ──
         ref_group = QGroupBox("常见固体溶解度参考表")
-        ref_group.setStyleSheet(group_style)
+        ref_group.setStyleSheet(GROUP_STYLE)
         ref_vbox = QVBoxLayout(ref_group)
 
         self.data_table = QTableWidget()
@@ -391,74 +385,77 @@ class SolidSolubilityCalculator(QWidget):
         ref_vbox.addWidget(self.data_table)
         left_layout.addWidget(ref_group)
 
-        # ── 底部按钮行 ──
-        btn_row = QHBoxLayout()
-
-        clear_btn = QPushButton("清空")
-        clear_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #95a5a6; color: white;
-                font-weight: bold; border-radius: 6px;
-                padding: 8px 20px;
-            }
-            QPushButton:hover { background-color: #7f8c8d; }
-        """)
-        clear_btn.clicked.connect(self.clear_inputs)
-
-        dl_txt_btn = QPushButton("⬇ 下载TXT报告")
-        dl_txt_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60; color: white;
-                font-weight: bold; border-radius: 6px;
-                padding: 8px 20px;
-            }
-            QPushButton:hover { background-color: #219a52; }
-        """)
-        dl_txt_btn.clicked.connect(self.download_txt_report)
-
-        dl_pdf_btn = QPushButton("⬇ 下载PDF报告")
-        dl_pdf_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c; color: white;
-                font-weight: bold; border-radius: 6px;
-                padding: 8px 20px;
-            }
-            QPushButton:hover { background-color: #c0392b; }
-        """)
-        dl_pdf_btn.clicked.connect(self.generate_pdf_report)
-
-        btn_row.addWidget(clear_btn)
-        btn_row.addStretch()
-        btn_row.addWidget(dl_txt_btn)
-        btn_row.addWidget(dl_pdf_btn)
-        left_layout.addLayout(btn_row)
-
         # ──────────────── 右侧结果区 ────────────────
         right_widget = QWidget()
-        right_widget.setMinimumWidth(400)
+        right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
-        right_layout.setSpacing(10)
+        right_layout.setSpacing(15)
 
         result_group = QGroupBox("查询结果")
-        result_group.setStyleSheet(group_style)
+        result_group.setStyleSheet(GROUP_STYLE)
         result_vbox = QVBoxLayout(result_group)
 
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
         self.result_text.setMinimumHeight(500)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet("""
             QTextEdit {
                 background-color: #f8f9fa;
-                border: 1px solid #dee2e6;
+                border: 1px solid #ecf0f1;
                 border-radius: 6px;
-                font-family: Consolas, monospace;
                 font-size: 13px;
-                padding: 10px;
+                padding: 8px;
             }
         """)
         self.result_text.setPlaceholderText("查询结果将在此显示……")
         result_vbox.addWidget(self.result_text)
         right_layout.addWidget(result_group)
+
+        # ── 底部按钮行（右侧） ──
+        btn_row = QHBoxLayout()
+
+        self.clear_btn = QPushButton("清空")
+        self.clear_btn.clicked.connect(self.clear_inputs)
+        self.clear_btn.setMinimumHeight(50)
+        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.clear_btn.setStyleSheet(
+            "QPushButton { "
+            "background-color: #95a5a6; color: white; "
+            "font-weight: bold; border: none; border-radius: 6px; padding: 8px; "
+            "}"
+            "QPushButton:hover { background-color: #7f8c8d; }"
+        )
+
+        self.dl_txt_btn = QPushButton("下载TXT")
+        self.dl_txt_btn.clicked.connect(self.download_txt_report)
+        self.dl_txt_btn.setMinimumHeight(50)
+        self.dl_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.dl_txt_btn.setStyleSheet(
+            "QPushButton { "
+            "background-color: #27ae60; color: white; "
+            "font-weight: bold; border: none; border-radius: 6px; padding: 8px; "
+            "}"
+            "QPushButton:hover { background-color: #219653; }"
+        )
+
+        self.dl_pdf_btn = QPushButton("下载PDF")
+        self.dl_pdf_btn.clicked.connect(self.generate_pdf_report)
+        self.dl_pdf_btn.setMinimumHeight(50)
+        self.dl_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.dl_pdf_btn.setStyleSheet(
+            "QPushButton { "
+            "background-color: #e74c3c; color: white; "
+            "font-weight: bold; border: none; border-radius: 6px; padding: 8px; "
+            "}"
+            "QPushButton:hover { background-color: #c0392b; }"
+        )
+
+        btn_row.addWidget(self.clear_btn)
+        btn_row.addStretch()
+        btn_row.addWidget(self.dl_txt_btn)
+        btn_row.addWidget(self.dl_pdf_btn)
+        right_layout.addLayout(btn_row)
 
         # 拼合
         scroll_left.setWidget(left_widget)
