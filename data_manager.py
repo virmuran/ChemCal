@@ -772,3 +772,32 @@ class DataManager(QObject):
             print(f"加载工艺流程图数据失败: {e}")
             return {}
 
+    # ==================== 历史记录相关方法 ====================
+    def add_record(self, calculator_id, history_data):
+        """添加计算历史记录，委托给 HistoryDB
+
+        Args:
+            calculator_id: 计算器标识
+            history_data: 历史数据，支持两种格式：
+                - {"inputs": {...}, "outputs": {...}}  — 直接含 inputs/outputs
+                - {"calculator_name": ..., "inputs": ..., "outputs": ...}  — 含名称
+        """
+        try:
+            from modules.history_db import HistoryDB
+            db = HistoryDB()
+            if isinstance(history_data, dict):
+                calculator_name = history_data.get("calculator_name", calculator_id)
+                calculator_category = history_data.get("calculator_category", "工程计算")
+                inputs = history_data.get("inputs", {})
+                outputs = history_data.get("outputs", {})
+                notes = history_data.get("notes", "")
+            else:
+                calculator_name = calculator_id
+                calculator_category = "工程计算"
+                inputs = history_data
+                outputs = {}
+                notes = ""
+            db.save(calculator_id, calculator_name, calculator_category, inputs, outputs, notes)
+        except Exception as e:
+            print(f"保存历史记录失败: {e}")
+
