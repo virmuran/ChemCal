@@ -29,11 +29,23 @@ COMBOBOX_STYLE = """
 class FlangeSizeCalculator(QWidget):
     """法兰尺寸查询计算器"""
     
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, data_manager=None):
         super().__init__(parent)
+        if data_manager is not None:
+            self.data_manager = data_manager
+        else:
+            self.init_data_manager()
         self.flange_data = self.load_flange_data()
         self.setup_ui()
-    
+
+    def init_data_manager(self):
+        """初始化数据管理器"""
+        try:
+            from data_manager import DataManager
+            self.data_manager = DataManager.get_instance()
+        except Exception:
+            self.data_manager = None
+
     def setup_ui(self):
         """设置UI"""
         main_layout = QVBoxLayout(self)
