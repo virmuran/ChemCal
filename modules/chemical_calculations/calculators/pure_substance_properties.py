@@ -86,6 +86,7 @@ class PureSubstanceProperties(QWidget):
         # 不设置 setMaximumWidth，让左侧动态扩展
         
         left_widget = QWidget()
+        left_widget.setStyleSheet("background: transparent;")
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
         
@@ -289,10 +290,10 @@ class PureSubstanceProperties(QWidget):
         right_layout.setSpacing(15)
         right_widget.setMinimumWidth(300)
         
-        # 结果标题
-        result_title = QLabel("查询结果")
-        result_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #2c3e50; padding: 5px;")
-        right_layout.addWidget(result_title)
+        # 查询结果组（与左侧查询条件统一风格）
+        result_group = QGroupBox("查询结果")
+        result_group.setStyleSheet(GROUP_STYLE)
+        result_layout = QVBoxLayout(result_group)
         
         # 结果文本区（按照规范：背景#f8f9fa，边框1px solid #ecf0f1，圆角6px，padding 8px，minHeight 500px，Expanding/Expanding）
         self.result_text = QTextEdit()
@@ -308,7 +309,9 @@ class PureSubstanceProperties(QWidget):
             "font-size: 13px; "
             "}"
         )
-        right_layout.addWidget(self.result_text)
+        result_layout.addWidget(self.result_text)
+        
+        right_layout.addWidget(result_group)
         
         # 底部按钮行
         button_layout = QHBoxLayout()
