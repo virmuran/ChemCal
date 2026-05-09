@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
                               QLabel, QLineEdit, QPushButton, QComboBox,
                               QTextEdit, QGridLayout, QScrollArea,
-                              QMessageBox)
+                              QMessageBox, QSizePolicy)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
 import math
@@ -61,6 +61,8 @@ COMBOBOX_STYLE = """
         padding: 3px 8px;
     }
 """
+
+LINEEDIT_STYLE = "padding: 6px 10px; border: 1px solid #bdc3c7; border-radius: 4px; background-color: white;"
 
 # 制冷剂数据库
 REFRIGERANT_DB = {
@@ -135,7 +137,6 @@ class RefrigerantPropertiesCalculator(QWidget):
 
         left_widget = QWidget()
         left_widget.setStyleSheet("QWidget { background: transparent; }")
-        left_widget.setMaximumWidth(900)
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
 
@@ -154,10 +155,12 @@ class RefrigerantPropertiesCalculator(QWidget):
         ref_layout = QGridLayout(ref_group)
         ref_layout.setVerticalSpacing(12)
         ref_layout.setHorizontalSpacing(10)
+        ref_layout.setColumnStretch(0, 4)
+        ref_layout.setColumnStretch(1, 8)
+        ref_layout.setColumnStretch(2, 5)
 
-        label_style = "QLabel { font-weight: bold; padding-right: 10px; }"
-        input_width = 400
-        combo_width = 250
+        label_style = "font-weight: bold; padding-right: 10px;"
+
 
         ref_label = QLabel("制冷剂:")
         ref_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -167,13 +170,11 @@ class RefrigerantPropertiesCalculator(QWidget):
         self.refrigerant_selection = QComboBox()
         self.refrigerant_selection.setStyleSheet(COMBOBOX_STYLE)
         self.refrigerant_selection.addItems(list(REFRIGERANT_DB.keys()))
-        self.refrigerant_selection.setFixedWidth(input_width)
         self.refrigerant_selection.currentTextChanged.connect(self.update_refrigerant_info)
         ref_layout.addWidget(self.refrigerant_selection, 0, 1)
 
         ref_hint = QLabel("选择制冷剂类型")
         ref_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        ref_hint.setFixedWidth(combo_width)
         ref_layout.addWidget(ref_hint, 0, 2)
 
         # 制冷剂信息显示
@@ -183,7 +184,6 @@ class RefrigerantPropertiesCalculator(QWidget):
             lbl.setStyleSheet(label_style)
             ref_layout.addWidget(lbl, 1 + idx // 2, 0 if idx % 2 == 0 else 3)
             val = QLabel("--")
-            val.setFixedWidth(input_width if idx % 2 == 0 else combo_width)
             setattr(self, attr_name, val)
             ref_layout.addWidget(val, 1 + idx // 2, 1 if idx % 2 == 0 else 4)
 
@@ -195,6 +195,9 @@ class RefrigerantPropertiesCalculator(QWidget):
         condition_layout = QGridLayout(condition_group)
         condition_layout.setVerticalSpacing(12)
         condition_layout.setHorizontalSpacing(10)
+        condition_layout.setColumnStretch(0, 4)
+        condition_layout.setColumnStretch(1, 8)
+        condition_layout.setColumnStretch(2, 5)
 
         # 计算类型
         ctype_label = QLabel("计算类型:")
@@ -208,13 +211,11 @@ class RefrigerantPropertiesCalculator(QWidget):
             "饱和性质计算", "过热性质计算", "过冷性质计算",
             "压缩因子计算", "热力循环分析"
         ])
-        self.calculation_type.setFixedWidth(input_width)
         self.calculation_type.currentTextChanged.connect(self._on_calc_type_changed)
         condition_layout.addWidget(self.calculation_type, 0, 1)
 
         ctype_hint = QLabel("选择计算类型")
         ctype_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        ctype_hint.setFixedWidth(combo_width)
         condition_layout.addWidget(ctype_hint, 0, 2)
 
         # 温度
@@ -226,12 +227,12 @@ class RefrigerantPropertiesCalculator(QWidget):
         self.temperature_input = QLineEdit()
         self.temperature_input.setPlaceholderText("例如：25")
         self.temperature_input.setValidator(QDoubleValidator(-200, 300, 2))
-        self.temperature_input.setFixedWidth(input_width)
+        self.temperature_input.setStyleSheet(LINEEDIT_STYLE)
+        self.temperature_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         condition_layout.addWidget(self.temperature_input, 1, 1)
 
         temp_hint = QLabel("°C")
-        temp_hint.setStyleSheet("color: #7f8c8d;")
-        temp_hint.setFixedWidth(combo_width)
+        temp_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
         condition_layout.addWidget(temp_hint, 1, 2)
 
         # 压力
@@ -243,12 +244,12 @@ class RefrigerantPropertiesCalculator(QWidget):
         self.pressure_input = QLineEdit()
         self.pressure_input.setPlaceholderText("例如：666")
         self.pressure_input.setValidator(QDoubleValidator(0.1, 10000, 1))
-        self.pressure_input.setFixedWidth(input_width)
+        self.pressure_input.setStyleSheet(LINEEDIT_STYLE)
+        self.pressure_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         condition_layout.addWidget(self.pressure_input, 2, 1)
 
         pres_hint = QLabel("kPa")
-        pres_hint.setStyleSheet("color: #7f8c8d;")
-        pres_hint.setFixedWidth(combo_width)
+        pres_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
         condition_layout.addWidget(pres_hint, 2, 2)
 
         # 干度
@@ -260,12 +261,12 @@ class RefrigerantPropertiesCalculator(QWidget):
         self.quality_input = QLineEdit()
         self.quality_input.setPlaceholderText("例如：0.5")
         self.quality_input.setValidator(QDoubleValidator(0, 1, 3))
-        self.quality_input.setFixedWidth(input_width)
+        self.quality_input.setStyleSheet(LINEEDIT_STYLE)
+        self.quality_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         condition_layout.addWidget(self.quality_input, 3, 1)
 
         quality_hint = QLabel("0~1")
-        quality_hint.setStyleSheet("color: #7f8c8d;")
-        quality_hint.setFixedWidth(combo_width)
+        quality_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
         condition_layout.addWidget(quality_hint, 3, 2)
 
         # 冷凝温度（热力循环分析用）
@@ -278,13 +279,13 @@ class RefrigerantPropertiesCalculator(QWidget):
         self.cond_temp_input = QLineEdit()
         self.cond_temp_input.setPlaceholderText("例如：40")
         self.cond_temp_input.setValidator(QDoubleValidator(-100, 200, 2))
-        self.cond_temp_input.setFixedWidth(input_width)
+        self.cond_temp_input.setStyleSheet(LINEEDIT_STYLE)
+        self.cond_temp_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.cond_temp_input.setVisible(False)
         condition_layout.addWidget(self.cond_temp_input, 4, 1)
 
         cond_hint = QLabel("°C")
-        cond_hint.setStyleSheet("color: #7f8c8d;")
-        cond_hint.setFixedWidth(combo_width)
+        cond_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
         cond_hint.setVisible(False)
         self._cond_hint = cond_hint
         condition_layout.addWidget(cond_hint, 4, 2)
@@ -297,6 +298,12 @@ class RefrigerantPropertiesCalculator(QWidget):
         info_layout = QGridLayout(info_group)
         info_layout.setVerticalSpacing(12)
         info_layout.setHorizontalSpacing(10)
+        info_layout.setColumnStretch(0, 4)
+        info_layout.setColumnStretch(1, 8)
+        info_layout.setColumnStretch(2, 5)
+        info_layout.setColumnStretch(3, 4)
+        info_layout.setColumnStretch(4, 8)
+        info_layout.setColumnStretch(5, 5)
 
         info_items = [
             ("分子量:", "mw_val", "g/mol", 0), ("临界温度:", "tc_val", "°C", 0),
@@ -310,7 +317,6 @@ class RefrigerantPropertiesCalculator(QWidget):
             col = 0 if info_items.index((text, attr, unit, row)) % 2 == 0 else 3
             info_layout.addWidget(lbl, row, col)
             val = QLabel("--")
-            val.setFixedWidth(input_width if col == 0 else combo_width)
             setattr(self, attr, val)
             info_layout.addWidget(val, row, col + 1)
             u = QLabel(unit)
@@ -323,9 +329,17 @@ class RefrigerantPropertiesCalculator(QWidget):
         calculate_btn = QPushButton("计算")
         calculate_btn.setFont(QFont("Arial", 12, QFont.Bold))
         calculate_btn.clicked.connect(self.calculate)
+        calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         calculate_btn.setStyleSheet("""
-            QPushButton { background-color: #3498db; color: white; border: none; border-radius: 8px; padding: 12px; font-weight: bold; }
-            QPushButton:hover { background-color: #2980b9; }
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                font-weight: bold;
+                border: none;
+                border-radius: 8px;
+                padding: 12px;
+            }
+            QPushButton:hover { background-color: #219955; }
         """)
         calculate_btn.setMinimumHeight(50)
         left_layout.addWidget(calculate_btn)
@@ -338,17 +352,20 @@ class RefrigerantPropertiesCalculator(QWidget):
             QPushButton:hover { background-color: #7f8c8d; }
         """)
         clear_btn.clicked.connect(self.clear_inputs)
+        clear_btn.setMinimumHeight(50)
         download_layout.addWidget(clear_btn)
         download_layout.addStretch()
 
         download_txt_btn = QPushButton("下载计算书(TXT)")
         download_txt_btn.clicked.connect(self.download_txt_report)
+        download_txt_btn.setMinimumHeight(50)
         download_txt_btn.setStyleSheet("""
             QPushButton { background-color: #27ae60; color: white; border: none; border-radius: 6px; padding: 8px; font-weight: bold; }
             QPushButton:hover { background-color: #219653; }
         """)
         download_pdf_btn = QPushButton("下载计算书(PDF)")
         download_pdf_btn.clicked.connect(self.generate_pdf_report)
+        download_pdf_btn.setMinimumHeight(50)
         download_pdf_btn.setStyleSheet("""
             QPushButton { background-color: #e74c3c; color: white; border: none; border-radius: 6px; padding: 8px; font-weight: bold; }
             QPushButton:hover { background-color: #c0392b; }
@@ -360,7 +377,7 @@ class RefrigerantPropertiesCalculator(QWidget):
 
         # ====== 右侧：结果显示区域 ======
         right_widget = QWidget()
-        right_widget.setMinimumWidth(400)
+        right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
 
@@ -370,8 +387,15 @@ class RefrigerantPropertiesCalculator(QWidget):
 
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
+        self.result_text.setMinimumHeight(500)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet("""
-            QTextEdit { border: 1px solid #ecf0f1; border-radius: 6px; padding: 8px; background-color: #f8f9fa; min-height: 500px; }
+            QTextEdit {
+                background-color: #f8f9fa;
+                border: 1px solid #ecf0f1;
+                border-radius: 6px;
+                padding: 8px;
+            }
         """)
         result_inner.addWidget(self.result_text)
         right_layout.addWidget(result_group)
