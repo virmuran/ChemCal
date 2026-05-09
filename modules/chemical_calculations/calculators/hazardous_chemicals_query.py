@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QGroupBox, QTextEdit, QComboBox, QMessageBox, QFrame,
     QScrollArea, QDialog, QSpinBox, QButtonGroup, QGridLayout,
     QTableWidget, QTableWidgetItem, QHeaderView, QTabWidget,
-    QListWidget, QListWidgetItem, QProgressBar
+    QListWidget, QListWidgetItem, QProgressBar, QSizePolicy
 )
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QFont, QDoubleValidator, QColor
@@ -427,7 +427,6 @@ class HazardousChemicalsQuery(QWidget):
         # 使用QScrollArea包裹，maxWidth=900
         left_scroll = QScrollArea()
         left_scroll.setWidgetResizable(True)
-        left_scroll.setMaximumWidth(900)
         left_scroll.setStyleSheet(f"""
             QScrollArea {{
                 border: none;
@@ -440,11 +439,7 @@ class HazardousChemicalsQuery(QWidget):
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
         left_layout.setContentsMargins(0, 0, 10, 0)
-
-        # 搜索条件GroupBox
-        search_group = QGroupBox("搜索条件")
-        search_group.setStyleSheet(GROUP_STYLE)
-        search_layout = QVBoxLayout(search_group)
+        left_widget.setStyleSheet("background: transparent;")
 
         # 搜索类型
         type_layout = QHBoxLayout()
@@ -459,13 +454,13 @@ class HazardousChemicalsQuery(QWidget):
             "按危险性搜索"
         ])
         type_layout.addWidget(self.search_type_combo)
-        search_layout.addLayout(type_layout)
+        left_layout.addLayout(type_layout)
 
         # 搜索框
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("输入化学品名称、CAS号或分子式...")
         self.search_input.textChanged.connect(self.on_search_text_changed)
-        search_layout.addWidget(self.search_input)
+        left_layout.addWidget(self.search_input)
 
         # 危险性筛选
         hazard_layout = QHBoxLayout()
@@ -486,45 +481,13 @@ class HazardousChemicalsQuery(QWidget):
         ])
         self.hazard_filter_combo.currentTextChanged.connect(self.filter_chemicals)
         hazard_layout.addWidget(self.hazard_filter_combo)
-        search_layout.addLayout(hazard_layout)
+        left_layout.addLayout(hazard_layout)
 
-        left_layout.addWidget(search_group)
-
-        # ========== QTabWidget ==========
-        self.tab_widget = QTabWidget()
-        self.tab_widget.setStyleSheet("""
-            QTabWidget::pane {
-                border: 1px solid #bdc3c7;
-                border-radius: 6px;
-                background-color: white;
-            }
-            QTabBar::tab {
-                background-color: #ecf0f1;
-                padding: 8px 16px;
-                margin-right: 2px;
-                border-top-left-radius: 6px;
-                border-top-right-radius: 6px;
-            }
-            QTabBar::tab:selected {
-                background-color: white;
-                font-weight: bold;
-            }
-            QTabBar::tab:hover {
-                background-color: #d5dbdb;
-            }
-        """)
-
-        # 化学品列表标签页
-        list_tab = QWidget()
-        list_layout = QVBoxLayout(list_tab)
-
-        list_group = QGroupBox("化学品列表")
-        list_group.setStyleSheet(GROUP_STYLE)
-        list_inner_layout = QVBoxLayout(list_group)
-
+        # ========== 化学品列表 ==========
         self.chemicals_list = QListWidget()
         self.chemicals_list.itemDoubleClicked.connect(self.show_chemical_detail)
         self.chemicals_list.itemClicked.connect(self.show_chemical_detail)
+        self.chemicals_list.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.chemicals_list.setStyleSheet(f"""
             QListWidget {{
                 border: 1px solid #ecf0f1;
@@ -541,74 +504,88 @@ class HazardousChemicalsQuery(QWidget):
             }}
             {SCROLLBAR_STYLE}
         """)
-        list_inner_layout.addWidget(self.chemicals_list)
+        left_layout.addWidget(self.chemicals_list)
 
         # 统计信息
         self.stats_label = QLabel("共加载 0 种化学品")
-        self.stats_label.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
-        list_inner_layout.addWidget(self.stats_label)
+        self.stats_label.setStyleSheet("color: #7f8c8d; font-style: italic; padding: 5px;")
+        left_layout.addWidget(self.stats_label)
 
-        list_layout.addWidget(list_group)
-        self.tab_widget.addTab(list_tab, "化学品列表")
+        # 设置左侧scroll area的内容
+        left_scroll.setWidget(left_widget)
 
-        # 危险性分类标签页
-        category_tab = QWidget()
-        category_layout = QVBoxLayout(category_tab)
-        category_group = QGroupBox("危险性分类浏览")
-        category_group.setStyleSheet(GROUP_STYLE)
-        category_inner_layout = QVBoxLayout(category_group)
+        # ========== 右侧结果区 ==========
+        # minWidth=300
+        right_widget = QWidget()
+        right_widget.setMinimumWidth(300)
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setSpacing(15)
 
-        self.category_list = QListWidget()
-        self.category_list.itemClicked.connect(self.on_category_selected)
-        self.category_list.setStyleSheet(f"""
-            QListWidget {{
+        # 结果详情GroupBox
+        result_group = QGroupBox("查询结果")
+        result_group.setStyleSheet(GROUP_STYLE)
+        result_layout = QVBoxLayout(result_group)
+
+        # 右侧QTextEdit：readOnly=True，背景#f8f9fa，圆角6px，minHeight=500px
+        self.detail_text = QTextEdit()
+        self.detail_text.setReadOnly(True)
+        self.detail_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.detail_text.setStyleSheet(f"""
+            QTextEdit {{
                 border: 1px solid #ecf0f1;
                 border-radius: 6px;
-                background-color: white;
-            }}
-            QListWidget::item {{
-                padding: 10px;
-            }}
-            QListWidget::item:selected {{
-                background-color: #3498db;
-                color: white;
+                padding: 8px;
+                background-color: #f8f9fa;
+                min-height: 500px;
             }}
             {SCROLLBAR_STYLE}
         """)
+        result_layout.addWidget(self.detail_text)
 
-        # 添加危险性分类项
-        categories = [
-            "易燃液体",
-            "易燃气体",
-            "毒性物质",
-            "腐蚀性物质",
-            "氧化性物质",
-            "爆炸性物质",
-            "健康危害物质"
-        ]
-        for cat_name in categories:
-            item = QListWidgetItem(f"【{cat_name}】")
-            self.category_list.addItem(item)
+        # result_text 属性别名，用于模板兼容
+        self.result_text = self.detail_text
 
-        category_inner_layout.addWidget(self.category_list)
-        category_layout.addWidget(category_group)
-        self.tab_widget.addTab(category_tab, "危险性分类")
+        # 查看详情按钮（绿色，与计算按钮一致）
+        self.detail_btn = QPushButton("查看完整详情")
+        self.detail_btn.clicked.connect(self.show_full_detail)
+        self.detail_btn.setMinimumHeight(50)
+        self.detail_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.detail_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #219955;
+            }
+            QPushButton:disabled {
+                background-color: #bdc3c7;
+            }
+        """)
+        self.detail_btn.setEnabled(False)
+        result_layout.addWidget(self.detail_btn)
 
-        left_layout.addWidget(self.tab_widget)
+        right_layout.addWidget(result_group)
 
-        # ========== 底部按钮行 ==========
+        # ========== 底部按钮行（清空/下载TXT/下载PDF）==========
         button_layout = QHBoxLayout()
 
         # 清空按钮（灰色）
         self.clear_btn = QPushButton("清空")
         self.clear_btn.clicked.connect(self.clear_search)
+        self.clear_btn.setMinimumHeight(50)
+        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.clear_btn.setStyleSheet("""
             QPushButton {
                 background-color: #95a5a6;
                 color: white;
                 border: none;
                 border-radius: 6px;
-                padding: 10px 20px;
+                padding: 8px;
                 font-weight: bold;
             }
             QPushButton:hover {
@@ -617,23 +594,22 @@ class HazardousChemicalsQuery(QWidget):
         """)
         button_layout.addWidget(self.clear_btn)
 
-        # Stretch
-        button_layout.addStretch()
-
         # 下载TXT按钮（绿色）
         self.download_txt_btn = QPushButton("下载TXT")
         self.download_txt_btn.clicked.connect(self.download_txt_report)
+        self.download_txt_btn.setMinimumHeight(50)
+        self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.download_txt_btn.setStyleSheet("""
             QPushButton {
                 background-color: #27ae60;
                 color: white;
                 border: none;
                 border-radius: 6px;
-                padding: 10px 20px;
+                padding: 8px;
                 font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #229954;
+                background-color: #219653;
             }
             QPushButton:disabled {
                 background-color: #bdc3c7;
@@ -645,13 +621,15 @@ class HazardousChemicalsQuery(QWidget):
         # 下载PDF按钮（红色）
         self.download_pdf_btn = QPushButton("下载PDF")
         self.download_pdf_btn.clicked.connect(self.generate_pdf_report)
+        self.download_pdf_btn.setMinimumHeight(50)
+        self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.download_pdf_btn.setStyleSheet("""
             QPushButton {
                 background-color: #e74c3c;
                 color: white;
                 border: none;
                 border-radius: 6px;
-                padding: 10px 20px;
+                padding: 8px;
                 font-weight: bold;
             }
             QPushButton:hover {
@@ -664,64 +642,7 @@ class HazardousChemicalsQuery(QWidget):
         self.download_pdf_btn.setEnabled(False)
         button_layout.addWidget(self.download_pdf_btn)
 
-        left_layout.addLayout(button_layout)
-
-        # 设置左侧scroll area的内容
-        left_scroll.setWidget(left_widget)
-
-        # ========== 右侧结果区 ==========
-        # minWidth=400
-        right_widget = QWidget()
-        right_widget.setMinimumWidth(400)
-        right_layout = QVBoxLayout(right_widget)
-        right_layout.setSpacing(15)
-
-        # 结果详情GroupBox
-        result_group = QGroupBox("查询结果")
-        result_group.setStyleSheet(GROUP_STYLE)
-        result_layout = QVBoxLayout(result_group)
-
-        # 右侧QTextEdit：readOnly=True，背景#f8f9fa，圆角6px，minHeight=500px
-        self.detail_text = QTextEdit()
-        self.detail_text.setReadOnly(True)
-        self.detail_text.setStyleSheet(f"""
-            QTextEdit {{
-                border: 1px solid #ecf0f1;
-                border-radius: 6px;
-                padding: 10px;
-                background-color: #f8f9fa;
-                min-height: 500px;
-            }}
-            {SCROLLBAR_STYLE}
-        """)
-        result_layout.addWidget(self.detail_text)
-        
-        # result_text 属性别名，用于模板兼容
-        self.result_text = self.detail_text
-
-        # 查看详情按钮
-        self.detail_btn = QPushButton("查看完整详情")
-        self.detail_btn.clicked.connect(self.show_full_detail)
-        self.detail_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 10px 16px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            }
-            QPushButton:disabled {
-                background-color: #bdc3c7;
-            }
-        """)
-        self.detail_btn.setEnabled(False)
-        result_layout.addWidget(self.detail_btn)
-
-        right_layout.addWidget(result_group)
+        right_layout.addLayout(button_layout)
 
         # ========== 将左右两部分添加到主布局 ==========
         # 比例：addWidget(left, 2) / addWidget(right, 1)
@@ -957,12 +878,6 @@ class HazardousChemicalsQuery(QWidget):
             self.filtered_chemicals.append(chemical)
 
         self.update_chemicals_list()
-
-    def on_category_selected(self, item):
-        """处理危险性分类选择"""
-        category_text = item.text().strip("【】")
-        self.hazard_filter_combo.setCurrentText(category_text)
-        self.tab_widget.setCurrentIndex(0)  # 切换到列表标签页
 
     def update_chemicals_list(self):
         """更新化学品列表"""
