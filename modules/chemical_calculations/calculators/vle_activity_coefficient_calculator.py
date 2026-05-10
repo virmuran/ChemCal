@@ -2,7 +2,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
                               QLabel, QLineEdit, QPushButton, QComboBox,
                               QFormLayout, QTextEdit, QGridLayout, QScrollArea,
                               QTableWidget, QTableWidgetItem, QHeaderView,
-                              QTabWidget, QMessageBox)
+                              QTabWidget, QMessageBox, QSizePolicy)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
 import math
@@ -311,7 +311,6 @@ class VLEActivityCoefficientCalculator(QWidget):
 
         left_widget = QWidget()
         left_widget.setStyleSheet("QWidget { background: transparent; }")
-        left_widget.setMaximumWidth(900)
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
 
@@ -329,10 +328,11 @@ class VLEActivityCoefficientCalculator(QWidget):
         condition_layout = QGridLayout(condition_group)
         condition_layout.setVerticalSpacing(12)
         condition_layout.setHorizontalSpacing(10)
+        condition_layout.setColumnStretch(0, 4)
+        condition_layout.setColumnStretch(1, 8)
+        condition_layout.setColumnStretch(2, 5)
 
         label_style = "QLabel { font-weight: bold; padding-right: 10px; }"
-        input_width = 400
-        combo_width = 250
 
         # 温度
         temp_label = QLabel("温度:")
@@ -343,12 +343,12 @@ class VLEActivityCoefficientCalculator(QWidget):
         self.temperature_input = QLineEdit()
         self.temperature_input.setPlaceholderText("例如：78.3")
         self.temperature_input.setValidator(QDoubleValidator(-100, 500, 2))
-        self.temperature_input.setFixedWidth(input_width)
+        self.temperature_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         condition_layout.addWidget(self.temperature_input, 0, 1)
 
         temp_hint = QLabel("°C")
         temp_hint.setStyleSheet("color: #7f8c8d;")
-        temp_hint.setFixedWidth(combo_width)
+        temp_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         condition_layout.addWidget(temp_hint, 0, 2)
 
         # 压力
@@ -361,12 +361,12 @@ class VLEActivityCoefficientCalculator(QWidget):
         self.pressure_input.setText("101.325")
         self.pressure_input.setPlaceholderText("例如：101.325")
         self.pressure_input.setValidator(QDoubleValidator(0.1, 10000, 2))
-        self.pressure_input.setFixedWidth(input_width)
+        self.pressure_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         condition_layout.addWidget(self.pressure_input, 1, 1)
 
         pres_hint = QLabel("kPa")
         pres_hint.setStyleSheet("color: #7f8c8d;")
-        pres_hint.setFixedWidth(combo_width)
+        pres_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         condition_layout.addWidget(pres_hint, 1, 2)
 
         # 热力学模型
@@ -378,13 +378,13 @@ class VLEActivityCoefficientCalculator(QWidget):
         self.model_selection = QComboBox()
         self.model_selection.setStyleSheet(COMBOBOX_STYLE)
         self.model_selection.addItems(["Wilson方程", "NRTL方程", "UNIQUAC方程"])
-        self.model_selection.setFixedWidth(input_width)
+        self.model_selection.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.model_selection.currentTextChanged.connect(self._on_model_changed)
         condition_layout.addWidget(self.model_selection, 2, 1)
 
         model_hint = QLabel("选择活度系数模型")
         model_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        model_hint.setFixedWidth(combo_width)
+        model_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         condition_layout.addWidget(model_hint, 2, 2)
 
         # 计算类型
@@ -396,12 +396,12 @@ class VLEActivityCoefficientCalculator(QWidget):
         self.calc_type = QComboBox()
         self.calc_type.setStyleSheet(COMBOBOX_STYLE)
         self.calc_type.addItems(["泡点计算", "露点计算", "等温闪蒸"])
-        self.calc_type.setFixedWidth(input_width)
+        self.calc_type.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         condition_layout.addWidget(self.calc_type, 3, 1)
 
         ctype_hint = QLabel("泡点/露点/闪蒸")
         ctype_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        ctype_hint.setFixedWidth(combo_width)
+        ctype_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         condition_layout.addWidget(ctype_hint, 3, 2)
 
         # 组分数
@@ -413,13 +413,13 @@ class VLEActivityCoefficientCalculator(QWidget):
         self.component_count = QComboBox()
         self.component_count.setStyleSheet(COMBOBOX_STYLE)
         self.component_count.addItems(["2", "3", "4"])
-        self.component_count.setFixedWidth(input_width)
+        self.component_count.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.component_count.currentTextChanged.connect(self.update_component_table)
         condition_layout.addWidget(self.component_count, 4, 1)
 
         comp_hint = QLabel("2~4组分体系")
         comp_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        comp_hint.setFixedWidth(combo_width)
+        comp_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         condition_layout.addWidget(comp_hint, 4, 2)
 
         left_layout.addWidget(condition_group)
@@ -489,7 +489,7 @@ class VLEActivityCoefficientCalculator(QWidget):
         calculate_btn.clicked.connect(self.calculate)
         calculate_btn.setStyleSheet("""
             QPushButton {
-                background-color: #3498db;
+                background-color: #27ae60;
                 color: white;
                 border: none;
                 border-radius: 8px;
@@ -497,10 +497,11 @@ class VLEActivityCoefficientCalculator(QWidget):
                 font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #2980b9;
+                background-color: #219955;
             }
         """)
         calculate_btn.setMinimumHeight(50)
+        calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         left_layout.addWidget(calculate_btn)
 
         # 5. 下载按钮行
@@ -538,7 +539,7 @@ class VLEActivityCoefficientCalculator(QWidget):
 
         # ====== 右侧：结果显示区域 ======
         right_widget = QWidget()
-        right_widget.setMinimumWidth(400)
+        right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
 
@@ -548,6 +549,7 @@ class VLEActivityCoefficientCalculator(QWidget):
 
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet("""
             QTextEdit {
                 border: 1px solid #ecf0f1;
@@ -586,6 +588,7 @@ class VLEActivityCoefficientCalculator(QWidget):
         for i in range(count):
             name_combo = QComboBox()
             name_combo.setStyleSheet(COMBOBOX_STYLE)
+            name_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             name_combo.addItems(["自定义"] + list(SUBSTANCE_DB.keys()))
             name_combo.setCurrentIndex((i % len(SUBSTANCE_DB)) + 1)
             name_combo.currentTextChanged.connect(lambda text, row=i: self._on_component_changed(row))
