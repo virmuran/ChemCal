@@ -2,7 +2,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QGroupBox, QTextEdit, QComboBox, QGridLayout, QMessageBox,
     QFrame, QScrollArea, QDialog, QSpinBox, QButtonGroup,
-    QFileDialog, QDialogButtonBox
+    QFileDialog, QDialogButtonBox, QSizePolicy
 )
 from PySide6.QtGui import QFont, QDoubleValidator
 from PySide6.QtCore import Qt
@@ -30,6 +30,22 @@ COMBOBOX_STYLE = """
         padding: 3px 8px;
     }
 """
+
+GROUP_STYLE = """
+QGroupBox {
+    font-weight: bold;
+    border: 1px solid #bdc3c7;
+    border-radius: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 8px 0 8px;
+}
+"""
+
 class 气体标态转压缩态(QWidget):
     """气体标准状态转压缩状态（左右布局优化版）"""
     
@@ -83,25 +99,15 @@ class 气体标态转压缩态(QWidget):
         
         # 2. 输入参数组 - 使用GridLayout实现整齐的布局
         input_group = QGroupBox("输入参数")
-        input_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
+        input_group.setStyleSheet(GROUP_STYLE)
         
         # 使用GridLayout确保整齐排列
         input_layout = QGridLayout(input_group)
         input_layout.setVerticalSpacing(12)
         input_layout.setHorizontalSpacing(10)
+        input_layout.setColumnStretch(0, 4)
+        input_layout.setColumnStretch(1, 8)
+        input_layout.setColumnStretch(2, 5)
         
         # 标签样式 - 右对齐
         label_style = """
@@ -111,9 +117,7 @@ class 气体标态转压缩态(QWidget):
             }
         """
         
-        # 输入框和下拉菜单的固定宽度
-        input_width = 400
-        combo_width = 250
+        # 输入框和下拉菜单不设置固定宽度，由SizePolicy和stretch控制
         
         row = 0
         
@@ -126,13 +130,13 @@ class 气体标态转压缩态(QWidget):
         self.flow_input = QLineEdit()
         self.flow_input.setPlaceholderText("例如: 1000")
         self.flow_input.setValidator(QDoubleValidator(0.1, 1000000.0, 6))
-        self.flow_input.setFixedWidth(input_width)
+        self.flow_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.flow_input, row, 1)
         
         # 流量输入不需要下拉，替换为提示标签
         self.flow_hint = QLabel("直接输入标准状态流量")
         self.flow_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        self.flow_hint.setFixedWidth(combo_width)
+        self.flow_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.flow_hint, row, 2)
         
         row += 1
@@ -152,35 +156,21 @@ class 气体标态转压缩态(QWidget):
             "20°C, 101.325 kPa (中国标准)",
             "自定义标准状态"
         ])
-        self.standard_combo.setFixedWidth(input_width)
+        self.standard_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.standard_combo.currentTextChanged.connect(self.on_standard_changed)
         input_layout.addWidget(self.standard_combo, row, 1)
         
         # 标准状态提示标签
         self.standard_hint = QLabel("选择标准状态定义")
         self.standard_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        self.standard_hint.setFixedWidth(combo_width)
+        self.standard_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.standard_hint, row, 2)
         
         row += 1
         
         # 自定义标准状态（隐藏时占用一行但不显示）
         self.custom_standard_group = QGroupBox("自定义标准状态")
-        self.custom_standard_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #95a5a6;
-                border-radius: 6px;
-                margin-top: 5px;
-                padding-top: 5px;
-                color: #7f8c8d;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
+        self.custom_standard_group.setStyleSheet(GROUP_STYLE)
         custom_layout = QGridLayout(self.custom_standard_group)
         
         # 标准温度
@@ -192,13 +182,13 @@ class 气体标态转压缩态(QWidget):
         self.std_temp_input = QLineEdit()
         self.std_temp_input.setPlaceholderText("例如: 0")
         self.std_temp_input.setValidator(QDoubleValidator(-50.0, 100.0, 6))
-        self.std_temp_input.setFixedWidth(input_width)
+        self.std_temp_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         custom_layout.addWidget(self.std_temp_input, 0, 1)
         
         # 标准温度提示
         self.std_temp_hint = QLabel("输入标准温度")
         self.std_temp_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        self.std_temp_hint.setFixedWidth(combo_width)
+        self.std_temp_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         custom_layout.addWidget(self.std_temp_hint, 0, 2)
         
         # 标准压力
@@ -210,14 +200,17 @@ class 气体标态转压缩态(QWidget):
         self.std_pressure_input = QLineEdit()
         self.std_pressure_input.setPlaceholderText("例如: 101.325")
         self.std_pressure_input.setValidator(QDoubleValidator(50.0, 200.0, 6))
-        self.std_pressure_input.setFixedWidth(input_width)
+        self.std_pressure_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         custom_layout.addWidget(self.std_pressure_input, 1, 1)
         
         # 标准压力提示
         self.std_pressure_hint = QLabel("输入标准压力")
         self.std_pressure_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        self.std_pressure_hint.setFixedWidth(combo_width)
+        self.std_pressure_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         custom_layout.addWidget(self.std_pressure_hint, 1, 2)
+        custom_layout.setColumnStretch(0, 4)
+        custom_layout.setColumnStretch(1, 8)
+        custom_layout.setColumnStretch(2, 5)
         
         # 将自定义标准状态组添加到主布局
         input_layout.addWidget(self.custom_standard_group, row, 0, 1, 3)
@@ -234,13 +227,13 @@ class 气体标态转压缩态(QWidget):
         self.actual_pressure_input = QLineEdit()
         self.actual_pressure_input.setPlaceholderText("例如: 500")
         self.actual_pressure_input.setValidator(QDoubleValidator(0.1, 10000.0, 6))
-        self.actual_pressure_input.setFixedWidth(input_width)
+        self.actual_pressure_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.actual_pressure_input, row, 1)
         
         # 压力输入不需要下拉，替换为提示标签
         self.pressure_hint = QLabel("直接输入实际压力值")
         self.pressure_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        self.pressure_hint.setFixedWidth(combo_width)
+        self.pressure_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.pressure_hint, row, 2)
         
         row += 1
@@ -254,13 +247,13 @@ class 气体标态转压缩态(QWidget):
         self.actual_temp_input = QLineEdit()
         self.actual_temp_input.setPlaceholderText("例如: 20")
         self.actual_temp_input.setValidator(QDoubleValidator(-50.0, 500.0, 6))
-        self.actual_temp_input.setFixedWidth(input_width)
+        self.actual_temp_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.actual_temp_input, row, 1)
         
         # 温度输入不需要下拉，替换为提示标签
         self.temp_hint = QLabel("直接输入实际温度值")
         self.temp_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        self.temp_hint.setFixedWidth(combo_width)
+        self.temp_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.temp_hint, row, 2)
         
         row += 1
@@ -275,7 +268,7 @@ class 气体标态转压缩态(QWidget):
         self.compress_input.setPlaceholderText("例如: 1.0")
         self.compress_input.setReadOnly(True)
         self.compress_input.setText("1.0")
-        self.compress_input.setFixedWidth(input_width)
+        self.compress_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.compress_input, row, 1)
         
         self.compress_combo = QComboBox()
@@ -287,7 +280,7 @@ class 气体标态转压缩态(QWidget):
             "0.8 - 中等可压缩气体",
             "自定义压缩因子"
         ])
-        self.compress_combo.setFixedWidth(combo_width)
+        self.compress_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.compress_combo.currentTextChanged.connect(self.on_compress_changed)
         input_layout.addWidget(self.compress_combo, row, 2)
         
@@ -296,27 +289,29 @@ class 气体标态转压缩态(QWidget):
         # 3. 计算按钮
         calculate_btn = QPushButton("计算")
         calculate_btn.setFont(QFont("Arial", 12, QFont.Bold))
-        calculate_btn.clicked.connect(self.convert_gas_state)
+        calculate_btn.clicked.connect(self.calculate)
+        calculate_btn.setMinimumHeight(50)
+        calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         calculate_btn.setStyleSheet("""
             QPushButton {
-                background-color: #9b59b6;
+                background-color: #27ae60;
                 color: white;
                 border: none;
                 border-radius: 8px;
                 padding: 12px;
-                font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #8e44ad;
+                background-color: #219955;
             }
         """)
-        calculate_btn.setMinimumHeight(50)
         left_layout.addWidget(calculate_btn)
         
         # 4. 下载按钮布局
         download_layout = QHBoxLayout()
         download_txt_btn = QPushButton("下载计算书(TXT)")
         download_txt_btn.clicked.connect(self.download_txt_report)
+        download_txt_btn.setMinimumHeight(50)
+        download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         download_txt_btn.setStyleSheet("""
             QPushButton {
                 background-color: #27ae60;
@@ -333,6 +328,8 @@ class 气体标态转压缩态(QWidget):
 
         download_pdf_btn = QPushButton("下载计算书(PDF)")
         download_pdf_btn.clicked.connect(self.generate_pdf_report)
+        download_pdf_btn.setMinimumHeight(50)
+        download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         download_pdf_btn.setStyleSheet("""
             QPushButton {
                 background-color: #e74c3c;
@@ -356,30 +353,18 @@ class 气体标态转压缩态(QWidget):
         
         # 右侧：结果显示区域 (占1/3宽度)
         right_widget = QWidget()
-        right_widget.setMinimumWidth(400)
+        right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
         
         # 结果显示
         self.result_group = QGroupBox("转换结果")
-        self.result_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
+        self.result_group.setStyleSheet(GROUP_STYLE)
         result_layout = QVBoxLayout(self.result_group)
         
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet("""
             QTextEdit {
                 border: 1px solid #ecf0f1;
@@ -460,7 +445,7 @@ class 气体标态转压缩态(QWidget):
         else:
             return 0.0, 101.325  # 默认国际标准
     
-    def convert_gas_state(self):
+    def calculate(self):
         """转换气体状态"""
         try:
             # 获取输入值
@@ -621,7 +606,6 @@ Q_actual = Q_std × (P_std / P_actual) × (T_actual / T_std) × Z
                     # 公司名称
                     company_layout = QHBoxLayout()
                     company_label = QLabel("公司名称:")
-                    company_label.setFixedWidth(80)
                     self.company_input = QLineEdit()
                     self.company_input.setPlaceholderText("例如：XX建筑工程有限公司")
                     self.company_input.setText(self.default_info.get('company_name', ''))
@@ -632,7 +616,6 @@ Q_actual = Q_std × (P_std / P_actual) × (T_actual / T_std) × Z
                     # 工程编号
                     number_layout = QHBoxLayout()
                     number_label = QLabel("工程编号:")
-                    number_label.setFixedWidth(80)
                     self.project_number_input = QLineEdit()
                     self.project_number_input.setPlaceholderText("例如：2024-PD-001")
                     self.project_number_input.setText(self.default_info.get('project_number', ''))
@@ -643,7 +626,6 @@ Q_actual = Q_std × (P_std / P_actual) × (T_actual / T_std) × Z
                     # 工程名称
                     project_layout = QHBoxLayout()
                     project_label = QLabel("工程名称:")
-                    project_label.setFixedWidth(80)
                     self.project_input = QLineEdit()
                     self.project_input.setPlaceholderText("例如：化工厂管道系统")
                     self.project_input.setText(self.default_info.get('project_name', ''))
@@ -654,7 +636,6 @@ Q_actual = Q_std × (P_std / P_actual) × (T_actual / T_std) × Z
                     # 子项名称
                     subproject_layout = QHBoxLayout()
                     subproject_label = QLabel("子项名称:")
-                    subproject_label.setFixedWidth(80)
                     self.subproject_input = QLineEdit()
                     self.subproject_input.setPlaceholderText("例如：主生产区管道")
                     self.subproject_input.setText(self.default_info.get('subproject_name', ''))
@@ -665,7 +646,6 @@ Q_actual = Q_std × (P_std / P_actual) × (T_actual / T_std) × Z
                     # 计算书编号
                     report_number_layout = QHBoxLayout()
                     report_number_label = QLabel("计算书编号:")
-                    report_number_label.setFixedWidth(80)
                     self.report_number_input = QLineEdit()
                     self.report_number_input.setText(self.report_number)
                     report_number_layout.addWidget(report_number_label)
