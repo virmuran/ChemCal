@@ -2,7 +2,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
                               QLabel, QLineEdit, QPushButton, QComboBox,
                               QTextEdit, QGridLayout, QScrollArea,
                               QTableWidget, QTableWidgetItem, QHeaderView,
-                              QMessageBox)
+                              QMessageBox, QSizePolicy)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
 import math
@@ -233,7 +233,6 @@ class GasMixturePropertiesCalculator(QWidget):
 
         left_widget = QWidget()
         left_widget.setStyleSheet("QWidget { background: transparent; }")
-        left_widget.setMaximumWidth(900)
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
 
@@ -254,8 +253,6 @@ class GasMixturePropertiesCalculator(QWidget):
         condition_layout.setHorizontalSpacing(10)
 
         label_style = "QLabel { font-weight: bold; padding-right: 10px; }"
-        input_width = 400
-        combo_width = 250
 
         # 温度
         temp_label = QLabel("温度:")
@@ -267,12 +264,11 @@ class GasMixturePropertiesCalculator(QWidget):
         self.temperature_input.setText("25")
         self.temperature_input.setPlaceholderText("例如：25")
         self.temperature_input.setValidator(QDoubleValidator(-273, 2000, 2))
-        self.temperature_input.setFixedWidth(input_width)
+        self.temperature_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         condition_layout.addWidget(self.temperature_input, 0, 1)
 
         temp_hint = QLabel("°C")
         temp_hint.setStyleSheet("color: #7f8c8d;")
-        temp_hint.setFixedWidth(combo_width)
         condition_layout.addWidget(temp_hint, 0, 2)
 
         # 压力
@@ -285,12 +281,11 @@ class GasMixturePropertiesCalculator(QWidget):
         self.pressure_input.setText("101.325")
         self.pressure_input.setPlaceholderText("例如：101.325")
         self.pressure_input.setValidator(QDoubleValidator(0.1, 100000, 2))
-        self.pressure_input.setFixedWidth(input_width)
+        self.pressure_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         condition_layout.addWidget(self.pressure_input, 1, 1)
 
         pres_hint = QLabel("kPa")
         pres_hint.setStyleSheet("color: #7f8c8d;")
-        pres_hint.setFixedWidth(combo_width)
         condition_layout.addWidget(pres_hint, 1, 2)
 
         # 混合物类型
@@ -302,12 +297,11 @@ class GasMixturePropertiesCalculator(QWidget):
         self.mixture_type = QComboBox()
         self.mixture_type.setStyleSheet(COMBOBOX_STYLE)
         self.mixture_type.addItems(["理想气体", "真实气体"])
-        self.mixture_type.setFixedWidth(input_width)
+        self.mixture_type.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         condition_layout.addWidget(self.mixture_type, 2, 1)
 
         mix_hint = QLabel("真实气体用Lee-Kesler")
         mix_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        mix_hint.setFixedWidth(combo_width)
         condition_layout.addWidget(mix_hint, 2, 2)
 
         # 计算方法
@@ -319,12 +313,11 @@ class GasMixturePropertiesCalculator(QWidget):
         self.calculation_method = QComboBox()
         self.calculation_method.setStyleSheet(COMBOBOX_STYLE)
         self.calculation_method.addItems(["简单混合规则", "Kay规则", "对应状态原理"])
-        self.calculation_method.setFixedWidth(input_width)
+        self.calculation_method.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         condition_layout.addWidget(self.calculation_method, 3, 1)
 
         method_hint = QLabel("Kay规则/对应状态")
         method_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        method_hint.setFixedWidth(combo_width)
         condition_layout.addWidget(method_hint, 3, 2)
 
         # 组分数
@@ -336,15 +329,17 @@ class GasMixturePropertiesCalculator(QWidget):
         self.component_count = QComboBox()
         self.component_count.setStyleSheet(COMBOBOX_STYLE)
         self.component_count.addItems(["2", "3", "4", "5"])
-        self.component_count.setFixedWidth(input_width)
+        self.component_count.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.component_count.currentTextChanged.connect(self.update_component_table)
         condition_layout.addWidget(self.component_count, 4, 1)
 
         comp_hint = QLabel("2~5组分混合")
         comp_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        comp_hint.setFixedWidth(combo_width)
         condition_layout.addWidget(comp_hint, 4, 2)
 
+        condition_layout.setColumnStretch(0, 4)
+        condition_layout.setColumnStretch(1, 8)
+        condition_layout.setColumnStretch(2, 5)
         left_layout.addWidget(condition_group)
 
         # 3. 组分参数表
@@ -366,7 +361,7 @@ class GasMixturePropertiesCalculator(QWidget):
         calculate_btn.clicked.connect(self.calculate)
         calculate_btn.setStyleSheet("""
             QPushButton {
-                background-color: #3498db;
+                background-color: #27ae60;
                 color: white;
                 border: none;
                 border-radius: 8px;
@@ -374,7 +369,7 @@ class GasMixturePropertiesCalculator(QWidget):
                 font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #2980b9;
+                background-color: #219955;
             }
         """)
         calculate_btn.setMinimumHeight(50)
@@ -415,7 +410,7 @@ class GasMixturePropertiesCalculator(QWidget):
 
         # ====== 右侧：结果显示区域 ======
         right_widget = QWidget()
-        right_widget.setMinimumWidth(400)
+        right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
 
@@ -425,6 +420,7 @@ class GasMixturePropertiesCalculator(QWidget):
 
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet("""
             QTextEdit {
                 border: 1px solid #ecf0f1;
@@ -457,6 +453,7 @@ class GasMixturePropertiesCalculator(QWidget):
         for i in range(count):
             name_combo = QComboBox()
             name_combo.setStyleSheet(COMBOBOX_STYLE)
+            name_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             name_combo.addItems(list(_PRESET_GASES.keys()))
             name_combo.setCurrentIndex(i % len(_PRESET_GASES))
             self.component_table.setCellWidget(i, 0, name_combo)
