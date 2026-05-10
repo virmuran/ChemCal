@@ -2,7 +2,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QGroupBox, QTextEdit, QComboBox, QMessageBox, QFrame,
     QScrollArea, QDialog, QSpinBox, QButtonGroup, QGridLayout,
-    QTableWidget, QTableWidgetItem, QHeaderView
+    QTableWidget, QTableWidgetItem, QHeaderView, QSizePolicy
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
@@ -330,7 +330,7 @@ class MixedLiquidFlashPointCalculator(QWidget):
             "摩尔加权平均法 - 基于摩尔分数的加权平均",
             "Cox 图表法 - 基于沸点的经验方法"
         ])
-        self.method_combo.setFixedWidth(400)
+        self.method_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         method_layout.addWidget(self.method_combo)
         
         left_layout.addWidget(method_group)
@@ -421,7 +421,7 @@ class MixedLiquidFlashPointCalculator(QWidget):
         calculate_btn.clicked.connect(self.calculate_flash_point)
         calculate_btn.setStyleSheet("""
             QPushButton {
-                background-color: #3498db;
+                background-color: #27ae60;
                 color: white;
                 border: none;
                 border-radius: 8px;
@@ -429,15 +429,16 @@ class MixedLiquidFlashPointCalculator(QWidget):
                 font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #2980b9;
+                background-color: #219955;
             }
         """)
         calculate_btn.setMinimumHeight(50)
+        calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         left_layout.addWidget(calculate_btn)
         
         # 右侧：结果显示区域
         right_widget = QWidget()
-        right_widget.setMinimumWidth(400)
+        right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
         
@@ -461,6 +462,7 @@ class MixedLiquidFlashPointCalculator(QWidget):
         
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet("""
             QTextEdit {
                 border: 1px solid #ecf0f1;
@@ -558,7 +560,7 @@ class MixedLiquidFlashPointCalculator(QWidget):
             button_layout.setContentsMargins(4, 4, 4, 4)
             
             edit_btn = QPushButton("编辑")
-            edit_btn.setFixedWidth(50)
+            edit_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             edit_btn.clicked.connect(lambda checked, r=row: self.edit_component(r))
             edit_btn.setStyleSheet("""
                 QPushButton {
@@ -575,7 +577,7 @@ class MixedLiquidFlashPointCalculator(QWidget):
             """)
             
             delete_btn = QPushButton("删除")
-            delete_btn.setFixedWidth(50)
+            delete_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             delete_btn.clicked.connect(lambda checked, r=row: self.delete_component(r))
             delete_btn.setStyleSheet("""
                 QPushButton {
