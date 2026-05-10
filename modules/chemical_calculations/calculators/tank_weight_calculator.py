@@ -436,7 +436,7 @@ class 罐体重量(QWidget):
                 color: white;
                 border: none;
                 border-radius: 8px;
-                padding: 12px;
+                min-height: 50px; padding: 0px;
                 font-weight: bold;
             }
             QPushButton:hover {

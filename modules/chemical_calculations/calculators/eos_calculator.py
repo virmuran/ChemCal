@@ -3,11 +3,10 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
     QLabel, QLineEdit, QPushButton, QComboBox,
     QTextEdit, QGridLayout, QFileDialog, QMessageBox,
-    QScrollArea
+    QScrollArea, QSizePolicy
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QDoubleValidator
-
 
 # ---------------------------------------------------------------------------
 #  纯 Python 三次方程求解器（无需 numpy）
@@ -42,7 +41,7 @@ def solve_cubic_real_roots(a, b, c, d):
         x1 = t1 - p / 3.0
         x2 = -t1 / 2.0 - p / 3.0
         if abs(x1 - x2) > 1e-10:
-            return sorted([x1, x2, x2], reverse=True)
+            return sorted([x1, x2], reverse=True)
         return [x1]
     else:
         half_B = B / 2.0
@@ -54,7 +53,6 @@ def solve_cubic_real_roots(a, b, c, d):
         t = -(C + D) if B > 0 else -(C - D)
         return [t - p / 3.0]
 
-
 def _solve_cubic(a, b, c, d):
     """求解 ax³+bx²+cx+d=0，返回所有正实根（从大到小）。"""
     try:
@@ -62,7 +60,6 @@ def _solve_cubic(a, b, c, d):
         return [r for r in roots if r > 1e-12]
     except Exception:
         return []
-
 
 # ---------------------------------------------------------------------------
 #  物质参数数据库（22 种常见化工物质）
@@ -93,9 +90,8 @@ SUBSTANCE_DATABASE = {
     "苯":      {"tc": 562.05, "pc": 4895,  "omega": 0.2098, "mw": 78.11, "zc": 0.268},
 }
 
-
 # ---------------------------------------------------------------------------
-#  EOS 计算器主类（统一 UI 规范版）
+#  UI 样式常量
 # ---------------------------------------------------------------------------
 
 COMBOBOX_STYLE = """
@@ -117,6 +113,26 @@ COMBOBOX_STYLE = """
         padding: 3px 8px;
     }
 """
+
+GROUP_STYLE = """
+QGroupBox {
+    font-weight: bold;
+    border: 1px solid #bdc3c7;
+    border-radius: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 8px 0 8px;
+}
+"""
+
+# ---------------------------------------------------------------------------
+#  EOS 计算器主类（统一 UI 规范版）
+# ---------------------------------------------------------------------------
+
 class EOSCalculator(QWidget):
     """状态方程计算器 — 支持 vdW / RK / SRK / PR 立方型 EOS"""
     calculation_type = "eos_calculator"
@@ -129,29 +145,21 @@ class EOSCalculator(QWidget):
         self.setup_ui()
 
     def setup_ui(self):
-        group_style = """
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """
         main = QHBoxLayout(self)
         main.setSpacing(15)
         main.setContentsMargins(10, 10, 10, 10)
 
-        # =========== 左侧输入区 ===========
+        # ========== 左侧输入区 ==========
         scroll_left = QScrollArea()
-        scroll_left.setStyleSheet("QScrollArea { border: none; background: transparent; } QScrollBar:vertical { background: transparent; width: 8px; margin: 0; } QScrollBar::handle:vertical { background: #c0c0c0; border-radius: 4px; min-height: 30px; } QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }")
+        scroll_left.setStyleSheet(
+            "QScrollArea { border: none; background: transparent; }"
+            "QScrollBar:vertical { background: transparent; width: 8px; margin: 0; }"
+            "QScrollBar::handle:vertical { background: #c0c0c0; border-radius: 4px; min-height: 30px; }"
+            "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }"
+        )
         scroll_left.setWidgetResizable(True)
         scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
         left = QWidget()
         left.setStyleSheet("QWidget { background: transparent; }")
         ll = QVBoxLayout(left)
@@ -160,44 +168,41 @@ class EOSCalculator(QWidget):
         desc = QLabel(
             "使用立方型状态方程计算流体热力学性质。\n"
             "支持 van der Waals、Redlich-Kwong、Soave-Redlich-Kwong、Peng-Robinson 方程。\n"
-            "可计算压缩因子、逸度系数、剩余焓/熵/Gibbs自由能等。"
+            "可计算压缩因子、逸度系数、剩余焓/熵/Gibbs 自由能等。"
         )
         desc.setWordWrap(True)
         desc.setStyleSheet("color: #7f8c8d; font-size: 12px;")
         ll.addWidget(desc)
 
+        # 标签工厂（不再设固定宽度）
         def L(t):
             l = QLabel(t)
             l.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            l.setMinimumWidth(120)
-            l.setMaximumWidth(200)
             l.setStyleSheet("font-weight: bold; padding-right: 10px;")
+            l.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
             return l
 
+        # 提示标签工厂
         def H(t):
             l = QLabel(t)
-            l.setMinimumWidth(100)
-            l.setMaximumWidth(250)
             l.setStyleSheet("color: #95a5a6; font-size: 11px;")
+            l.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
             return l
 
         # ---- 物质参数 ----
-        sg = QGroupBox("物质参数"); sg.setStyleSheet(group_style)
+        sg = QGroupBox("物质参数")
+        sg.setStyleSheet(GROUP_STYLE)
         sgrid = QGridLayout(sg)
         sgrid.setHorizontalSpacing(10)
         sgrid.setVerticalSpacing(10)
-        sgrid.setColumnStretch(0, 2)  # 标签列可伸缩
-
-        sgrid.setColumnStretch(1, 3)  # 输入框列可伸缩
-
-        sgrid.setColumnStretch(2, 2)  # 提示列可伸缩
-
+        sgrid.setColumnStretch(0, 4)
+        sgrid.setColumnStretch(1, 8)
+        sgrid.setColumnStretch(2, 5)
 
         self.substance_combo = QComboBox()
         self.substance_combo.setStyleSheet(COMBOBOX_STYLE)
         self.substance_combo.addItems(["自定义"] + list(SUBSTANCE_DATABASE.keys()))
-        self.substance_combo.setMinimumWidth(150)
-        self.substance_combo.setMaximumWidth(400)
+        self.substance_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.substance_combo.currentTextChanged.connect(self._on_substance)
         sgrid.addWidget(L("物质选择:"), 0, 0)
         sgrid.addWidget(self.substance_combo, 0, 1)
@@ -205,45 +210,40 @@ class EOSCalculator(QWidget):
 
         self.tc_input = QLineEdit()
         self.tc_input.setPlaceholderText("临界温度")
-        self.tc_input.setMinimumWidth(150)
-        self.tc_input.setMaximumWidth(400)
         self.tc_input.setValidator(QDoubleValidator(1, 2000, 2))
+        self.tc_input.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         sgrid.addWidget(L("临界温度 Tc (K):"), 1, 0)
         sgrid.addWidget(self.tc_input, 1, 1)
         sgrid.addWidget(H("甲烷=190.56"), 1, 2)
 
         self.pc_input = QLineEdit()
         self.pc_input.setPlaceholderText("临界压力")
-        self.pc_input.setMinimumWidth(150)
-        self.pc_input.setMaximumWidth(400)
         self.pc_input.setValidator(QDoubleValidator(100, 100000, 1))
+        self.pc_input.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         sgrid.addWidget(L("临界压力 Pc (kPa):"), 2, 0)
         sgrid.addWidget(self.pc_input, 2, 1)
         sgrid.addWidget(H("甲烷=4599"), 2, 2)
 
         self.omega_input = QLineEdit()
         self.omega_input.setPlaceholderText("偏心因子")
-        self.omega_input.setMinimumWidth(150)
-        self.omega_input.setMaximumWidth(400)
         self.omega_input.setValidator(QDoubleValidator(-1, 2, 4))
-        sgrid.addWidget(L("偏心因子 w:"), 3, 0)
+        self.omega_input.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        sgrid.addWidget(L("偏心因子 ω:"), 3, 0)
         sgrid.addWidget(self.omega_input, 3, 1)
         sgrid.addWidget(H("甲烷=0.0115"), 3, 2)
 
         self.mw_input = QLineEdit()
         self.mw_input.setPlaceholderText("分子量")
-        self.mw_input.setMinimumWidth(150)
-        self.mw_input.setMaximumWidth(400)
         self.mw_input.setValidator(QDoubleValidator(1, 500, 3))
+        self.mw_input.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         sgrid.addWidget(L("分子量 M (g/mol):"), 4, 0)
         sgrid.addWidget(self.mw_input, 4, 1)
         sgrid.addWidget(H("甲烷=16.04"), 4, 2)
 
         self.zc_input = QLineEdit("0.27")
         self.zc_input.setPlaceholderText("临界压缩因子")
-        self.zc_input.setMinimumWidth(150)
-        self.zc_input.setMaximumWidth(400)
         self.zc_input.setValidator(QDoubleValidator(0.1, 0.5, 3))
+        self.zc_input.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         sgrid.addWidget(L("临界压缩因子 Zc:"), 5, 0)
         sgrid.addWidget(self.zc_input, 5, 1)
         sgrid.addWidget(H("一般取0.27"), 5, 2)
@@ -251,10 +251,14 @@ class EOSCalculator(QWidget):
         ll.addWidget(sg)
 
         # ---- 状态方程选择 ----
-        eg = QGroupBox("状态方程选择"); eg.setStyleSheet(group_style)
+        eg = QGroupBox("状态方程选择")
+        eg.setStyleSheet(GROUP_STYLE)
         egrid = QGridLayout(eg)
         egrid.setHorizontalSpacing(10)
         egrid.setVerticalSpacing(10)
+        egrid.setColumnStretch(0, 4)
+        egrid.setColumnStretch(1, 8)
+        egrid.setColumnStretch(2, 5)
 
         self.eos_type = QComboBox()
         self.eos_type.setStyleSheet(COMBOBOX_STYLE)
@@ -265,8 +269,7 @@ class EOSCalculator(QWidget):
             "Soave-Redlich-Kwong方程",
             "Peng-Robinson方程"
         ])
-        self.eos_type.setMinimumWidth(150)
-        self.eos_type.setMaximumWidth(400)
+        self.eos_type.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         egrid.addWidget(L("状态方程:"), 0, 0)
         egrid.addWidget(self.eos_type, 0, 1)
         egrid.addWidget(H("推荐SRK或PR"), 0, 2)
@@ -279,8 +282,7 @@ class EOSCalculator(QWidget):
             "逸度系数计算",
             "剩余性质计算"
         ])
-        self.calc_type_combo.setMinimumWidth(150)
-        self.calc_type_combo.setMaximumWidth(400)
+        self.calc_type_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         egrid.addWidget(L("计算类型:"), 1, 0)
         egrid.addWidget(self.calc_type_combo, 1, 1)
         egrid.addWidget(H("默认综合计算全部性质"), 1, 2)
@@ -288,42 +290,44 @@ class EOSCalculator(QWidget):
         ll.addWidget(eg)
 
         # ---- 计算条件 ----
-        cg = QGroupBox("计算条件"); cg.setStyleSheet(group_style)
+        cg = QGroupBox("计算条件")
+        cg.setStyleSheet(GROUP_STYLE)
         cgrid = QGridLayout(cg)
         cgrid.setHorizontalSpacing(10)
         cgrid.setVerticalSpacing(10)
+        cgrid.setColumnStretch(0, 4)
+        cgrid.setColumnStretch(1, 8)
+        cgrid.setColumnStretch(2, 5)
 
         self.temperature_input = QLineEdit()
         self.temperature_input.setPlaceholderText("温度")
-        self.temperature_input.setMinimumWidth(150)
-        self.temperature_input.setMaximumWidth(400)
         self.temperature_input.setValidator(QDoubleValidator(1, 2000, 2))
+        self.temperature_input.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         cgrid.addWidget(L("温度 T (K):"), 0, 0)
         cgrid.addWidget(self.temperature_input, 0, 1)
         cgrid.addWidget(H("例如298.15"), 0, 2)
 
         self.pressure_input = QLineEdit()
         self.pressure_input.setPlaceholderText("压力")
-        self.pressure_input.setMinimumWidth(150)
-        self.pressure_input.setMaximumWidth(400)
         self.pressure_input.setValidator(QDoubleValidator(0.1, 100000, 2))
+        self.pressure_input.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         cgrid.addWidget(L("压力 P (kPa):"), 1, 0)
         cgrid.addWidget(self.pressure_input, 1, 1)
         cgrid.addWidget(H("例如101.325"), 1, 2)
 
         self.volume_input = QLineEdit()
         self.volume_input.setPlaceholderText("可选，留空自动计算")
-        self.volume_input.setMinimumWidth(150)
-        self.volume_input.setMaximumWidth(400)
         self.volume_input.setValidator(QDoubleValidator(1e-6, 1000, 6))
+        self.volume_input.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         cgrid.addWidget(L("摩尔体积 V (m³/mol):"), 2, 0)
         cgrid.addWidget(self.volume_input, 2, 1)
         cgrid.addWidget(H("留空则由EOS求解"), 2, 2)
 
         ll.addWidget(cg)
 
-        # ---- 方程说明（折叠在左侧底部） ----
-        info_group = QGroupBox("状态方程说明"); info_group.setStyleSheet(group_style)
+        # ---- 方程说明 ----
+        info_group = QGroupBox("状态方程说明")
+        info_group.setStyleSheet(GROUP_STYLE)
         info_layout = QVBoxLayout(info_group)
         info_text = QLabel(
             "理想气体: PV=RT，适用于低压高温\n"
@@ -338,60 +342,103 @@ class EOSCalculator(QWidget):
         ll.addWidget(info_group)
 
         # ---- 计算按钮 ----
-        bb = QHBoxLayout()
         b_calc = QPushButton("  计  算  ")
+        b_calc.setMinimumHeight(50)
+        b_calc.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         b_calc.setStyleSheet(
-            "QPushButton{background-color:#3498db;color:white;font-weight:bold;"
-            "font-size:14px;border-radius:8px;min-height:50px;}"
-            "QPushButton:hover{background-color:#2980b9;}"
+            "QPushButton {"
+            "  background-color: #27ae60;"
+            "  color: white;"
+            "  font-weight: bold;"
+            "  font-size: 16px;"
+            "  border-radius: 8px;"
+            "  min-height: 50px;"
+            "  padding: 0px;"
+            "}"
+            "QPushButton:hover { background-color: #219955; }"
         )
         b_calc.clicked.connect(self.calculate)
+
+        bb = QHBoxLayout()
         bb.addWidget(b_calc)
         ll.addLayout(bb)
 
         # ---- 底部按钮行 ----
-        br = QHBoxLayout()
         b_clr = QPushButton("清空")
+        b_clr.setMinimumHeight(50)
+        b_clr.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         b_clr.setStyleSheet(
-            "QPushButton{background-color:#95a5a6;color:white;font-weight:bold;"
-            "border-radius:6px;padding:8px 20px;}"
-            "QPushButton:hover{background-color:#7f8c8d;}"
+            "QPushButton {"
+            "  background-color: #95a5a6;"
+            "  color: white;"
+            "  font-weight: bold;"
+            "  border-radius: 6px;"
+            "  padding: 8px;"
+            "}"
+            "QPushButton:hover { background-color: #7f8c8d; }"
         )
         b_clr.clicked.connect(self.clear_inputs)
+
         b_txt = QPushButton("下载TXT报告")
+        b_txt.setMinimumHeight(50)
+        b_txt.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         b_txt.setStyleSheet(
-            "QPushButton{background-color:#27ae60;color:white;font-weight:bold;"
-            "border-radius:6px;padding:8px 20px;}"
-            "QPushButton:hover{background-color:#219a52;}"
+            "QPushButton {"
+            "  background-color: #27ae60;"
+            "  color: white;"
+            "  font-weight: bold;"
+            "  border-radius: 6px;"
+            "  padding: 8px;"
+            "}"
+            "QPushButton:hover { background-color: #219653; }"
         )
         b_txt.clicked.connect(self.download_txt_report)
+
         b_pdf = QPushButton("下载PDF报告")
+        b_pdf.setMinimumHeight(50)
+        b_pdf.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         b_pdf.setStyleSheet(
-            "QPushButton{background-color:#e74c3c;color:white;font-weight:bold;"
-            "border-radius:6px;padding:8px 20px;}"
-            "QPushButton:hover{background-color:#c0392b;}"
+            "QPushButton {"
+            "  background-color: #e74c3c;"
+            "  color: white;"
+            "  font-weight: bold;"
+            "  border-radius: 6px;"
+            "  padding: 8px;"
+            "}"
+            "QPushButton:hover { background-color: #c0392b; }"
         )
         b_pdf.clicked.connect(self.generate_pdf_report)
+
+        br = QHBoxLayout()
         br.addWidget(b_clr)
         br.addStretch()
         br.addWidget(b_txt)
         br.addWidget(b_pdf)
         ll.addLayout(br)
 
-        # =========== 右侧结果区 ===========
+        # ========== 右侧结果区 ==========
         right = QWidget()
-        right.setMinimumWidth(400)
+        right.setMinimumWidth(300)
         rl = QVBoxLayout(right)
         rl.setSpacing(10)
+
         rg = QGroupBox("计算结果")
-        rg.setStyleSheet(group_style)
+        rg.setStyleSheet(GROUP_STYLE)
         rv = QVBoxLayout(rg)
+
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
         self.result_text.setMinimumHeight(500)
+        self.result_text.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.result_text.setStyleSheet(
-            "QTextEdit{background-color:#f8f9fa;border:1px solid #dee2e6;"
-            "border-radius:6px;font-family:Consolas,monospace;font-size:13px;padding:10px;}"
+            "QTextEdit {"
+            "  background-color: #f8f9fa;"
+            "  border: 1px solid #dee2e6;"
+            "  border-radius: 6px;"
+            "  font-family: Consolas, monospace;"
+            "  font-size: 13px;"
+            "  padding: 8px;"
+            "}"
         )
         self.result_text.setPlaceholderText("计算结果将在此显示……")
         rv.addWidget(self.result_text)
@@ -639,6 +686,11 @@ class EOSCalculator(QWidget):
         self.substance_combo.setCurrentText("甲烷")
         self.eos_type.setCurrentIndex(0)
         self.calc_type_combo.setCurrentIndex(0)
+        self.tc_input.clear()
+        self.pc_input.clear()
+        self.omega_input.clear()
+        self.mw_input.clear()
+        self.zc_input.setText("0.27")
         self.temperature_input.clear()
         self.pressure_input.clear()
         self.volume_input.clear()
@@ -716,13 +768,13 @@ class EOSCalculator(QWidget):
             f"  对比温度 Tr     : {r['reduced_temp']:.4f}",
             f"  对比压力 Pr     : {r['reduced_pressure']:.4f}",
             f"  对比体积 Vr     : {r['reduced_volume']:.4f}",
-            f"  偏心因子 w      : {r['acentric_factor']:.4f}",
+            f"  偏心因子 ω      : {r['acentric_factor']:.4f}",
             "",
             f"  压缩因子 Z      : {r['z_factor']:.6f}",
             f"  摩尔体积 V      : {r['molar_volume']:.6e} m³/mol",
-            f"  密度 rho        : {r['density']:.4f} kg/m³",
+            f"  密度 ρ        : {r['density']:.4f} kg/m³",
             "",
-            f"  逸度系数 phi    : {r['fugacity_coeff']:.6f}",
+            f"  逸度系数 φ    : {r['fugacity_coeff']:.6f}",
             f"  逸度 f          : {r['fugacity']:.4f} kPa",
             "",
             "-" * 50,

@@ -341,7 +341,7 @@ class RefrigerationCycleCalculator(QWidget):
         calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         calculate_btn.setStyleSheet(
             "QPushButton { background-color: #27ae60; color: white; font-weight: bold; "
-            "border: none; border-radius: 8px; padding: 12px; }"
+            "border: none; border-radius: 8px; min-height: 50px; padding: 0px; }"
             "QPushButton:hover { background-color: #219955; }"
         )
         calculate_btn.clicked.connect(self.calculate)

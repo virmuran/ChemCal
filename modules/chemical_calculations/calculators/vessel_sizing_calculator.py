@@ -461,7 +461,7 @@ class 设备尺寸计算(QWidget):
         calc_btn.setStyleSheet("""
             QPushButton {
                 background-color: #27ae60; color: white; border: none;
-                border-radius: 8px; padding: 12px; font-weight: bold;
+                border-radius: 8px; min-height: 50px; padding: 0px; font-weight: bold;
             }
             QPushButton:hover { background-color: #219955; }
         """)

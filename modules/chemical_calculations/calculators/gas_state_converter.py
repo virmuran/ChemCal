@@ -298,7 +298,8 @@ class 气体标态转压缩态(QWidget):
                 color: white;
                 border: none;
                 border-radius: 8px;
-                padding: 12px;
+                min-height: 50px;
+                padding: 0px;
             }
             QPushButton:hover {
                 background-color: #219955;
@@ -310,7 +311,6 @@ class 气体标态转压缩态(QWidget):
         download_layout = QHBoxLayout()
         download_txt_btn = QPushButton("下载计算书(TXT)")
         download_txt_btn.clicked.connect(self.download_txt_report)
-        download_txt_btn.setMinimumHeight(50)
         download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         download_txt_btn.setStyleSheet("""
             QPushButton {
@@ -328,7 +328,6 @@ class 气体标态转压缩态(QWidget):
 
         download_pdf_btn = QPushButton("下载计算书(PDF)")
         download_pdf_btn.clicked.connect(self.generate_pdf_report)
-        download_pdf_btn.setMinimumHeight(50)
         download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         download_pdf_btn.setStyleSheet("""
             QPushButton {

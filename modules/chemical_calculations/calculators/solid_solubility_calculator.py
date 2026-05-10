@@ -316,7 +316,7 @@ class SolidSolubilityCalculator(QWidget):
                 font-weight: bold;
                 border: none;
                 border-radius: 8px;
-                padding: 12px;
+                min-height: 50px; padding: 0px;
             }
             QPushButton:hover { background-color: #219955; }
         """)
