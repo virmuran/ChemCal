@@ -834,7 +834,7 @@ class HazardousChemicalsQuery(QWidget):
         ]
 
         self.filtered_chemicals = self.chemicals_data.copy()
-        self.stats_label.setText(f"共加载 {len(self.chemicals_data)} 种化学品")
+        self.filter_chemicals()
 
     def on_search_text_changed(self, text):
         """处理搜索文本变化"""
