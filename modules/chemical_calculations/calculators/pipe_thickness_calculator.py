@@ -2,7 +2,8 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QGroupBox, QTextEdit, QComboBox, QMessageBox, QFrame,
     QScrollArea, QDialog, QSpinBox, QButtonGroup, QGridLayout,
-    QTableWidget, QTableWidgetItem, QHeaderView, QFileDialog, QDialogButtonBox
+    QTableWidget, QTableWidgetItem, QHeaderView, QFileDialog, QDialogButtonBox,
+    QSizePolicy
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
@@ -30,6 +31,22 @@ COMBOBOX_STYLE = """
         padding: 3px 8px;
     }
 """
+
+GROUP_STYLE = """
+    QGroupBox {
+        font-weight: bold;
+        border: 1px solid #bdc3c7;
+        border-radius: 8px;
+        margin-top: 10px;
+        padding-top: 10px;
+    }
+    QGroupBox::title {
+        subcontrol-origin: margin;
+        left: 10px;
+        padding: 0 8px 0 8px;
+    }
+"""
+
 class 管道壁厚(QWidget):
     """管道壁厚计算器（左右布局优化版）"""
     
@@ -86,20 +103,7 @@ class 管道壁厚(QWidget):
         
         # 2. 计算标准选择
         standard_group = QGroupBox("计算标准")
-        standard_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
+        standard_group.setStyleSheet(GROUP_STYLE)
         standard_layout = QHBoxLayout(standard_group)
         
         self.standard_combo = QComboBox()
@@ -110,7 +114,7 @@ class 管道壁厚(QWidget):
             "GB 50316 - 工业金属管道设计规范",
             "SH/T 3059 - 石油化工管道设计"
         ])
-        self.standard_combo.setFixedWidth(300)
+        self.standard_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         standard_layout.addWidget(self.standard_combo)
         standard_layout.addStretch()
         
@@ -118,37 +122,20 @@ class 管道壁厚(QWidget):
         
         # 3. 输入参数组 - 使用GridLayout实现整齐的布局
         input_group = QGroupBox("输入参数")
-        input_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
+        input_group.setStyleSheet(GROUP_STYLE)
         
         # 使用GridLayout确保整齐排列
         input_layout = QGridLayout(input_group)
         input_layout.setVerticalSpacing(12)
         input_layout.setHorizontalSpacing(10)
+        input_layout.setColumnStretch(0, 4)
+        input_layout.setColumnStretch(1, 8)
+        input_layout.setColumnStretch(2, 5)
         
-        # 标签样式 - 右对齐
-        label_style = """
-            QLabel {
-                font-weight: bold;
-                padding-right: 10px;
-            }
-        """
+        # 标签样式 - 右对齐，粗体，右侧留间距
+        label_style = "font-weight: bold; padding-right: 10px;"
         
-        # 输入框和下拉菜单的固定宽度
-        input_width = 400
-        combo_width = 250
+        # 输入框和下拉菜单使用 SizePolicy 自适应宽度，不设置固定宽度
         
         # 第一列：参数名称（右对齐）
         # 第二列：输入框（固定宽度）
@@ -167,7 +154,7 @@ class 管道壁厚(QWidget):
         self.pressure_input.setPlaceholderText("例如: 1.0")
         self.pressure_input.setValidator(QDoubleValidator(0.01, 100.0, 3))
         self.pressure_input.setText("1.0")
-        self.pressure_input.setFixedWidth(input_width)
+        self.pressure_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         pressure_unit_layout.addWidget(self.pressure_input)
         
         input_layout.addLayout(pressure_unit_layout, row, 1)
@@ -175,7 +162,7 @@ class 管道壁厚(QWidget):
         # 压力提示
         self.pressure_hint = QLabel("1 MPa = 10 bar")
         self.pressure_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        self.pressure_hint.setFixedWidth(combo_width)
+        self.pressure_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.pressure_hint, row, 2)
         
         row += 1
@@ -191,7 +178,7 @@ class 管道壁厚(QWidget):
         self.temp_input.setPlaceholderText("例如: 150")
         self.temp_input.setValidator(QDoubleValidator(-200.0, 800.0, 1))
         self.temp_input.setText("180")
-        self.temp_input.setFixedWidth(input_width)
+        self.temp_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         temp_unit_layout.addWidget(self.temp_input)
         
         input_layout.addLayout(temp_unit_layout, row, 1)
@@ -199,7 +186,7 @@ class 管道壁厚(QWidget):
         # 温度提示
         self.temp_hint = QLabel("直接输入温度值")
         self.temp_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        self.temp_hint.setFixedWidth(combo_width)
+        self.temp_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.temp_hint, row, 2)
         
         row += 1
@@ -215,7 +202,7 @@ class 管道壁厚(QWidget):
         self.diameter_input.setPlaceholderText("例如: 114.3")
         self.diameter_input.setValidator(QDoubleValidator(1.0, 2000.0, 2))
         self.diameter_input.setText("108")
-        self.diameter_input.setFixedWidth(input_width)
+        self.diameter_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         diameter_unit_layout.addWidget(self.diameter_input)
         
         input_layout.addLayout(diameter_unit_layout, row, 1)
@@ -223,7 +210,7 @@ class 管道壁厚(QWidget):
         self.diameter_combo = QComboBox()
         self.diameter_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_diameter_options()
-        self.diameter_combo.setFixedWidth(combo_width)
+        self.diameter_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.diameter_combo.currentTextChanged.connect(self.on_diameter_changed)
         input_layout.addWidget(self.diameter_combo, row, 2)
         
@@ -240,7 +227,7 @@ class 管道壁厚(QWidget):
         self.weld_input.setPlaceholderText("例如: 1.0")
         self.weld_input.setValidator(QDoubleValidator(0.1, 1.0, 3))
         self.weld_input.setText("1.0")
-        self.weld_input.setFixedWidth(input_width)
+        self.weld_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         weld_unit_layout.addWidget(self.weld_input)
         
         input_layout.addWidget(self.weld_input, row, 1)
@@ -248,7 +235,7 @@ class 管道壁厚(QWidget):
         self.weld_combo = QComboBox()
         self.weld_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_weld_factor_options()
-        self.weld_combo.setFixedWidth(combo_width)
+        self.weld_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.weld_combo.currentTextChanged.connect(self.on_weld_factor_changed)
         input_layout.addWidget(self.weld_combo, row, 2)
         
@@ -263,13 +250,13 @@ class 管道壁厚(QWidget):
         self.stress_input = QLineEdit()
         self.stress_input.setPlaceholderText("自动填充")
         self.stress_input.setReadOnly(True)
-        self.stress_input.setFixedWidth(input_width)
+        self.stress_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.stress_input, row, 1)
         
         self.material_combo = QComboBox()
         self.material_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_material_options()
-        self.material_combo.setFixedWidth(combo_width)
+        self.material_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.material_combo.currentTextChanged.connect(self.on_material_changed)
         input_layout.addWidget(self.material_combo, row, 2)
         
@@ -284,13 +271,13 @@ class 管道壁厚(QWidget):
         self.y_input = QLineEdit()
         self.y_input.setPlaceholderText("自动计算")
         self.y_input.setReadOnly(True)
-        self.y_input.setFixedWidth(input_width)
+        self.y_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.y_input, row, 1)
         
         self.y_combo = QComboBox()
         self.y_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_y_factor_options()
-        self.y_combo.setFixedWidth(combo_width)
+        self.y_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.y_combo.currentTextChanged.connect(self.on_y_factor_changed)
         input_layout.addWidget(self.y_combo, row, 2)
         
@@ -307,7 +294,7 @@ class 管道壁厚(QWidget):
         self.thinning_input.setPlaceholderText("例如: 0.50")
         self.thinning_input.setValidator(QDoubleValidator(0.0, 10.0, 2))
         self.thinning_input.setText("0.50")
-        self.thinning_input.setFixedWidth(input_width)
+        self.thinning_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         thinning_unit_layout.addWidget(self.thinning_input)
         
         input_layout.addLayout(thinning_unit_layout, row, 1)
@@ -321,7 +308,7 @@ class 管道壁厚(QWidget):
             "0.75 mm - 中等减薄",
             "1.00 mm - 较大减薄"
         ])
-        self.thinning_combo.setFixedWidth(combo_width)
+        self.thinning_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.thinning_combo.currentTextChanged.connect(self.on_thinning_changed)
         input_layout.addWidget(self.thinning_combo, row, 2)
         
@@ -338,7 +325,7 @@ class 管道壁厚(QWidget):
         self.corrosion_input.setPlaceholderText("例如: 0.05")
         self.corrosion_input.setValidator(QDoubleValidator(0.0, 10.0, 2))
         self.corrosion_input.setText("0.05")
-        self.corrosion_input.setFixedWidth(input_width)
+        self.corrosion_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         corrosion_unit_layout.addWidget(self.corrosion_input)
         
         input_layout.addLayout(corrosion_unit_layout, row, 1)
@@ -354,7 +341,7 @@ class 管道壁厚(QWidget):
             "1.50 mm - 严重腐蚀",
             "2.00 mm - 非常严重腐蚀"
         ])
-        self.corrosion_combo.setFixedWidth(combo_width)
+        self.corrosion_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.corrosion_combo.currentTextChanged.connect(self.on_corrosion_changed)
         input_layout.addWidget(self.corrosion_combo, row, 2)
         
@@ -363,7 +350,7 @@ class 管道壁厚(QWidget):
         # 4. 计算按钮
         calculate_btn = QPushButton("计算")
         calculate_btn.setFont(QFont("Arial", 12, QFont.Bold))
-        calculate_btn.clicked.connect(self.calculate_thickness)
+        calculate_btn.clicked.connect(self.calculate)
         calculate_btn.setStyleSheet("""
             QPushButton {
                 background-color: #27ae60;
@@ -378,6 +365,7 @@ class 管道壁厚(QWidget):
             }
         """)
         calculate_btn.setMinimumHeight(50)
+        calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         left_layout.addWidget(calculate_btn)
         
         # 5. 下载按钮布局
@@ -397,6 +385,7 @@ class 管道壁厚(QWidget):
                 background-color: #219653;
             }
         """)
+        download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         download_pdf_btn = QPushButton("下载计算书(PDF)")
         download_pdf_btn.clicked.connect(self.generate_pdf_report)
@@ -413,6 +402,7 @@ class 管道壁厚(QWidget):
                 background-color: #c0392b;
             }
         """)
+        download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         download_layout.addWidget(download_txt_btn)
         download_layout.addWidget(download_pdf_btn)
@@ -423,30 +413,18 @@ class 管道壁厚(QWidget):
         
         # 右侧：结果显示区域 (占1/3宽度)
         right_widget = QWidget()
-        right_widget.setMinimumWidth(400)
+        right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
         
         # 结果显示
         self.result_group = QGroupBox("计算结果")
-        self.result_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
+        self.result_group.setStyleSheet(GROUP_STYLE)
         result_layout = QVBoxLayout(self.result_group)
         
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet("""
             QTextEdit {
                 border: 1px solid #ecf0f1;
@@ -731,7 +709,7 @@ class 管道壁厚(QWidget):
         except:
             pass
     
-    def calculate_thickness(self):
+    def calculate(self):
         """计算管道壁厚"""
         try:
             # 获取输入值
@@ -951,7 +929,7 @@ class 管道壁厚(QWidget):
                     # 公司名称
                     company_layout = QHBoxLayout()
                     company_label = QLabel("公司名称:")
-                    company_label.setFixedWidth(80)
+                    company_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
                     self.company_input = QLineEdit()
                     self.company_input.setPlaceholderText("例如：XX建筑工程有限公司")
                     self.company_input.setText(self.default_info.get('company_name', ''))
@@ -962,7 +940,7 @@ class 管道壁厚(QWidget):
                     # 工程编号
                     number_layout = QHBoxLayout()
                     number_label = QLabel("工程编号:")
-                    number_label.setFixedWidth(80)
+                    number_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
                     self.project_number_input = QLineEdit()
                     self.project_number_input.setPlaceholderText("例如：2024-PD-001")
                     self.project_number_input.setText(self.default_info.get('project_number', ''))
@@ -973,7 +951,7 @@ class 管道壁厚(QWidget):
                     # 工程名称
                     project_layout = QHBoxLayout()
                     project_label = QLabel("工程名称:")
-                    project_label.setFixedWidth(80)
+                    project_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
                     self.project_input = QLineEdit()
                     self.project_input.setPlaceholderText("例如：化工厂管道系统")
                     self.project_input.setText(self.default_info.get('project_name', ''))
@@ -984,7 +962,7 @@ class 管道壁厚(QWidget):
                     # 子项名称
                     subproject_layout = QHBoxLayout()
                     subproject_label = QLabel("子项名称:")
-                    subproject_label.setFixedWidth(80)
+                    subproject_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
                     self.subproject_input = QLineEdit()
                     self.subproject_input.setPlaceholderText("例如：主生产区管道")
                     self.subproject_input.setText(self.default_info.get('subproject_name', ''))
@@ -995,7 +973,7 @@ class 管道壁厚(QWidget):
                     # 计算书编号
                     report_number_layout = QHBoxLayout()
                     report_number_label = QLabel("计算书编号:")
-                    report_number_label.setFixedWidth(80)
+                    report_number_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
                     self.report_number_input = QLineEdit()
                     self.report_number_input.setText(self.report_number)
                     report_number_layout.addWidget(report_number_label)
