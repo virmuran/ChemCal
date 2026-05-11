@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QGroupBox, QTextEdit, QComboBox, QGridLayout, QMessageBox, QDialog,
-    QFileDialog, QDialogButtonBox, QScrollArea
+    QFileDialog, QDialogButtonBox, QScrollArea, QSizePolicy
 )
 from PySide6.QtGui import QFont, QDoubleValidator
 from PySide6.QtCore import Qt
@@ -29,6 +29,22 @@ COMBOBOX_STYLE = """
         padding: 3px 8px;
     }
 """
+GROUP_STYLE = """
+    QGroupBox {
+        font-weight: bold;
+        border: 1px solid #bdc3c7;
+        border-radius: 8px;
+        margin-top: 10px;
+        padding-top: 10px;
+    }
+    QGroupBox::title {
+        subcontrol-origin: margin;
+        left: 10px;
+        padding: 0 8px 0 8px;
+    }
+"""
+
+
 class ProjectInfoDialog(QDialog):
     """工程信息对话框 - 与压降计算模块保持一致"""
     
@@ -51,7 +67,7 @@ class ProjectInfoDialog(QDialog):
         # 公司名称
         company_layout = QHBoxLayout()
         company_label = QLabel("公司名称:")
-        company_label.setFixedWidth(80)
+        company_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.company_input = QLineEdit()
         self.company_input.setPlaceholderText("例如：XX建筑工程有限公司")
         self.company_input.setText(self.default_info.get('company_name', ''))
@@ -62,7 +78,7 @@ class ProjectInfoDialog(QDialog):
         # 工程编号
         number_layout = QHBoxLayout()
         number_label = QLabel("工程编号:")
-        number_label.setFixedWidth(80)
+        number_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.project_number_input = QLineEdit()
         self.project_number_input.setPlaceholderText("例如：2024-PD-001")
         self.project_number_input.setText(self.default_info.get('project_number', ''))
@@ -73,7 +89,7 @@ class ProjectInfoDialog(QDialog):
         # 工程名称
         project_layout = QHBoxLayout()
         project_label = QLabel("工程名称:")
-        project_label.setFixedWidth(80)
+        project_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.project_input = QLineEdit()
         self.project_input.setPlaceholderText("例如：化工厂管道系统")
         self.project_input.setText(self.default_info.get('project_name', ''))
@@ -84,7 +100,7 @@ class ProjectInfoDialog(QDialog):
         # 子项名称
         subproject_layout = QHBoxLayout()
         subproject_label = QLabel("子项名称:")
-        subproject_label.setFixedWidth(80)
+        subproject_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.subproject_input = QLineEdit()
         self.subproject_input.setPlaceholderText("例如：主生产区管道")
         self.subproject_input.setText(self.default_info.get('subproject_name', ''))
@@ -95,7 +111,7 @@ class ProjectInfoDialog(QDialog):
         # 计算书编号
         report_number_layout = QHBoxLayout()
         report_number_label = QLabel("计算书编号:")
-        report_number_label.setFixedWidth(80)
+        report_number_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.report_number_input = QLineEdit()
         self.report_number_input.setText(self.report_number)
         report_number_layout.addWidget(report_number_label)
@@ -172,37 +188,19 @@ class 管道跨距(QWidget):
         
         # 2. 输入参数组 - 使用GridLayout实现整齐的布局
         input_group = QGroupBox("输入参数")
-        input_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
+        input_group.setStyleSheet(GROUP_STYLE)
         
         # 使用GridLayout确保整齐排列
         input_layout = QGridLayout(input_group)
         input_layout.setVerticalSpacing(12)
         input_layout.setHorizontalSpacing(10)
+        input_layout.setColumnStretch(0, 4)
+        input_layout.setColumnStretch(1, 8)
+        input_layout.setColumnStretch(2, 5)
         
         # 标签样式 - 右对齐
-        label_style = """
-            QLabel {
-                font-weight: bold;
-                padding-right: 10px;
-            }
-        """
+        label_style = "font-weight: bold; padding-right: 10px;"
         
-        # 输入框和下拉菜单的固定宽度
-        input_width = 400
-        combo_width = 250
         
         row = 0
         
@@ -215,13 +213,13 @@ class 管道跨距(QWidget):
         self.od_input = QLineEdit()
         self.od_input.setPlaceholderText("输入外径值")
         self.od_input.setValidator(QDoubleValidator(1.0, 2000.0, 6))
-        self.od_input.setFixedWidth(input_width)
+        self.od_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.od_input, row, 1)
         
         self.od_combo = QComboBox()
         self.od_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_od_options()
-        self.od_combo.setFixedWidth(combo_width)
+        self.od_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.od_combo.currentTextChanged.connect(self.on_od_changed)
         input_layout.addWidget(self.od_combo, row, 2)
         
@@ -236,13 +234,13 @@ class 管道跨距(QWidget):
         self.thickness_input = QLineEdit()
         self.thickness_input.setPlaceholderText("输入壁厚值")
         self.thickness_input.setValidator(QDoubleValidator(0.1, 100.0, 6))
-        self.thickness_input.setFixedWidth(input_width)
+        self.thickness_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.thickness_input, row, 1)
         
         self.thickness_combo = QComboBox()
         self.thickness_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_thickness_options()
-        self.thickness_combo.setFixedWidth(combo_width)
+        self.thickness_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.thickness_combo.currentTextChanged.connect(self.on_thickness_changed)
         input_layout.addWidget(self.thickness_combo, row, 2)
         
@@ -257,14 +255,14 @@ class 管道跨距(QWidget):
         self.material_combo = QComboBox()
         self.material_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_material_options()
-        self.material_combo.setFixedWidth(input_width)
+        self.material_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.material_combo.currentTextChanged.connect(self.on_material_changed)
         input_layout.addWidget(self.material_combo, row, 1)
         
         # 材料属性提示标签
         self.material_hint = QLabel("根据材料自动计算")
         self.material_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        self.material_hint.setFixedWidth(combo_width)
+        self.material_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.material_hint, row, 2)
         
         row += 1
@@ -278,13 +276,13 @@ class 管道跨距(QWidget):
         self.fluid_density_input = QLineEdit()
         self.fluid_density_input.setPlaceholderText("输入流体密度")
         self.fluid_density_input.setValidator(QDoubleValidator(0.0, 20000.0, 6))
-        self.fluid_density_input.setFixedWidth(input_width)
+        self.fluid_density_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.fluid_density_input, row, 1)
         
         self.fluid_combo = QComboBox()
         self.fluid_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_fluid_options()
-        self.fluid_combo.setFixedWidth(combo_width)
+        self.fluid_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.fluid_combo.currentTextChanged.connect(self.on_fluid_changed)
         input_layout.addWidget(self.fluid_combo, row, 2)
         
@@ -299,13 +297,13 @@ class 管道跨距(QWidget):
         self.insulation_input = QLineEdit()
         self.insulation_input.setPlaceholderText("输入保温层厚度")
         self.insulation_input.setValidator(QDoubleValidator(0.0, 500.0, 6))
-        self.insulation_input.setFixedWidth(input_width)
+        self.insulation_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.insulation_input, row, 1)
         
         self.insulation_combo = QComboBox()
         self.insulation_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_insulation_options()
-        self.insulation_combo.setFixedWidth(combo_width)
+        self.insulation_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.insulation_combo.currentTextChanged.connect(self.on_insulation_changed)
         input_layout.addWidget(self.insulation_combo, row, 2)
         
@@ -320,13 +318,13 @@ class 管道跨距(QWidget):
         self.insulation_density_input = QLineEdit()
         self.insulation_density_input.setPlaceholderText("输入保温层密度")
         self.insulation_density_input.setValidator(QDoubleValidator(0.0, 2000.0, 6))
-        self.insulation_density_input.setFixedWidth(input_width)
+        self.insulation_density_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.insulation_density_input, row, 1)
         
         self.insulation_density_combo = QComboBox()
         self.insulation_density_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_insulation_density_options()
-        self.insulation_density_combo.setFixedWidth(combo_width)
+        self.insulation_density_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.insulation_density_combo.currentTextChanged.connect(self.on_insulation_density_changed)
         input_layout.addWidget(self.insulation_density_combo, row, 2)
         
@@ -341,13 +339,13 @@ class 管道跨距(QWidget):
         self.stress_input = QLineEdit()
         self.stress_input.setPlaceholderText("输入允许应力值")
         self.stress_input.setValidator(QDoubleValidator(1.0, 1000.0, 6))
-        self.stress_input.setFixedWidth(input_width)
+        self.stress_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.stress_input, row, 1)
         
         self.stress_combo = QComboBox()
         self.stress_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_stress_options()
-        self.stress_combo.setFixedWidth(combo_width)
+        self.stress_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.stress_combo.currentTextChanged.connect(self.on_stress_changed)
         input_layout.addWidget(self.stress_combo, row, 2)
         
@@ -359,7 +357,7 @@ class 管道跨距(QWidget):
         calculate_btn.clicked.connect(self.calculate_span)
         calculate_btn.setStyleSheet("""
             QPushButton {
-                background-color: #9b59b6;
+                background-color: #27ae60;
                 color: white;
                 border: none;
                 border-radius: 8px;
@@ -367,10 +365,11 @@ class 管道跨距(QWidget):
                 font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #8e44ad;
+                background-color: #219955;
             }
         """)
         calculate_btn.setMinimumHeight(50)
+        calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         left_layout.addWidget(calculate_btn)
         
         # 4. 下载按钮布局
@@ -390,6 +389,7 @@ class 管道跨距(QWidget):
                 background-color: #219653;
             }
         """)
+        download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         download_pdf_btn = QPushButton("下载计算书(PDF)")
         download_pdf_btn.clicked.connect(self.generate_pdf_report)
@@ -406,6 +406,7 @@ class 管道跨距(QWidget):
                 background-color: #c0392b;
             }
         """)
+        download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         download_layout.addWidget(download_txt_btn)
         download_layout.addWidget(download_pdf_btn)
@@ -416,26 +417,13 @@ class 管道跨距(QWidget):
         
         # 右侧：结果显示区域 (占1/3宽度)
         right_widget = QWidget()
-        right_widget.setMinimumWidth(400)
+        right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
         
         # 结果显示
         self.result_group = QGroupBox("计算结果")
-        self.result_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
+        self.result_group.setStyleSheet(GROUP_STYLE)
         result_layout = QVBoxLayout(self.result_group)
         
         self.result_text = QTextEdit()
@@ -874,6 +862,9 @@ class 管道跨距(QWidget):
             
             # 取较小值作为推荐跨距
             recommended_span = min(span_stress, span_deflection)
+
+            # 推荐跨距下的实际挠度（用于利用率计算）
+            max_deflection = recommended_span / 360  # 允许挠度 L/360
             
             # 显示结果
             result = f"""═══════════
