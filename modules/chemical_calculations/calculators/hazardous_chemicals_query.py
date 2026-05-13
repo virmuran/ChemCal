@@ -595,7 +595,7 @@ class HazardousChemicalsQuery(QWidget):
         button_layout.addWidget(self.clear_btn)
 
         # 下载TXT按钮（绿色）
-        self.download_txt_btn = QPushButton("下载TXT")
+        self.download_txt_btn = QPushButton("下载计算书(TXT)")
         self.download_txt_btn.clicked.connect(self.download_txt_report)
         self.download_txt_btn.setMinimumHeight(50)
         self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -619,7 +619,7 @@ class HazardousChemicalsQuery(QWidget):
         button_layout.addWidget(self.download_txt_btn)
 
         # 下载PDF按钮（红色）
-        self.download_pdf_btn = QPushButton("下载PDF")
+        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
         self.download_pdf_btn.clicked.connect(self.generate_pdf_report)
         self.download_pdf_btn.setMinimumHeight(50)
         self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)

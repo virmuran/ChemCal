@@ -206,7 +206,7 @@ class PureSubstanceProperties(QWidget):
         left_layout.addWidget(query_group)
         
         # 计算按钮（绿色 #27ae60，字号12pt，最小高度50px）
-        self.query_btn = QPushButton("查询物性数据")
+        self.query_btn = QPushButton("查询")
         self.query_btn.clicked.connect(self.calculate)
         self.query_btn.setFont(QFont("Arial", 12))
         self.query_btn.setMinimumHeight(50)
@@ -337,7 +337,7 @@ class PureSubstanceProperties(QWidget):
         button_layout.addStretch()
         
         # 下载TXT按钮（绿色 #27ae60，最小高度50px）
-        self.download_txt_btn = QPushButton("下载TXT")
+        self.download_txt_btn = QPushButton("下载计算书(TXT)")
         self.download_txt_btn.clicked.connect(self.download_txt_report)
         self.download_txt_btn.setMinimumHeight(50)
         self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -355,7 +355,7 @@ class PureSubstanceProperties(QWidget):
         button_layout.addWidget(self.download_txt_btn)
         
         # 下载PDF按钮（红色 #e74c3c，最小高度50px）
-        self.download_pdf_btn = QPushButton("下载PDF")
+        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
         self.download_pdf_btn.clicked.connect(self.generate_pdf_report)
         self.download_pdf_btn.setMinimumHeight(50)
         self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -394,11 +394,6 @@ class PureSubstanceProperties(QWidget):
                 self.display_basic_properties(data["basic"])
                 self.display_thermal_properties(data["thermal"], temperature, pressure)
                 self.update_result_text(substance, data, temperature, pressure)
-                
-                # 保存到历史记录
-                if self.data_manager:
-                    history_data = self._get_history_data()
-                    self.data_manager.add_record(self.calculation_type, history_data)
             else:
                 QMessageBox.information(self, "查询结果", f"未找到物质 '{substance}' 的物性数据")
                 

@@ -287,7 +287,7 @@ class 气体标态转压缩态(QWidget):
         left_layout.addWidget(input_group)
         
         # 3. 计算按钮
-        calculate_btn = QPushButton("计算")
+        calculate_btn = QPushButton("查询")
         calculate_btn.setFont(QFont("Arial", 12, QFont.Bold))
         calculate_btn.clicked.connect(self.calculate)
         calculate_btn.setMinimumHeight(50)

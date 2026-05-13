@@ -206,7 +206,7 @@ class CorrosionDataQuery(QWidget):
         left_layout.addWidget(query_group)
 
         # 查询按钮（绿色 #27ae60）
-        self.query_btn = QPushButton("查询腐蚀数据")
+        self.query_btn = QPushButton("查询")
         self.query_btn.clicked.connect(self.calculate)
         self.query_btn.setFont(QFont("Arial", 12))
         self.query_btn.setMinimumHeight(50)
@@ -347,7 +347,7 @@ class CorrosionDataQuery(QWidget):
 
         bottom_layout.addStretch()
 
-        self.download_txt_btn = QPushButton("下载TXT")
+        self.download_txt_btn = QPushButton("下载计算书(TXT)")
         self.download_txt_btn.clicked.connect(self.download_txt_report)
         self.download_txt_btn.setMinimumHeight(50)
         self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -364,7 +364,7 @@ class CorrosionDataQuery(QWidget):
         )
         bottom_layout.addWidget(self.download_txt_btn)
 
-        self.download_pdf_btn = QPushButton("下载PDF")
+        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
         self.download_pdf_btn.clicked.connect(self.generate_pdf_report)
         self.download_pdf_btn.setMinimumHeight(50)
         self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -420,11 +420,6 @@ class CorrosionDataQuery(QWidget):
             else:
                 # 无精确匹配时尝试模糊查询
                 self.fuzzy_query(material, medium, temperature, concentration)
-
-            # 保存到历史记录
-            if self.data_manager:
-                history_data = self._get_history_data()
-                self.data_manager.add_record(self.calculation_type, history_data)
 
         except Exception as e:
             QMessageBox.warning(self, "查询错误", f"查询过程中发生错误: {str(e)}")

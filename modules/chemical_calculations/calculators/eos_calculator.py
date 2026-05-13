@@ -342,7 +342,7 @@ class EOSCalculator(QWidget):
         ll.addWidget(info_group)
 
         # ---- 计算按钮 ----
-        b_calc = QPushButton("  计  算  ")
+        b_calc = QPushButton("查询")
         b_calc.setMinimumHeight(50)
         b_calc.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         b_calc.setStyleSheet(
@@ -379,7 +379,7 @@ class EOSCalculator(QWidget):
         )
         b_clr.clicked.connect(self.clear_inputs)
 
-        b_txt = QPushButton("下载TXT报告")
+        b_txt = QPushButton("下载计算书(TXT)")
         b_txt.setMinimumHeight(50)
         b_txt.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         b_txt.setStyleSheet(
@@ -394,7 +394,7 @@ class EOSCalculator(QWidget):
         )
         b_txt.clicked.connect(self.download_txt_report)
 
-        b_pdf = QPushButton("下载PDF报告")
+        b_pdf = QPushButton("下载计算书(PDF)")
         b_pdf.setMinimumHeight(50)
         b_pdf.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         b_pdf.setStyleSheet(
@@ -741,11 +741,6 @@ class EOSCalculator(QWidget):
             self._display(results, eos_type, calc_type, T, P)
 
             # 保存历史
-            if self.data_manager:
-                try:
-                    self.data_manager.add_record("eos_calculator", self._get_history_data())
-                except Exception:
-                    pass
 
         except ValueError as e:
             self.result_text.setPlainText(f"输入错误：{e}")

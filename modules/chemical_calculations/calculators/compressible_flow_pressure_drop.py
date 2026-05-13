@@ -246,7 +246,7 @@ class CompressibleFlowPressureDrop(QWidget):
 
         # ---- 计算按钮 ----
         bb = QHBoxLayout()
-        b_calc = QPushButton("计算压降")
+        b_calc = QPushButton("计算")
         calc_font = QFont("Arial", 12)
         calc_font.setBold(True)
         b_calc.setFont(calc_font)
@@ -302,11 +302,11 @@ class CompressibleFlowPressureDrop(QWidget):
         b_clr = QPushButton("清空")
         b_clr.setStyleSheet("QPushButton{background-color:#95a5a6;color:white;font-weight:bold;border-radius:6px;padding:8px 20px;}QPushButton:hover{background-color:#7f8c8d;}")
         b_clr.clicked.connect(self.clear_inputs)
-        b_txt = QPushButton("下载TXT报告")
+        b_txt = QPushButton("下载计算书(TXT)")
         b_txt.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         b_txt.setStyleSheet("QPushButton{background-color:#27ae60;color:white;font-weight:bold;border-radius:6px;padding:8px;}QPushButton:hover{background-color:#219653;}")
         b_txt.clicked.connect(self.download_txt_report)
-        b_pdf = QPushButton("下载PDF报告")
+        b_pdf = QPushButton("下载计算书(PDF)")
         b_pdf.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         b_pdf.setStyleSheet("QPushButton{background-color:#e74c3c;color:white;font-weight:bold;border-radius:6px;padding:8px;}QPushButton:hover{background-color:#c0392b;}")
         b_pdf.clicked.connect(self.generate_pdf_report)
@@ -461,11 +461,6 @@ class CompressibleFlowPressureDrop(QWidget):
             self._last_params = {"method": method, "mw": mw, "gamma": gamma, "R": R}
             self._display(dp_kPa, results, Re1, Ma, f)
             self._update_table(results, Re1, Ma, f)
-            if self.data_manager:
-                try:
-                    self.data_manager.add_record("compressible_flow", self._get_history())
-                except Exception:
-                    pass
         except ValueError as e:
             self._err("输入错误：" + str(e))
         except Exception as e:

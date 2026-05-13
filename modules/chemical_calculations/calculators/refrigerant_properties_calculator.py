@@ -326,7 +326,7 @@ class RefrigerantPropertiesCalculator(QWidget):
         left_layout.addWidget(info_group)
 
         # 5. 计算按钮
-        calculate_btn = QPushButton("计算")
+        calculate_btn = QPushButton("查询")
         calculate_btn.setFont(QFont("Arial", 12, QFont.Bold))
         calculate_btn.clicked.connect(self.calculate)
         calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)

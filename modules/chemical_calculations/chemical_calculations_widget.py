@@ -172,7 +172,7 @@ class ChemicalCalculationsWidget(QWidget):
         success_count = 0
         for title, calculator_name, module_name, supports_data_manager in page_configs:
             try:
-                widget = self.create_calculator_widget(calculator_name, module_name, supports_data_manager)
+                widget = self.create_calculator_widget(calculator_name, module_name, supports_data_manager, title)
                 self.add_page(title, widget)
                 success_count += 1
             except Exception as e:
@@ -185,7 +185,7 @@ class ChemicalCalculationsWidget(QWidget):
         if len(self.pages) == 0:
             self.add_fallback_page()
 
-    def create_calculator_widget(self, calculator_name, module_name, supports_data_manager):
+    def create_calculator_widget(self, calculator_name, module_name, supports_data_manager, display_name=None):
         """动态创建计算器部件"""
         try:
             # 获取当前文件所在目录
@@ -214,7 +214,7 @@ class ChemicalCalculationsWidget(QWidget):
             # 注入计算器元数据（用于历史记录）
             widget._calc_meta = {
                 "id": module_name,
-                "name": calculator_name,
+                "name": display_name or calculator_name,
                 "category": self._get_category_from_module(module_name),
             }
 
@@ -307,8 +307,8 @@ class ChemicalCalculationsWidget(QWidget):
 
     def _is_calculate_button(self, btn):
         text = btn.text().strip()
-        # 匹配各种计算按钮文本
-        return text in ("计算", "计算功率", "计算结果", "开始计算", "计算压降") or text.startswith("计算")
+        # 匹配计算和查询类按钮
+        return text in ("计算", "查询")
 
     def _connect_calculate_buttons(self, widget):
         """查找并连接所有计算按钮的 clicked 信号"""

@@ -406,7 +406,7 @@ class SolutionDensityCalculator(QWidget):
 
         button_layout.addStretch()
 
-        self.download_txt_btn = QPushButton("下载TXT")
+        self.download_txt_btn = QPushButton("下载计算书(TXT)")
         self.download_txt_btn.clicked.connect(self.download_txt_report)
         self.download_txt_btn.setMinimumHeight(50)
         self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -419,7 +419,7 @@ class SolutionDensityCalculator(QWidget):
         )
         button_layout.addWidget(self.download_txt_btn)
 
-        self.download_pdf_btn = QPushButton("下载PDF")
+        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
         self.download_pdf_btn.clicked.connect(self.generate_pdf_report)
         self.download_pdf_btn.setMinimumHeight(50)
         self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -499,7 +499,7 @@ class SolutionDensityCalculator(QWidget):
         layout.addLayout(grid)
 
         # 计算按钮（绿色 #27ae60）
-        self.calc_btn = QPushButton("计算密度")
+        self.calc_btn = QPushButton("查询")
         self.calc_btn.setFont(QFont("Arial", 12))
         self.calc_btn.setMinimumHeight(50)
         self.calc_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -729,11 +729,6 @@ class SolutionDensityCalculator(QWidget):
         self.result_text.setPlainText(result)
 
         # 保存到历史记录
-        if self.data_manager:
-            try:
-                self.data_manager.add_record(self.calculation_type, self._get_history_data())
-            except Exception:
-                pass
 
     def _run_scan(self):
         name = self.scan_substance_combo.currentText()

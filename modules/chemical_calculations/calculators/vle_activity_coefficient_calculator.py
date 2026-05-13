@@ -484,7 +484,7 @@ class VLEActivityCoefficientCalculator(QWidget):
         left_layout.addWidget(self.tab_widget)
 
         # 4. 计算按钮
-        calculate_btn = QPushButton("计算")
+        calculate_btn = QPushButton("查询")
         calculate_btn.setFont(QFont("Arial", 12, QFont.Bold))
         calculate_btn.clicked.connect(self.calculate)
         calculate_btn.setStyleSheet("""

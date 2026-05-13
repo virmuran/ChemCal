@@ -179,7 +179,7 @@ class WetAirCalculator(QWidget):
         left_layout.addWidget(input_group)
 
         # ── 计算按钮 ──
-        calc_btn = QPushButton("▶  计算湿空气参数")
+        calc_btn = QPushButton("查询")
         calc_btn.setFont(QFont("Arial", 12))
         calc_btn.setMinimumHeight(50)
         calc_btn.setStyleSheet("""
@@ -210,7 +210,7 @@ class WetAirCalculator(QWidget):
         """)
         clear_btn.clicked.connect(self.clear_inputs)
 
-        dl_txt_btn = QPushButton("⬇ 下载TXT报告")
+        dl_txt_btn = QPushButton("下载计算书(TXT)")
         dl_txt_btn.setStyleSheet("""
             QPushButton {
                 background-color: #27ae60; color: white;
@@ -221,7 +221,7 @@ class WetAirCalculator(QWidget):
         """)
         dl_txt_btn.clicked.connect(self.download_txt_report)
 
-        dl_pdf_btn = QPushButton("⬇ 下载PDF报告")
+        dl_pdf_btn = QPushButton("下载计算书(PDF)")
         dl_pdf_btn.setStyleSheet("""
             QPushButton {
                 background-color: #e74c3c; color: white;
@@ -324,11 +324,6 @@ class WetAirCalculator(QWidget):
             self._last_known = known
 
             # 保存历史
-            if self.data_manager:
-                try:
-                    self.data_manager.add_record("wet_air", self._get_history_data())
-                except Exception:
-                    pass
 
             self._display(r, temp, pressure_kpa, pu, known)
 

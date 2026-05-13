@@ -595,11 +595,6 @@ P_电机 = {shaft_power:.2f} / {motor_efficiency/100:.3f} × {safety_factor} = {
             }
             
             # 保存历史记录
-            if self.data_manager:
-                try:
-                    self.data_manager.add_record(self.calculation_type, self._get_history_data())
-                except Exception:
-                    pass
             
         except ValueError as e:
             QMessageBox.critical(self, "计算错误", f"参数输入格式错误: {str(e)}")

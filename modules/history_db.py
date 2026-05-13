@@ -12,7 +12,55 @@ class HistoryDB(QObject):
     record_added = Signal()  # 保存新记录后发送此信号
 
     _instance = None
-    _instance = None
+    _initialized = False
+
+    # 计算器ID到中文名称的映射
+    CALCULATOR_NAMES = {
+        "steam_property_calculator": "水蒸气性质",
+        "wet_air_calculator": "湿空气计算",
+        "refrigerant_properties_calculator": "制冷剂物性",
+        "pure_substance_properties": "纯物质物性查询",
+        "solution_density_calculator": "溶液密度计算",
+        "solid_solubility_calculator": "固体溶解度",
+        "corrosion_data_query": "腐蚀查询",
+        "hazardous_chemicals_query": "危险化学品",
+        "gas_state_converter": "气体标态转压缩态",
+        "eos_calculator": "EOS状态方程",
+        "gas_mixture_properties_calculator": "气体混合物(EOS)",
+        "vle_activity_coefficient_calculator": "汽液平衡(活度系数)",
+        "mixed_liquid_flash_point_calculator": "混合液体闪点",
+        "pipe_diameter_calculator": "管径计算",
+        "pipe_thickness_calculator": "管道壁厚",
+        "pipe_span_calculator": "管道跨距",
+        "pipe_spacing_calculator": "管道间距",
+        "pipe_compensation_calculator": "管道补偿",
+        "pressure_pipe_definition": "压力管道定义",
+        "pressure_drop_calculator": "压降计算",
+        "compressible_flow_pressure_drop": "可压缩流体压降",
+        "pump_power_calculator": "离心泵功率计算",
+        "npsha_calculator": "离心泵NPSHa计算",
+        "steam_pipe_calculator": "蒸汽管径流量",
+        "long_distance_steam_pipe_calculator": "长输蒸汽管道温降计算",
+        "heat_exchanger_calculator": "换热器计算",
+        "heat_exchanger_area_calculator": "换热器面积",
+        "fan_power_calculator": "风机功率计算",
+        "insulation_thickness_calculator": "保温厚度计算",
+        "vessel_sizing_calculator": "设备尺寸计算",
+        "tank_weight_calculator": "罐体重量",
+        "basket_filter_design_calculator": "篮式过滤器",
+        "safety_valve_calculator": "安全阀计算",
+        "relief_area_calculator": "泄压面积计算",
+        "fire_hydrant_calculator": "消火栓计算",
+        "refrigeration_cycle_calculator": "制冷循环计算",
+        # 部分计算器使用短名称作为 calculator_id 的别名
+        "wet_air": "湿空气计算",
+        "compressible_flow": "可压缩流体压降",
+        "relief_area": "泄压面积计算",
+        "safety_valve": "安全阀计算",
+        "solution_density": "溶液密度计算",
+        "insulation_thickness": "保温厚度计算",
+        "solid_solubility": "固体溶解度",
+    }
 
     def __new__(cls):
         if cls._instance is None:
@@ -68,6 +116,9 @@ class HistoryDB(QObject):
     def save(self, calculator_id, calculator_name, calculator_category,
              inputs, outputs, notes=""):
         """保存一条计算历史"""
+        # 如果 calculator_name 是英文名或空，从映射表获取中文名称
+        if not calculator_name or calculator_name == calculator_id:
+            calculator_name = self.CALCULATOR_NAMES.get(calculator_id, calculator_name)
         conn = self._get_conn()
         cur = conn.cursor()
         cur.execute("""

@@ -434,12 +434,12 @@ class LongDistanceSteamPipeCalculator(QWidget):
         self.clear_btn.setStyleSheet(CLEAR_BUTTON_STYLE)
         self.clear_btn.clicked.connect(self.clear_inputs)
 
-        self.download_txt_btn = QPushButton("下载TXT报告")
+        self.download_txt_btn = QPushButton("下载计算书(TXT)")
         self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.download_txt_btn.setStyleSheet(TXT_BUTTON_STYLE)
         self.download_txt_btn.clicked.connect(self.download_txt_report)
 
-        self.download_pdf_btn = QPushButton("下载PDF报告")
+        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
         self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.download_pdf_btn.setStyleSheet(PDF_BUTTON_STYLE)
         self.download_pdf_btn.clicked.connect(self.generate_pdf_report)

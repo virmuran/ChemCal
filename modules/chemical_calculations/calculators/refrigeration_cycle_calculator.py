@@ -640,11 +640,6 @@ class RefrigerationCycleCalculator(QWidget):
             }
 
             # 保存历史
-            if self.data_manager:
-                try:
-                    self.data_manager.add_record("refrigeration_cycle_calculator", self._get_history_data())
-                except Exception:
-                    pass
             
         except ValueError as e:
             QMessageBox.critical(self, "计算错误", f"参数输入格式错误: {str(e)}")

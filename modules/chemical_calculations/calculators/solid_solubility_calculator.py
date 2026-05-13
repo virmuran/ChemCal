@@ -305,7 +305,7 @@ class SolidSolubilityCalculator(QWidget):
         left_layout.addWidget(query_group)
 
         # ── 查询按钮 ──
-        calc_btn = QPushButton("查询溶解度")
+        calc_btn = QPushButton("查询")
         calc_btn.setFont(QFont("Arial", 12))
         calc_btn.setMinimumHeight(50)
         calc_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -427,7 +427,7 @@ class SolidSolubilityCalculator(QWidget):
             "QPushButton:hover { background-color: #7f8c8d; }"
         )
 
-        self.dl_txt_btn = QPushButton("下载TXT")
+        self.dl_txt_btn = QPushButton("下载计算书(TXT)")
         self.dl_txt_btn.clicked.connect(self.download_txt_report)
         self.dl_txt_btn.setMinimumHeight(50)
         self.dl_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -439,7 +439,7 @@ class SolidSolubilityCalculator(QWidget):
             "QPushButton:hover { background-color: #219653; }"
         )
 
-        self.dl_pdf_btn = QPushButton("下载PDF")
+        self.dl_pdf_btn = QPushButton("下载计算书(PDF)")
         self.dl_pdf_btn.clicked.connect(self.generate_pdf_report)
         self.dl_pdf_btn.setMinimumHeight(50)
         self.dl_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -564,12 +564,7 @@ class SolidSolubilityCalculator(QWidget):
         self._last_result = result
         self._display(result)
 
-        if self.data_manager:
-            try:
-                self.data_manager.add_record(
-                    "solid_solubility", self._get_history_data())
-            except Exception:
-                pass
+        
 
     def _on_error(self, msg):
         self.progress_bar.setVisible(False)

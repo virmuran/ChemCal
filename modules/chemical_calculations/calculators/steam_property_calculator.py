@@ -237,7 +237,7 @@ class SteamPropertyCalculator(QWidget):
         self.other_input_group.hide()
 
         # 5. 计算按钮（绿色样式）
-        self.calculate_btn = QPushButton("计算")
+        self.calculate_btn = QPushButton("查询")
         self.calculate_btn.setFont(QFont("Arial", 12, QFont.Weight.Bold))
         self.calculate_btn.clicked.connect(self.calculate)
         self.calculate_btn.setMinimumHeight(50)

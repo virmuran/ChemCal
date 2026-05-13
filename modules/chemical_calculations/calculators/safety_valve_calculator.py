@@ -288,7 +288,7 @@ class SafetyValveCalculator(QWidget):
         left_layout.addWidget(valve_group)
 
         # ── 计算按钮 ──
-        calc_btn = QPushButton("计算安全阀")
+        calc_btn = QPushButton("计算")
         calc_btn.setFont(QFont("Arial", 12, QFont.Bold))
         calc_btn.setMinimumHeight(50)
         calc_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -333,7 +333,7 @@ class SafetyValveCalculator(QWidget):
         """)
         clear_btn.clicked.connect(self.clear_inputs)
 
-        dl_txt_btn = QPushButton("下载TXT报告")
+        dl_txt_btn = QPushButton("下载计算书(TXT)")
         dl_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         dl_txt_btn.setStyleSheet("""
             QPushButton {
@@ -345,7 +345,7 @@ class SafetyValveCalculator(QWidget):
         """)
         dl_txt_btn.clicked.connect(self.download_txt_report)
 
-        dl_pdf_btn = QPushButton("下载PDF报告")
+        dl_pdf_btn = QPushButton("下载计算书(PDF)")
         dl_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         dl_pdf_btn.setStyleSheet("""
             QPushButton {
@@ -475,12 +475,7 @@ class SafetyValveCalculator(QWidget):
             self._update_detail_table(result)
             self._display(result, medium)
 
-            if self.data_manager:
-                try:
-                    self.data_manager.add_record(
-                        "safety_valve", self._get_history_data())
-                except Exception:
-                    pass
+            
 
         except ValueError as e:
             self._show_error(f"输入错误：{e}")
