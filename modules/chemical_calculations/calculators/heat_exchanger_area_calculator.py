@@ -49,6 +49,21 @@ COMBOBOX_STYLE = """
         padding: 3px 8px;
     }
 """
+
+GROUP_STYLE = """
+QGroupBox {
+    font-weight: bold;
+    border: 1px solid #bdc3c7;
+    border-radius: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 8px 0 8px;
+}
+"""
 class FlowArrangement(Enum):
     """流动方式枚举"""
     COUNTERCURRENT = "逆流"
@@ -70,19 +85,28 @@ class 换热器面积(QWidget):
         super().__init__(parent)
         
         # 初始化数据管理器
-        self.data_manager = data_manager
+        if data_manager is not None:
+            self.data_manager = data_manager
+        else:
+            self.init_data_manager()
         
         # 初始化数据
         self.specific_heat_data = self.setup_specific_heat_data()
+        self.steam_properties = {}
         self.exchanger_types_data = self.setup_exchanger_types_data()
         self.flow_arrangements = list(FlowArrangement)
         self.steam_properties = {}  # 蒸汽物性数据缓存
         
         self.setup_ui()
         self.setup_mode_dependencies()
-        
-        # 连接信号
-        self.mode_button_group.buttonClicked.connect(self.on_mode_button_clicked)
+
+    def init_data_manager(self):
+        """初始化数据管理器"""
+        try:
+            from data_manager import DataManager
+            self.data_manager = DataManager.get_instance()
+        except Exception:
+            self.data_manager = None
     
     def setup_specific_heat_data(self):
         """设置流体比热容数据 - 增加常用介质"""
@@ -213,20 +237,7 @@ class 换热器面积(QWidget):
         
         # 2. 然后添加计算模式选择
         mode_group = QGroupBox("计算模式")
-        mode_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
+        mode_group.setStyleSheet(GROUP_STYLE)
         mode_layout = QHBoxLayout(mode_group)
         
         self.mode_button_group = QButtonGroup(self)
@@ -243,7 +254,7 @@ class 换热器面积(QWidget):
             btn = QPushButton(mode_name)
             btn.setCheckable(True)
             btn.setToolTip(tooltip)
-            btn.setFixedWidth(180)  # 固定宽度
+            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             btn.setStyleSheet("""
                 QPushButton {
                     background-color: #ecf0f1;
@@ -273,25 +284,15 @@ class 换热器面积(QWidget):
         
         # 3. 输入参数组 - 使用GridLayout实现整齐的布局
         input_group = QGroupBox("输入参数")
-        input_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
+        input_group.setStyleSheet(GROUP_STYLE)
         
         # 使用GridLayout确保整齐排列
         self.input_layout = QGridLayout(input_group)
         self.input_layout.setVerticalSpacing(12)
         self.input_layout.setHorizontalSpacing(10)
+        self.input_layout.setColumnStretch(0, 4)
+        self.input_layout.setColumnStretch(1, 8)
+        self.input_layout.setColumnStretch(2, 5)
         
         # 标签样式 - 右对齐
         label_style = """
@@ -317,23 +318,10 @@ class 换热器面积(QWidget):
         
         # 4. 高级参数组
         advanced_group = QGroupBox("高级参数")
-        advanced_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
+        advanced_group.setStyleSheet(GROUP_STYLE)
         
         advanced_layout = QGridLayout(advanced_group)
-        advanced_layout.setVerticalSpacing(10)
+        advanced_layout.setVerticalSpacing(12)
         advanced_layout.setHorizontalSpacing(10)
         
         # 安全系数
@@ -346,7 +334,7 @@ class 换热器面积(QWidget):
         self.safety_factor_input.setPlaceholderText("建议：1.10-1.30")
         self.safety_factor_input.setValidator(QDoubleValidator(1.0, 2.0, 2))
         self.safety_factor_input.setText("1.15")
-        self.safety_factor_input.setFixedWidth(200)
+        self.safety_factor_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         advanced_layout.addWidget(self.safety_factor_input, 0, 1)
         
         # 污垢系数
@@ -359,7 +347,7 @@ class 换热器面积(QWidget):
         self.fouling_factor_input.setPlaceholderText("例如：0.0002")
         self.fouling_factor_input.setValidator(QDoubleValidator(0.00001, 0.01, 5))
         self.fouling_factor_input.setText("0.0002")
-        self.fouling_factor_input.setFixedWidth(200)
+        self.fouling_factor_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         advanced_layout.addWidget(self.fouling_factor_input, 0, 3)
         
         left_layout.addWidget(advanced_group)
@@ -382,12 +370,14 @@ class 换热器面积(QWidget):
             }
         """)
         calculate_btn.setMinimumHeight(50)
+        calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         left_layout.addWidget(calculate_btn)
         
         # 6. 下载按钮布局
         download_layout = QHBoxLayout()
         
         download_txt_btn = QPushButton("下载计算书(TXT)")
+        download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         download_txt_btn.clicked.connect(self.download_txt_report)
         download_txt_btn.setStyleSheet("""
             QPushButton {
@@ -404,6 +394,7 @@ class 换热器面积(QWidget):
         """)
 
         download_pdf_btn = QPushButton("下载计算书(PDF)")
+        download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         download_pdf_btn.clicked.connect(self.generate_pdf_report)
         download_pdf_btn.setStyleSheet("""
             QPushButton {
@@ -428,30 +419,19 @@ class 换热器面积(QWidget):
         
         # 右侧：结果显示区域 (占1/3宽度)
         right_widget = QWidget()
-        right_widget.setMinimumWidth(400)
+        right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
         
         # 结果显示
         self.result_group = QGroupBox("计算结果")
-        self.result_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
+        self.result_group.setStyleSheet(GROUP_STYLE)
         result_layout = QVBoxLayout(self.result_group)
         
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
+        self.result_text.setMinimumHeight(500)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet("""
             QTextEdit {
                 border: 1px solid #ecf0f1;
@@ -472,6 +452,8 @@ class 换热器面积(QWidget):
     
     def setup_mode_dependencies(self):
         """设置计算模式的依赖关系"""
+        # 连接模式切换信号
+        self.mode_button_group.buttonClicked.connect(self.on_mode_button_clicked)
         # 初始状态 - 直接计算模式
         self.on_mode_changed("直接计算")
     
@@ -550,7 +532,7 @@ class 换热器面积(QWidget):
         for arrangement in self.flow_arrangements:
             self.input_widgets["flow_arrangement"].addItem(arrangement.value)
         self.input_widgets["flow_arrangement"].setCurrentText("逆流")
-        self.input_widgets["flow_arrangement"].setFixedWidth(combo_width)
+        self.input_widgets["flow_arrangement"].setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.input_layout.addWidget(self.input_widgets["flow_arrangement"], row, 1)
     
     def setup_fluid_parameters_mode(self, row, label_style, input_width, combo_width):
@@ -606,7 +588,7 @@ class 换热器面积(QWidget):
         for arrangement in self.flow_arrangements:
             self.input_widgets["flow_arrangement"].addItem(arrangement.value)
         self.input_widgets["flow_arrangement"].setCurrentText("逆流")
-        self.input_widgets["flow_arrangement"].setFixedWidth(combo_width)
+        self.input_widgets["flow_arrangement"].setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.input_layout.addWidget(self.input_widgets["flow_arrangement"], row, 1)
     
     def setup_steam_heating_mode(self, row, label_style, input_width, combo_width):
@@ -621,7 +603,7 @@ class 换热器面积(QWidget):
         self.input_widgets["calculation_type"].setStyleSheet(COMBOBOX_STYLE)
         self.input_widgets["calculation_type"].addItem("设计计算（计算蒸汽消耗）")
         self.input_widgets["calculation_type"].addItem("校核计算（给定蒸汽流量）")
-        self.input_widgets["calculation_type"].setFixedWidth(combo_width)
+        self.input_widgets["calculation_type"].setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.input_widgets["calculation_type"].currentTextChanged.connect(self.on_steam_calc_type_changed)
         self.input_layout.addWidget(self.input_widgets["calculation_type"], row, 1)
         
@@ -636,7 +618,7 @@ class 换热器面积(QWidget):
         self.input_widgets["steam_pressure"] = QLineEdit()
         self.input_widgets["steam_pressure"].setPlaceholderText("例如：0.3")
         self.input_widgets["steam_pressure"].setValidator(QDoubleValidator(0.01, 5.0, 3))
-        self.input_widgets["steam_pressure"].setFixedWidth(input_width)
+        self.input_widgets["steam_pressure"].setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.input_widgets["steam_pressure"].textChanged.connect(self.update_steam_properties_display)
         self.input_layout.addWidget(self.input_widgets["steam_pressure"], row, 1)
         
@@ -656,7 +638,7 @@ class 换热器面积(QWidget):
         self.input_widgets["steam_flow"] = QLineEdit()
         self.input_widgets["steam_flow"].setPlaceholderText("仅校核计算需要")
         self.input_widgets["steam_flow"].setValidator(QDoubleValidator(1, 1000000, 1))
-        self.input_widgets["steam_flow"].setFixedWidth(input_width)
+        self.input_widgets["steam_flow"].setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.input_widgets["steam_flow"].setEnabled(False)
         self.input_layout.addWidget(self.input_widgets["steam_flow"], row, 1)
         
@@ -752,7 +734,7 @@ class 换热器面积(QWidget):
         self.input_widgets["fluid_type"].setStyleSheet(COMBOBOX_STYLE)
         for fluid in fluid_types:
             self.input_widgets["fluid_type"].addItem(fluid)
-        self.input_widgets["fluid_type"].setFixedWidth(combo_width)
+        self.input_widgets["fluid_type"].setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.input_layout.addWidget(self.input_widgets["fluid_type"], row, 1)
         
         row += 1
@@ -786,13 +768,12 @@ class 换热器面积(QWidget):
         self.input_widgets[key] = QLineEdit()
         self.input_widgets[key].setPlaceholderText(placeholder)
         self.input_widgets[key].setValidator(validator)
-        self.input_widgets[key].setFixedWidth(width)
+        self.input_widgets[key].setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.input_layout.addWidget(self.input_widgets[key], row, 1)
         
         # 添加提示标签
         hint_label = QLabel("直接输入值")
         hint_label.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        hint_label.setFixedWidth(250)
         self.input_layout.addWidget(hint_label, row, 2)
     
     def add_cp_section(self, row, label_text, cp_key, combo_key, input_width, combo_width, label_style):
@@ -805,7 +786,7 @@ class 换热器面积(QWidget):
         self.input_widgets[cp_key] = QLineEdit()
         self.input_widgets[cp_key].setPlaceholderText("输入或选择")
         self.input_widgets[cp_key].setValidator(QDoubleValidator(0.1, 20.0, 3))
-        self.input_widgets[cp_key].setFixedWidth(input_width)
+        self.input_widgets[cp_key].setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.input_layout.addWidget(self.input_widgets[cp_key], row, 1)
         
         self.input_widgets[combo_key] = QComboBox()
@@ -813,7 +794,7 @@ class 换热器面积(QWidget):
         self.input_widgets[combo_key].addItem("- 选择流体类型 -")
         for fluid in self.specific_heat_data.keys():
             self.input_widgets[combo_key].addItem(fluid)
-        self.input_widgets[combo_key].setFixedWidth(combo_width)
+        self.input_widgets[combo_key].setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.input_widgets[combo_key].currentTextChanged.connect(
             lambda text, cp_key=cp_key: self.on_cp_selected(text, self.input_widgets[cp_key])
         )
@@ -829,7 +810,7 @@ class 换热器面积(QWidget):
         self.input_widgets["k_value"] = QLineEdit()
         self.input_widgets["k_value"].setPlaceholderText("选择类型后推荐")
         self.input_widgets["k_value"].setValidator(QDoubleValidator(10, 10000, 1))
-        self.input_widgets["k_value"].setFixedWidth(input_width)
+        self.input_widgets["k_value"].setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.input_layout.addWidget(self.input_widgets["k_value"], row, 1)
         
         self.input_widgets["exchanger_type"] = QComboBox()
@@ -837,7 +818,7 @@ class 换热器面积(QWidget):
         self.input_widgets["exchanger_type"].addItem("- 选择换热器类型 -")
         for exchanger_type in self.exchanger_types_data.keys():
             self.input_widgets["exchanger_type"].addItem(exchanger_type)
-        self.input_widgets["exchanger_type"].setFixedWidth(combo_width)
+        self.input_widgets["exchanger_type"].setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.input_widgets["exchanger_type"].currentTextChanged.connect(self.on_exchanger_type_changed)
         self.input_layout.addWidget(self.input_widgets["exchanger_type"], row, 2)
     
