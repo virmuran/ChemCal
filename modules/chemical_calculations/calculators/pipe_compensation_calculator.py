@@ -313,15 +313,13 @@ class 管道补偿(QWidget):
         self.material_combo.addItem("自定义材质")
         
         self.material_combo.currentTextChanged.connect(self.on_material_changed)
-        input_layout.addWidget(self.material_combo, row, 1, 1, 2)
+        input_layout.addWidget(self.material_combo, row, 1)
         
-        row += 1
-        
-        # 材质描述
+        # 材质描述（第2列）
         self.material_desc_label = QLabel("")
-        self.material_desc_label.setStyleSheet("color: #7f8c8d; font-size: 11px; font-style: italic;")
+        self.material_desc_label.setStyleSheet("color: #7f8c8d; font-style: italic;")
         self.material_desc_label.setWordWrap(True)
-        input_layout.addWidget(self.material_desc_label, row, 0, 1, 3)
+        input_layout.addWidget(self.material_desc_label, row, 2)
         
         row += 1
         
