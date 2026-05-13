@@ -2,7 +2,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QGroupBox, QTextEdit, QComboBox, QMessageBox, QButtonGroup,
     QGridLayout, QFileDialog, QDialog, QDialogButtonBox,
-    QScrollArea,
+    QScrollArea, QSizePolicy,
 
 )
 from PySide6.QtCore import Qt
@@ -104,12 +104,11 @@ class FanPowerCalculator(QWidget):
         grid.setHorizontalSpacing(10)
 
         lbl = "QLabel { font-weight: bold; padding-right: 10px; }"
-        W_MIN, W_MAX = 150, 400   # 输入框宽度范围
-        C_MIN, C_MAX = 100, 250   # 第三列宽度范围
+        
 
-        grid.setColumnStretch(0, 2)
-        grid.setColumnStretch(1, 3)
-        grid.setColumnStretch(2, 2)
+        grid.setColumnStretch(0, 4)
+        grid.setColumnStretch(1, 8)
+        grid.setColumnStretch(2, 5)
 
         row = 0
 
@@ -117,11 +116,9 @@ class FanPowerCalculator(QWidget):
         self._add_label(grid, row, "风机类型:", lbl)
         self.fan_type = QComboBox()
         self.fan_type.setStyleSheet(COMBOBOX_STYLE)
+        self.fan_type.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.fan_type.addItems(["离心风机", "轴流风机", "混流风机", "罗茨风机"])
-        self.fan_type.setMinimumWidth(W_MIN)
-        self.fan_type.setMaximumWidth(W_MAX)
         grid.addWidget(self.fan_type, row, 1)
-        grid.addWidget(self._hint("", C_MAX), row, 2)
         row += 1
 
         # 风量
@@ -129,14 +126,11 @@ class FanPowerCalculator(QWidget):
         self.flow_rate_input = QLineEdit()
         self.flow_rate_input.setPlaceholderText("例如：10000")
         self.flow_rate_input.setValidator(QDoubleValidator(1, 1000000, 1))
-        self.flow_rate_input.setMinimumWidth(W_MIN)
-        self.flow_rate_input.setMaximumWidth(W_MAX)
         grid.addWidget(self.flow_rate_input, row, 1)
         self.flow_rate_unit = QComboBox()
         self.flow_rate_unit.setStyleSheet(COMBOBOX_STYLE)
         self.flow_rate_unit.addItems(["m³/h", "m³/min", "m³/s"])
-        self.flow_rate_unit.setMinimumWidth(C_MIN)
-        self.flow_rate_unit.setMaximumWidth(C_MAX)
+        self.flow_rate_unit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         grid.addWidget(self.flow_rate_unit, row, 2)
         row += 1
 
@@ -145,14 +139,11 @@ class FanPowerCalculator(QWidget):
         self.pressure_input = QLineEdit()
         self.pressure_input.setPlaceholderText("例如：1000")
         self.pressure_input.setValidator(QDoubleValidator(10, 50000, 1))
-        self.pressure_input.setMinimumWidth(W_MIN)
-        self.pressure_input.setMaximumWidth(W_MAX)
         grid.addWidget(self.pressure_input, row, 1)
         self.pressure_unit = QComboBox()
         self.pressure_unit.setStyleSheet(COMBOBOX_STYLE)
         self.pressure_unit.addItems(["Pa", "kPa", "mmH₂O"])
-        self.pressure_unit.setMinimumWidth(C_MIN)
-        self.pressure_unit.setMaximumWidth(C_MAX)
+        self.pressure_unit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         grid.addWidget(self.pressure_unit, row, 2)
         row += 1
 
@@ -161,10 +152,9 @@ class FanPowerCalculator(QWidget):
         self.temperature_input = QLineEdit()
         self.temperature_input.setText("20")
         self.temperature_input.setValidator(QDoubleValidator(-50, 200, 1))
-        self.temperature_input.setMinimumWidth(W_MIN)
-        self.temperature_input.setMaximumWidth(W_MAX)
+        self.temperature_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         grid.addWidget(self.temperature_input, row, 1)
-        grid.addWidget(self._hint("标准：20 °C", C_MAX), row, 2)
+        grid.addWidget(self._hint("标准：20 °C"), row, 2)
         row += 1
 
         # 海拔高度
@@ -172,10 +162,9 @@ class FanPowerCalculator(QWidget):
         self.altitude_input = QLineEdit()
         self.altitude_input.setText("0")
         self.altitude_input.setValidator(QDoubleValidator(-100, 5000, 0))
-        self.altitude_input.setMinimumWidth(W_MIN)
-        self.altitude_input.setMaximumWidth(W_MAX)
+        self.altitude_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         grid.addWidget(self.altitude_input, row, 1)
-        grid.addWidget(self._hint("影响空气密度", C_MAX), row, 2)
+        grid.addWidget(self._hint("影响空气密度"), row, 2)
         row += 1
 
         # 风机效率
@@ -183,10 +172,9 @@ class FanPowerCalculator(QWidget):
         self.fan_efficiency_input = QLineEdit()
         self.fan_efficiency_input.setPlaceholderText("例如：75")
         self.fan_efficiency_input.setValidator(QDoubleValidator(10, 95, 1))
-        self.fan_efficiency_input.setMinimumWidth(W_MIN)
-        self.fan_efficiency_input.setMaximumWidth(W_MAX)
+        self.fan_efficiency_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         grid.addWidget(self.fan_efficiency_input, row, 1)
-        grid.addWidget(self._hint("离心风机典型：70~85 %", C_MAX), row, 2)
+        grid.addWidget(self._hint("离心风机典型：70~85 %"), row, 2)
         row += 1
 
         # 电机效率
@@ -194,10 +182,9 @@ class FanPowerCalculator(QWidget):
         self.motor_efficiency_input = QLineEdit()
         self.motor_efficiency_input.setPlaceholderText("例如：92")
         self.motor_efficiency_input.setValidator(QDoubleValidator(50, 98, 1))
-        self.motor_efficiency_input.setMinimumWidth(W_MIN)
-        self.motor_efficiency_input.setMaximumWidth(W_MAX)
+        self.motor_efficiency_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         grid.addWidget(self.motor_efficiency_input, row, 1)
-        grid.addWidget(self._hint("典型值：88~95 %", C_MAX), row, 2)
+        grid.addWidget(self._hint("典型值：88~95 %"), row, 2)
         row += 1
 
         # 传动效率
@@ -205,14 +192,12 @@ class FanPowerCalculator(QWidget):
         self.transmission_efficiency_input = QLineEdit()
         self.transmission_efficiency_input.setText("98")
         self.transmission_efficiency_input.setValidator(QDoubleValidator(80, 100, 1))
-        self.transmission_efficiency_input.setMinimumWidth(W_MIN)
-        self.transmission_efficiency_input.setMaximumWidth(W_MAX)
+        self.transmission_efficiency_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         grid.addWidget(self.transmission_efficiency_input, row, 1)
         self.transmission_type = QComboBox()
         self.transmission_type.setStyleSheet(COMBOBOX_STYLE)
         self.transmission_type.addItems(["直联", "皮带传动", "联轴器"])
-        self.transmission_type.setMinimumWidth(C_MIN)
-        self.transmission_type.setMaximumWidth(C_MAX)
+        self.transmission_type.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         grid.addWidget(self.transmission_type, row, 2)
         row += 1
 
@@ -221,10 +206,9 @@ class FanPowerCalculator(QWidget):
         self.operation_hours_input = QLineEdit()
         self.operation_hours_input.setPlaceholderText("例如：24")
         self.operation_hours_input.setValidator(QDoubleValidator(1, 24, 1))
-        self.operation_hours_input.setMinimumWidth(W_MIN)
-        self.operation_hours_input.setMaximumWidth(W_MAX)
+        self.operation_hours_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         grid.addWidget(self.operation_hours_input, row, 1)
-        grid.addWidget(self._hint("用于能耗估算（可选）", C_MAX), row, 2)
+        grid.addWidget(self._hint("用于能耗估算（可选）"), row, 2)
         row += 1
 
         # 年运行天数
@@ -232,10 +216,9 @@ class FanPowerCalculator(QWidget):
         self.days_per_year_input = QLineEdit()
         self.days_per_year_input.setPlaceholderText("例如：330")
         self.days_per_year_input.setValidator(QDoubleValidator(1, 365, 0))
-        self.days_per_year_input.setMinimumWidth(W_MIN)
-        self.days_per_year_input.setMaximumWidth(W_MAX)
+        self.days_per_year_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         grid.addWidget(self.days_per_year_input, row, 1)
-        grid.addWidget(self._hint("用于能耗估算（可选）", C_MAX), row, 2)
+        grid.addWidget(self._hint("用于能耗估算（可选）"), row, 2)
         row += 1
 
         # 电价
@@ -243,10 +226,9 @@ class FanPowerCalculator(QWidget):
         self.electricity_price_input = QLineEdit()
         self.electricity_price_input.setPlaceholderText("例如：0.8")
         self.electricity_price_input.setValidator(QDoubleValidator(0.1, 10, 3))
-        self.electricity_price_input.setMinimumWidth(W_MIN)
-        self.electricity_price_input.setMaximumWidth(W_MAX)
+        self.electricity_price_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         grid.addWidget(self.electricity_price_input, row, 1)
-        grid.addWidget(self._hint("用于费用估算（可选）", C_MAX), row, 2)
+        grid.addWidget(self._hint("用于费用估算（可选）"), row, 2)
 
         left_layout.addWidget(input_group)
 
@@ -254,16 +236,17 @@ class FanPowerCalculator(QWidget):
         calc_btn = QPushButton("计算")
         calc_btn.setFont(QFont("Arial", 12, QFont.Bold))
         calc_btn.setMinimumHeight(50)
+        calc_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         calc_btn.setStyleSheet("""
             QPushButton {
-                background-color: #3498db;
+                background-color: #27ae60;
                 color: white;
                 border: none;
                 border-radius: 8px;
                 min-height: 50px; padding: 0px;
                 font-weight: bold;
             }
-            QPushButton:hover { background-color: #2980b9; }
+            QPushButton:hover { background-color: #219955; }
         """)
         calc_btn.clicked.connect(self.calculate)
         left_layout.addWidget(calc_btn)
@@ -284,6 +267,7 @@ class FanPowerCalculator(QWidget):
         btn_row.addStretch()
 
         txt_btn = QPushButton("下载计算书(TXT)")
+        txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         txt_btn.setStyleSheet("""
             QPushButton {
                 background-color: #27ae60; color: white; border: none;
@@ -295,6 +279,7 @@ class FanPowerCalculator(QWidget):
         btn_row.addWidget(txt_btn)
 
         pdf_btn = QPushButton("下载计算书(PDF)")
+        pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         pdf_btn.setStyleSheet("""
             QPushButton {
                 background-color: #e74c3c; color: white; border: none;
@@ -310,7 +295,7 @@ class FanPowerCalculator(QWidget):
 
         # ── 右侧：结果区 ──────────────────────────────────────────
         right_widget = QWidget()
-        right_widget.setMinimumWidth(400)
+        right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
 
@@ -320,6 +305,8 @@ class FanPowerCalculator(QWidget):
 
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
+        self.result_text.setMinimumHeight(500)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet("""
             QTextEdit {
                 border: 1px solid #ecf0f1;
@@ -342,15 +329,11 @@ class FanPowerCalculator(QWidget):
         lbl = QLabel(text)
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         lbl.setStyleSheet(style)
-        lbl.setMinimumWidth(120)
-        lbl.setMaximumWidth(200)
         grid.addWidget(lbl, row, 0)
 
-    def _hint(self, text, w=250):
+    def _hint(self, text):
         lbl = QLabel(text)
         lbl.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        lbl.setMinimumWidth(100)
-        lbl.setMaximumWidth(w)
         return lbl
 
     # ────────────────────────────────────────────────────────────
