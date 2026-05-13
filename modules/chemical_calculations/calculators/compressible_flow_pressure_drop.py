@@ -5,10 +5,10 @@ from PySide6.QtWidgets import (
     QTextEdit, QGridLayout, QTableWidget, QTableWidgetItem,
     QHeaderView, QFileDialog, QMessageBox, QButtonGroup,
     QRadioButton,
-    QScrollArea,
+    QScrollArea, QSizePolicy,
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QDoubleValidator
+from PySide6.QtGui import QDoubleValidator, QFont
 
 
 COMBOBOX_STYLE = """
@@ -30,6 +30,21 @@ COMBOBOX_STYLE = """
         padding: 3px 8px;
     }
 """
+
+GROUP_STYLE = """
+QGroupBox {
+    font-weight: bold;
+    border: 1px solid #bdc3c7;
+    border-radius: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 8px 0 8px;
+}
+"""
 class CompressibleFlowPressureDrop(QWidget):
     """可压缩流体压降计算器（统一 UI 规范版）"""
     calculation_type = "compressible_flow_pressure_drop"
@@ -49,26 +64,19 @@ class CompressibleFlowPressureDrop(QWidget):
 
     def __init__(self, parent=None, data_manager=None):
         super().__init__(parent)
-        self.data_manager = data_manager if data_manager is not None else None
+        if data_manager is not None:
+            self.data_manager = data_manager
+        else:
+            self.init_data_manager()
         self._last_result = {}
         self._last_params = {}
         self.setup_ui()
 
+    def init_data_manager(self):
+        """初始化数据管理器（无外部传入时使用）"""
+        self.data_manager = None
+
     def setup_ui(self):
-        group_style = """
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """
         main = QHBoxLayout(self)
         main.setSpacing(15)
         main.setContentsMargins(10, 10, 10, 10)
@@ -88,67 +96,60 @@ class CompressibleFlowPressureDrop(QWidget):
             "可反算最大流量及阻塞流检测。"
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: #7f8c8d; font-size: 12px;")
+        desc.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
         ll.addWidget(desc)
 
         def L(t):
             l = QLabel(t)
             l.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            l.setMinimumWidth(120)
-            l.setMaximumWidth(200)
             l.setStyleSheet("font-weight: bold; padding-right: 10px;")
             return l
 
         def H(t):
             l = QLabel(t)
-            l.setMinimumWidth(100)
-            l.setMaximumWidth(250)
-            l.setStyleSheet("color: #95a5a6; font-size: 11px;")
+            l.setStyleSheet("color: #7f8c8d; font-style: italic;")
             return l
 
         # ---- 流体性质 ----
-        fg = QGroupBox("流体性质"); fg.setStyleSheet(group_style)
-        fgrid = QGridLayout(fg); fgrid.setHorizontalSpacing(10); fgrid.setVerticalSpacing(10)
-        fgrid.setColumnStretch(0, 2)  # 标签列可伸缩
-
-        fgrid.setColumnStretch(1, 3)  # 输入框列可伸缩
-
-        fgrid.setColumnStretch(2, 2)  # 提示列可伸缩
+        fg = QGroupBox("流体性质"); fg.setStyleSheet(GROUP_STYLE)
+        fgrid = QGridLayout(fg); fgrid.setHorizontalSpacing(10); fgrid.setVerticalSpacing(12)
+        fgrid.setColumnStretch(0, 4)
+        fgrid.setColumnStretch(1, 8)
+        fgrid.setColumnStretch(2, 5)
 
 
         self.fluid_combo = QComboBox()
         self.fluid_combo.setStyleSheet(COMBOBOX_STYLE)
         self.fluid_combo.addItems(["air","nitrogen","oxygen","hydrogen","co2","ng","steam","methane","ethane","propane","custom"])
-        self.fluid_combo.setMinimumWidth(150)
-        self.fluid_combo.setMaximumWidth(400)
+        self.fluid_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.fluid_combo.currentTextChanged.connect(self._on_fluid)
         fgrid.addWidget(L("流体类型:"), 0, 0)
         fgrid.addWidget(self.fluid_combo, 0, 1)
         fgrid.addWidget(H("选择后自动填充物性"), 0, 2)
 
-        self.mw_in = QLineEdit("28.97"); self.mw_in.setMinimumWidth(150)
-        self.mw_in = QLineEdit("28.97"); self.mw_in.setMaximumWidth(400)
+        self.mw_in = QLineEdit("28.97")
+        self.mw_in.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.mw_in.setValidator(QDoubleValidator(1, 200, 2))
         fgrid.addWidget(L("分子量 (g/mol):"), 1, 0)
         fgrid.addWidget(self.mw_in, 1, 1)
         fgrid.addWidget(H("air=28.97"), 1, 2)
 
-        self.gamma_in = QLineEdit("1.40"); self.gamma_in.setMinimumWidth(150)
-        self.gamma_in = QLineEdit("1.40"); self.gamma_in.setMaximumWidth(400)
+        self.gamma_in = QLineEdit("1.40")
+        self.gamma_in.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.gamma_in.setValidator(QDoubleValidator(1.0, 2.0, 3))
         fgrid.addWidget(L("绝热指数 g:"), 2, 0)
         fgrid.addWidget(self.gamma_in, 2, 1)
         fgrid.addWidget(H("双原子=1.4"), 2, 2)
 
-        self.R_in = QLineEdit("287.1"); self.R_in.setMinimumWidth(150)
-        self.R_in = QLineEdit("287.1"); self.R_in.setMaximumWidth(400)
+        self.R_in = QLineEdit("287.1")
+        self.R_in.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.R_in.setValidator(QDoubleValidator(50, 5000, 1))
         fgrid.addWidget(L("气体常数 R (J/(kg*K)):"), 3, 0)
         fgrid.addWidget(self.R_in, 3, 1)
         fgrid.addWidget(H("air=287.1"), 3, 2)
 
-        self.mu_in = QLineEdit("18.27"); self.mu_in.setMinimumWidth(150)
-        self.mu_in = QLineEdit("18.27"); self.mu_in.setMaximumWidth(400)
+        self.mu_in = QLineEdit("18.27")
+        self.mu_in.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.mu_in.setValidator(QDoubleValidator(1, 100, 2))
         fgrid.addWidget(L("动力粘度 (uPa*s):"), 4, 0)
         fgrid.addWidget(self.mu_in, 4, 1)
@@ -156,32 +157,35 @@ class CompressibleFlowPressureDrop(QWidget):
         ll.addWidget(fg)
 
         # ---- 管道参数 ----
-        pg = QGroupBox("管道参数"); pg.setStyleSheet(group_style)
-        pgrid = QGridLayout(pg); pgrid.setHorizontalSpacing(10); pgrid.setVerticalSpacing(10)
+        pg = QGroupBox("管道参数"); pg.setStyleSheet(GROUP_STYLE)
+        pgrid = QGridLayout(pg); pgrid.setHorizontalSpacing(10); pgrid.setVerticalSpacing(12)
+        pgrid.setColumnStretch(0, 4)
+        pgrid.setColumnStretch(1, 8)
+        pgrid.setColumnStretch(2, 5)
 
-        self.dia_in = QLineEdit("100"); self.dia_in.setMinimumWidth(150)
-        self.dia_in = QLineEdit("100"); self.dia_in.setMaximumWidth(400)
+        self.dia_in = QLineEdit("100")
+        self.dia_in.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.dia_in.setValidator(QDoubleValidator(1, 2000, 1))
         pgrid.addWidget(L("管道内径 (mm):"), 0, 0)
         pgrid.addWidget(self.dia_in, 0, 1)
         pgrid.addWidget(H(""), 0, 2)
 
-        self.len_in = QLineEdit("100"); self.len_in.setMinimumWidth(150)
-        self.len_in = QLineEdit("100"); self.len_in.setMaximumWidth(400)
+        self.len_in = QLineEdit("100")
+        self.len_in.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.len_in.setValidator(QDoubleValidator(1, 100000, 1))
         pgrid.addWidget(L("管道长度 (m):"), 1, 0)
         pgrid.addWidget(self.len_in, 1, 1)
         pgrid.addWidget(H(""), 1, 2)
 
-        self.eps_in = QLineEdit("0.046"); self.eps_in.setMinimumWidth(150)
-        self.eps_in = QLineEdit("0.046"); self.eps_in.setMaximumWidth(400)
+        self.eps_in = QLineEdit("0.046")
+        self.eps_in.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.eps_in.setValidator(QDoubleValidator(0.001, 5, 3))
         pgrid.addWidget(L("绝对粗糙度 (mm):"), 2, 0)
         pgrid.addWidget(self.eps_in, 2, 1)
         pgrid.addWidget(H("新钢管=0.046"), 2, 2)
 
-        self.eqf_in = QLineEdit("1.5"); self.eqf_in.setMinimumWidth(150)
-        self.eqf_in = QLineEdit("1.5"); self.eqf_in.setMaximumWidth(400)
+        self.eqf_in = QLineEdit("1.5")
+        self.eqf_in.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.eqf_in.setValidator(QDoubleValidator(1.0, 3.0, 1))
         pgrid.addWidget(L("当量长度系数:"), 3, 0)
         pgrid.addWidget(self.eqf_in, 3, 1)
@@ -189,32 +193,35 @@ class CompressibleFlowPressureDrop(QWidget):
         ll.addWidget(pg)
 
         # ---- 操作条件 ----
-        cg = QGroupBox("操作条件"); cg.setStyleSheet(group_style)
-        cgrid = QGridLayout(cg); cgrid.setHorizontalSpacing(10); cgrid.setVerticalSpacing(10)
+        cg = QGroupBox("操作条件"); cg.setStyleSheet(GROUP_STYLE)
+        cgrid = QGridLayout(cg); cgrid.setHorizontalSpacing(10); cgrid.setVerticalSpacing(12)
+        cgrid.setColumnStretch(0, 4)
+        cgrid.setColumnStretch(1, 8)
+        cgrid.setColumnStretch(2, 5)
 
-        self.P1_in = QLineEdit("500"); self.P1_in.setMinimumWidth(150)
-        self.P1_in = QLineEdit("500"); self.P1_in.setMaximumWidth(400)
+        self.P1_in = QLineEdit("500")
+        self.P1_in.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.P1_in.setValidator(QDoubleValidator(1, 100000, 1))
         cgrid.addWidget(L("入口压力 (kPa):"), 0, 0)
         cgrid.addWidget(self.P1_in, 0, 1)
         cgrid.addWidget(H("绝对压力"), 0, 2)
 
-        self.P2_in = QLineEdit("400"); self.P2_in.setMinimumWidth(150)
-        self.P2_in = QLineEdit("400"); self.P2_in.setMaximumWidth(400)
+        self.P2_in = QLineEdit("400")
+        self.P2_in.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.P2_in.setValidator(QDoubleValidator(1, 100000, 1))
         cgrid.addWidget(L("出口压力 (kPa):"), 1, 0)
         cgrid.addWidget(self.P2_in, 1, 1)
         cgrid.addWidget(H("绝对压力"), 1, 2)
 
-        self.temp_in = QLineEdit("20"); self.temp_in.setMinimumWidth(150)
-        self.temp_in = QLineEdit("20"); self.temp_in.setMaximumWidth(400)
+        self.temp_in = QLineEdit("20")
+        self.temp_in.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.temp_in.setValidator(QDoubleValidator(-200, 1000, 1))
         cgrid.addWidget(L("温度 (C):"), 2, 0)
         cgrid.addWidget(self.temp_in, 2, 1)
         cgrid.addWidget(H("用于密度计算"), 2, 2)
 
-        self.flow_in = QLineEdit("1000"); self.flow_in.setMinimumWidth(150)
-        self.flow_in = QLineEdit("1000"); self.flow_in.setMaximumWidth(400)
+        self.flow_in = QLineEdit("1000")
+        self.flow_in.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.flow_in.setValidator(QDoubleValidator(0.1, 1e8, 1))
         cgrid.addWidget(L("质量流量 (kg/h):"), 3, 0)
         cgrid.addWidget(self.flow_in, 3, 1)
@@ -222,7 +229,7 @@ class CompressibleFlowPressureDrop(QWidget):
         ll.addWidget(cg)
 
         # ---- 计算方法 ----
-        mg = QGroupBox("计算方法"); mg.setStyleSheet(group_style)
+        mg = QGroupBox("计算方法"); mg.setStyleSheet(GROUP_STYLE)
         mgrid = QGridLayout(mg)
         self.mbg = QButtonGroup(self)
         self.rb_darcy = QRadioButton("Darcy-Weisbach 等温积分（推荐）")
@@ -240,16 +247,47 @@ class CompressibleFlowPressureDrop(QWidget):
         # ---- 计算按钮 ----
         bb = QHBoxLayout()
         b_calc = QPushButton("计算压降")
-        b_calc.setStyleSheet("QPushButton{background-color:#3498db;color:white;font-weight:bold;font-size:14px;border-radius:8px;min-height:50px;}QPushButton:hover{background-color:#2980b9;}")
+        calc_font = QFont("Arial", 12)
+        calc_font.setBold(True)
+        b_calc.setFont(calc_font)
+        b_calc.setMinimumHeight(50)
+        b_calc.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        b_calc.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                min-height: 50px;
+                padding: 0px;
+            }
+            QPushButton:hover {
+                background-color: #219955;
+            }
+        """)
         b_calc.clicked.connect(self.calculate_pressure_drop)
         b_flow = QPushButton("反算流量")
-        b_flow.setStyleSheet("QPushButton{background-color:#27ae60;color:white;font-weight:bold;font-size:14px;border-radius:8px;min-height:50px;}QPushButton:hover{background-color:#219a52;}")
+        b_flow.setMinimumHeight(50)
+        b_flow.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        b_flow.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                min-height: 50px;
+                padding: 0px;
+            }
+            QPushButton:hover {
+                background-color: #219955;
+            }
+        """)
         b_flow.clicked.connect(self.auto_calculate_flow)
         bb.addWidget(b_calc); bb.addWidget(b_flow)
         ll.addLayout(bb)
 
         # ---- 详细参数表 ----
-        dg = QGroupBox("详细参数"); dg.setStyleSheet(group_style)
+        dg = QGroupBox("详细参数"); dg.setStyleSheet(GROUP_STYLE)
         dv = QVBoxLayout(dg)
         self.dtable = QTableWidget()
         self.dtable.setColumnCount(3)
@@ -265,23 +303,26 @@ class CompressibleFlowPressureDrop(QWidget):
         b_clr.setStyleSheet("QPushButton{background-color:#95a5a6;color:white;font-weight:bold;border-radius:6px;padding:8px 20px;}QPushButton:hover{background-color:#7f8c8d;}")
         b_clr.clicked.connect(self.clear_inputs)
         b_txt = QPushButton("下载TXT报告")
-        b_txt.setStyleSheet("QPushButton{background-color:#27ae60;color:white;font-weight:bold;border-radius:6px;padding:8px 20px;}QPushButton:hover{background-color:#219a52;}")
+        b_txt.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        b_txt.setStyleSheet("QPushButton{background-color:#27ae60;color:white;font-weight:bold;border-radius:6px;padding:8px;}QPushButton:hover{background-color:#219653;}")
         b_txt.clicked.connect(self.download_txt_report)
         b_pdf = QPushButton("下载PDF报告")
-        b_pdf.setStyleSheet("QPushButton{background-color:#e74c3c;color:white;font-weight:bold;border-radius:6px;padding:8px 20px;}QPushButton:hover{background-color:#c0392b;}")
+        b_pdf.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        b_pdf.setStyleSheet("QPushButton{background-color:#e74c3c;color:white;font-weight:bold;border-radius:6px;padding:8px;}QPushButton:hover{background-color:#c0392b;}")
         b_pdf.clicked.connect(self.generate_pdf_report)
         br.addWidget(b_clr); br.addStretch(); br.addWidget(b_txt); br.addWidget(b_pdf)
         ll.addLayout(br)
 
         # ---- 右侧结果区 ----
-        right = QWidget(); right.setMinimumWidth(400)
-        rl = QVBoxLayout(right); rl.setSpacing(10)
-        rg = QGroupBox("计算结果"); rg.setStyleSheet(group_style)
+        right = QWidget(); right.setMinimumWidth(300)
+        rl = QVBoxLayout(right); rl.setSpacing(15)
+        rg = QGroupBox("计算结果"); rg.setStyleSheet(GROUP_STYLE)
         rv = QVBoxLayout(rg)
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
         self.result_text.setMinimumHeight(500)
-        self.result_text.setStyleSheet("QTextEdit{background-color:#f8f9fa;border:1px solid #dee2e6;border-radius:6px;font-family:Consolas,monospace;font-size:13px;padding:10px;}")
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.result_text.setStyleSheet("QTextEdit{background-color:#f8f9fa;border:1px solid #ecf0f1;border-radius:6px;padding:8px;}")
         self.result_text.setPlaceholderText("计算结果将在此显示……")
         rv.addWidget(self.result_text)
         rl.addWidget(rg)
