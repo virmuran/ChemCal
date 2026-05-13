@@ -236,7 +236,7 @@ class SolidSolubilityCalculator(QWidget):
         # 说明文字
         desc = QLabel(
             "查询固体在不同溶剂和温度条件下的溶解度数据。"
-            "支持单次查询和批量查询，数据来源包括 CRC Handbook、Merck Index 等。"
+            "数据来源包括 CRC Handbook、Merck Index 等。"
         )
         desc.setWordWrap(True)
         desc.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
@@ -328,48 +328,6 @@ class SolidSolubilityCalculator(QWidget):
         self.progress_bar = QProgressBar()
         self.progress_bar.setVisible(False)
         left_layout.addWidget(self.progress_bar)
-
-        # ── 批量查询组 ──
-        batch_group = QGroupBox("批量查询")
-        batch_group.setStyleSheet(GROUP_STYLE)
-        batch_vbox = QVBoxLayout(batch_group)
-
-        self.batch_table = QTableWidget()
-        self.batch_table.setColumnCount(4)
-        self.batch_table.setHorizontalHeaderLabels(
-            ["化合物", "溶剂", "温度(°C)", "溶解度"])
-        header = self.batch_table.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.Stretch)
-        batch_vbox.addWidget(self.batch_table)
-
-        batch_btn_row = QHBoxLayout()
-        add_btn = QPushButton("添加行")
-        add_btn.setStyleSheet(
-            "QPushButton{background:#ecf0f1;border:1px solid #bdc3c7;"
-            "border-radius:6px;padding:8px;color:black;font-weight:bold;}"
-            "QPushButton:hover{background:#d5dbdb;}")
-        add_btn.clicked.connect(self.add_batch_row)
-
-        batch_btn = QPushButton("批量查询")
-        batch_btn.setStyleSheet(
-            "QPushButton{background:#ecf0f1;border:1px solid #bdc3c7;"
-            "border-radius:6px;padding:8px;color:black;font-weight:bold;}"
-            "QPushButton:hover{background:#d5dbdb;}")
-        batch_btn.clicked.connect(self.batch_query)
-
-        clear_batch_btn = QPushButton("清空表格")
-        clear_batch_btn.setStyleSheet(
-            "QPushButton{background:#ecf0f1;border:1px solid #bdc3c7;"
-            "border-radius:6px;padding:8px;color:black;font-weight:bold;}"
-            "QPushButton:hover{background:#d5dbdb;}")
-        clear_batch_btn.clicked.connect(self.clear_batch_table)
-
-        batch_btn_row.addWidget(add_btn)
-        batch_btn_row.addWidget(batch_btn)
-        batch_btn_row.addWidget(clear_batch_btn)
-        batch_btn_row.addStretch()
-        batch_vbox.addLayout(batch_btn_row)
-        left_layout.addWidget(batch_group)
 
         # ── 参考数据表 ──
         ref_group = QGroupBox("常见固体溶解度参考表")
@@ -463,9 +421,6 @@ class SolidSolubilityCalculator(QWidget):
         main_layout.addWidget(scroll_left, 2)
         main_layout.addWidget(right_widget, 1)
 
-        # 初始化批量查询表
-        self.add_batch_row()
-
     # ──────────────────── 参考表 ────────────────────────────────
     def _populate_reference_table(self):
         rows = [
@@ -483,53 +438,6 @@ class SolidSolubilityCalculator(QWidget):
         for i, rd in enumerate(rows):
             for j, v in enumerate(rd):
                 self.data_table.setItem(i, j, QTableWidgetItem(str(v)))
-
-    # ──────────────────── 批量查询 ──────────────────────────────
-    def add_batch_row(self):
-        n = self.batch_table.rowCount()
-        self.batch_table.setRowCount(n + 1)
-
-        cc = QComboBox()
-        cc.setStyleSheet(COMBOBOX_STYLE)
-        cc.setEditable(True)
-        cc.addItems([
-            "氯化钠", "氯化钾", "硫酸钠", "碳酸钙",
-            "蔗糖", "苯甲酸", "阿司匹林", "咖啡因"])
-        self.batch_table.setCellWidget(n, 0, cc)
-
-        sc = QComboBox()
-        sc.setStyleSheet(COMBOBOX_STYLE)
-        sc.setEditable(True)
-        sc.addItems(["水", "乙醇", "甲醇", "丙酮"])
-        self.batch_table.setCellWidget(n, 1, sc)
-
-        te = QLineEdit("25")
-        te.setValidator(QDoubleValidator(-273, 500, 1))
-        self.batch_table.setCellWidget(n, 2, te)
-
-        self.batch_table.setItem(n, 3, QTableWidgetItem("--"))
-
-    def clear_batch_table(self):
-        self.batch_table.setRowCount(0)
-        self.add_batch_row()
-
-    def batch_query(self):
-        for row in range(self.batch_table.rowCount()):
-            cw = self.batch_table.cellWidget(row, 0)
-            sw = self.batch_table.cellWidget(row, 1)
-            tw = self.batch_table.cellWidget(row, 2)
-            if cw and sw and tw:
-                c = cw.currentText().strip()
-                s = sw.currentText().strip()
-                try:
-                    t = float(tw.text())
-                except ValueError:
-                    t = 25
-                w = SolubilityWorker(c, s, t)
-                r = w.query_solubility_data(c, s, t)
-                txt = (f"{r['solubility']} {r['unit']}"
-                       if r["solubility"] != "N/A" else "N/A")
-                self.batch_table.item(row, 3).setText(txt)
 
     # ──────────────────── 单次查询 ──────────────────────────────
     def query_solubility(self):
