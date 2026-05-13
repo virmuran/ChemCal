@@ -126,7 +126,7 @@ class RefrigerationCycleCalculator(QWidget):
             "计算蒸汽压缩制冷循环的性能参数，包括制冷量、压缩功、COP等。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: #7f8c8d; font-size: 12px;")
+        description.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
 
         # ========== 循环类型选择组 ==========
@@ -365,7 +365,6 @@ class RefrigerationCycleCalculator(QWidget):
         btn_layout.addStretch()
 
         btn_txt = QPushButton("下载计算书(TXT)")
-        btn_txt.setMinimumHeight(50)
         btn_txt.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         btn_txt.setStyleSheet(
             "QPushButton { background-color: #27ae60; color: white; font-weight: bold; "
@@ -376,7 +375,6 @@ class RefrigerationCycleCalculator(QWidget):
         btn_layout.addWidget(btn_txt)
 
         btn_pdf = QPushButton("下载计算书(PDF)")
-        btn_pdf.setMinimumHeight(50)
         btn_pdf.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         btn_pdf.setStyleSheet(
             "QPushButton { background-color: #e74c3c; color: white; font-weight: bold; "
@@ -393,7 +391,7 @@ class RefrigerationCycleCalculator(QWidget):
         right_widget = QWidget()
         right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
-        right_layout.setSpacing(10)
+        right_layout.setSpacing(15)
 
         # 结果显示组
         result_group = QGroupBox("计算结果")
@@ -403,6 +401,7 @@ class RefrigerationCycleCalculator(QWidget):
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
         self.result_text.setMinimumHeight(500)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet(
             "QTextEdit { background-color: #f8f9fa; border: 1px solid #ecf0f1; "
             "border-radius: 6px; font-family: Consolas, monospace; font-size: 13px; padding: 8px; }"
