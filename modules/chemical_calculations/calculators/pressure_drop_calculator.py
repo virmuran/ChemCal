@@ -30,6 +30,21 @@ COMBOBOX_STYLE = """
         padding: 3px 8px;
     }
 """
+
+GROUP_STYLE = """
+QGroupBox {
+    font-weight: bold;
+    border: 1px solid #bdc3c7;
+    border-radius: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 8px 0 8px;
+}
+"""
 class FittingsDialog(QDialog):
     """管件和阀门选择对话框"""
     
@@ -179,20 +194,7 @@ class 压降计算(QWidget):
         
         # 2. 然后添加计算模式选择
         mode_group = QGroupBox("计算模式")
-        mode_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
+        mode_group.setStyleSheet(GROUP_STYLE)
         mode_layout = QHBoxLayout(mode_group)
         
         self.mode_button_group = QButtonGroup(self)
@@ -241,20 +243,7 @@ class 压降计算(QWidget):
         
         # 3. 输入参数组 - 使用GridLayout实现整齐的布局
         input_group = QGroupBox("输入参数")
-        input_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
+        input_group.setStyleSheet(GROUP_STYLE)
         
         # 使用GridLayout确保整齐排列
         input_layout = QGridLayout(input_group)
@@ -262,9 +251,9 @@ class 压降计算(QWidget):
         input_layout.setHorizontalSpacing(10)
         
         # 设置列宽比例
-        input_layout.setColumnStretch(0, 1)  # 标签列
-        input_layout.setColumnStretch(1, 2)  # 输入框列
-        input_layout.setColumnStretch(2, 2)  # 下拉菜单列
+        input_layout.setColumnStretch(0, 4)  # 标签列（规范要求4）
+        input_layout.setColumnStretch(1, 8)  # 输入框列（规范要求8）
+        input_layout.setColumnStretch(2, 5)  # 提示列（规范要求5）
         
         # 标签样式 - 右对齐
         label_style = """
@@ -579,20 +568,7 @@ class 压降计算(QWidget):
         
         # 结果显示
         self.result_group = QGroupBox("计算结果")
-        self.result_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
+        self.result_group.setStyleSheet(GROUP_STYLE)
         result_layout = QVBoxLayout(self.result_group)
         
         self.result_text = QTextEdit()
@@ -607,6 +583,7 @@ class 压降计算(QWidget):
                 min-height: 500px;
             }
         """)
+        self.result_text.setMinimumHeight(500)
         result_layout.addWidget(self.result_text)
         
         right_layout.addWidget(self.result_group)
