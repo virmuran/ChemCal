@@ -2,7 +2,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QGroupBox, QTextEdit, QComboBox, QMessageBox, QFrame,
     QScrollArea, QDialog, QSpinBox, QButtonGroup, QGridLayout,
-    QFileDialog, QDialogButtonBox
+    QFileDialog, QDialogButtonBox, QSizePolicy
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
@@ -47,6 +47,21 @@ COMBOBOX_STYLE = """
     QComboBox QAbstractItemView::item {
         padding: 3px 8px;
     }
+"""
+
+GROUP_STYLE = """
+QGroupBox {
+    font-weight: bold;
+    border: 1px solid #bdc3c7;
+    border-radius: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 8px 0 8px;
+}
 """
 class 换热器计算(QWidget):
     """换热器计算器（统一UI风格版）"""
@@ -180,20 +195,7 @@ class 换热器计算(QWidget):
         
         # 2. 计算模式选择
         mode_group = QGroupBox("计算模式")
-        mode_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
+        mode_group.setStyleSheet(GROUP_STYLE)
         mode_layout = QHBoxLayout(mode_group)
         
         # 模式选择下拉菜单
@@ -238,28 +240,15 @@ class 换热器计算(QWidget):
         
         # 3. 输入参数组 - 使用GridLayout实现整齐的布局
         input_group = QGroupBox("输入参数")
-        input_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
+        input_group.setStyleSheet(GROUP_STYLE)
         
         # 使用GridLayout确保整齐排列
         self.input_layout = QGridLayout(input_group)
         self.input_layout.setVerticalSpacing(12)
         self.input_layout.setHorizontalSpacing(10)
-        self.input_layout.setColumnStretch(0, 2)  # 标签列可伸缩
-        self.input_layout.setColumnStretch(1, 3)  # 输入框列可伸缩
-        self.input_layout.setColumnStretch(2, 2)  # 提示列可伸缩
+        self.input_layout.setColumnStretch(0, 4)
+        self.input_layout.setColumnStretch(1, 8)
+        self.input_layout.setColumnStretch(2, 5)
         
         # 标签样式 - 右对齐
         label_style = """
@@ -269,9 +258,6 @@ class 换热器计算(QWidget):
             }
         """
         
-        # 输入框和下拉菜单的固定宽度
-        input_width = 400
-        combo_width = 250
         
         left_layout.addWidget(input_group)
         
@@ -293,6 +279,7 @@ class 换热器计算(QWidget):
             }
         """)
         calculate_btn.setMinimumHeight(50)
+        calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         left_layout.addWidget(calculate_btn)
         
         # 5. 下载按钮布局
@@ -318,6 +305,7 @@ class 换热器计算(QWidget):
         download_layout.addStretch()
         
         download_txt_btn = QPushButton("下载计算书(TXT)")
+        download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         download_txt_btn.clicked.connect(self.download_txt_report)
         download_txt_btn.setStyleSheet("""
             QPushButton {
@@ -334,6 +322,7 @@ class 换热器计算(QWidget):
         """)
 
         download_pdf_btn = QPushButton("下载计算书(PDF)")
+        download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         download_pdf_btn.clicked.connect(self.generate_pdf_report)
         download_pdf_btn.setStyleSheet("""
             QPushButton {
@@ -358,30 +347,19 @@ class 换热器计算(QWidget):
         
         # 右侧：结果显示区域 (占1/3宽度)
         right_widget = QWidget()
-        right_widget.setMinimumWidth(400)
+        right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
         
         # 结果显示
         self.result_group = QGroupBox("计算结果")
-        self.result_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
+        self.result_group.setStyleSheet(GROUP_STYLE)
         result_layout = QVBoxLayout(self.result_group)
         
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
+        self.result_text.setMinimumHeight(500)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet("""
             QTextEdit {
                 border: 1px solid #ecf0f1;
@@ -448,8 +426,6 @@ class 换热器计算(QWidget):
         label = QLabel(label_text)
         label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         label.setStyleSheet("QLabel { font-weight: bold; padding-right: 10px; }")
-        label.setMinimumWidth(120)
-        label.setMaximumWidth(200)
         self.input_layout.addWidget(label, row, 0)
 
         # 输入框 - 第1列
@@ -460,15 +436,12 @@ class 换热器计算(QWidget):
             widget.setPlaceholderText(placeholder)
         if validator:
             widget.setValidator(validator)
-        widget.setMinimumWidth(150)
-        widget.setMaximumWidth(400)
+        widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.input_layout.addWidget(widget, row, 1)
 
         # 提示标签 - 第2列
         hint_label = QLabel("直接输入数值")
         hint_label.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        hint_label.setMinimumWidth(100)
-        hint_label.setMaximumWidth(250)
         self.input_layout.addWidget(hint_label, row, 2)
         
         # 存储控件引用
@@ -483,8 +456,6 @@ class 换热器计算(QWidget):
         label = QLabel(label_text)
         label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         label.setStyleSheet("QLabel { font-weight: bold; padding-right: 10px; }")
-        label.setMinimumWidth(120)
-        label.setMaximumWidth(200)
         self.input_layout.addWidget(label, row, 0)
 
         # 输入框 - 第1列
@@ -493,8 +464,7 @@ class 换热器计算(QWidget):
             lineedit.setText(str(default_value))
         lineedit.setPlaceholderText("输入或选择后自动填充")
         lineedit.setValidator(QDoubleValidator(0.1, 100.0, 2))
-        lineedit.setMinimumWidth(150)
-        lineedit.setMaximumWidth(400)
+        lineedit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.input_layout.addWidget(lineedit, row, 1)
 
         # 下拉菜单 - 第2列
@@ -503,8 +473,7 @@ class 换热器计算(QWidget):
         combobox.addItem("- 请选择流体比热容 -")
         for fluid in self.specific_heat_data.keys():
             combobox.addItem(fluid)
-        combobox.setMinimumWidth(100)
-        combobox.setMaximumWidth(250)
+        combobox.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         combobox.currentTextChanged.connect(lambda text, le=lineedit: self.on_cp_selected(text, le))
         self.input_layout.addWidget(combobox, row, 2)
         
@@ -521,16 +490,13 @@ class 换热器计算(QWidget):
         label = QLabel(label_text)
         label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         label.setStyleSheet("QLabel { font-weight: bold; padding-right: 10px; }")
-        label.setMinimumWidth(120)
-        label.setMaximumWidth(200)
         self.input_layout.addWidget(label, row, 0)
         
         # 输入框 - 第1列
         manual_input = QLineEdit()
         manual_input.setPlaceholderText("输入或选择后自动填充")
         manual_input.setValidator(QDoubleValidator(1, 10000, 1))
-        manual_input.setMinimumWidth(150)
-        manual_input.setMaximumWidth(400)
+        manual_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.input_layout.addWidget(manual_input, row, 1)
         self.input_widgets["k_manual"] = manual_input
         
@@ -550,8 +516,7 @@ class 换热器计算(QWidget):
             option_text = f"{hot_fluid} → {cold_fluid} | {min_val:.1f}~{max_val:.1f} W/K·m² | {exchanger}"
             combo.addItem(option_text)
         
-        combo.setMinimumWidth(100)
-        combo.setMaximumWidth(250)
+        combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         combo.currentTextChanged.connect(self.on_heat_transfer_coeff_selected)
         self.input_layout.addWidget(combo, row, 2)
         self.input_widgets["k_combo"] = combo
