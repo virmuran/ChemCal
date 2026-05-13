@@ -207,7 +207,10 @@ class HistoryViewer(QWidget):
         """加载历史记录"""
         if not append:
             self._current_page = 0
+            # blockSignals 防止 clear() 过程中 Qt 内部信号访问已删除的内存
+            self.history_list.blockSignals(True)
             self.history_list.clear()
+            self.history_list.blockSignals(False)
 
         records, total = self.db.get_all(
             calculator_id=self._current_calculator or None,
