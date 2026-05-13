@@ -2,7 +2,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QGroupBox, QTextEdit, QComboBox, QMessageBox, QFrame,
     QScrollArea, QDialog, QSpinBox, QButtonGroup, QGridLayout,
-    QFileDialog, QDialogButtonBox
+    QFileDialog, QDialogButtonBox, QSizePolicy
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
@@ -27,6 +27,21 @@ COMBOBOX_STYLE = """
     QComboBox QAbstractItemView::item {
         padding: 3px 8px;
     }
+"""
+
+GROUP_STYLE = """
+QGroupBox {
+    font-weight: bold;
+    border: 1px solid #bdc3c7;
+    border-radius: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 8px 0 8px;
+}
 """
 class 罐体重量(QWidget):
     """罐体重量计算器（与压降计算UI完全一致）"""
@@ -81,20 +96,7 @@ class 罐体重量(QWidget):
         
         # 2. 罐体类型选择
         type_group = QGroupBox("罐体类型")
-        type_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
+        type_group.setStyleSheet(GROUP_STYLE)
         type_layout = QHBoxLayout(type_group)
         
         self.type_button_group = QButtonGroup(self)
@@ -111,7 +113,7 @@ class 罐体重量(QWidget):
             btn = QPushButton(type_name)
             btn.setCheckable(True)
             btn.setToolTip(tooltip)
-            btn.setFixedWidth(120)
+            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             btn.setStyleSheet("""
                 QPushButton {
                     background-color: #ecf0f1;
@@ -142,25 +144,15 @@ class 罐体重量(QWidget):
         
         # 3. 输入参数组 - 使用GridLayout实现整齐的布局
         input_group = QGroupBox("尺寸参数")
-        input_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
+        input_group.setStyleSheet(GROUP_STYLE)
         
         # 使用GridLayout确保整齐排列
         self.input_layout = QGridLayout(input_group)
         self.input_layout.setVerticalSpacing(12)
         self.input_layout.setHorizontalSpacing(10)
+        self.input_layout.setColumnStretch(0, 4)
+        self.input_layout.setColumnStretch(1, 8)
+        self.input_layout.setColumnStretch(2, 5)
         
         # 标签样式 - 右对齐
         label_style = """
@@ -171,8 +163,6 @@ class 罐体重量(QWidget):
         """
         
         # 输入框和下拉菜单的固定宽度
-        input_width = 400
-        combo_width = 250
         
         # 第一列：参数名称（右对齐）
         # 第二列：输入框（固定宽度）
@@ -189,13 +179,12 @@ class 罐体重量(QWidget):
         self.diameter_input = QLineEdit()
         self.diameter_input.setPlaceholderText("例如: 3000")
         self.diameter_input.setValidator(QDoubleValidator(0.1, 50000.0, 2))
+        self.diameter_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.diameter_input.setText("")
-        self.diameter_input.setFixedWidth(input_width)
         self.input_layout.addWidget(self.diameter_input, row, 1)
         
         self.diameter_hint = QLabel("直接输入直径值")
         self.diameter_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        self.diameter_hint.setFixedWidth(combo_width)
         self.input_layout.addWidget(self.diameter_hint, row, 2)
         
         row += 1
@@ -209,13 +198,12 @@ class 罐体重量(QWidget):
         self.height_input = QLineEdit()
         self.height_input.setPlaceholderText("例如: 5000")
         self.height_input.setValidator(QDoubleValidator(0.1, 50000.0, 2))
+        self.height_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.height_input.setText("")
-        self.height_input.setFixedWidth(input_width)
         self.input_layout.addWidget(self.height_input, row, 1)
         
         self.height_hint = QLabel("直接输入高度值")
         self.height_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        self.height_hint.setFixedWidth(combo_width)
         self.input_layout.addWidget(self.height_hint, row, 2)
         
         row += 1
@@ -229,13 +217,12 @@ class 罐体重量(QWidget):
         self.shell_thickness_input = QLineEdit()
         self.shell_thickness_input.setPlaceholderText("例如: 6.0")
         self.shell_thickness_input.setValidator(QDoubleValidator(1.0, 100.0, 1))
+        self.shell_thickness_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.shell_thickness_input.setText("")
-        self.shell_thickness_input.setFixedWidth(input_width)
         self.input_layout.addWidget(self.shell_thickness_input, row, 1)
         
         self.shell_thickness_hint = QLabel("直接输入壁厚值")
         self.shell_thickness_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        self.shell_thickness_hint.setFixedWidth(combo_width)
         self.input_layout.addWidget(self.shell_thickness_hint, row, 2)
         
         row += 1
@@ -249,13 +236,12 @@ class 罐体重量(QWidget):
         self.cone_height_input = QLineEdit()
         self.cone_height_input.setPlaceholderText("例如: 1200")
         self.cone_height_input.setValidator(QDoubleValidator(0.1, 10000.0, 2))
+        self.cone_height_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.cone_height_input.setText("")
-        self.cone_height_input.setFixedWidth(input_width)
         self.input_layout.addWidget(self.cone_height_input, row, 1)
         
         self.cone_height_hint = QLabel("直接输入锥体高度")
         self.cone_height_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        self.cone_height_hint.setFixedWidth(combo_width)
         self.input_layout.addWidget(self.cone_height_hint, row, 2)
         
         row += 1
@@ -269,13 +255,12 @@ class 罐体重量(QWidget):
         self.nozzle_diameter_input = QLineEdit()
         self.nozzle_diameter_input.setPlaceholderText("例如: 100")
         self.nozzle_diameter_input.setValidator(QDoubleValidator(0.01, 50000.0, 3))
+        self.nozzle_diameter_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.nozzle_diameter_input.setText("")
-        self.nozzle_diameter_input.setFixedWidth(input_width)
         self.input_layout.addWidget(self.nozzle_diameter_input, row, 1)
         
         self.nozzle_diameter_hint = QLabel("直接输入锥口直径")
         self.nozzle_diameter_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        self.nozzle_diameter_hint.setFixedWidth(combo_width)
         self.input_layout.addWidget(self.nozzle_diameter_hint, row, 2)
         
         row += 1
@@ -289,13 +274,12 @@ class 罐体重量(QWidget):
         self.length_input = QLineEdit()
         self.length_input.setPlaceholderText("例如: 5000")
         self.length_input.setValidator(QDoubleValidator(0.1, 50.0, 2))
+        self.length_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.length_input.setText("")
-        self.length_input.setFixedWidth(input_width)
         self.input_layout.addWidget(self.length_input, row, 1)
         
         self.length_hint = QLabel("直接输入长度值")
         self.length_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        self.length_hint.setFixedWidth(combo_width)
         self.input_layout.addWidget(self.length_hint, row, 2)
         
         row += 1
@@ -309,13 +293,12 @@ class 罐体重量(QWidget):
         self.liquid_level_input = QLineEdit()
         self.liquid_level_input.setPlaceholderText("例如: 1000")
         self.liquid_level_input.setValidator(QDoubleValidator(0.0, 50.0, 2))
+        self.liquid_level_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.liquid_level_input.setText("")
-        self.liquid_level_input.setFixedWidth(input_width)
         self.input_layout.addWidget(self.liquid_level_input, row, 1)
         
         self.liquid_level_hint = QLabel("直接输入液位高度")
         self.liquid_level_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        self.liquid_level_hint.setFixedWidth(combo_width)
         self.input_layout.addWidget(self.liquid_level_hint, row, 2)
         
         row += 1
@@ -329,37 +312,26 @@ class 罐体重量(QWidget):
         self.sphere_thickness_input = QLineEdit()
         self.sphere_thickness_input.setPlaceholderText("例如: 6.0")
         self.sphere_thickness_input.setValidator(QDoubleValidator(1.0, 100.0, 1))
+        self.sphere_thickness_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.sphere_thickness_input.setText("")
-        self.sphere_thickness_input.setFixedWidth(input_width)
         self.input_layout.addWidget(self.sphere_thickness_input, row, 1)
         
         self.sphere_thickness_hint = QLabel("直接输入壁厚值")
         self.sphere_thickness_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        self.sphere_thickness_hint.setFixedWidth(combo_width)
         self.input_layout.addWidget(self.sphere_thickness_hint, row, 2)
         
         left_layout.addWidget(input_group)
         
         # 4. 材料参数组
         material_group = QGroupBox("材料参数")
-        material_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
+        material_group.setStyleSheet(GROUP_STYLE)
         
         material_layout = QGridLayout(material_group)
         material_layout.setVerticalSpacing(12)
         material_layout.setHorizontalSpacing(10)
+        material_layout.setColumnStretch(0, 4)
+        material_layout.setColumnStretch(1, 8)
+        material_layout.setColumnStretch(2, 5)
         
         label_style = """
             QLabel {
@@ -367,9 +339,6 @@ class 罐体重量(QWidget):
                 padding-right: 10px;
             }
         """
-        
-        input_width = 400
-        combo_width = 250
         
         row = 0
 
@@ -382,12 +351,13 @@ class 罐体重量(QWidget):
         self.density_input = QLineEdit()
         self.density_input.setPlaceholderText("例如: 7930")
         self.density_input.setValidator(QDoubleValidator(100, 20000, 2))
+        self.density_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.density_input.setText("")
-        self.density_input.setFixedWidth(input_width)
         material_layout.addWidget(self.density_input, row, 1)
         
         self.material_combo = QComboBox()
         self.material_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.material_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.material_combo.addItems([
             "- 请选择材料 -",
             "304不锈钢 - 密度: 7930 kg/m³",
@@ -400,7 +370,6 @@ class 罐体重量(QWidget):
             "钛合金 - 密度: 4510 kg/m³",
             "自定义材料"
         ])
-        self.material_combo.setFixedWidth(combo_width)
         self.material_combo.currentTextChanged.connect(self.on_material_changed)
         material_layout.addWidget(self.material_combo, row, 2)
         
@@ -415,13 +384,12 @@ class 罐体重量(QWidget):
         self.liquid_density_input = QLineEdit()
         self.liquid_density_input.setPlaceholderText("例如: 1000")
         self.liquid_density_input.setValidator(QDoubleValidator(0, 2000, 0))
+        self.liquid_density_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.liquid_density_input.setText("")
-        self.liquid_density_input.setFixedWidth(input_width)
         material_layout.addWidget(self.liquid_density_input, row, 1)
         
         self.liquid_density_hint = QLabel("水: 1000 kg/m³")
         self.liquid_density_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        self.liquid_density_hint.setFixedWidth(combo_width)
         material_layout.addWidget(self.liquid_density_hint, row, 2)
         
         left_layout.addWidget(material_group)
@@ -444,11 +412,13 @@ class 罐体重量(QWidget):
             }
         """)
         calculate_btn.setMinimumHeight(50)
+        calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         left_layout.addWidget(calculate_btn)
         
         # 6. 下载按钮布局
         download_layout = QHBoxLayout()
         download_txt_btn = QPushButton("下载计算书(TXT)")
+        download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         download_txt_btn.clicked.connect(self.download_txt_report)
         download_txt_btn.setStyleSheet("""
             QPushButton {
@@ -465,6 +435,7 @@ class 罐体重量(QWidget):
         """)
 
         download_pdf_btn = QPushButton("下载计算书(PDF)")
+        download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         download_pdf_btn.clicked.connect(self.generate_pdf_report)
         download_pdf_btn.setStyleSheet("""
             QPushButton {
@@ -507,30 +478,19 @@ class 罐体重量(QWidget):
         
         # 右侧：结果显示区域 (占1/3宽度)
         right_widget = QWidget()
-        right_widget.setMinimumWidth(400)
+        right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
         
         # 结果显示
         self.result_group = QGroupBox("计算结果")
-        self.result_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
+        self.result_group.setStyleSheet(GROUP_STYLE)
         result_layout = QVBoxLayout(self.result_group)
         
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
+        self.result_text.setMinimumHeight(500)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet("""
             QTextEdit {
                 border: 1px solid #ecf0f1;
