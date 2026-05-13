@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
                               QLabel, QLineEdit, QPushButton, QComboBox,
-                              QTextEdit, QGridLayout, QScrollArea, QFileDialog)
+                              QTextEdit, QGridLayout, QScrollArea, QFileDialog, QSizePolicy, QMessageBox)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
 import math
@@ -119,11 +119,10 @@ TXT_BUTTON_STYLE = """
         color: white;
         border: none;
         border-radius: 8px;
-        padding: 10px 20px;
-        font-size: 13px;
+        padding: 8px;
     }
     QPushButton:hover {
-        background-color: #219a52;
+        background-color: #219653;
     }
 """
 
@@ -134,8 +133,7 @@ PDF_BUTTON_STYLE = """
         color: white;
         border: none;
         border-radius: 8px;
-        padding: 10px 20px;
-        font-size: 13px;
+        padding: 8px;
     }
     QPushButton:hover {
         background-color: #c0392b;
@@ -209,42 +207,42 @@ class LongDistanceSteamPipeCalculator(QWidget):
         # 顶部说明文字
         desc_label = QLabel("计算长距离蒸汽管道的温度降、压力损失和热损失，基于能量平衡和动量平衡方程进行分段计算。")
         desc_label.setWordWrap(True)
-        desc_label.setStyleSheet("color: #7f8c8d; font-size: 12px;")
+        desc_label.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
         scroll_layout.addWidget(desc_label)
 
         # --- 蒸汽参数组 ---
         steam_group = QGroupBox("蒸汽参数")
         steam_group.setStyleSheet(GROUP_STYLE)
         steam_layout = QGridLayout(steam_group)
-        steam_layout.setSpacing(10)
+        steam_layout.setVerticalSpacing(12)
+        steam_layout.setHorizontalSpacing(10)
+        steam_layout.setColumnStretch(0, 4)
+        steam_layout.setColumnStretch(1, 8)
+        steam_layout.setColumnStretch(2, 5)
 
         row = 0
         lbl = QLabel("蒸汽类型:")
-        lbl.setFixedWidth(200)
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        lbl.setStyleSheet("font-weight: bold;")
+        lbl.setStyleSheet("font-weight: bold; padding-right: 10px;")
         self.steam_type = QComboBox()
         self.steam_type.setStyleSheet(COMBOBOX_STYLE)
-        self.steam_type.setFixedWidth(400)
         self.steam_type.addItems(["饱和蒸汽", "过热蒸汽"])
         hint = QLabel("")
-        hint.setFixedWidth(250)
         steam_layout.addWidget(lbl, row, 0)
         steam_layout.addWidget(self.steam_type, row, 1)
         steam_layout.addWidget(hint, row, 2)
 
         row = 1
         lbl = QLabel("流量:")
-        lbl.setFixedWidth(200)
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        lbl.setStyleSheet("font-weight: bold;")
+        lbl.setStyleSheet("font-weight: bold; padding-right: 10px;")
         self.flow_rate_input = QLineEdit()
-        self.flow_rate_input.setFixedWidth(400)
         self.flow_rate_input.setPlaceholderText("例如：10")
         self.flow_rate_input.setValidator(QDoubleValidator(0.1, 1000, 2))
+        self.flow_rate_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.flow_rate_unit = QComboBox()
         self.flow_rate_unit.setStyleSheet(COMBOBOX_STYLE)
-        self.flow_rate_unit.setFixedWidth(250)
+        self.flow_rate_unit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.flow_rate_unit.addItems(["t/h", "kg/s"])
         steam_layout.addWidget(lbl, row, 0)
         steam_layout.addWidget(self.flow_rate_input, row, 1)
@@ -252,31 +250,28 @@ class LongDistanceSteamPipeCalculator(QWidget):
 
         row = 2
         lbl = QLabel("入口温度:")
-        lbl.setFixedWidth(200)
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        lbl.setStyleSheet("font-weight: bold;")
+        lbl.setStyleSheet("font-weight: bold; padding-right: 10px;")
         self.inlet_temp_input = QLineEdit()
-        self.inlet_temp_input.setFixedWidth(400)
         self.inlet_temp_input.setPlaceholderText("例如：200")
         self.inlet_temp_input.setValidator(QDoubleValidator(100, 600, 1))
+        self.inlet_temp_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         hint = QLabel("单位：°C")
-        hint.setFixedWidth(250)
         steam_layout.addWidget(lbl, row, 0)
         steam_layout.addWidget(self.inlet_temp_input, row, 1)
         steam_layout.addWidget(hint, row, 2)
 
         row = 3
         lbl = QLabel("入口压力:")
-        lbl.setFixedWidth(200)
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        lbl.setStyleSheet("font-weight: bold;")
+        lbl.setStyleSheet("font-weight: bold; padding-right: 10px;")
         self.inlet_pressure_input = QLineEdit()
-        self.inlet_pressure_input.setFixedWidth(400)
         self.inlet_pressure_input.setPlaceholderText("例如：1.0")
         self.inlet_pressure_input.setValidator(QDoubleValidator(0.1, 10, 2))
+        self.inlet_pressure_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.pressure_unit = QComboBox()
         self.pressure_unit.setStyleSheet(COMBOBOX_STYLE)
-        self.pressure_unit.setFixedWidth(250)
+        self.pressure_unit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.pressure_unit.addItems(["MPa", "bar"])
         steam_layout.addWidget(lbl, row, 0)
         steam_layout.addWidget(self.inlet_pressure_input, row, 1)
@@ -288,64 +283,60 @@ class LongDistanceSteamPipeCalculator(QWidget):
         pipe_group = QGroupBox("管道参数")
         pipe_group.setStyleSheet(GROUP_STYLE)
         pipe_layout = QGridLayout(pipe_group)
-        pipe_layout.setSpacing(10)
+        pipe_layout.setVerticalSpacing(12)
+        pipe_layout.setHorizontalSpacing(10)
+        pipe_layout.setColumnStretch(0, 4)
+        pipe_layout.setColumnStretch(1, 8)
+        pipe_layout.setColumnStretch(2, 5)
 
         row = 0
         lbl = QLabel("管道长度:")
-        lbl.setFixedWidth(200)
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        lbl.setStyleSheet("font-weight: bold;")
+        lbl.setStyleSheet("font-weight: bold; padding-right: 10px;")
         self.pipe_length_input = QLineEdit()
-        self.pipe_length_input.setFixedWidth(400)
         self.pipe_length_input.setPlaceholderText("例如：1000")
         self.pipe_length_input.setValidator(QDoubleValidator(10, 50000, 0))
+        self.pipe_length_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         hint = QLabel("单位：m")
-        hint.setFixedWidth(250)
         pipe_layout.addWidget(lbl, row, 0)
         pipe_layout.addWidget(self.pipe_length_input, row, 1)
         pipe_layout.addWidget(hint, row, 2)
 
         row = 1
         lbl = QLabel("管道内径:")
-        lbl.setFixedWidth(200)
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        lbl.setStyleSheet("font-weight: bold;")
+        lbl.setStyleSheet("font-weight: bold; padding-right: 10px;")
         self.pipe_diameter_input = QLineEdit()
-        self.pipe_diameter_input.setFixedWidth(400)
         self.pipe_diameter_input.setPlaceholderText("例如：200")
         self.pipe_diameter_input.setValidator(QDoubleValidator(10, 2000, 1))
+        self.pipe_diameter_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         hint = QLabel("单位：mm")
-        hint.setFixedWidth(250)
         pipe_layout.addWidget(lbl, row, 0)
         pipe_layout.addWidget(self.pipe_diameter_input, row, 1)
         pipe_layout.addWidget(hint, row, 2)
 
         row = 2
         lbl = QLabel("管道材料:")
-        lbl.setFixedWidth(200)
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        lbl.setStyleSheet("font-weight: bold;")
+        lbl.setStyleSheet("font-weight: bold; padding-right: 10px;")
         self.pipe_material = QComboBox()
         self.pipe_material.setStyleSheet(COMBOBOX_STYLE)
-        self.pipe_material.setFixedWidth(400)
+        self.pipe_material.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.pipe_material.addItems(["碳钢", "不锈钢", "铜"])
         hint = QLabel("")
-        hint.setFixedWidth(250)
         pipe_layout.addWidget(lbl, row, 0)
         pipe_layout.addWidget(self.pipe_material, row, 1)
         pipe_layout.addWidget(hint, row, 2)
 
         row = 3
         lbl = QLabel("粗糙度:")
-        lbl.setFixedWidth(200)
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        lbl.setStyleSheet("font-weight: bold;")
+        lbl.setStyleSheet("font-weight: bold; padding-right: 10px;")
         self.roughness_input = QLineEdit()
-        self.roughness_input.setFixedWidth(400)
         self.roughness_input.setText("0.2")
         self.roughness_input.setValidator(QDoubleValidator(0.01, 5, 3))
+        self.roughness_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         hint = QLabel("单位：mm")
-        hint.setFixedWidth(250)
         pipe_layout.addWidget(lbl, row, 0)
         pipe_layout.addWidget(self.roughness_input, row, 1)
         pipe_layout.addWidget(hint, row, 2)
@@ -356,64 +347,60 @@ class LongDistanceSteamPipeCalculator(QWidget):
         insulation_group = QGroupBox("保温参数")
         insulation_group.setStyleSheet(GROUP_STYLE)
         insulation_layout = QGridLayout(insulation_group)
-        insulation_layout.setSpacing(10)
+        insulation_layout.setVerticalSpacing(12)
+        insulation_layout.setHorizontalSpacing(10)
+        insulation_layout.setColumnStretch(0, 4)
+        insulation_layout.setColumnStretch(1, 8)
+        insulation_layout.setColumnStretch(2, 5)
 
         row = 0
         lbl = QLabel("保温厚度:")
-        lbl.setFixedWidth(200)
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        lbl.setStyleSheet("font-weight: bold;")
+        lbl.setStyleSheet("font-weight: bold; padding-right: 10px;")
         self.insulation_thickness_input = QLineEdit()
-        self.insulation_thickness_input.setFixedWidth(400)
         self.insulation_thickness_input.setPlaceholderText("例如：50")
         self.insulation_thickness_input.setValidator(QDoubleValidator(0, 500, 1))
+        self.insulation_thickness_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         hint = QLabel("单位：mm")
-        hint.setFixedWidth(250)
         insulation_layout.addWidget(lbl, row, 0)
         insulation_layout.addWidget(self.insulation_thickness_input, row, 1)
         insulation_layout.addWidget(hint, row, 2)
 
         row = 1
         lbl = QLabel("保温材料:")
-        lbl.setFixedWidth(200)
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        lbl.setStyleSheet("font-weight: bold;")
+        lbl.setStyleSheet("font-weight: bold; padding-right: 10px;")
         self.insulation_material = QComboBox()
         self.insulation_material.setStyleSheet(COMBOBOX_STYLE)
-        self.insulation_material.setFixedWidth(400)
+        self.insulation_material.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.insulation_material.addItems(["岩棉", "玻璃棉", "硅酸铝", "聚氨酯"])
         hint = QLabel("")
-        hint.setFixedWidth(250)
         insulation_layout.addWidget(lbl, row, 0)
         insulation_layout.addWidget(self.insulation_material, row, 1)
         insulation_layout.addWidget(hint, row, 2)
 
         row = 2
         lbl = QLabel("导热系数:")
-        lbl.setFixedWidth(200)
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        lbl.setStyleSheet("font-weight: bold;")
+        lbl.setStyleSheet("font-weight: bold; padding-right: 10px;")
         self.insulation_conductivity_input = QLineEdit()
-        self.insulation_conductivity_input.setFixedWidth(400)
         self.insulation_conductivity_input.setText("0.04")
         self.insulation_conductivity_input.setValidator(QDoubleValidator(0.01, 1, 3))
+        self.insulation_conductivity_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         hint = QLabel("单位：W/(m·K)")
-        hint.setFixedWidth(250)
         insulation_layout.addWidget(lbl, row, 0)
         insulation_layout.addWidget(self.insulation_conductivity_input, row, 1)
         insulation_layout.addWidget(hint, row, 2)
 
         row = 3
         lbl = QLabel("环境温度:")
-        lbl.setFixedWidth(200)
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        lbl.setStyleSheet("font-weight: bold;")
+        lbl.setStyleSheet("font-weight: bold; padding-right: 10px;")
         self.ambient_temp_input = QLineEdit()
-        self.ambient_temp_input.setFixedWidth(400)
         self.ambient_temp_input.setText("20")
         self.ambient_temp_input.setValidator(QDoubleValidator(-50, 50, 1))
+        self.ambient_temp_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         hint = QLabel("单位：°C")
-        hint.setFixedWidth(250)
         insulation_layout.addWidget(lbl, row, 0)
         insulation_layout.addWidget(self.ambient_temp_input, row, 1)
         insulation_layout.addWidget(hint, row, 2)
@@ -422,7 +409,21 @@ class LongDistanceSteamPipeCalculator(QWidget):
 
         # 计算按钮
         self.calc_btn = QPushButton("计 算")
-        self.calc_btn.setStyleSheet(CALC_BUTTON_STYLE)
+        self.calc_btn.setFont(QFont("Arial", 12, QFont.Bold))
+        self.calc_btn.setMinimumHeight(50)
+        self.calc_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.calc_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                min-height: 50px; padding: 0px;
+            }
+            QPushButton:hover {
+                background-color: #219955;
+            }
+        """)
         self.calc_btn.clicked.connect(self.calculate)
         scroll_layout.addWidget(self.calc_btn)
 
@@ -434,10 +435,12 @@ class LongDistanceSteamPipeCalculator(QWidget):
         self.clear_btn.clicked.connect(self.clear_inputs)
 
         self.download_txt_btn = QPushButton("下载TXT报告")
+        self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.download_txt_btn.setStyleSheet(TXT_BUTTON_STYLE)
         self.download_txt_btn.clicked.connect(self.download_txt_report)
 
         self.download_pdf_btn = QPushButton("下载PDF报告")
+        self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.download_pdf_btn.setStyleSheet(PDF_BUTTON_STYLE)
         self.download_pdf_btn.clicked.connect(self.generate_pdf_report)
 
@@ -453,29 +456,29 @@ class LongDistanceSteamPipeCalculator(QWidget):
 
         # ===== 右侧结果区 =====
         right_widget = QWidget()
-        right_widget.setMinimumWidth(400)
+        right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setContentsMargins(0, 0, 0, 0)
-        right_layout.setSpacing(10)
+        right_layout.setSpacing(15)
 
-        result_label = QLabel("计算结果")
-        result_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #2c3e50;")
-        result_label.setAlignment(Qt.AlignCenter)
-        right_layout.addWidget(result_label)
+        self.result_group = QGroupBox("计算结果")
+        self.result_group.setStyleSheet(GROUP_STYLE)
+        result_inner = QVBoxLayout(self.result_group)
 
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
+        self.result_text.setMinimumHeight(500)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet(
             "QTextEdit {"
             "  background-color: #f8f9fa;"
-            "  border: 1px solid #bdc3c7;"
+            "  border: 1px solid #ecf0f1;"
             "  border-radius: 6px;"
-            "  min-height: 500px;"
-            "  padding: 10px;"
-            "  font-size: 13px;"
+            "  padding: 8px;"
             "}"
         )
-        right_layout.addWidget(self.result_text)
+        result_inner.addWidget(self.result_text)
+        right_layout.addWidget(self.result_group)
 
         # 按比例添加到主布局
         main_layout.addWidget(scroll_area, 2)
