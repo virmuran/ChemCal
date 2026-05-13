@@ -2,7 +2,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QGroupBox, QTextEdit, QComboBox, QMessageBox, QFrame,
     QScrollArea, QDialog, QSpinBox, QButtonGroup, QGridLayout,
-    QFileDialog, QDialogButtonBox
+    QFileDialog, QDialogButtonBox, QSizePolicy
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
@@ -29,6 +29,21 @@ COMBOBOX_STYLE = """
     QComboBox QAbstractItemView::item {
         padding: 3px 8px;
     }
+"""
+
+GROUP_STYLE = """
+QGroupBox {
+    font-weight: bold;
+    border: 1px solid #bdc3c7;
+    border-radius: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 8px 0 8px;
+}
 """
 class 管道补偿(QWidget):
     """管道补偿计算器（与压降计算器UI一致）"""
@@ -173,20 +188,7 @@ class 管道补偿(QWidget):
         
         # 2. 计算模式选择
         mode_group = QGroupBox("计算模式")
-        mode_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
+        mode_group.setStyleSheet(GROUP_STYLE)
         mode_layout = QHBoxLayout(mode_group)
         
         self.mode_button_group = QButtonGroup(self)
@@ -202,7 +204,7 @@ class 管道补偿(QWidget):
             btn = QPushButton(mode_name)
             btn.setCheckable(True)
             btn.setToolTip(tooltip)
-            btn.setFixedWidth(180)
+            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             btn.setStyleSheet("""
                 QPushButton {
                     background-color: #ecf0f1;
@@ -234,25 +236,15 @@ class 管道补偿(QWidget):
         
         # 3. 输入参数组 - 使用GridLayout实现整齐的布局
         input_group = QGroupBox("输入参数")
-        input_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
+        input_group.setStyleSheet(GROUP_STYLE)
         
         # 使用GridLayout确保整齐排列
         input_layout = QGridLayout(input_group)
         input_layout.setVerticalSpacing(12)
         input_layout.setHorizontalSpacing(10)
+        input_layout.setColumnStretch(0, 4)
+        input_layout.setColumnStretch(1, 8)
+        input_layout.setColumnStretch(2, 5)
         
         # 标签样式 - 右对齐
         label_style = """
@@ -261,10 +253,6 @@ class 管道补偿(QWidget):
                 padding-right: 10px;
             }
         """
-        
-        # 输入框和下拉菜单的固定宽度
-        input_width = 400
-        combo_width = 250
         
         row = 0
         
@@ -276,7 +264,7 @@ class 管道补偿(QWidget):
         
         self.material_combo = QComboBox()
         self.material_combo.setStyleSheet(COMBOBOX_STYLE)
-        self.material_combo.setFixedWidth(input_width)
+        self.material_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         
         # 添加材质选项，分组显示
         # 首先添加空选项
@@ -345,13 +333,13 @@ class 管道补偿(QWidget):
         
         self.od_input = QLineEdit()
         self.od_input.setPlaceholderText("例如: 108")
+        self.od_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.od_input.setValidator(QDoubleValidator(1.0, 2000.0, 6))
-        self.od_input.setFixedWidth(input_width)
         input_layout.addWidget(self.od_input, row, 1)
         
         self.od_combo = QComboBox()
         self.od_combo.setStyleSheet(COMBOBOX_STYLE)
-        self.od_combo.setFixedWidth(combo_width)
+        self.od_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         
         # 添加管道外径选项
         for name, od in self.pipe_standards:
@@ -373,13 +361,12 @@ class 管道补偿(QWidget):
         
         self.length_input = QLineEdit()
         self.length_input.setPlaceholderText("例如: 50.0")
+        self.length_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.length_input.setValidator(QDoubleValidator(0.1, 1000.0, 6))
-        self.length_input.setFixedWidth(input_width)
         input_layout.addWidget(self.length_input, row, 1)
         
         self.length_hint = QLabel("基本计算时使用")
         self.length_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        self.length_hint.setFixedWidth(combo_width)
         input_layout.addWidget(self.length_hint, row, 2)
         
         row += 1
@@ -393,12 +380,11 @@ class 管道补偿(QWidget):
         self.l1_input = QLineEdit()
         self.l1_input.setPlaceholderText("例如: 20.0")
         self.l1_input.setValidator(QDoubleValidator(0.1, 1000.0, 6))
-        self.l1_input.setFixedWidth(input_width)
+        self.l1_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.l1_input, row, 1)
         
         self.l1_hint = QLabel("L形和Z形补偿时使用")
         self.l1_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        self.l1_hint.setFixedWidth(combo_width)
         input_layout.addWidget(self.l1_hint, row, 2)
         
         row += 1
@@ -412,12 +398,11 @@ class 管道补偿(QWidget):
         self.l2_input = QLineEdit()
         self.l2_input.setPlaceholderText("例如: 9.0")
         self.l2_input.setValidator(QDoubleValidator(0.1, 1000.0, 6))
-        self.l2_input.setFixedWidth(input_width)
+        self.l2_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.l2_input, row, 1)
         
         self.l2_hint = QLabel("L形和Z形补偿时使用")
         self.l2_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        self.l2_hint.setFixedWidth(combo_width)
         input_layout.addWidget(self.l2_hint, row, 2)
         
         row += 1
@@ -431,12 +416,11 @@ class 管道补偿(QWidget):
         self.l3_input = QLineEdit()
         self.l3_input.setPlaceholderText("例如: 15.0")
         self.l3_input.setValidator(QDoubleValidator(0.1, 1000.0, 6))
-        self.l3_input.setFixedWidth(input_width)
+        self.l3_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.l3_input, row, 1)
         
         self.l3_hint = QLabel("仅Z形补偿时使用")
         self.l3_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        self.l3_hint.setFixedWidth(combo_width)
         input_layout.addWidget(self.l3_hint, row, 2)
         
         row += 1
@@ -451,12 +435,11 @@ class 管道补偿(QWidget):
         self.temp_install_input.setPlaceholderText("例如: 20")
         self.temp_install_input.setValidator(QDoubleValidator(-100.0, 100.0, 6))
         self.temp_install_input.setText("20")
-        self.temp_install_input.setFixedWidth(input_width)
+        self.temp_install_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.temp_install_input, row, 1)
         
         self.temp_install_hint = QLabel("管道安装时的温度")
         self.temp_install_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        self.temp_install_hint.setFixedWidth(combo_width)
         input_layout.addWidget(self.temp_install_hint, row, 2)
         
         row += 1
@@ -469,12 +452,11 @@ class 管道补偿(QWidget):
         self.temp_operate_input = QLineEdit()
         self.temp_operate_input.setPlaceholderText("例如: 200")
         self.temp_operate_input.setValidator(QDoubleValidator(-100.0, 500.0, 6))
-        self.temp_operate_input.setFixedWidth(input_width)
+        self.temp_operate_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.temp_operate_input, row, 1)
         
         self.temp_operate_hint = QLabel("管道运行时的温度")
         self.temp_operate_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        self.temp_operate_hint.setFixedWidth(combo_width)
         input_layout.addWidget(self.temp_operate_hint, row, 2)
         
         row += 1
@@ -488,12 +470,11 @@ class 管道补偿(QWidget):
         self.alpha_value_input = QLineEdit()
         self.alpha_value_input.setPlaceholderText("自动填充")
         self.alpha_value_input.setReadOnly(True)
-        self.alpha_value_input.setFixedWidth(input_width)
+        self.alpha_value_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.alpha_value_input, row, 1)
         
         self.alpha_hint = QLabel("根据材质自动计算")
         self.alpha_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        self.alpha_hint.setFixedWidth(combo_width)
         input_layout.addWidget(self.alpha_hint, row, 2)
         
         row += 1
@@ -507,12 +488,11 @@ class 管道补偿(QWidget):
         self.elastic_value_input = QLineEdit()
         self.elastic_value_input.setPlaceholderText("自动填充")
         self.elastic_value_input.setReadOnly(True)
-        self.elastic_value_input.setFixedWidth(input_width)
+        self.elastic_value_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.elastic_value_input, row, 1)
         
         self.elastic_hint = QLabel("根据材质自动计算")
         self.elastic_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        self.elastic_hint.setFixedWidth(combo_width)
         input_layout.addWidget(self.elastic_hint, row, 2)
         
         row += 1
@@ -526,12 +506,11 @@ class 管道补偿(QWidget):
         self.stress_value_input = QLineEdit()
         self.stress_value_input.setPlaceholderText("自动填充")
         self.stress_value_input.setReadOnly(True)
-        self.stress_value_input.setFixedWidth(input_width)
+        self.stress_value_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.stress_value_input, row, 1)
         
         self.stress_hint = QLabel("根据材质自动计算")
         self.stress_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
-        self.stress_hint.setFixedWidth(combo_width)
         input_layout.addWidget(self.stress_hint, row, 2)
         
         left_layout.addWidget(input_group)
@@ -554,6 +533,7 @@ class 管道补偿(QWidget):
             }
         """)
         calculate_btn.setMinimumHeight(50)
+        calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         left_layout.addWidget(calculate_btn)
         
         # 5. 下载按钮布局
@@ -573,6 +553,7 @@ class 管道补偿(QWidget):
                 background-color: #219653;
             }
         """)
+        download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         download_pdf_btn = QPushButton("下载计算书(PDF)")
         download_pdf_btn.clicked.connect(self.generate_pdf_report)
@@ -589,6 +570,7 @@ class 管道补偿(QWidget):
                 background-color: #c0392b;
             }
         """)
+        download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         download_layout.addWidget(download_txt_btn)
         download_layout.addWidget(download_pdf_btn)
@@ -599,26 +581,13 @@ class 管道补偿(QWidget):
         
         # 右侧：结果显示区域 (占1/3宽度)
         right_widget = QWidget()
-        right_widget.setMinimumWidth(400)
+        right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
         
         # 结果显示
         self.result_group = QGroupBox("计算结果")
-        self.result_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
+        self.result_group.setStyleSheet(GROUP_STYLE)
         result_layout = QVBoxLayout(self.result_group)
         
         self.result_text = QTextEdit()
@@ -632,6 +601,8 @@ class 管道补偿(QWidget):
                 min-height: 500px;
             }
         """)
+        self.result_text.setMinimumHeight(500)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         result_layout.addWidget(self.result_text)
         
         right_layout.addWidget(self.result_group)
