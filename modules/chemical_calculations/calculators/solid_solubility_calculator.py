@@ -213,6 +213,7 @@ class SolidSolubilityCalculator(QWidget):
             self.data_manager = None
         self.worker = None
         self._last_result = {}
+        self._query_pending = False
         self.setup_ui()
 
     # ─────────────────────────── UI ─────────────────────────────
@@ -345,21 +346,21 @@ class SolidSolubilityCalculator(QWidget):
         add_btn = QPushButton("添加行")
         add_btn.setStyleSheet(
             "QPushButton{background:#ecf0f1;border:1px solid #bdc3c7;"
-            "border-radius:6px;padding:6px 14px;}"
+            "border-radius:6px;padding:8px;color:black;font-weight:bold;}"
             "QPushButton:hover{background:#d5dbdb;}")
         add_btn.clicked.connect(self.add_batch_row)
 
         batch_btn = QPushButton("批量查询")
         batch_btn.setStyleSheet(
             "QPushButton{background:#ecf0f1;border:1px solid #bdc3c7;"
-            "border-radius:6px;padding:6px 14px;}"
+            "border-radius:6px;padding:8px;color:black;font-weight:bold;}"
             "QPushButton:hover{background:#d5dbdb;}")
         batch_btn.clicked.connect(self.batch_query)
 
         clear_batch_btn = QPushButton("清空表格")
         clear_batch_btn.setStyleSheet(
             "QPushButton{background:#ecf0f1;border:1px solid #bdc3c7;"
-            "border-radius:6px;padding:6px 14px;}"
+            "border-radius:6px;padding:8px;color:black;font-weight:bold;}"
             "QPushButton:hover{background:#d5dbdb;}")
         clear_batch_btn.clicked.connect(self.clear_batch_table)
 
@@ -551,6 +552,7 @@ class SolidSolubilityCalculator(QWidget):
         if sender:
             sender.setEnabled(False)
 
+        self._query_pending = True
         self.worker = SolubilityWorker(compound, solvent, temperature)
         self.worker.finished.connect(self._on_finished)
         self.worker.error.connect(self._on_error)
@@ -558,11 +560,30 @@ class SolidSolubilityCalculator(QWidget):
         self.worker.start()
 
     def _on_finished(self, result):
+        self._query_pending = False
         self.progress_bar.setVisible(False)
         if hasattr(self, "_query_btn_ref") and self._query_btn_ref:
             self._query_btn_ref.setEnabled(True)
         self._last_result = result
         self._display(result)
+
+        # 异步查询完成后保存历史记录
+        meta = getattr(self, "_calc_meta", None)
+        if meta:
+            try:
+                from modules.history_db import HistoryDB
+                data = self._get_history_data()
+                if data and data.get("inputs"):
+                    HistoryDB().save(
+                        calculator_id=meta["id"],
+                        calculator_name=meta["name"],
+                        calculator_category=meta.get("category", ""),
+                        inputs=data.get("inputs", {}),
+                        outputs=data.get("outputs", {}),
+                        notes=data.get("notes", ""),
+                    )
+            except Exception:
+                pass
 
         
 
@@ -642,6 +663,9 @@ class SolidSolubilityCalculator(QWidget):
 
     # ──────────────────── 历史数据 ──────────────────────────────
     def _get_history_data(self):
+        # 异步查询未完成时，返回空数据阻止 _save_history_for 保存
+        if getattr(self, "_query_pending", False):
+            return {"inputs": {}, "outputs": {}}
         r = self._last_result
         return {
             "inputs": {

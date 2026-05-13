@@ -330,10 +330,11 @@ class HistoryViewer(QWidget):
                 <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
             """
             for k, v in rec["outputs"].items():
+                v_html = str(v).replace("\n", "<br>")
                 html += f"""
                     <tr style="border-bottom: 1px solid #ecf0f1;">
                         <td style="padding: 4px 8px; color: #7f8c8d; white-space: nowrap;">{k}</td>
-                        <td style="padding: 4px 8px; color: #27ae60; font-weight: bold;">{v}</td>
+                        <td style="padding: 4px 8px; color: #27ae60; font-weight: bold;">{v_html}</td>
                     </tr>
                 """
             html += "</table></div>"
