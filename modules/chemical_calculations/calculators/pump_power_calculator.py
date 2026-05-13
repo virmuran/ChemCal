@@ -342,7 +342,6 @@ class CentrifugalPumpCalculator(QWidget):
         b_clr.clicked.connect(self.clear_inputs)
 
         b_txt = QPushButton("下载计算书(TXT)")
-        b_txt.setMinimumHeight(50)
         b_txt.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         b_txt.setStyleSheet(
             "QPushButton { background-color: #27ae60; color: white; font-weight: bold; "
@@ -352,7 +351,6 @@ class CentrifugalPumpCalculator(QWidget):
         b_txt.clicked.connect(self.download_txt_report)
 
         b_pdf = QPushButton("下载计算书(PDF)")
-        b_pdf.setMinimumHeight(50)
         b_pdf.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         b_pdf.setStyleSheet(
             "QPushButton { background-color: #e74c3c; color: white; font-weight: bold; "
@@ -371,6 +369,7 @@ class CentrifugalPumpCalculator(QWidget):
         
         # 右侧：结果显示区域
         right_widget = QWidget()
+        right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
         
@@ -382,6 +381,7 @@ class CentrifugalPumpCalculator(QWidget):
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
         self.result_text.setMinimumHeight(500)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet(
             "QTextEdit { background-color: #f8f9fa; border: 1px solid #ecf0f1; "
             "border-radius: 6px; font-family: Consolas, monospace; font-size: 13px; padding: 8px; }"
