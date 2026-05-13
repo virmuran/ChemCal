@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QListWidgetItem, QTextEdit, QLineEdit, QComboBox, QPushButton,
     QGroupBox, QMessageBox, QSplitter, QSizePolicy, QAbstractItemView
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QFont
 
 
@@ -239,8 +239,8 @@ class HistoryViewer(QWidget):
         self.page_label.setText(f"共 {self._total} 条记录 (显示 {shown} 条)")
 
     def _on_record_added(self):
-        """收到新记录信号时刷新列表"""
-        self._load_history()
+        """收到新记录信号时刷新列表（延迟执行，避免在信号链中操作 Qt 控件）"""
+        QTimer.singleShot(0, self._load_history)
 
     def _on_search_changed(self, text):
         self._current_keyword = text

@@ -4,6 +4,10 @@ import os
 import traceback
 from datetime import datetime
 
+# 先安装防闪退保护层（必须在 QApplication 创建之前）
+from crash_shield import install_crash_shield, SafeApplication
+install_crash_shield()
+
 # 将项目根目录加入 sys.path
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 for path in [ROOT_DIR, os.path.join(ROOT_DIR, "modules"), os.path.join(ROOT_DIR, "modules", "converter")]:
@@ -441,7 +445,7 @@ Copyright 2025 CalcE Team | virmuran@163.com<br><br>
 
 
 def main():
-    app = QApplication(sys.argv)
+    app = SafeApplication(sys.argv)
     app.setApplicationName("CalcE")
     app.setApplicationVersion("1.1")
     app.setOrganizationName("CalcE")
@@ -449,7 +453,7 @@ def main():
     try:
         window = CalcE()
         window.show()
-        return app.exec()
+        return app.run()
     except Exception as e:
         logger.critical("应用程序启动失败: {}", e)
         traceback.print_exc()

@@ -483,19 +483,24 @@ class MixedLiquidFlashPointCalculator(QWidget):
     
     def add_component(self, component_data=None):
         """添加组分"""
-        dialog = ComponentDialog(self, component_data)
-        if dialog.exec():
-            data = dialog.get_component_data()
-            
-            if component_data:
-                # 编辑模式，更新现有数据
-                index = self.components.index(component_data)
-                self.components[index] = data
-            else:
-                # 添加模式
-                self.components.append(data)
-            
-            self.update_components_table()
+        try:
+            dialog = ComponentDialog(self, component_data)
+            if dialog.exec():
+                data = dialog.get_component_data()
+
+                if component_data:
+                    # 编辑模式，更新现有数据
+                    index = self.components.index(component_data)
+                    self.components[index] = data
+                else:
+                    # 添加模式
+                    self.components.append(data)
+
+                self.update_components_table()
+        except Exception as e:
+            print(f"[闪点计算器] add_component 异常: {e}")
+            import traceback
+            traceback.print_exc()
     
     def edit_component(self, row):
         """编辑组分"""
@@ -676,6 +681,10 @@ class MixedLiquidFlashPointCalculator(QWidget):
             inputs[f"组分{i+1}_闪点_C"] = comp.get("flash_point", 0)
 
         outputs = {}
+        # 没有组分时不执行计算，避免空数据处理
+        if not self.components:
+            return {"inputs": inputs, "outputs": outputs}
+
         try:
             if "Le Chatelier" in method:
                 flash_point = self.calculate_le_chatelier()

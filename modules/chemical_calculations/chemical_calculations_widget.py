@@ -2,11 +2,12 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QListWidget,
     QListWidgetItem, QStackedWidget, QFrame, QPushButton
 )
-from PySide6.QtCore import Qt, QSize, QEvent, QTimer
+from PySide6.QtCore import Qt, QSize, QTimer
 from PySide6.QtGui import QFont
 import sys
 import os
 import importlib.util
+from modules.history_db import HistoryDB
 
 class ChemicalCalculationsWidget(QWidget):
     """工程计算模块 - 左侧导航布局"""
@@ -28,6 +29,12 @@ class ChemicalCalculationsWidget(QWidget):
 
         # 初始化页面列表
         self.pages = []
+
+        # 预初始化历史记录数据库，避免首次按钮点击时做 I/O
+        try:
+            HistoryDB()
+        except Exception as e:
+            print(f"[历史] 历史数据库预初始化失败: {e}")
 
         # 设置UI
         self.setup_ui()
@@ -221,9 +228,6 @@ class ChemicalCalculationsWidget(QWidget):
             # 连接所有"计算"按钮的 clicked 信号以保存历史
             self._connect_calculate_buttons(widget)
 
-            # 安装事件过滤器作为备用方案
-            widget.installEventFilter(self)
-
             return widget
 
         except Exception as e:
@@ -296,15 +300,6 @@ class ChemicalCalculationsWidget(QWidget):
         # 保存页面引用
         self.pages.append(widget)
 
-    def eventFilter(self, obj, event):
-        """拦截计算器子控件事件，保存历史记录"""
-        if event.type() == QEvent.Type.MouseButtonPress:
-            child = obj.childAt(event.position().toPoint())
-            if isinstance(child, QPushButton) and self._is_calculate_button(child):
-                print(f"[历史] 捕获到计算按钮点击: {child.text()}")
-                QTimer.singleShot(100, lambda w=obj: self._save_history_for(w))
-        return super().eventFilter(obj, event)
-
     def _is_calculate_button(self, btn):
         text = btn.text().strip()
         # 匹配计算和查询类按钮
@@ -323,7 +318,7 @@ class ChemicalCalculationsWidget(QWidget):
             print(f"[历史] 连接按钮失败: {e}")
 
     def _save_history_for(self, widget):
-        """为指定计算器部件保存历史记录"""
+        """为指定计算器部件保存历史记录（捕获数据后延迟执行 I/O）"""
         meta = getattr(widget, "_calc_meta", None)
         if meta is None:
             print(f"[历史] 无 _calc_meta，跳过: {widget}")
@@ -337,7 +332,14 @@ class ChemicalCalculationsWidget(QWidget):
             if not data or not data.get("inputs"):
                 print(f"[历史] _get_history_data 返回空，跳过")
                 return
-            from modules.history_db import HistoryDB
+            # 延迟保存，避免在 clicked 信号处理链中做 I/O 和触发 Qt 控件操作
+            QTimer.singleShot(0, lambda m=meta, d=data: self._do_save(m, d))
+        except Exception as e:
+            print(f"[历史] 准备保存失败: {e}")
+
+    def _do_save(self, meta, data):
+        """在事件循环空闲时执行实际保存"""
+        try:
             HistoryDB().save(
                 calculator_id=meta["id"],
                 calculator_name=meta["name"],
@@ -346,7 +348,6 @@ class ChemicalCalculationsWidget(QWidget):
                 outputs=data.get("outputs", {}),
                 notes=data.get("notes", ""),
             )
-            print(f"[历史] 已保存: {meta['name']} | inputs={data.get('inputs')}")
         except Exception as e:
             print(f"[历史] 保存失败: {e}")
             import traceback; traceback.print_exc()
