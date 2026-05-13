@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
     QLabel, QLineEdit, QPushButton, QComboBox,
     QTextEdit, QGridLayout,
     QButtonGroup, QMessageBox, QFileDialog,
-    QScrollArea,
+    QScrollArea, QSizePolicy,
 
 )
 from PySide6.QtCore import Qt
@@ -32,6 +32,21 @@ COMBOBOX_STYLE = """
         padding: 3px 8px;
     }
 """
+
+GROUP_STYLE = """
+QGroupBox {
+    font-weight: bold;
+    border: 1px solid #bdc3c7;
+    border-radius: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 8px 0 8px;
+}
+"""
 class InsulationThicknessCalculator(QWidget):
     """保温厚度计算器（统一 UI 规范版）"""
 
@@ -40,11 +55,19 @@ class InsulationThicknessCalculator(QWidget):
         if data_manager is not None:
             self.data_manager = data_manager
         else:
-            self.data_manager = None
+            self.init_data_manager()
         self._last_result = {}   # 缓存最近一次计算结果
         self._last_params = {}    # 缓存最近一次输入参数
         self.setup_material_properties()
         self.setup_ui()
+
+    def init_data_manager(self):
+        """初始化数据管理器"""
+        try:
+            from data_manager import DataManager
+            self.data_manager = DataManager.get_instance()
+        except Exception:
+            self.data_manager = None
 
     # ─────────────────────────── 材料数据 ─────────────────────────────
     def setup_material_properties(self):
@@ -64,21 +87,6 @@ class InsulationThicknessCalculator(QWidget):
 
     # ─────────────────────────── UI ─────────────────────────────
     def setup_ui(self):
-        group_style = """
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """
-
         main_layout = QHBoxLayout(self)
         main_layout.setSpacing(15)
         main_layout.setContentsMargins(10, 10, 10, 10)
@@ -103,12 +111,12 @@ class InsulationThicknessCalculator(QWidget):
             "请根据实际工况选择计算方法并填写参数。"
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: #7f8c8d; font-size: 12px;")
+        desc.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
         left_layout.addWidget(desc)
 
         # ── 计算类型选择（按钮组）──
         type_group = QGroupBox("计算类型")
-        type_group.setStyleSheet(group_style)
+        type_group.setStyleSheet(GROUP_STYLE)
         type_layout = QHBoxLayout(type_group)
 
         self.calc_type_group = QButtonGroup(self)
@@ -122,10 +130,11 @@ class InsulationThicknessCalculator(QWidget):
             btn = QPushButton(text)
             btn.setCheckable(True)
             btn.setToolTip(tip)
-            btn.setMinimumWidth(110)
+            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             btn.setStyleSheet("""
                 QPushButton {
                     background-color: #ecf0f1;
+                    color: black;
                     border: 1px solid #bdc3c7;
                     border-radius: 6px;
                     padding: 7px 4px;
@@ -149,17 +158,16 @@ class InsulationThicknessCalculator(QWidget):
 
         # ── 输入参数组（四列网格，适配多计算方法）──
         input_group = QGroupBox("输入参数")
-        input_group.setStyleSheet(group_style)
+        input_group.setStyleSheet(GROUP_STYLE)
         grid = QGridLayout(input_group)
         grid.setHorizontalSpacing(10)
-        grid.setVerticalSpacing(10)
+        grid.setVerticalSpacing(12)
 
         label_style = "font-weight: bold; padding-right: 10px;"
 
         def make_lbl(text, row, col):
             lbl = QLabel(text)
             lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            lbl.setFixedWidth(160)
             lbl.setStyleSheet(label_style)
             grid.addWidget(lbl, row, col)
             return lbl
@@ -167,7 +175,7 @@ class InsulationThicknessCalculator(QWidget):
         def make_edit(placeholder, validator_range, row, col):
             ed = QLineEdit()
             ed.setPlaceholderText(placeholder)
-            ed.setFixedWidth(180)
+            ed.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             if validator_range:
                 lo, hi, dec = validator_range
                 ed.setValidator(QDoubleValidator(lo, hi, dec))
@@ -178,7 +186,7 @@ class InsulationThicknessCalculator(QWidget):
             cb = QComboBox()
             cb.setStyleSheet(COMBOBOX_STYLE)
             cb.addItems(items)
-            cb.setFixedWidth(180)
+            cb.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             grid.addWidget(cb, row, col)
             return cb
 
@@ -243,17 +251,19 @@ class InsulationThicknessCalculator(QWidget):
         left_layout.addWidget(input_group)
 
         # ── 计算按钮 ──
-        calc_btn = QPushButton("▶  计算保温厚度")
+        calc_btn = QPushButton("计算保温厚度")
+        calc_btn.setFont(QFont("Arial", 12, QFont.Bold))
+        calc_btn.setMinimumHeight(50)
+        calc_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         calc_btn.setStyleSheet("""
             QPushButton {
-                background-color: #3498db;
+                background-color: #27ae60;
                 color: white;
-                font-weight: bold;
-                font-size: 14px;
+                border: none;
                 border-radius: 8px;
-                min-height: 50px;
+                min-height: 50px; padding: 0px;
             }
-            QPushButton:hover { background-color: #2980b9; }
+            QPushButton:hover { background-color: #219955; }
         """)
         calc_btn.clicked.connect(self.calculate)
         left_layout.addWidget(calc_btn)
@@ -272,7 +282,8 @@ class InsulationThicknessCalculator(QWidget):
         """)
         clear_btn.clicked.connect(self.clear_inputs)
 
-        dl_txt_btn = QPushButton("⬇ 下载TXT报告")
+        dl_txt_btn = QPushButton("下载TXT报告")
+        dl_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         dl_txt_btn.setStyleSheet("""
             QPushButton {
                 background-color: #27ae60; color: white;
@@ -283,7 +294,8 @@ class InsulationThicknessCalculator(QWidget):
         """)
         dl_txt_btn.clicked.connect(self.download_txt_report)
 
-        dl_pdf_btn = QPushButton("⬇ 下载PDF报告")
+        dl_pdf_btn = QPushButton("下载PDF报告")
+        dl_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         dl_pdf_btn.setStyleSheet("""
             QPushButton {
                 background-color: #e74c3c; color: white;
@@ -303,25 +315,24 @@ class InsulationThicknessCalculator(QWidget):
 
         # ──────────────── 右侧结果区 ────────────────
         right_widget = QWidget()
-        right_widget.setMinimumWidth(400)
+        right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
-        right_layout.setSpacing(10)
+        right_layout.setSpacing(15)
 
         result_group = QGroupBox("计算结果")
-        result_group.setStyleSheet(group_style)
+        result_group.setStyleSheet(GROUP_STYLE)
         result_vbox = QVBoxLayout(result_group)
 
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
         self.result_text.setMinimumHeight(500)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet("""
             QTextEdit {
                 background-color: #f8f9fa;
-                border: 1px solid #dee2e6;
+                border: 1px solid #ecf0f1;
                 border-radius: 6px;
-                font-family: Consolas, monospace;
-                font-size: 13px;
-                padding: 10px;
+                padding: 8px;
             }
         """)
         self.result_text.setPlaceholderText("计算结果将在此显示……")
@@ -352,14 +363,13 @@ class InsulationThicknessCalculator(QWidget):
         def lbl(text):
             w = QLabel(text)
             w.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            w.setFixedWidth(160)
             w.setStyleSheet("font-weight: bold; padding-right: 10px;")
             return w
 
         def ed(placeholder, val_range):
             w = QLineEdit()
             w.setPlaceholderText(placeholder)
-            w.setFixedWidth(180)
+            w.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             if val_range:
                 lo, hi, dec = val_range
                 w.setValidator(QDoubleValidator(lo, hi, dec))
