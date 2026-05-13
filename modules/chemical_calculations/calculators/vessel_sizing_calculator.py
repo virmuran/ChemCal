@@ -183,6 +183,22 @@ class AccessoriesDialog(QDialog):
 
 
 # 主计算类 -------------------------------------------------------
+GROUP_STYLE = """
+QGroupBox {
+    font-weight: bold;
+    border: 1px solid #bdc3c7;
+    border-radius: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 8px 0 8px;
+}
+"""
+
+
 class 设备尺寸计算(QWidget):
     """设备直径和高度计算模块，支持多种容器形式和反向计算"""
     def __init__(self, parent=None, data_manager=None):
@@ -237,7 +253,7 @@ class 设备尺寸计算(QWidget):
 
         # ----- 计算模式选择（按钮组）-----
         mode_group = QGroupBox("计算模式")
-        mode_group.setStyleSheet(self.group_box_style())
+        mode_group.setStyleSheet(GROUP_STYLE)
         mode_layout = QHBoxLayout(mode_group)
 
         self.mode_button_group = QButtonGroup(self)
@@ -253,7 +269,6 @@ class 设备尺寸计算(QWidget):
             btn = QPushButton(mode_name)
             btn.setCheckable(True)
             btn.setToolTip(tooltip)
-            btn.setMinimumWidth(100)
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             btn.setStyleSheet("""
                 QPushButton {
@@ -286,13 +301,13 @@ class 设备尺寸计算(QWidget):
 
         # ----- 输入参数组 -----
         input_group = QGroupBox("设备参数")
-        input_group.setStyleSheet(self.group_box_style())
+        input_group.setStyleSheet(GROUP_STYLE)
         grid = QGridLayout(input_group)
         grid.setVerticalSpacing(12)
         grid.setHorizontalSpacing(10)
-        grid.setColumnStretch(0, 1)
-        grid.setColumnStretch(1, 2)
-        grid.setColumnStretch(2, 2)
+        grid.setColumnStretch(0, 4)
+        grid.setColumnStretch(1, 8)
+        grid.setColumnStretch(2, 5)
 
         row = 0
 
@@ -300,6 +315,7 @@ class 设备尺寸计算(QWidget):
         grid.addWidget(self._create_label("填充系数 φ:"), row, 0)
         self.fill_factor_input = QLineEdit()
         self.fill_factor_input.setValidator(QDoubleValidator(0.1, 1.0, 3))
+        self.fill_factor_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.fill_factor_input.setText("0.85")
         self.fill_factor_input.setPlaceholderText("0.85")
         grid.addWidget(self.fill_factor_input, row, 1)
@@ -312,11 +328,13 @@ class 设备尺寸计算(QWidget):
         grid.addWidget(self._create_label("高径比 H/D:"), row, 0)
         self.hd_ratio_input = QLineEdit()
         self.hd_ratio_input.setValidator(QDoubleValidator(0.2, 10.0, 2))
+        self.hd_ratio_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.hd_ratio_input.setText("2.0")
         self.hd_ratio_input.setPlaceholderText("例如 2.0")
         grid.addWidget(self.hd_ratio_input, row, 1)
         self.hd_combo = QComboBox()
         self.hd_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.hd_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.hd_combo.addItems(["1:1", "1.5:1", "2:1", "3:1", "自定义"])
         self.hd_combo.currentTextChanged.connect(self.on_hd_combo_changed)
         grid.addWidget(self.hd_combo, row, 2)
@@ -327,6 +345,7 @@ class 设备尺寸计算(QWidget):
         grid.addWidget(self.target_vol_label, row, 0)
         self.target_vol_input = QLineEdit()
         self.target_vol_input.setValidator(QDoubleValidator(0.001, 10000, 3))
+        self.target_vol_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.target_vol_input.setPlaceholderText("例如 10.0")
         grid.addWidget(self.target_vol_input, row, 1)
         self.target_vol_hint = QLabel("用户期望的工作容积")
@@ -339,6 +358,7 @@ class 设备尺寸计算(QWidget):
         grid.addWidget(self.diameter_label, row, 0)
         self.diameter_input = QLineEdit()
         self.diameter_input.setValidator(QDoubleValidator(1, 10000, 2))
+        self.diameter_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.diameter_input.setPlaceholderText("例如 1000")
         grid.addWidget(self.diameter_input, row, 1)
         self.diameter_hint = QLabel("标准直径参考")
@@ -351,6 +371,7 @@ class 设备尺寸计算(QWidget):
         grid.addWidget(self.cyl_height_label, row, 0)
         self.cyl_height_input = QLineEdit()
         self.cyl_height_input.setValidator(QDoubleValidator(0, 50000, 2))
+        self.cyl_height_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.cyl_height_input.setPlaceholderText("例如 2000")
         grid.addWidget(self.cyl_height_input, row, 1)
         self.cyl_height_hint = QLabel("圆柱部分高度")
@@ -362,6 +383,7 @@ class 设备尺寸计算(QWidget):
         grid.addWidget(self._create_label("顶部封头:"), row, 0)
         self.top_type = QComboBox()
         self.top_type.setStyleSheet(COMBOBOX_STYLE)
+        self.top_type.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.top_type.addItems(["平顶", "椭圆封头", "锥形封头", "碟形封头"])
         self.top_type.currentTextChanged.connect(self.on_top_type_changed)
         grid.addWidget(self.top_type, row, 1)
@@ -380,6 +402,7 @@ class 设备尺寸计算(QWidget):
         self.top_param_input = QLineEdit()
         self.top_param_input.setPlaceholderText("输入深度或角度")
         self.top_param_input.setValidator(QDoubleValidator(0, 90, 2))
+        self.top_param_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         grid.addWidget(self.top_param_input, row, 1)
         self.top_param_unit = QLabel("mm 或 °")
         self.top_param_unit.setStyleSheet("color: #7f8c8d;")
@@ -390,6 +413,7 @@ class 设备尺寸计算(QWidget):
         grid.addWidget(self._create_label("底部封头:"), row, 0)
         self.bottom_type = QComboBox()
         self.bottom_type.setStyleSheet(COMBOBOX_STYLE)
+        self.bottom_type.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.bottom_type.addItems(["平底", "椭圆封头", "锥形封头", "碟形封头", "斜底"])
         self.bottom_type.currentTextChanged.connect(self.on_bottom_type_changed)
         grid.addWidget(self.bottom_type, row, 1)
@@ -407,6 +431,7 @@ class 设备尺寸计算(QWidget):
         self.bottom_param_input = QLineEdit()
         self.bottom_param_input.setPlaceholderText("输入深度或角度")
         self.bottom_param_input.setValidator(QDoubleValidator(0, 90, 2))
+        self.bottom_param_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         grid.addWidget(self.bottom_param_input, row, 1)
         self.bottom_param_unit = QLabel("mm 或 °")
         self.bottom_param_unit.setStyleSheet("color: #7f8c8d;")
@@ -417,11 +442,13 @@ class 设备尺寸计算(QWidget):
         grid.addWidget(self._create_label("材料密度 (kg/m³):"), row, 0)
         self.density_input = QLineEdit()
         self.density_input.setValidator(QDoubleValidator(100, 20000, 2))
+        self.density_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.density_input.setPlaceholderText("例如 7850 (碳钢)")
         self.density_input.setText("7850")
         grid.addWidget(self.density_input, row, 1)
         self.density_combo = QComboBox()
         self.density_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.density_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.density_combo.addItems(["碳钢 7850", "不锈钢 7930", "铝 2700", "自定义"])
         self.density_combo.currentTextChanged.connect(self.on_density_combo_changed)
         grid.addWidget(self.density_combo, row, 2)
@@ -431,6 +458,7 @@ class 设备尺寸计算(QWidget):
         grid.addWidget(self._create_label("壁厚 (mm):"), row, 0)
         self.wall_thickness = QLineEdit()
         self.wall_thickness.setValidator(QDoubleValidator(0.5, 100, 2))
+        self.wall_thickness.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.wall_thickness.setPlaceholderText("例如 8")
         self.wall_thickness.setText("8")
         grid.addWidget(self.wall_thickness, row, 1)
@@ -466,16 +494,31 @@ class 设备尺寸计算(QWidget):
             QPushButton:hover { background-color: #219955; }
         """)
         calc_btn.setMinimumHeight(50)
+        calc_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         left_layout.addWidget(calc_btn)
 
         # 下载按钮
         download_layout = QHBoxLayout()
         txt_btn = QPushButton("下载计算书(TXT)")
+        txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        txt_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60; color: white; border: none;
+                border-radius: 6px; padding: 8px; font-weight: bold;
+            }
+            QPushButton:hover { background-color: #219653; }
+        """)
         txt_btn.clicked.connect(self.download_txt_report)
-        txt_btn.setStyleSheet("background-color: #27ae60; color: white;")
         pdf_btn = QPushButton("下载计算书(PDF)")
+        pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        pdf_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e74c3c; color: white; border: none;
+                border-radius: 6px; padding: 8px; font-weight: bold;
+            }
+            QPushButton:hover { background-color: #c0392b; }
+        """)
         pdf_btn.clicked.connect(self.generate_pdf_report)
-        pdf_btn.setStyleSheet("background-color: #e74c3c; color: white;")
         download_layout.addWidget(txt_btn)
         download_layout.addWidget(pdf_btn)
         left_layout.addLayout(download_layout)
@@ -485,13 +528,15 @@ class 设备尺寸计算(QWidget):
         right_widget = QWidget()
         right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
+        right_layout.setSpacing(15)
 
         self.result_group = QGroupBox("计算结果")
-        self.result_group.setStyleSheet(self.group_box_style())
+        self.result_group.setStyleSheet(GROUP_STYLE)
         result_layout = QVBoxLayout(self.result_group)
 
         self.result_text = QTextEdit()
-        self.result_text.setReadOnly(True)
+        self.result_text.setMinimumHeight(500)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet("""
             QTextEdit {
                 border: 1px solid #ecf0f1; border-radius: 6px;
@@ -505,22 +550,6 @@ class 设备尺寸计算(QWidget):
         scroll_left.setWidget(left_widget)
         main_layout.addWidget(scroll_left, 2)
         main_layout.addWidget(right_widget, 1)
-
-    def group_box_style(self):
-        return """
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """
 
     def _create_label(self, text):
         lbl = QLabel(text)
