@@ -1,7 +1,8 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QGroupBox, QTextEdit, QComboBox, QGridLayout, QMessageBox,
-    QFrame, QButtonGroup, QFileDialog, QDialog, QDialogButtonBox, QScrollArea
+    QFrame, QButtonGroup, QFileDialog, QDialog, QDialogButtonBox, QScrollArea,
+    QSizePolicy,
 )
 from PySide6.QtGui import QFont, QDoubleValidator
 from PySide6.QtCore import Qt
@@ -59,6 +60,21 @@ COMBOBOX_STYLE = """
     QComboBox QAbstractItemView::item {
         padding: 3px 8px;
     }
+"""
+
+GROUP_STYLE = """
+QGroupBox {
+    font-weight: bold;
+    border: 1px solid #bdc3c7;
+    border-radius: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 8px 0 8px;
+}
 """
 class 蒸汽管径流量(QWidget):
     """蒸汽管径和流量查询（左右布局优化版 - 统一UI风格）"""
@@ -128,20 +144,7 @@ class 蒸汽管径流量(QWidget):
         
         # 2. 计算模式选择 - 使用按钮组
         mode_group = QGroupBox("计算模式")
-        mode_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
+        mode_group.setStyleSheet(GROUP_STYLE)
         mode_layout = QHBoxLayout(mode_group)
         
         self.mode_button_group = QButtonGroup(self)
@@ -156,7 +159,7 @@ class 蒸汽管径流量(QWidget):
             btn = QPushButton(mode_name)
             btn.setCheckable(True)
             btn.setToolTip(tooltip)
-            btn.setFixedWidth(200)  # 固定宽度
+            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             btn.setStyleSheet("""
                 QPushButton {
                     background-color: #ecf0f1;
@@ -167,7 +170,7 @@ class 蒸汽管径流量(QWidget):
                     color: black;
                 }
                 QPushButton:checked {
-                    background-color: #e67e22;
+                    background-color: #3498db;
                     color: white;
                 }
                 QPushButton:hover {
@@ -188,25 +191,15 @@ class 蒸汽管径流量(QWidget):
         
         # 3. 输入参数组 - 使用GridLayout实现整齐的布局
         input_group = QGroupBox("输入参数")
-        input_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
+        input_group.setStyleSheet(GROUP_STYLE)
         
         # 使用GridLayout确保整齐排列
         input_layout = QGridLayout(input_group)
         input_layout.setVerticalSpacing(12)
         input_layout.setHorizontalSpacing(10)
+        input_layout.setColumnStretch(0, 4)
+        input_layout.setColumnStretch(1, 8)
+        input_layout.setColumnStretch(2, 5)
         
         # 标签样式 - 右对齐
         label_style = """
@@ -217,8 +210,6 @@ class 蒸汽管径流量(QWidget):
         """
         
         # 输入框和下拉菜单的固定宽度
-        input_width = 400
-        combo_width = 250
         
         row = 0
         
@@ -231,13 +222,13 @@ class 蒸汽管径流量(QWidget):
         self.pressure_input = QLineEdit()
         self.pressure_input.setPlaceholderText("例如: 1.0")
         self.pressure_input.setValidator(QDoubleValidator(0.01, 20.0, 6))
-        self.pressure_input.setFixedWidth(input_width)
+        self.pressure_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.pressure_input, row, 1)
         
         self.pressure_combo = QComboBox()
         self.pressure_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.pressure_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.setup_pressure_options()
-        self.pressure_combo.setFixedWidth(combo_width)
         self.pressure_combo.currentTextChanged.connect(self.on_pressure_changed)
         input_layout.addWidget(self.pressure_combo, row, 2)
         
@@ -252,13 +243,13 @@ class 蒸汽管径流量(QWidget):
         self.temperature_input = QLineEdit()
         self.temperature_input.setPlaceholderText("例如: 200")
         self.temperature_input.setValidator(QDoubleValidator(100.0, 600.0, 6))
-        self.temperature_input.setFixedWidth(input_width)
+        self.temperature_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.temperature_input, row, 1)
         
         self.temperature_combo = QComboBox()
         self.temperature_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.temperature_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.setup_temperature_options()
-        self.temperature_combo.setFixedWidth(combo_width)
         self.temperature_combo.currentTextChanged.connect(self.on_temperature_changed)
         input_layout.addWidget(self.temperature_combo, row, 2)
         
@@ -273,13 +264,13 @@ class 蒸汽管径流量(QWidget):
         self.flow_input = QLineEdit()
         self.flow_input.setPlaceholderText("例如: 1000")
         self.flow_input.setValidator(QDoubleValidator(1.0, 100000.0, 6))
-        self.flow_input.setFixedWidth(input_width)
+        self.flow_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.flow_input, row, 1)
         
         self.flow_combo = QComboBox()
         self.flow_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.flow_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.setup_flow_options()
-        self.flow_combo.setFixedWidth(combo_width)
         self.flow_combo.currentTextChanged.connect(self.on_flow_changed)
         input_layout.addWidget(self.flow_combo, row, 2)
         
@@ -295,14 +286,14 @@ class 蒸汽管径流量(QWidget):
         self.diameter_input = QLineEdit()
         self.diameter_input.setPlaceholderText("例如: 50")
         self.diameter_input.setValidator(QDoubleValidator(10.0, 1000.0, 6))
-        self.diameter_input.setFixedWidth(input_width)
+        self.diameter_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.diameter_input.setVisible(False)
         input_layout.addWidget(self.diameter_input, row, 1)
         
         self.diameter_combo = QComboBox()
         self.diameter_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.diameter_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.setup_diameter_options()
-        self.diameter_combo.setFixedWidth(combo_width)
         self.diameter_combo.currentTextChanged.connect(self.on_diameter_changed)
         self.diameter_combo.setVisible(False)
         input_layout.addWidget(self.diameter_combo, row, 2)
@@ -315,7 +306,7 @@ class 蒸汽管径流量(QWidget):
         calculate_btn.clicked.connect(self.calculate_steam_pipe)
         calculate_btn.setStyleSheet("""
             QPushButton {
-                background-color: #e67e22;
+                background-color: #27ae60;
                 color: white;
                 border: none;
                 border-radius: 8px;
@@ -323,15 +314,17 @@ class 蒸汽管径流量(QWidget):
                 font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #d35400;
+                background-color: #219955;
             }
         """)
         calculate_btn.setMinimumHeight(50)
+        calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         left_layout.addWidget(calculate_btn)
         
         # 5. 下载按钮布局
         download_layout = QHBoxLayout()
         download_txt_btn = QPushButton("下载计算书(TXT)")
+        download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         download_txt_btn.clicked.connect(self.download_txt_report)
         download_txt_btn.setStyleSheet("""
             QPushButton {
@@ -348,6 +341,7 @@ class 蒸汽管径流量(QWidget):
         """)
 
         download_pdf_btn = QPushButton("下载计算书(PDF)")
+        download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         download_pdf_btn.clicked.connect(self.generate_pdf_report)
         download_pdf_btn.setStyleSheet("""
             QPushButton {
@@ -372,30 +366,19 @@ class 蒸汽管径流量(QWidget):
         
         # 右侧：结果显示区域 (占1/3宽度)
         right_widget = QWidget()
-        right_widget.setMinimumWidth(400)
+        right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
         
         # 结果显示
         self.result_group = QGroupBox("计算结果")
-        self.result_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
+        self.result_group.setStyleSheet(GROUP_STYLE)
         result_layout = QVBoxLayout(self.result_group)
         
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
+        self.result_text.setMinimumHeight(500)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet("""
             QTextEdit {
                 border: 1px solid #ecf0f1;
