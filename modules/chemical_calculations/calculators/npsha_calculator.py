@@ -1,11 +1,11 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QGroupBox, QTextEdit, QComboBox, QGridLayout, QMessageBox,
-    QScrollArea,
-
+    QScrollArea, QSizePolicy, QFileDialog,
 )
 from PySide6.QtGui import QFont, QDoubleValidator
 from PySide6.QtCore import Qt
+import os
 
 
 COMBOBOX_STYLE = """
@@ -26,6 +26,21 @@ COMBOBOX_STYLE = """
     QComboBox QAbstractItemView::item {
         padding: 3px 8px;
     }
+"""
+
+GROUP_STYLE = """
+QGroupBox {
+    font-weight: bold;
+    border: 1px solid #bdc3c7;
+    border-radius: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 8px 0 8px;
+}
 """
 class NPSHaCalculator(QWidget):
     """离心泵NPSHa计算（左右布局优化版）"""
@@ -75,28 +90,15 @@ class NPSHaCalculator(QWidget):
         
         # 输入参数组 - 使用GridLayout实现整齐的布局
         input_group = QGroupBox("输入参数")
-        input_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
+        input_group.setStyleSheet(GROUP_STYLE)
         
         # 使用GridLayout确保整齐排列
         input_layout = QGridLayout(input_group)
         input_layout.setVerticalSpacing(12)
         input_layout.setHorizontalSpacing(10)
-        input_layout.setColumnStretch(0, 2)
-        input_layout.setColumnStretch(1, 3)
-        input_layout.setColumnStretch(2, 2)
+        input_layout.setColumnStretch(0, 4)
+        input_layout.setColumnStretch(1, 8)
+        input_layout.setColumnStretch(2, 5)
         
         # 标签样式 - 右对齐
         label_style = """
@@ -106,10 +108,7 @@ class NPSHaCalculator(QWidget):
             }
         """
         
-        # 输入框和下拉菜单的固定宽度
-        input_width = 400
-        combo_width = 250
-        
+        # 输入框和下拉菜单的固定宽度        
         row = 0
         
         # 大气压力
@@ -121,8 +120,7 @@ class NPSHaCalculator(QWidget):
         self.atm_pressure_input = QLineEdit()
         self.atm_pressure_input.setPlaceholderText("例如: 101.3 (标准大气压)")
         self.atm_pressure_input.setValidator(QDoubleValidator(80.0, 110.0, 6))
-        self.atm_pressure_input.setMinimumWidth(150)
-        self.atm_pressure_input.setMaximumWidth(400)
+        self.atm_pressure_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.atm_pressure_input, row, 1)
         
         self.atm_pressure_combo = QComboBox()
@@ -134,8 +132,7 @@ class NPSHaCalculator(QWidget):
             "89.9 kPa - 海拔1000米",
             "自定义大气压力"
         ])
-        self.atm_pressure_combo.setMinimumWidth(100)
-        self.atm_pressure_combo.setMaximumWidth(250)
+        self.atm_pressure_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.atm_pressure_combo.currentTextChanged.connect(self.on_atm_pressure_changed)
         input_layout.addWidget(self.atm_pressure_combo, row, 2)
         
@@ -150,8 +147,7 @@ class NPSHaCalculator(QWidget):
         self.vapor_pressure_input = QLineEdit()
         self.vapor_pressure_input.setPlaceholderText("例如: 2.34 (水在20°C)")
         self.vapor_pressure_input.setValidator(QDoubleValidator(0.001, 22064.0, 6))
-        self.vapor_pressure_input.setMinimumWidth(150)
-        self.vapor_pressure_input.setMaximumWidth(400)
+        self.vapor_pressure_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.vapor_pressure_input, row, 1)
         
         self.vapor_pressure_combo = QComboBox()
@@ -170,8 +166,7 @@ class NPSHaCalculator(QWidget):
             "101.33 kPa - 水在100°C",
             "自定义蒸汽压"
         ])
-        self.vapor_pressure_combo.setMinimumWidth(100)
-        self.vapor_pressure_combo.setMaximumWidth(250)
+        self.vapor_pressure_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.vapor_pressure_combo.currentTextChanged.connect(self.on_vapor_pressure_changed)
         input_layout.addWidget(self.vapor_pressure_combo, row, 2)
         
@@ -186,8 +181,7 @@ class NPSHaCalculator(QWidget):
         self.static_head_input = QLineEdit()
         self.static_head_input.setPlaceholderText("正值为灌注，负值为抽吸")
         self.static_head_input.setValidator(QDoubleValidator(-20.0, 50.0, 6))
-        self.static_head_input.setMinimumWidth(150)
-        self.static_head_input.setMaximumWidth(400)
+        self.static_head_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.static_head_input, row, 1)
         
         self.static_head_combo = QComboBox()
@@ -197,8 +191,7 @@ class NPSHaCalculator(QWidget):
             "负压头 - 抽吸吸入",
             "零压头 - 水平吸入"
         ])
-        self.static_head_combo.setMinimumWidth(100)
-        self.static_head_combo.setMaximumWidth(250)
+        self.static_head_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.static_head_combo.currentTextChanged.connect(self.on_static_head_changed)
         input_layout.addWidget(self.static_head_combo, row, 2)
         
@@ -213,8 +206,7 @@ class NPSHaCalculator(QWidget):
         self.friction_loss_input = QLineEdit()
         self.friction_loss_input.setPlaceholderText("例如: 1.5")
         self.friction_loss_input.setValidator(QDoubleValidator(0.0, 20.0, 6))
-        self.friction_loss_input.setMinimumWidth(150)
-        self.friction_loss_input.setMaximumWidth(400)
+        self.friction_loss_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.friction_loss_input, row, 1)
         
         self.friction_loss_combo = QComboBox()
@@ -226,8 +218,7 @@ class NPSHaCalculator(QWidget):
             "3.0-5.0 m - 复杂管路",
             "自定义管路损失"
         ])
-        self.friction_loss_combo.setMinimumWidth(100)
-        self.friction_loss_combo.setMaximumWidth(250)
+        self.friction_loss_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.friction_loss_combo.currentTextChanged.connect(self.on_friction_loss_changed)
         input_layout.addWidget(self.friction_loss_combo, row, 2)
         
@@ -242,8 +233,7 @@ class NPSHaCalculator(QWidget):
         self.density_input = QLineEdit()
         self.density_input.setPlaceholderText("例如: 1000 (水)")
         self.density_input.setValidator(QDoubleValidator(500.0, 2000.0, 6))
-        self.density_input.setMinimumWidth(150)
-        self.density_input.setMaximumWidth(400)
+        self.density_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.density_input, row, 1)
         
         self.density_combo = QComboBox()
@@ -260,8 +250,7 @@ class NPSHaCalculator(QWidget):
             "850 kg/m³ - 柴油",
             "自定义密度"
         ])
-        self.density_combo.setMinimumWidth(100)
-        self.density_combo.setMaximumWidth(250)
+        self.density_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.density_combo.currentTextChanged.connect(self.on_density_changed)
         input_layout.addWidget(self.density_combo, row, 2)
         
@@ -276,8 +265,7 @@ class NPSHaCalculator(QWidget):
         self.npshr_input = QLineEdit()
         self.npshr_input.setPlaceholderText("可选，来自泵性能曲线")
         self.npshr_input.setValidator(QDoubleValidator(0.1, 20.0, 6))
-        self.npshr_input.setMinimumWidth(150)
-        self.npshr_input.setMaximumWidth(400)
+        self.npshr_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.npshr_input, row, 1)
         
         self.npshr_combo = QComboBox()
@@ -289,8 +277,7 @@ class NPSHaCalculator(QWidget):
             "6.0-8.0 m - 特殊泵",
             "未知NPSHr"
         ])
-        self.npshr_combo.setMinimumWidth(100)
-        self.npshr_combo.setMaximumWidth(250)
+        self.npshr_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.npshr_combo.currentTextChanged.connect(self.on_npshr_changed)
         input_layout.addWidget(self.npshr_combo, row, 2)
         
@@ -299,10 +286,11 @@ class NPSHaCalculator(QWidget):
         # 计算按钮
         calculate_btn = QPushButton("计算")
         calculate_btn.setFont(QFont("Arial", 12, QFont.Bold))
-        calculate_btn.clicked.connect(self.calculate_npsha)
+        calculate_btn.setMinimumHeight(50)
+        calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         calculate_btn.setStyleSheet("""
             QPushButton {
-                background-color: #3498db;
+                background-color: #27ae60;
                 color: white;
                 border: none;
                 border-radius: 8px;
@@ -310,38 +298,71 @@ class NPSHaCalculator(QWidget):
                 font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #2980b9;
+                background-color: #219955;
             }
         """)
-        calculate_btn.setMinimumHeight(50)
+        calculate_btn.clicked.connect(self.calculate_npsha)
         left_layout.addWidget(calculate_btn)
-        
+
+        # 下载按钮
+        dl_layout = QHBoxLayout()
+        dl_layout.setSpacing(10)
+
+        b_txt = QPushButton("下载计算书(TXT)")
+        b_txt.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        b_txt.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #219653;
+            }
+        """)
+        b_txt.clicked.connect(self.download_txt_report)
+
+        b_pdf = QPushButton("下载计算书(PDF)")
+        b_pdf.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        b_pdf.setStyleSheet("""
+            QPushButton {
+                background-color: #e74c3c;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #c0392b;
+            }
+        """)
+        b_pdf.clicked.connect(self.generate_pdf_report)
+
+        dl_layout.addWidget(b_txt)
+        dl_layout.addWidget(b_pdf)
+        left_layout.addLayout(dl_layout)
+
+        left_layout.addStretch()
+
         # 右侧：结果显示区域 (占1/3宽度)
         right_widget = QWidget()
-        right_widget.setMinimumWidth(400)
+        right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
         
         # 结果显示
         self.result_group = QGroupBox("计算结果")
-        self.result_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
+        self.result_group.setStyleSheet(GROUP_STYLE)
         result_layout = QVBoxLayout(self.result_group)
         
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
+        self.result_text.setMinimumHeight(500)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet("""
             QTextEdit {
                 border: 1px solid #ecf0f1;
@@ -621,3 +642,78 @@ H_friction = {friction_loss} m (摩擦损失)
             outputs["计算错误"] = str(e)
 
         return {"inputs": inputs, "outputs": outputs}
+
+    def get_project_info(self):
+        """获取项目信息"""
+        return {"calculator": "NPSHaCalculator", "name": "NPSHa汽蚀余量计算"}
+
+    def generate_report(self):
+        """生成报告"""
+        return self.result_text.toPlainText()
+
+    def download_txt_report(self):
+        """下载TXT报告"""
+        content = self.result_text.toPlainText()
+        if not content.strip():
+            QMessageBox.warning(self, "提示", "请先计算，再下载报告。")
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "保存TXT报告", "NPSHa计算报告.txt", "文本文件 (*.txt)"
+        )
+        if path:
+            try:
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(content)
+                QMessageBox.information(self, "成功", f"报告已保存：\n{path}")
+            except Exception as e:
+                QMessageBox.critical(self, "错误", f"保存失败：{e}")
+
+    def generate_pdf_report(self):
+        """生成PDF报告"""
+        content = self.result_text.toPlainText()
+        if not content.strip():
+            QMessageBox.warning(self, "提示", "请先计算，再下载PDF。")
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "保存PDF报告", "NPSHa计算报告.pdf", "PDF文件 (*.pdf)"
+        )
+        if not path:
+            return
+        try:
+            from reportlab.lib.pagesizes import A4
+            from reportlab.pdfgen import canvas
+            from reportlab.pdfbase import pdfmetrics
+            from reportlab.pdfbase.ttfonts import TTFont
+            font_paths = [
+                r"C:\Windows\Fonts\simhei.ttf",
+                r"C:\Windows\Fonts\msyh.ttc",
+                r"C:\Windows\Fonts\simsun.ttc",
+            ]
+            font_name = "SimHei"
+            for fp in font_paths:
+                if os.path.exists(fp):
+                    pdfmetrics.registerFont(TTFont(font_name, fp))
+                    break
+            c = canvas.Canvas(path, pagesize=A4)
+            width, height = A4
+            c.setFont(font_name, 11)
+            y = height - 50
+            for line in content.split("\n"):
+                if y < 50:
+                    c.showPage()
+                    c.setFont(font_name, 11)
+                    y = height - 50
+                c.drawString(40, y, line)
+                y -= 18
+            c.save()
+            QMessageBox.information(self, "成功", f"PDF已保存：\n{path}")
+        except ImportError:
+            txt_path = path.replace(".pdf", ".txt")
+            with open(txt_path, "w", encoding="utf-8") as f:
+                f.write(content)
+            QMessageBox.information(
+                self, "提示",
+                f"未安装reportlab，已保存为TXT格式：\n{txt_path}\n\n可通过 pip install reportlab 安装PDF支持。"
+            )
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"PDF生成失败：{e}")
