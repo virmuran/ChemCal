@@ -4,12 +4,12 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
     QLabel, QLineEdit, QPushButton, QComboBox,
     QTextEdit, QGridLayout, QTableWidget, QTableWidgetItem,
-    QHeaderView, QFileDialog, QMessageBox, QCheckBox,
-    QScrollArea,
+    QHeaderView, QFileDialog, QMessageBox,
+    QScrollArea, QSizePolicy,
 
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QDoubleValidator
+from PySide6.QtGui import QDoubleValidator, QFont
 
 
 COMBOBOX_STYLE = """
@@ -31,6 +31,21 @@ COMBOBOX_STYLE = """
         padding: 3px 8px;
     }
 """
+
+GROUP_STYLE = """
+QGroupBox {
+    font-weight: bold;
+    border: 1px solid #bdc3c7;
+    border-radius: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 8px 0 8px;
+}
+"""
 class SafetyValveCalculator(QWidget):
     """安全阀计算器（统一 UI 规范版）"""
 
@@ -39,27 +54,20 @@ class SafetyValveCalculator(QWidget):
         if data_manager is not None:
             self.data_manager = data_manager
         else:
-            self.data_manager = None
+            self.init_data_manager()
         self._last_result = {}
         self._last_params = {}
         self.setup_ui()
 
+    def init_data_manager(self):
+        try:
+            from data_manager import DataManager
+            self.data_manager = DataManager.get_instance()
+        except Exception:
+            self.data_manager = None
+
     # ─────────────────────────── UI ─────────────────────────────
     def setup_ui(self):
-        group_style = """
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #bdc3c7;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """
         main_layout = QHBoxLayout(self)
         main_layout.setSpacing(15)
         main_layout.setContentsMargins(10, 10, 10, 10)
@@ -83,20 +91,18 @@ class SafetyValveCalculator(QWidget):
             "支持气体/蒸汽临界流与亚临界流、液体泄放、火灾工况计算。"
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: #7f8c8d; font-size: 12px;")
+        desc.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
         left_layout.addWidget(desc)
 
         # ── 工况条件组 ──
         cond_group = QGroupBox("工况条件")
-        cond_group.setStyleSheet(group_style)
+        cond_group.setStyleSheet(GROUP_STYLE)
         grid = QGridLayout(cond_group)
         grid.setHorizontalSpacing(10)
-        grid.setVerticalSpacing(10)
-        grid.setColumnStretch(0, 2)  # 标签列可伸缩
-
-        grid.setColumnStretch(1, 3)  # 输入框列可伸缩
-
-        grid.setColumnStretch(2, 2)  # 提示列可伸缩
+        grid.setVerticalSpacing(12)
+        grid.setColumnStretch(0, 4)
+        grid.setColumnStretch(1, 8)
+        grid.setColumnStretch(2, 5)
 
 
         label_style = "font-weight: bold; padding-right: 10px;"
@@ -104,235 +110,204 @@ class SafetyValveCalculator(QWidget):
         def make_lbl(text):
             lbl = QLabel(text)
             lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            lbl.setMinimumWidth(120)
-            lbl.setMaximumWidth(200)
             lbl.setStyleSheet(label_style)
             return lbl
 
         # 行0：介质类型
         self.medium_combo = QComboBox()
         self.medium_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.medium_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.medium_combo.addItems(["蒸汽", "空气", "气体", "液体", "两相流"])
-        self.medium_combo.setMinimumWidth(150)
-        self.medium_combo.setMaximumWidth(400)
         self.medium_combo.currentTextChanged.connect(self._on_medium_changed)
         grid.addWidget(make_lbl("介质类型:"), 0, 0)
         grid.addWidget(self.medium_combo, 0, 1)
         hint_m = QLabel("选择后自动填充分子量和绝热指数")
-        hint_m.setMinimumWidth(100)
-        hint_m.setMaximumWidth(250)
-        hint_m.setStyleSheet("color: #95a5a6; font-size: 11px;")
+        hint_m.setStyleSheet("color: #7f8c8d; font-style: italic;")
         grid.addWidget(hint_m, 0, 2)
 
         # 行1：分子量
         self.mw_input = QLineEdit("18")
-        self.mw_input.setMinimumWidth(150)
-        self.mw_input.setMaximumWidth(400)
         self.mw_input.setValidator(QDoubleValidator(1, 200, 2))
+        self.mw_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         grid.addWidget(make_lbl("分子量 (g/mol):"), 1, 0)
         grid.addWidget(self.mw_input, 1, 1)
         hint_mw = QLabel("蒸汽=18, 空气=29")
-        hint_mw.setMinimumWidth(100)
-        hint_mw.setMaximumWidth(250)
-        hint_mw.setStyleSheet("color: #95a5a6; font-size: 11px;")
+        hint_mw.setStyleSheet("color: #7f8c8d; font-style: italic;")
         grid.addWidget(hint_mw, 1, 2)
 
         # 行2：绝热指数
         self.gamma_input = QLineEdit("1.3")
-        self.gamma_input.setMinimumWidth(150)
-        self.gamma_input.setMaximumWidth(400)
         self.gamma_input.setValidator(QDoubleValidator(1.0, 2.0, 3))
+        self.gamma_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         grid.addWidget(make_lbl("绝热指数 (γ):"), 2, 0)
         grid.addWidget(self.gamma_input, 2, 1)
         hint_g = QLabel("双原子=1.4")
-        hint_g.setMinimumWidth(100)
-        hint_g.setMaximumWidth(250)
-        hint_g.setStyleSheet("color: #95a5a6; font-size: 11px;")
+        hint_g.setStyleSheet("color: #7f8c8d; font-style: italic;")
         grid.addWidget(hint_g, 2, 2)
 
         # 行3：设定压力
         self.set_pressure_input = QLineEdit("1.0")
-        self.set_pressure_input.setMinimumWidth(150)
-        self.set_pressure_input.setMaximumWidth(400)
         self.set_pressure_input.setValidator(QDoubleValidator(0.01, 100, 3))
+        self.set_pressure_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         grid.addWidget(make_lbl("设定压力:"), 3, 0)
         grid.addWidget(self.set_pressure_input, 3, 1)
         hint_p = QLabel("MPa (表压)")
-        hint_p.setMinimumWidth(100)
-        hint_p.setMaximumWidth(250)
         grid.addWidget(hint_p, 3, 2)
 
         # 行4：背压
         self.back_pressure_input = QLineEdit("0.1")
-        self.back_pressure_input.setMinimumWidth(150)
-        self.back_pressure_input.setMaximumWidth(400)
         self.back_pressure_input.setValidator(QDoubleValidator(0, 100, 3))
+        self.back_pressure_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         grid.addWidget(make_lbl("背压:"), 4, 0)
         grid.addWidget(self.back_pressure_input, 4, 1)
         hint_bp = QLabel("MPa")
-        hint_bp.setMinimumWidth(100)
-        hint_bp.setMaximumWidth(250)
         grid.addWidget(hint_bp, 4, 2)
 
         # 行5：超压百分比
         self.overpressure_input = QLineEdit("10")
-        self.overpressure_input.setMinimumWidth(150)
-        self.overpressure_input.setMaximumWidth(400)
         self.overpressure_input.setValidator(QDoubleValidator(10, 100, 1))
+        self.overpressure_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         grid.addWidget(make_lbl("超压百分比:"), 5, 0)
         grid.addWidget(self.overpressure_input, 5, 1)
         hint_op = QLabel("通常 10% 或 21%")
-        hint_op.setMinimumWidth(100)
-        hint_op.setMaximumWidth(250)
-        hint_op.setStyleSheet("color: #95a5a6; font-size: 11px;")
+        hint_op.setStyleSheet("color: #7f8c8d; font-style: italic;")
         grid.addWidget(hint_op, 5, 2)
 
         # 行6：操作温度
         self.temp_input = QLineEdit("100")
-        self.temp_input.setMinimumWidth(150)
-        self.temp_input.setMaximumWidth(400)
         self.temp_input.setValidator(QDoubleValidator(-273, 1000, 1))
+        self.temp_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         grid.addWidget(make_lbl("操作温度 (°C):"), 6, 0)
         grid.addWidget(self.temp_input, 6, 1)
         hint_t = QLabel("")
-        hint_t.setMinimumWidth(100)
-        hint_t.setMaximumWidth(250)
         grid.addWidget(hint_t, 6, 2)
 
         # 行7：泄放温度
         self.relief_temp_input = QLineEdit("150")
-        self.relief_temp_input.setMinimumWidth(150)
-        self.relief_temp_input.setMaximumWidth(400)
         self.relief_temp_input.setValidator(QDoubleValidator(-273, 1000, 1))
+        self.relief_temp_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         grid.addWidget(make_lbl("泄放温度 (°C):"), 7, 0)
         grid.addWidget(self.relief_temp_input, 7, 1)
         hint_rt = QLabel("")
-        hint_rt.setMinimumWidth(100)
-        hint_rt.setMaximumWidth(250)
         grid.addWidget(hint_rt, 7, 2)
 
         # 行8：压缩因子
         self.z_input = QLineEdit("1.0")
-        self.z_input.setMinimumWidth(150)
-        self.z_input.setMaximumWidth(400)
         self.z_input.setValidator(QDoubleValidator(0.1, 2.0, 3))
+        self.z_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         grid.addWidget(make_lbl("压缩因子 Z:"), 8, 0)
         grid.addWidget(self.z_input, 8, 1)
         hint_z = QLabel("理想气体=1.0")
-        hint_z.setMinimumWidth(100)
-        hint_z.setMaximumWidth(250)
-        hint_z.setStyleSheet("color: #95a5a6; font-size: 11px;")
+        hint_z.setStyleSheet("color: #7f8c8d; font-style: italic;")
         grid.addWidget(hint_z, 8, 2)
 
         left_layout.addWidget(cond_group)
 
         # ── 泄放条件组 ──
         relief_group = QGroupBox("泄放条件")
-        relief_group.setStyleSheet(group_style)
+        relief_group.setStyleSheet(GROUP_STYLE)
         rgrid = QGridLayout(relief_group)
         rgrid.setHorizontalSpacing(10)
-        rgrid.setVerticalSpacing(10)
+        rgrid.setVerticalSpacing(12)
+        rgrid.setColumnStretch(0, 4)
+        rgrid.setColumnStretch(1, 8)
+        rgrid.setColumnStretch(2, 5)
 
         # 行0：泄放量
         self.relief_rate_input = QLineEdit("1000")
-        self.relief_rate_input.setMinimumWidth(150)
-        self.relief_rate_input.setMaximumWidth(400)
         self.relief_rate_input.setValidator(QDoubleValidator(0, 1e8, 1))
+        self.relief_rate_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         rgrid.addWidget(make_lbl("泄放量 (kg/h):"), 0, 0)
         rgrid.addWidget(self.relief_rate_input, 0, 1)
         hint_rr = QLabel("已知泄放量")
-        hint_rr.setMinimumWidth(100)
-        hint_rr.setMaximumWidth(250)
-        hint_rr.setStyleSheet("color: #95a5a6; font-size: 11px;")
+        hint_rr.setStyleSheet("color: #7f8c8d; font-style: italic;")
         rgrid.addWidget(hint_rr, 0, 2)
 
-        # 行1：火灾工况 + 润湿面积 + 环境因子
-        self.fire_check = QCheckBox("火灾工况")
-        rgrid.addWidget(self.fire_check, 1, 0)
-
+        # 行1：润湿面积 + 工况类型
         self.wetted_area_input = QLineEdit("50")
-        self.wetted_area_input.setMinimumWidth(100)
-        self.wetted_area_input.setMaximumWidth(180)
         self.wetted_area_input.setValidator(QDoubleValidator(0, 10000, 1))
+        self.wetted_area_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        rgrid.addWidget(make_lbl("润湿面积 (m²):"), 1, 0)
         rgrid.addWidget(self.wetted_area_input, 1, 1)
-        lbl_wa = QLabel("润湿面积 m²    环境")
-        lbl_wa.setStyleSheet("font-size: 11px;")
-        rgrid.addWidget(lbl_wa, 1, 2)
 
+        self.fire_combo = QComboBox()
+        self.fire_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.fire_combo.addItems(["普通工况", "火灾工况"])
+        self.fire_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        rgrid.addWidget(self.fire_combo, 1, 2)
+
+        # 行2：环境因子
         self.env_factor_input = QLineEdit("1.0")
-        self.env_factor_input.setFixedWidth(80)
         self.env_factor_input.setValidator(QDoubleValidator(0.1, 2.0, 2))
-        rgrid.addWidget(self.env_factor_input, 1, 2, Qt.AlignRight)
-        lbl_f = QLabel("F")
-        lbl_f.setStyleSheet("font-size: 11px;")
-        rgrid.addWidget(lbl_f, 1, 2, Qt.AlignRight | Qt.AlignVCenter)
+        self.env_factor_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        rgrid.addWidget(make_lbl("环境因子 F:"), 2, 0)
+        rgrid.addWidget(self.env_factor_input, 2, 1)
+        hint_ef = QLabel("标准=1.0")
+        hint_ef.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        rgrid.addWidget(hint_ef, 2, 2)
 
         left_layout.addWidget(relief_group)
 
         # ── 安全阀参数组 ──
         valve_group = QGroupBox("安全阀参数")
-        valve_group.setStyleSheet(group_style)
+        valve_group.setStyleSheet(GROUP_STYLE)
         vgrid = QGridLayout(valve_group)
         vgrid.setHorizontalSpacing(10)
-        vgrid.setVerticalSpacing(10)
+        vgrid.setVerticalSpacing(12)
+        vgrid.setColumnStretch(0, 4)
+        vgrid.setColumnStretch(1, 8)
+        vgrid.setColumnStretch(2, 5)
 
         self.valve_type_combo = QComboBox()
         self.valve_type_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.valve_type_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.valve_type_combo.addItems(["弹簧式", "先导式", "重锤式"])
-        self.valve_type_combo.setMinimumWidth(150)
-        self.valve_type_combo.setMaximumWidth(400)
         vgrid.addWidget(make_lbl("安全阀类型:"), 0, 0)
         vgrid.addWidget(self.valve_type_combo, 0, 1)
         hint_vt = QLabel("")
-        hint_vt.setMinimumWidth(100)
-        hint_vt.setMaximumWidth(250)
         vgrid.addWidget(hint_vt, 0, 2)
 
         self.material_combo = QComboBox()
         self.material_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.material_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.material_combo.addItems(["碳钢", "不锈钢", "合金钢", "特殊合金"])
-        self.material_combo.setMinimumWidth(150)
-        self.material_combo.setMaximumWidth(400)
         vgrid.addWidget(make_lbl("材料:"), 1, 0)
         vgrid.addWidget(self.material_combo, 1, 1)
         hint_mt = QLabel("")
-        hint_mt.setMinimumWidth(100)
-        hint_mt.setMaximumWidth(250)
         vgrid.addWidget(hint_mt, 1, 2)
 
         self.discharge_combo = QComboBox()
         self.discharge_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.discharge_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.discharge_combo.addItems(["开式", "闭式", "半开式"])
-        self.discharge_combo.setMinimumWidth(150)
-        self.discharge_combo.setMaximumWidth(400)
         vgrid.addWidget(make_lbl("排放方式:"), 2, 0)
         vgrid.addWidget(self.discharge_combo, 2, 1)
         hint_dc = QLabel("")
-        hint_dc.setMinimumWidth(100)
-        hint_dc.setMaximumWidth(250)
         vgrid.addWidget(hint_dc, 2, 2)
 
         left_layout.addWidget(valve_group)
 
         # ── 计算按钮 ──
-        calc_btn = QPushButton("▶  计算安全阀")
+        calc_btn = QPushButton("计算安全阀")
+        calc_btn.setFont(QFont("Arial", 12, QFont.Bold))
+        calc_btn.setMinimumHeight(50)
+        calc_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         calc_btn.setStyleSheet("""
             QPushButton {
-                background-color: #3498db;
+                background-color: #27ae60;
                 color: white;
-                font-weight: bold;
-                font-size: 14px;
+                border: none;
                 border-radius: 8px;
-                min-height: 50px;
+                min-height: 50px; padding: 0px;
             }
-            QPushButton:hover { background-color: #2980b9; }
+            QPushButton:hover { background-color: #219955; }
         """)
         calc_btn.clicked.connect(self.calculate)
         left_layout.addWidget(calc_btn)
 
         # ── 详细参数表 ──
         detail_group = QGroupBox("详细参数")
-        detail_group.setStyleSheet(group_style)
+        detail_group.setStyleSheet(GROUP_STYLE)
         detail_vbox = QVBoxLayout(detail_group)
 
         self.detail_table = QTableWidget()
@@ -358,23 +333,25 @@ class SafetyValveCalculator(QWidget):
         """)
         clear_btn.clicked.connect(self.clear_inputs)
 
-        dl_txt_btn = QPushButton("⬇ 下载TXT报告")
+        dl_txt_btn = QPushButton("下载TXT报告")
+        dl_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         dl_txt_btn.setStyleSheet("""
             QPushButton {
                 background-color: #27ae60; color: white;
                 font-weight: bold; border-radius: 6px;
-                padding: 8px 20px;
+                padding: 8px;
             }
-            QPushButton:hover { background-color: #219a52; }
+            QPushButton:hover { background-color: #219653; }
         """)
         dl_txt_btn.clicked.connect(self.download_txt_report)
 
-        dl_pdf_btn = QPushButton("⬇ 下载PDF报告")
+        dl_pdf_btn = QPushButton("下载PDF报告")
+        dl_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         dl_pdf_btn.setStyleSheet("""
             QPushButton {
                 background-color: #e74c3c; color: white;
                 font-weight: bold; border-radius: 6px;
-                padding: 8px 20px;
+                padding: 8px;
             }
             QPushButton:hover { background-color: #c0392b; }
         """)
@@ -388,25 +365,24 @@ class SafetyValveCalculator(QWidget):
 
         # ──────────────── 右侧结果区 ────────────────
         right_widget = QWidget()
-        right_widget.setMinimumWidth(400)
+        right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
-        right_layout.setSpacing(10)
+        right_layout.setSpacing(15)
 
         result_group = QGroupBox("计算结果")
-        result_group.setStyleSheet(group_style)
+        result_group.setStyleSheet(GROUP_STYLE)
         result_vbox = QVBoxLayout(result_group)
 
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
         self.result_text.setMinimumHeight(500)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet("""
             QTextEdit {
                 background-color: #f8f9fa;
-                border: 1px solid #dee2e6;
+                border: 1px solid #ecf0f1;
                 border-radius: 6px;
-                font-family: Consolas, monospace;
-                font-size: 13px;
-                padding: 10px;
+                padding: 8px;
             }
         """)
         self.result_text.setPlaceholderText("计算结果将在此显示……")
@@ -443,7 +419,7 @@ class SafetyValveCalculator(QWidget):
             relief_t = float(self.relief_temp_input.text() or 150)
             z = float(self.z_input.text() or 1.0)
             relief_rate = float(self.relief_rate_input.text() or 1000)
-            is_fire = self.fire_check.isChecked()
+            is_fire = self.fire_combo.currentText() == "火灾工况"
             wetted_a = float(self.wetted_area_input.text() or 50)
             env_f = float(self.env_factor_input.text() or 1.0)
 
@@ -642,7 +618,7 @@ class SafetyValveCalculator(QWidget):
         self.relief_temp_input.setText("150")
         self.z_input.setText("1.0")
         self.relief_rate_input.setText("1000")
-        self.fire_check.setChecked(False)
+        self.fire_combo.setCurrentIndex(0)
         self.wetted_area_input.setText("50")
         self.env_factor_input.setText("1.0")
         self.valve_type_combo.setCurrentIndex(0)
