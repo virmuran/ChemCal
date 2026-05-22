@@ -46,7 +46,7 @@ SCROLLBAR_STYLE = """
 GROUP_STYLE = """
     QGroupBox {
         font-weight: bold;
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 8px;
         margin-top: 10px;
         padding-top: 10px;
@@ -59,16 +59,16 @@ GROUP_STYLE = """
 """
 COMBOBOX_STYLE = """
     QComboBox {
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 4px;
         padding: 6px 10px;
-        background: white;
-        color: black;
+        /* background via theme */
+        /* color via theme */
     }
     QComboBox QAbstractItemView {
-        background-color: white;
-        color: black;
-        border: 1px solid #bdc3c7;
+        /* background-color via theme */
+        /* color via theme */
+        border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
     }
@@ -116,7 +116,7 @@ class CentrifugalPumpCalculator(QWidget):
         scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         
         left_widget = QWidget()
-        left_widget.setStyleSheet("QWidget { background: transparent; }")
+        left_widget.setStyleSheet("")
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
         left_layout.setContentsMargins(0, 0, 0, 0)
@@ -126,7 +126,7 @@ class CentrifugalPumpCalculator(QWidget):
             "计算离心泵的轴功率、电机功率和效率，考虑流量、扬程、介质密度和泵效率。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
         # 输入参数组
@@ -308,7 +308,7 @@ class CentrifugalPumpCalculator(QWidget):
         input_layout.addWidget(self.safety_combo, row, 1)
 
         self.safety_hint = QLabel("默认选用标准安全系数")
-        self.safety_hint.setStyleSheet("color: #7f8c8d; font-style: italic; padding-left: 10px;")
+        self.safety_hint.setStyleSheet("color: inherit; font-style: italic; padding-left: 10px;")
         self.safety_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.safety_hint, row, 2)
         
@@ -383,7 +383,7 @@ class CentrifugalPumpCalculator(QWidget):
         self.result_text.setMinimumHeight(500)
         self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet(
-            "QTextEdit { background-color: #f8f9fa; border: 1px solid #ecf0f1; "
+            "QTextEdit { /* bg via theme */border: 1px solid #ecf0f1; "
             "border-radius: 6px; font-family: Consolas, monospace; font-size: 13px; padding: 8px; }"
         )
         self.result_text.setPlaceholderText("计算结果将在此显示……")

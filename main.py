@@ -187,7 +187,7 @@ class CalcE(QMainWindow):
                 widget.on_activate()
 
     def _apply_theme(self, theme_name):
-        self.setStyleSheet(self.theme_manager.get_theme())
+        QApplication.instance().setStyleSheet(self.theme_manager.get_theme())
         self.theme_label.setText(f"主题: {theme_name.capitalize()}")
         settings = self.data_manager.get_settings()
         settings["theme"] = theme_name

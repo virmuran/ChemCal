@@ -14,16 +14,16 @@ from datetime import datetime
 
 COMBOBOX_STYLE = """
     QComboBox {
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 4px;
         padding: 6px 10px;
-        background: white;
-        color: black;
+        /* background via theme */
+        /* color via theme */
     }
     QComboBox QAbstractItemView {
-        background-color: white;
-        color: black;
-        border: 1px solid #bdc3c7;
+        /* background-color via theme */
+        /* color via theme */
+        border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
     }
@@ -35,7 +35,7 @@ COMBOBOX_STYLE = """
 GROUP_STYLE = """
     QGroupBox {
         font-weight: bold;
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 8px;
         margin-top: 10px;
         padding-top: 10px;
@@ -89,7 +89,7 @@ class 管道壁厚(QWidget):
         scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         left_widget = QWidget()
-        left_widget.setStyleSheet("QWidget { background: transparent; }")  # 限制最大宽度
+        left_widget.setStyleSheet("")  # 限制最大宽度
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
         
@@ -98,7 +98,7 @@ class 管道壁厚(QWidget):
             "根据ASME B31.3等标准计算管道壁厚，支持MPa(g)表压单位，包含详细的焊接接头系数和材料数据库。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
         # 2. 计算标准选择
@@ -161,7 +161,7 @@ class 管道壁厚(QWidget):
         
         # 压力提示
         self.pressure_hint = QLabel("1 MPa = 10 bar")
-        self.pressure_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.pressure_hint.setStyleSheet("color: inherit; font-style: italic;")
         self.pressure_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.pressure_hint, row, 2)
         
@@ -185,7 +185,7 @@ class 管道壁厚(QWidget):
         
         # 温度提示
         self.temp_hint = QLabel("直接输入温度值")
-        self.temp_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.temp_hint.setStyleSheet("color: inherit; font-style: italic;")
         self.temp_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.temp_hint, row, 2)
         
@@ -430,8 +430,7 @@ class 管道壁厚(QWidget):
                 border: 1px solid #ecf0f1;
                 border-radius: 6px;
                 padding: 8px;
-                background-color: #f8f9fa;
-                min-height: 500px;
+                /* bg via theme */min-height: 500px;
             }
         """)
         result_layout.addWidget(self.result_text)

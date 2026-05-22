@@ -14,16 +14,16 @@ from PySide6.QtGui import QDoubleValidator, QFont
 
 COMBOBOX_STYLE = """
     QComboBox {
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 4px;
         padding: 6px 10px;
-        background: white;
-        color: black;
+        /* background via theme */
+        /* color via theme */
     }
     QComboBox QAbstractItemView {
-        background-color: white;
-        color: black;
-        border: 1px solid #bdc3c7;
+        /* background-color via theme */
+        /* color via theme */
+        border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
     }
@@ -35,7 +35,7 @@ COMBOBOX_STYLE = """
 GROUP_STYLE = """
 QGroupBox {
     font-weight: bold;
-    border: 1px solid #bdc3c7;
+    border: 1px solid #888;
     border-radius: 8px;
     margin-top: 10px;
     padding-top: 10px;
@@ -101,7 +101,7 @@ class ReliefAreaCalculator(QWidget):
         scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         left_widget = QWidget()
-        left_widget.setStyleSheet("QWidget { background: transparent; }")
+        left_widget.setStyleSheet("")
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
 
@@ -112,7 +112,7 @@ class ReliefAreaCalculator(QWidget):
             "支持气体/蒸汽临界流与亚临界流、液体泄放、两相流计算。"
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
+        desc.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
         left_layout.addWidget(desc)
 
         label_style = "font-weight: bold; padding-right: 10px;"
@@ -125,7 +125,7 @@ class ReliefAreaCalculator(QWidget):
 
         def make_hint(text):
             lbl = QLabel(text)
-            lbl.setStyleSheet("color: #7f8c8d; font-style: italic;")
+            lbl.setStyleSheet("color: inherit; font-style: italic;")
             return lbl
 
         # ── 泄放场景组 ──
@@ -432,8 +432,7 @@ class ReliefAreaCalculator(QWidget):
         self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet("""
             QTextEdit {
-                background-color: #f8f9fa;
-                border: 1px solid #ecf0f1;
+                /* bg via theme */border: 1px solid #ecf0f1;
                 border-radius: 6px;
                 padding: 8px;
             }

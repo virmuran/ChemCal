@@ -16,16 +16,16 @@ from datetime import datetime
 # 附件选择对话框 -------------------------------------------------
 COMBOBOX_STYLE = """
     QComboBox {
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 4px;
         padding: 6px 10px;
-        background: white;
-        color: black;
+        /* background via theme */
+        /* color via theme */
     }
     QComboBox QAbstractItemView {
-        background-color: white;
-        color: black;
-        border: 1px solid #bdc3c7;
+        /* background-color via theme */
+        /* color via theme */
+        border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
     }
@@ -56,7 +56,7 @@ class AccessoriesDialog(QDialog):
         scroll = QScrollArea()
         scroll.setStyleSheet("QScrollArea { border: none; background: transparent; } QScrollBar:vertical { background: transparent; width: 8px; margin: 0; } QScrollBar::handle:vertical { background: #c0c0c0; border-radius: 4px; min-height: 30px; } QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }")
         scroll_widget = QWidget()
-        scroll_widget.setStyleSheet("QWidget { background: transparent; }")
+        scroll_widget.setStyleSheet("")
         scroll_layout = QVBoxLayout(scroll_widget)
 
         # ----- 支腿 -----
@@ -186,7 +186,7 @@ class AccessoriesDialog(QDialog):
 GROUP_STYLE = """
 QGroupBox {
     font-weight: bold;
-    border: 1px solid #bdc3c7;
+    border: 1px solid #888;
     border-radius: 8px;
     margin-top: 10px;
     padding-top: 10px;
@@ -241,14 +241,14 @@ class 设备尺寸计算(QWidget):
         scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         left_widget = QWidget()
-        left_widget.setStyleSheet("QWidget { background: transparent; }")
+        left_widget.setStyleSheet("")
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
 
         # 说明
         desc = QLabel("计算设备的直径、高度、容积、重量等参数，支持正向/反向计算。")
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
+        desc.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
         left_layout.addWidget(desc)
 
         # ----- 计算模式选择（按钮组）-----
@@ -272,12 +272,12 @@ class 设备尺寸计算(QWidget):
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             btn.setStyleSheet("""
                 QPushButton {
-                    background-color: #ecf0f1;
-                    border: 1px solid #bdc3c7;
+                    /* unselected bg via theme */
+                    border: 1px solid #888;
                     border-radius: 4px;
                     padding: 8px;
                     text-align: center;
-                    color: black;
+                    /* color via theme */
                 }
                 QPushButton:checked {
                     background-color: #3498db;
@@ -320,7 +320,7 @@ class 设备尺寸计算(QWidget):
         self.fill_factor_input.setPlaceholderText("0.85")
         grid.addWidget(self.fill_factor_input, row, 1)
         self.fill_hint = QLabel("工作容积 / 几何容积")
-        self.fill_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.fill_hint.setStyleSheet("color: inherit; font-style: italic;")
         grid.addWidget(self.fill_hint, row, 2)
         row += 1
 
@@ -349,7 +349,7 @@ class 设备尺寸计算(QWidget):
         self.target_vol_input.setPlaceholderText("例如 10.0")
         grid.addWidget(self.target_vol_input, row, 1)
         self.target_vol_hint = QLabel("用户期望的工作容积")
-        self.target_vol_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.target_vol_hint.setStyleSheet("color: inherit; font-style: italic;")
         grid.addWidget(self.target_vol_hint, row, 2)
         row += 1
 
@@ -362,7 +362,7 @@ class 设备尺寸计算(QWidget):
         self.diameter_input.setPlaceholderText("例如 1000")
         grid.addWidget(self.diameter_input, row, 1)
         self.diameter_hint = QLabel("标准直径参考")
-        self.diameter_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.diameter_hint.setStyleSheet("color: inherit; font-style: italic;")
         grid.addWidget(self.diameter_hint, row, 2)
         row += 1
 
@@ -375,7 +375,7 @@ class 设备尺寸计算(QWidget):
         self.cyl_height_input.setPlaceholderText("例如 2000")
         grid.addWidget(self.cyl_height_input, row, 1)
         self.cyl_height_hint = QLabel("圆柱部分高度")
-        self.cyl_height_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.cyl_height_hint.setStyleSheet("color: inherit; font-style: italic;")
         grid.addWidget(self.cyl_height_hint, row, 2)
         row += 1
 
@@ -540,8 +540,7 @@ class 设备尺寸计算(QWidget):
         self.result_text.setStyleSheet("""
             QTextEdit {
                 border: 1px solid #ecf0f1; border-radius: 6px;
-                padding: 8px; background-color: #f8f9fa;
-                min-height: 500px;
+                padding: 8px; /* bg via theme */min-height: 500px;
             }
         """)
         result_layout.addWidget(self.result_text)

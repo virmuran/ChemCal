@@ -97,12 +97,12 @@ class HistoryViewer(QWidget):
             QListWidget::item {
                 padding: 8px;
                 border-bottom: 1px solid #f1f3f4;
-                background: white;
-                color: #2c3e50;
+                /* background via theme */
+                /* color via theme */
             }
             QListWidget::item:alternate {
                 background: #f8f9fa;
-                color: #2c3e50;
+                /* color via theme */
             }
             QListWidget::item:selected {
                 background: #3498db;

@@ -233,7 +233,7 @@ def uniquac_ln_gamma(x, T, r_list, q_list, tau_mat, n):
 GROUP_STYLE = """
     QGroupBox {
         font-weight: bold;
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 8px;
         margin-top: 10px;
         padding-top: 10px;
@@ -246,16 +246,16 @@ GROUP_STYLE = """
 """
 COMBOBOX_STYLE = """
     QComboBox {
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 4px;
         padding: 6px 10px;
-        background: white;
-        color: black;
+        /* background via theme */
+        /* color via theme */
     }
     QComboBox QAbstractItemView {
-        background-color: white;
-        color: black;
-        border: 1px solid #bdc3c7;
+        /* background-color via theme */
+        /* color via theme */
+        border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
     }
@@ -310,7 +310,7 @@ class VLEActivityCoefficientCalculator(QWidget):
         scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         left_widget = QWidget()
-        left_widget.setStyleSheet("QWidget { background: transparent; }")
+        left_widget.setStyleSheet("")
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
 
@@ -319,7 +319,7 @@ class VLEActivityCoefficientCalculator(QWidget):
             "使用活度系数法计算多组分系统的气液平衡，支持 Wilson、NRTL、UNIQUAC 方程（纯 Python，无需 numpy/scipy）。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
 
         # 2. 计算条件组
@@ -383,7 +383,7 @@ class VLEActivityCoefficientCalculator(QWidget):
         condition_layout.addWidget(self.model_selection, 2, 1)
 
         model_hint = QLabel("选择活度系数模型")
-        model_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        model_hint.setStyleSheet("color: inherit; font-style: italic;")
         model_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         condition_layout.addWidget(model_hint, 2, 2)
 
@@ -400,7 +400,7 @@ class VLEActivityCoefficientCalculator(QWidget):
         condition_layout.addWidget(self.calc_type, 3, 1)
 
         ctype_hint = QLabel("泡点/露点/闪蒸")
-        ctype_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        ctype_hint.setStyleSheet("color: inherit; font-style: italic;")
         ctype_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         condition_layout.addWidget(ctype_hint, 3, 2)
 
@@ -418,7 +418,7 @@ class VLEActivityCoefficientCalculator(QWidget):
         condition_layout.addWidget(self.component_count, 4, 1)
 
         comp_hint = QLabel("2~4组分体系")
-        comp_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        comp_hint.setStyleSheet("color: inherit; font-style: italic;")
         comp_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         condition_layout.addWidget(comp_hint, 4, 2)
 
@@ -555,8 +555,7 @@ class VLEActivityCoefficientCalculator(QWidget):
                 border: 1px solid #ecf0f1;
                 border-radius: 6px;
                 padding: 8px;
-                background-color: #f8f9fa;
-                min-height: 500px;
+                /* bg via theme */min-height: 500px;
             }
         """)
         result_inner.addWidget(self.result_text)

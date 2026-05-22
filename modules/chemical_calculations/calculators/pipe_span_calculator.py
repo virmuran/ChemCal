@@ -12,16 +12,16 @@ from datetime import datetime
 
 COMBOBOX_STYLE = """
     QComboBox {
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 4px;
         padding: 6px 10px;
-        background: white;
-        color: black;
+        /* background via theme */
+        /* color via theme */
     }
     QComboBox QAbstractItemView {
-        background-color: white;
-        color: black;
-        border: 1px solid #bdc3c7;
+        /* background-color via theme */
+        /* color via theme */
+        border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
     }
@@ -32,7 +32,7 @@ COMBOBOX_STYLE = """
 GROUP_STYLE = """
     QGroupBox {
         font-weight: bold;
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 8px;
         margin-top: 10px;
         padding-top: 10px;
@@ -174,7 +174,7 @@ class 管道跨距(QWidget):
         scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         left_widget = QWidget()
-        left_widget.setStyleSheet("QWidget { background: transparent; }")
+        left_widget.setStyleSheet("")
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
         
@@ -183,7 +183,7 @@ class 管道跨距(QWidget):
             "计算管道在不同支撑条件下的最大允许跨距。考虑管道重量、流体重量和保温层重量。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
         # 2. 输入参数组 - 使用GridLayout实现整齐的布局
@@ -261,7 +261,7 @@ class 管道跨距(QWidget):
         
         # 材料属性提示标签
         self.material_hint = QLabel("根据材料自动计算")
-        self.material_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.material_hint.setStyleSheet("color: inherit; font-style: italic;")
         self.material_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.material_hint, row, 2)
         
@@ -433,8 +433,7 @@ class 管道跨距(QWidget):
                 border: 1px solid #ecf0f1;
                 border-radius: 6px;
                 padding: 8px;
-                background-color: #f8f9fa;
-                min-height: 500px;
+                /* bg via theme */min-height: 500px;
             }
         """)
         result_layout.addWidget(self.result_text)

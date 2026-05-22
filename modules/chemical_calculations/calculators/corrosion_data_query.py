@@ -13,7 +13,7 @@ import datetime
 GROUP_STYLE = """
     QGroupBox {
         font-weight: bold;
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 8px;
         margin-top: 10px;
         padding-top: 10px;
@@ -26,16 +26,16 @@ GROUP_STYLE = """
 """
 COMBOBOX_STYLE = """
     QComboBox {
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 4px;
         padding: 6px 10px;
-        background: white;
-        color: black;
+        /* background via theme */
+        /* color via theme */
     }
     QComboBox QAbstractItemView {
-        background-color: white;
-        color: black;
-        border: 1px solid #bdc3c7;
+        /* background-color via theme */
+        /* color via theme */
+        border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
     }
@@ -93,7 +93,7 @@ class CorrosionDataQuery(QWidget):
 
         # 左侧内部容器
         left_widget = QWidget()
-        left_widget.setStyleSheet("QWidget { background: transparent; }")
+        left_widget.setStyleSheet("")
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
         left_layout.setContentsMargins(0, 0, 0, 0)
@@ -101,7 +101,7 @@ class CorrosionDataQuery(QWidget):
         # 顶部说明文字
         desc_label = QLabel("查询工程材料和腐蚀介质的组合腐蚀数据，提供腐蚀速率、耐蚀评级和使用建议。支持多种材料和介质的腐蚀性能查询。")
         desc_label.setWordWrap(True)
-        desc_label.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
+        desc_label.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
         left_layout.addWidget(desc_label)
 
         # 查询条件组 — QGridLayout 三列 stretch(4,8,5)
@@ -115,7 +115,7 @@ class CorrosionDataQuery(QWidget):
         query_grid.setColumnStretch(2, 5)
 
         label_style = "font-weight: bold; padding-right: 10px;"
-        hint_style = "color: #7f8c8d; font-style: italic;"
+        hint_style = "color: inherit; font-style: italic;"
 
         def make_lbl(text, row, col):
             lbl = QLabel(text)
@@ -258,13 +258,13 @@ class CorrosionDataQuery(QWidget):
         self.tab_widget = QTabWidget()
         self.tab_widget.setStyleSheet(
             "QTabWidget::pane { "
-            "border: 1px solid #bdc3c7; "
+            "border: 1px solid #888; "
             "border-radius: 6px; "
             "top: -1px; "
             "}"
             "QTabBar::tab { "
             "background: #ecf0f1; "
-            "border: 1px solid #bdc3c7; "
+            "border: 1px solid #888; "
             "border-bottom: none; "
             "border-top-left-radius: 6px; "
             "border-top-right-radius: 6px; "
@@ -314,7 +314,7 @@ class CorrosionDataQuery(QWidget):
         self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet(
             "QTextEdit { "
-            "background-color: #f8f9fa; "
+            "/* bg via theme */"
             "border: 1px solid #ecf0f1; "
             "border-radius: 6px; "
             "padding: 8px; "
@@ -518,7 +518,7 @@ class CorrosionDataQuery(QWidget):
         corrosion_text.setStyleSheet(
             "QTextEdit { "
             "background-color: #ffffff; "
-            "border: 1px solid #bdc3c7; "
+            "border: 1px solid #888; "
             "border-radius: 4px; "
             "padding: 8px; "
             "}"

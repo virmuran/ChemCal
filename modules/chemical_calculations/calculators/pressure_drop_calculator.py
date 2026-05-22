@@ -13,16 +13,16 @@ from datetime import datetime
 
 COMBOBOX_STYLE = """
     QComboBox {
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 4px;
         padding: 6px 10px;
-        background: white;
-        color: black;
+        /* background via theme */
+        /* color via theme */
     }
     QComboBox QAbstractItemView {
-        background-color: white;
-        color: black;
-        border: 1px solid #bdc3c7;
+        /* background-color via theme */
+        /* color via theme */
+        border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
     }
@@ -34,7 +34,7 @@ COMBOBOX_STYLE = """
 GROUP_STYLE = """
 QGroupBox {
     font-weight: bold;
-    border: 1px solid #bdc3c7;
+    border: 1px solid #888;
     border-radius: 8px;
     margin-top: 10px;
     padding-top: 10px;
@@ -67,7 +67,7 @@ class FittingsDialog(QDialog):
         # 创建滚动区域
         scroll_area = QScrollArea()
         scroll_widget = QWidget()
-        scroll_widget.setStyleSheet("QWidget { background: transparent; }")
+        scroll_widget.setStyleSheet("")
         scroll_layout = QVBoxLayout(scroll_widget)
         
         # 管件和阀门数据
@@ -189,7 +189,7 @@ class 压降计算(QWidget):
             "计算流体在管道中流动时的压力损失，支持不可压缩流体和可压缩流体计算。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
         # 2. 然后添加计算模式选择
@@ -214,12 +214,12 @@ class 压降计算(QWidget):
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # 水平扩展，垂直固定
             btn.setStyleSheet("""
                 QPushButton {
-                    background-color: #ecf0f1;
-                    border: 1px solid #bdc3c7;
+                    /* unselected bg via theme */
+                    border: 1px solid #888;
                     border-radius: 4px;
                     padding: 8px;
                     text-align: center;
-                    color: black;
+                    /* color via theme */
                 }
                 QPushButton:checked {
                     background-color: #3498db;
@@ -321,7 +321,7 @@ class 压降计算(QWidget):
         
         # 长度输入不需要下拉菜单，替换为提示标签
         self.length_hint = QLabel("直接输入长度值")
-        self.length_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.length_hint.setStyleSheet("color: inherit; font-style: italic;")
         self.length_hint.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         input_layout.addWidget(self.length_hint, row, 2)
         
@@ -341,7 +341,7 @@ class 压降计算(QWidget):
         
         # 流量输入不需要下拉菜单，替换为提示标签
         self.flow_hint = QLabel("直接输入流量值")
-        self.flow_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.flow_hint.setStyleSheet("color: inherit; font-style: italic;")
         self.flow_hint.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         input_layout.addWidget(self.flow_hint, row, 2)
         
@@ -382,7 +382,7 @@ class 压降计算(QWidget):
         
         # 密度不需要下拉，替换为提示标签
         self.density_hint = QLabel("根据流体自动计算")
-        self.density_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.density_hint.setStyleSheet("color: inherit; font-style: italic;")
         self.density_hint.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         input_layout.addWidget(self.density_hint, row, 2)
         
@@ -402,7 +402,7 @@ class 压降计算(QWidget):
         
         # 粘度不需要下拉，替换为提示标签
         self.viscosity_hint = QLabel("根据流体自动计算")
-        self.viscosity_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.viscosity_hint.setStyleSheet("color: inherit; font-style: italic;")
         self.viscosity_hint.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         input_layout.addWidget(self.viscosity_hint, row, 2)
         
@@ -423,7 +423,7 @@ class 压降计算(QWidget):
         
         # 标高变化不需要下拉，替换为提示标签
         self.elevation_hint = QLabel("正值为上升，负值为下降")
-        self.elevation_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.elevation_hint.setStyleSheet("color: inherit; font-style: italic;")
         self.elevation_hint.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         input_layout.addWidget(self.elevation_hint, row, 2)
         
@@ -470,7 +470,7 @@ class 压降计算(QWidget):
         
         # 压力不需要下拉，替换为提示标签
         self.pressure_hint = QLabel("标准大气压: 101.3 kPa")
-        self.pressure_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.pressure_hint.setStyleSheet("color: inherit; font-style: italic;")
         self.pressure_hint.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         input_layout.addWidget(self.pressure_hint, row, 2)
         
@@ -579,8 +579,7 @@ class 压降计算(QWidget):
                 border: 1px solid #ecf0f1;
                 border-radius: 6px;
                 padding: 8px;
-                background-color: #f8f9fa;
-                min-height: 500px;
+                /* bg via theme */min-height: 500px;
             }
         """)
         self.result_text.setMinimumHeight(500)

@@ -20,7 +20,7 @@ import os
 GROUP_STYLE = """
     QGroupBox {
         font-weight: bold;
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 8px;
         margin-top: 10px;
         padding-top: 10px;
@@ -63,16 +63,16 @@ SCROLLBAR_STYLE = """
 """
 COMBOBOX_STYLE = """
     QComboBox {
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 4px;
         padding: 6px 10px;
-        background: white;
-        color: black;
+        /* background via theme */
+        /* color via theme */
     }
     QComboBox QAbstractItemView {
-        background-color: white;
-        color: black;
-        border: 1px solid #bdc3c7;
+        /* background-color via theme */
+        /* color via theme */
+        border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
     }
@@ -149,7 +149,7 @@ class ChemicalDetailDialog(QDialog):
         widget = QScrollArea()
         widget.setStyleSheet(f"QScrollArea {{ border: none; background: transparent; }} {SCROLLBAR_STYLE}")
         content = QWidget()
-        content.setStyleSheet("QWidget { background: transparent; }")
+        content.setStyleSheet("")
         layout = QGridLayout(content)
         layout.setVerticalSpacing(8)
         layout.setHorizontalSpacing(15)
@@ -242,7 +242,7 @@ class ChemicalDetailDialog(QDialog):
         widget = QScrollArea()
         widget.setStyleSheet(f"QScrollArea {{ border: none; background: transparent; }} {SCROLLBAR_STYLE}")
         content = QWidget()
-        content.setStyleSheet("QWidget { background: transparent; }")
+        content.setStyleSheet("")
         layout = QVBoxLayout(content)
 
         # 危险性类别
@@ -304,7 +304,7 @@ class ChemicalDetailDialog(QDialog):
         widget = QScrollArea()
         widget.setStyleSheet(f"QScrollArea {{ border: none; background: transparent; }} {SCROLLBAR_STYLE}")
         content = QWidget()
-        content.setStyleSheet("QWidget { background: transparent; }")
+        content.setStyleSheet("")
         layout = QVBoxLayout(content)
 
         # 操作处置
@@ -356,7 +356,7 @@ class ChemicalDetailDialog(QDialog):
         widget = QScrollArea()
         widget.setStyleSheet(f"QScrollArea {{ border: none; background: transparent; }} {SCROLLBAR_STYLE}")
         content = QWidget()
-        content.setStyleSheet("QWidget { background: transparent; }")
+        content.setStyleSheet("")
         layout = QVBoxLayout(content)
 
         # 火灾爆炸措施
@@ -430,8 +430,7 @@ class HazardousChemicalsQuery(QWidget):
         left_scroll.setStyleSheet(f"""
             QScrollArea {{
                 border: none;
-                background: transparent;
-            }}
+                background: transparent; }}
             {SCROLLBAR_STYLE}
         """)
 
@@ -492,7 +491,7 @@ class HazardousChemicalsQuery(QWidget):
             QListWidget {{
                 border: 1px solid #ecf0f1;
                 border-radius: 6px;
-                background-color: white;
+                /* background-color via theme */
             }}
             QListWidget::item {{
                 padding: 8px;
@@ -508,7 +507,7 @@ class HazardousChemicalsQuery(QWidget):
 
         # 统计信息
         self.stats_label = QLabel("共加载 0 种化学品")
-        self.stats_label.setStyleSheet("color: #7f8c8d; font-style: italic; padding: 5px;")
+        self.stats_label.setStyleSheet("color: inherit; font-style: italic; padding: 5px;")
         left_layout.addWidget(self.stats_label)
 
         # 设置左侧scroll area的内容
@@ -535,8 +534,7 @@ class HazardousChemicalsQuery(QWidget):
                 border: 1px solid #ecf0f1;
                 border-radius: 6px;
                 padding: 8px;
-                background-color: #f8f9fa;
-                min-height: 500px;
+                /* bg via theme */min-height: 500px;
             }}
             {SCROLLBAR_STYLE}
         """)

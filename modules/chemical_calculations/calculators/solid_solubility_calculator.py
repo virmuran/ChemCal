@@ -13,16 +13,16 @@ from PySide6.QtGui import QFont, QDoubleValidator
 
 COMBOBOX_STYLE = """
     QComboBox {
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 4px;
         padding: 6px 10px;
-        background: white;
-        color: black;
+        /* background via theme */
+        /* color via theme */
     }
     QComboBox QAbstractItemView {
-        background-color: white;
-        color: black;
-        border: 1px solid #bdc3c7;
+        /* background-color via theme */
+        /* color via theme */
+        border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
     }
@@ -34,7 +34,7 @@ COMBOBOX_STYLE = """
 GROUP_STYLE = """
     QGroupBox {
         font-weight: bold;
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 8px;
         margin-top: 10px;
         padding-top: 10px;
@@ -229,7 +229,7 @@ class SolidSolubilityCalculator(QWidget):
         scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         left_widget = QWidget()
-        left_widget.setStyleSheet("QWidget { background: transparent; }")
+        left_widget.setStyleSheet("")
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
 
@@ -239,7 +239,7 @@ class SolidSolubilityCalculator(QWidget):
             "数据来源包括 CRC Handbook、Merck Index 等。"
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
+        desc.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
         left_layout.addWidget(desc)
 
         # ── 查询条件组 ──
@@ -253,7 +253,7 @@ class SolidSolubilityCalculator(QWidget):
         grid.setColumnStretch(2, 5)
 
         label_style = "font-weight: bold; padding-right: 10px;"
-        hint_style = "color: #7f8c8d; font-style: italic;"
+        hint_style = "color: inherit; font-style: italic;"
 
         def make_lbl(text):
             lbl = QLabel(text)
@@ -360,8 +360,7 @@ class SolidSolubilityCalculator(QWidget):
         self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet("""
             QTextEdit {
-                background-color: #f8f9fa;
-                border: 1px solid #ecf0f1;
+                /* bg via theme */border: 1px solid #ecf0f1;
                 border-radius: 6px;
                 font-size: 13px;
                 padding: 8px;

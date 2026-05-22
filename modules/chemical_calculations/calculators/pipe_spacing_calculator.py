@@ -16,16 +16,16 @@ import math
 
 COMBOBOX_STYLE = """
     QComboBox {
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 4px;
         padding: 6px 10px;
-        background: white;
-        color: black;
+        /* background via theme */
+        /* color via theme */
     }
     QComboBox QAbstractItemView {
-        background-color: white;
-        color: black;
-        border: 1px solid #bdc3c7;
+        /* background-color via theme */
+        /* color via theme */
+        border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
     }
@@ -227,7 +227,7 @@ class 管道间距(QWidget):
         # 详细结果
         self.result_detail_label = QLabel("")
         self.result_detail_label.setStyleSheet("""
-            color: #2c3e50;
+            /* color via theme */
             font-size: 13px;
             padding: 10px;
             background-color: #f8f9fa;

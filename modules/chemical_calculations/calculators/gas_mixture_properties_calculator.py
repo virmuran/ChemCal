@@ -156,7 +156,7 @@ def _lee_kesler_z(Tr, Pr, omega):
 GROUP_STYLE = """
     QGroupBox {
         font-weight: bold;
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 8px;
         margin-top: 10px;
         padding-top: 10px;
@@ -169,16 +169,16 @@ GROUP_STYLE = """
 """
 COMBOBOX_STYLE = """
     QComboBox {
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 4px;
         padding: 6px 10px;
-        background: white;
-        color: black;
+        /* background via theme */
+        /* color via theme */
     }
     QComboBox QAbstractItemView {
-        background-color: white;
-        color: black;
-        border: 1px solid #bdc3c7;
+        /* background-color via theme */
+        /* color via theme */
+        border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
     }
@@ -232,7 +232,7 @@ class GasMixturePropertiesCalculator(QWidget):
         scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         left_widget = QWidget()
-        left_widget.setStyleSheet("QWidget { background: transparent; }")
+        left_widget.setStyleSheet("")
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
 
@@ -242,7 +242,7 @@ class GasMixturePropertiesCalculator(QWidget):
             "支持 Lee-Kesler 压缩因子、Chapman-Enskog 粘度、Wilke 混合规则、NASA 比热多项式。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
 
         # 2. 计算条件组
@@ -301,7 +301,7 @@ class GasMixturePropertiesCalculator(QWidget):
         condition_layout.addWidget(self.mixture_type, 2, 1)
 
         mix_hint = QLabel("真实气体用Lee-Kesler")
-        mix_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        mix_hint.setStyleSheet("color: inherit; font-style: italic;")
         condition_layout.addWidget(mix_hint, 2, 2)
 
         # 计算方法
@@ -317,7 +317,7 @@ class GasMixturePropertiesCalculator(QWidget):
         condition_layout.addWidget(self.calculation_method, 3, 1)
 
         method_hint = QLabel("Kay规则/对应状态")
-        method_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        method_hint.setStyleSheet("color: inherit; font-style: italic;")
         condition_layout.addWidget(method_hint, 3, 2)
 
         # 组分数
@@ -334,7 +334,7 @@ class GasMixturePropertiesCalculator(QWidget):
         condition_layout.addWidget(self.component_count, 4, 1)
 
         comp_hint = QLabel("2~5组分混合")
-        comp_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        comp_hint.setStyleSheet("color: inherit; font-style: italic;")
         condition_layout.addWidget(comp_hint, 4, 2)
 
         condition_layout.setColumnStretch(0, 4)
@@ -426,8 +426,7 @@ class GasMixturePropertiesCalculator(QWidget):
                 border: 1px solid #ecf0f1;
                 border-radius: 6px;
                 padding: 8px;
-                background-color: #f8f9fa;
-                min-height: 500px;
+                /* bg via theme */min-height: 500px;
             }
         """)
         result_inner.addWidget(self.result_text)

@@ -11,16 +11,16 @@ import math
 
 COMBOBOX_STYLE = """
     QComboBox {
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 4px;
         padding: 6px 10px;
-        background: white;
-        color: black;
+        /* background via theme */
+        /* color via theme */
     }
     QComboBox QAbstractItemView {
-        background-color: white;
-        color: black;
-        border: 1px solid #bdc3c7;
+        /* background-color via theme */
+        /* color via theme */
+        border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
     }
@@ -32,7 +32,7 @@ COMBOBOX_STYLE = """
 GROUP_STYLE = """
 QGroupBox {
     font-weight: bold;
-    border: 1px solid #bdc3c7;
+    border: 1px solid #888;
     border-radius: 8px;
     margin-top: 10px;
     padding-top: 10px;
@@ -82,7 +82,7 @@ class 罐体重量(QWidget):
         scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         left_widget = QWidget()
-        left_widget.setStyleSheet("QWidget { background: transparent; }")  # 限制最大宽度
+        left_widget.setStyleSheet("")  # 限制最大宽度
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
         
@@ -91,7 +91,7 @@ class 罐体重量(QWidget):
             "计算各种类型罐体的重量，包括空罐重量、液体重量和总重量。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
         # 2. 罐体类型选择
@@ -116,12 +116,12 @@ class 罐体重量(QWidget):
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             btn.setStyleSheet("""
                 QPushButton {
-                    background-color: #ecf0f1;
-                    border: 1px solid #bdc3c7;
+                    /* unselected bg via theme */
+                    border: 1px solid #888;
                     border-radius: 4px;
                     padding: 8px;
                     text-align: center;
-                    color: black;
+                    /* color via theme */
                 }
                 QPushButton:checked {
                     background-color: #3498db;
@@ -184,7 +184,7 @@ class 罐体重量(QWidget):
         self.input_layout.addWidget(self.diameter_input, row, 1)
         
         self.diameter_hint = QLabel("直接输入直径值")
-        self.diameter_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.diameter_hint.setStyleSheet("color: inherit; font-style: italic;")
         self.input_layout.addWidget(self.diameter_hint, row, 2)
         
         row += 1
@@ -203,7 +203,7 @@ class 罐体重量(QWidget):
         self.input_layout.addWidget(self.height_input, row, 1)
         
         self.height_hint = QLabel("直接输入高度值")
-        self.height_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.height_hint.setStyleSheet("color: inherit; font-style: italic;")
         self.input_layout.addWidget(self.height_hint, row, 2)
         
         row += 1
@@ -222,7 +222,7 @@ class 罐体重量(QWidget):
         self.input_layout.addWidget(self.shell_thickness_input, row, 1)
         
         self.shell_thickness_hint = QLabel("直接输入壁厚值")
-        self.shell_thickness_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.shell_thickness_hint.setStyleSheet("color: inherit; font-style: italic;")
         self.input_layout.addWidget(self.shell_thickness_hint, row, 2)
         
         row += 1
@@ -241,7 +241,7 @@ class 罐体重量(QWidget):
         self.input_layout.addWidget(self.cone_height_input, row, 1)
         
         self.cone_height_hint = QLabel("直接输入锥体高度")
-        self.cone_height_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.cone_height_hint.setStyleSheet("color: inherit; font-style: italic;")
         self.input_layout.addWidget(self.cone_height_hint, row, 2)
         
         row += 1
@@ -260,7 +260,7 @@ class 罐体重量(QWidget):
         self.input_layout.addWidget(self.nozzle_diameter_input, row, 1)
         
         self.nozzle_diameter_hint = QLabel("直接输入锥口直径")
-        self.nozzle_diameter_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.nozzle_diameter_hint.setStyleSheet("color: inherit; font-style: italic;")
         self.input_layout.addWidget(self.nozzle_diameter_hint, row, 2)
         
         row += 1
@@ -279,7 +279,7 @@ class 罐体重量(QWidget):
         self.input_layout.addWidget(self.length_input, row, 1)
         
         self.length_hint = QLabel("直接输入长度值")
-        self.length_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.length_hint.setStyleSheet("color: inherit; font-style: italic;")
         self.input_layout.addWidget(self.length_hint, row, 2)
         
         row += 1
@@ -298,7 +298,7 @@ class 罐体重量(QWidget):
         self.input_layout.addWidget(self.liquid_level_input, row, 1)
         
         self.liquid_level_hint = QLabel("直接输入液位高度")
-        self.liquid_level_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.liquid_level_hint.setStyleSheet("color: inherit; font-style: italic;")
         self.input_layout.addWidget(self.liquid_level_hint, row, 2)
         
         row += 1
@@ -317,7 +317,7 @@ class 罐体重量(QWidget):
         self.input_layout.addWidget(self.sphere_thickness_input, row, 1)
         
         self.sphere_thickness_hint = QLabel("直接输入壁厚值")
-        self.sphere_thickness_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.sphere_thickness_hint.setStyleSheet("color: inherit; font-style: italic;")
         self.input_layout.addWidget(self.sphere_thickness_hint, row, 2)
         
         left_layout.addWidget(input_group)
@@ -389,7 +389,7 @@ class 罐体重量(QWidget):
         material_layout.addWidget(self.liquid_density_input, row, 1)
         
         self.liquid_density_hint = QLabel("水: 1000 kg/m³")
-        self.liquid_density_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.liquid_density_hint.setStyleSheet("color: inherit; font-style: italic;")
         material_layout.addWidget(self.liquid_density_hint, row, 2)
         
         left_layout.addWidget(material_group)
@@ -496,8 +496,7 @@ class 罐体重量(QWidget):
                 border: 1px solid #ecf0f1;
                 border-radius: 6px;
                 padding: 8px;
-                background-color: #f8f9fa;
-                min-height: 500px;
+                /* bg via theme */min-height: 500px;
             }
         """)
         result_layout.addWidget(self.result_text)

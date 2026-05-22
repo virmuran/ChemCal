@@ -265,16 +265,16 @@ SUBSTANCE_CONFIG = {
 
 COMBOBOX_STYLE = """
     QComboBox {
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 4px;
         padding: 6px 10px;
-        background: white;
-        color: black;
+        /* background via theme */
+        /* color via theme */
     }
     QComboBox QAbstractItemView {
-        background-color: white;
-        color: black;
-        border: 1px solid #bdc3c7;
+        /* background-color via theme */
+        /* color via theme */
+        border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
     }
@@ -286,7 +286,7 @@ COMBOBOX_STYLE = """
 GROUP_STYLE = """
     QGroupBox {
         font-weight: bold;
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 8px;
         margin-top: 10px;
         padding-top: 10px;
@@ -345,7 +345,7 @@ class SolutionDensityCalculator(QWidget):
         # 顶部说明文字
         desc_label = QLabel("计算常见溶液（水、柠檬酸、葡萄糖、蔗糖、NaOH、HCl、H₂SO₄、NaCl）在不同温度和浓度下的密度，支持单点计算和温度扫描。")
         desc_label.setWordWrap(True)
-        desc_label.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
+        desc_label.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
         left_layout.addWidget(desc_label)
 
         # Tab：单点计算 / 温度扫描 / 公式参考
@@ -378,7 +378,7 @@ class SolutionDensityCalculator(QWidget):
         self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet(
             "QTextEdit { "
-            "background-color: #f8f9fa; "
+            "/* bg via theme */"
             "border: 1px solid #ecf0f1; "
             "border-radius: 6px; "
             "padding: 8px; "
@@ -478,7 +478,7 @@ class SolutionDensityCalculator(QWidget):
         grid.addWidget(self.w_input, 1, 1)
 
         self.w_hint = QLabel("范围：0~0.70")
-        self.w_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.w_hint.setStyleSheet("color: inherit; font-style: italic;")
         grid.addWidget(self.w_hint, 1, 2)
 
         # 温度 - 第2行
@@ -493,7 +493,7 @@ class SolutionDensityCalculator(QWidget):
         grid.addWidget(self.T_input, 2, 1)
 
         T_hint = QLabel("有效范围见公式参考")
-        T_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        T_hint.setStyleSheet("color: inherit; font-style: italic;")
         grid.addWidget(T_hint, 2, 2)
 
         layout.addLayout(grid)
@@ -517,7 +517,7 @@ class SolutionDensityCalculator(QWidget):
         # 说明区
         self.formula_label = QLabel("")
         self.formula_label.setStyleSheet(
-            "color: #7f8c8d; font-size: 12px; padding: 5px;"
+            "color: inherit; font-size: 12px; padding: 5px;"
         )
         self.formula_label.setWordWrap(True)
         layout.addWidget(self.formula_label)
@@ -537,7 +537,7 @@ class SolutionDensityCalculator(QWidget):
         layout.setContentsMargins(5, 5, 5, 5)
 
         label_style = "font-weight: bold; padding-right: 10px;"
-        hint_style = "color: #7f8c8d; font-style: italic;"
+        hint_style = "color: inherit; font-style: italic;"
 
         # 参数行
         param_group = QGroupBox("扫描参数")

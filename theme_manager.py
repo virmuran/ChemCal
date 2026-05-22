@@ -22,6 +22,19 @@ class ThemeManager(QObject):
         QMainWindow {
             background-color: #f5f7fa;
         }
+
+        /* 基础控件背景 */
+        QWidget {
+            background-color: #ffffff;
+            color: #374151;
+        }
+
+        QScrollArea {
+            background-color: #ffffff;
+        }
+        QScrollArea > QWidget > QWidget {
+            background-color: #ffffff;
+        }
         
         /* 标签页样式 */
         QTabWidget::pane {
@@ -195,6 +208,19 @@ class ThemeManager(QObject):
             background-color: #1e1e1e;
             color: #e0e0e0;
         }
+
+        /* 基础控件背景（防止白色透出） */
+        QWidget {
+            background-color: #2d2d2d;
+            color: #e0e0e0;
+        }
+
+        QScrollArea {
+            background-color: #2d2d2d;
+        }
+        QScrollArea > QWidget > QWidget {
+            background-color: #2d2d2d;
+        }
         
         /* 标签页样式 */
         QTabWidget::pane {
@@ -366,6 +392,19 @@ class ThemeManager(QObject):
         /* 主窗口样式 */
         QMainWindow {
             background-color: #e6f2ff;
+        }
+
+        /* 基础控件背景 */
+        QWidget {
+            background-color: #f0f7ff;
+            color: #2d3748;
+        }
+
+        QScrollArea {
+            background-color: #f0f7ff;
+        }
+        QScrollArea > QWidget > QWidget {
+            background-color: #f0f7ff;
         }
         
         /* 标签页样式 */

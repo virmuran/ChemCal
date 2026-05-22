@@ -13,16 +13,16 @@ from datetime import datetime
 
 COMBOBOX_STYLE = """
     QComboBox {
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 4px;
         padding: 6px 10px;
-        background: white;
-        color: black;
+        /* background via theme */
+        /* color via theme */
     }
     QComboBox QAbstractItemView {
-        background-color: white;
-        color: black;
-        border: 1px solid #bdc3c7;
+        /* background-color via theme */
+        /* color via theme */
+        border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
     }
@@ -34,7 +34,7 @@ COMBOBOX_STYLE = """
 GROUP_STYLE = """
 QGroupBox {
     font-weight: bold;
-    border: 1px solid #bdc3c7;
+    border: 1px solid #888;
     border-radius: 8px;
     margin-top: 10px;
     padding-top: 10px;
@@ -174,7 +174,7 @@ class 管道补偿(QWidget):
         scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         left_widget = QWidget()
-        left_widget.setStyleSheet("QWidget { background: transparent; }")
+        left_widget.setStyleSheet("")
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
         
@@ -183,7 +183,7 @@ class 管道补偿(QWidget):
             "计算管道热膨胀量和需要的补偿量，评估管道热应力，支持L形和Z形补偿计算。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
         # 2. 计算模式选择
@@ -207,12 +207,12 @@ class 管道补偿(QWidget):
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             btn.setStyleSheet("""
                 QPushButton {
-                    background-color: #ecf0f1;
-                    border: 1px solid #bdc3c7;
+                    /* unselected bg via theme */
+                    border: 1px solid #888;
                     border-radius: 4px;
                     padding: 8px;
                     text-align: center;
-                    color: black;
+                    /* color via theme */
                 }
                 QPushButton:checked {
                     background-color: #3498db;
@@ -317,7 +317,7 @@ class 管道补偿(QWidget):
         
         # 材质描述（第2列）
         self.material_desc_label = QLabel("")
-        self.material_desc_label.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.material_desc_label.setStyleSheet("color: inherit; font-style: italic;")
         self.material_desc_label.setWordWrap(True)
         input_layout.addWidget(self.material_desc_label, row, 2)
         
@@ -364,7 +364,7 @@ class 管道补偿(QWidget):
         input_layout.addWidget(self.length_input, row, 1)
         
         self.length_hint = QLabel("基本计算时使用")
-        self.length_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.length_hint.setStyleSheet("color: inherit; font-style: italic;")
         input_layout.addWidget(self.length_hint, row, 2)
         
         row += 1
@@ -382,7 +382,7 @@ class 管道补偿(QWidget):
         input_layout.addWidget(self.l1_input, row, 1)
         
         self.l1_hint = QLabel("L形和Z形补偿时使用")
-        self.l1_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.l1_hint.setStyleSheet("color: inherit; font-style: italic;")
         input_layout.addWidget(self.l1_hint, row, 2)
         
         row += 1
@@ -400,7 +400,7 @@ class 管道补偿(QWidget):
         input_layout.addWidget(self.l2_input, row, 1)
         
         self.l2_hint = QLabel("L形和Z形补偿时使用")
-        self.l2_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.l2_hint.setStyleSheet("color: inherit; font-style: italic;")
         input_layout.addWidget(self.l2_hint, row, 2)
         
         row += 1
@@ -418,7 +418,7 @@ class 管道补偿(QWidget):
         input_layout.addWidget(self.l3_input, row, 1)
         
         self.l3_hint = QLabel("仅Z形补偿时使用")
-        self.l3_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.l3_hint.setStyleSheet("color: inherit; font-style: italic;")
         input_layout.addWidget(self.l3_hint, row, 2)
         
         row += 1
@@ -437,7 +437,7 @@ class 管道补偿(QWidget):
         input_layout.addWidget(self.temp_install_input, row, 1)
         
         self.temp_install_hint = QLabel("管道安装时的温度")
-        self.temp_install_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.temp_install_hint.setStyleSheet("color: inherit; font-style: italic;")
         input_layout.addWidget(self.temp_install_hint, row, 2)
         
         row += 1
@@ -454,7 +454,7 @@ class 管道补偿(QWidget):
         input_layout.addWidget(self.temp_operate_input, row, 1)
         
         self.temp_operate_hint = QLabel("管道运行时的温度")
-        self.temp_operate_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.temp_operate_hint.setStyleSheet("color: inherit; font-style: italic;")
         input_layout.addWidget(self.temp_operate_hint, row, 2)
         
         row += 1
@@ -472,7 +472,7 @@ class 管道补偿(QWidget):
         input_layout.addWidget(self.alpha_value_input, row, 1)
         
         self.alpha_hint = QLabel("根据材质自动计算")
-        self.alpha_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.alpha_hint.setStyleSheet("color: inherit; font-style: italic;")
         input_layout.addWidget(self.alpha_hint, row, 2)
         
         row += 1
@@ -490,7 +490,7 @@ class 管道补偿(QWidget):
         input_layout.addWidget(self.elastic_value_input, row, 1)
         
         self.elastic_hint = QLabel("根据材质自动计算")
-        self.elastic_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.elastic_hint.setStyleSheet("color: inherit; font-style: italic;")
         input_layout.addWidget(self.elastic_hint, row, 2)
         
         row += 1
@@ -508,7 +508,7 @@ class 管道补偿(QWidget):
         input_layout.addWidget(self.stress_value_input, row, 1)
         
         self.stress_hint = QLabel("根据材质自动计算")
-        self.stress_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.stress_hint.setStyleSheet("color: inherit; font-style: italic;")
         input_layout.addWidget(self.stress_hint, row, 2)
         
         left_layout.addWidget(input_group)
@@ -595,8 +595,7 @@ class 管道补偿(QWidget):
                 border: 1px solid #ecf0f1;
                 border-radius: 6px;
                 padding: 8px;
-                background-color: #f8f9fa;
-                min-height: 500px;
+                /* bg via theme */min-height: 500px;
             }
         """)
         self.result_text.setMinimumHeight(500)

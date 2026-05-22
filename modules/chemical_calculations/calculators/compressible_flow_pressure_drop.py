@@ -13,16 +13,16 @@ from PySide6.QtGui import QDoubleValidator, QFont
 
 COMBOBOX_STYLE = """
     QComboBox {
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 4px;
         padding: 6px 10px;
-        background: white;
-        color: black;
+        /* background via theme */
+        /* color via theme */
     }
     QComboBox QAbstractItemView {
-        background-color: white;
-        color: black;
-        border: 1px solid #bdc3c7;
+        /* background-color via theme */
+        /* color via theme */
+        border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
     }
@@ -34,7 +34,7 @@ COMBOBOX_STYLE = """
 GROUP_STYLE = """
 QGroupBox {
     font-weight: bold;
-    border: 1px solid #bdc3c7;
+    border: 1px solid #888;
     border-radius: 8px;
     margin-top: 10px;
     padding-top: 10px;
@@ -86,7 +86,7 @@ class CompressibleFlowPressureDrop(QWidget):
         scroll_left.setWidgetResizable(True)
         scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         left = QWidget()
-        left.setStyleSheet("QWidget { background: transparent; }")
+        left.setStyleSheet("")
         ll = QVBoxLayout(left)
         ll.setSpacing(15)
 
@@ -96,7 +96,7 @@ class CompressibleFlowPressureDrop(QWidget):
             "可反算最大流量及阻塞流检测。"
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
+        desc.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
         ll.addWidget(desc)
 
         def L(t):
@@ -107,7 +107,7 @@ class CompressibleFlowPressureDrop(QWidget):
 
         def H(t):
             l = QLabel(t)
-            l.setStyleSheet("color: #7f8c8d; font-style: italic;")
+            l.setStyleSheet("color: inherit; font-style: italic;")
             return l
 
         # ---- 流体性质 ----
@@ -322,7 +322,7 @@ class CompressibleFlowPressureDrop(QWidget):
         self.result_text.setReadOnly(True)
         self.result_text.setMinimumHeight(500)
         self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.result_text.setStyleSheet("QTextEdit{background-color:#f8f9fa;border:1px solid #ecf0f1;border-radius:6px;padding:8px;}")
+        self.result_text.setStyleSheet("QTextEdit{/* bg via theme */border:1px solid #ecf0f1;border-radius:6px;padding:8px;}")
         self.result_text.setPlaceholderText("计算结果将在此显示……")
         rv.addWidget(self.result_text)
         rl.addWidget(rg)

@@ -31,16 +31,16 @@ except Exception as _e:
 
 COMBOBOX_STYLE = """
     QComboBox {
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 4px;
         padding: 6px 10px;
-        background: white;
-        color: black;
+        /* background via theme */
+        /* color via theme */
     }
     QComboBox QAbstractItemView {
-        background-color: white;
-        color: black;
-        border: 1px solid #bdc3c7;
+        /* background-color via theme */
+        /* color via theme */
+        border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
     }
@@ -52,7 +52,7 @@ COMBOBOX_STYLE = """
 GROUP_STYLE = """
 QGroupBox {
     font-weight: bold;
-    border: 1px solid #bdc3c7;
+    border: 1px solid #888;
     border-radius: 8px;
     margin-top: 10px;
     padding-top: 10px;
@@ -181,7 +181,7 @@ class 换热器计算(QWidget):
         scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         left_widget = QWidget()
-        left_widget.setStyleSheet("QWidget { background: transparent; }")
+        left_widget.setStyleSheet("")
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
         
@@ -190,7 +190,7 @@ class 换热器计算(QWidget):
             "换热器计算器 - 支持多种计算模式，包含流体比热容和传热系数选择，可用于热负荷、流量、温度等参数计算。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
         # 2. 计算模式选择
@@ -224,9 +224,9 @@ class 换热器计算(QWidget):
         self.mode_combo.setStyleSheet("""
             QComboBox {
                 padding: 6px;
-                border: 1px solid #bdc3c7;
+                border: 1px solid #888;
                 border-radius: 4px;
-                background-color: white;
+                /* background-color via theme */
                 min-width: 350px;
             }
             QComboBox:hover {
@@ -365,8 +365,7 @@ class 换热器计算(QWidget):
                 border: 1px solid #ecf0f1;
                 border-radius: 6px;
                 padding: 8px;
-                background-color: #f8f9fa;
-                min-height: 500px;
+                /* bg via theme */min-height: 500px;
             }
         """)
         result_layout.addWidget(self.result_text)
@@ -441,7 +440,7 @@ class 换热器计算(QWidget):
 
         # 提示标签 - 第2列
         hint_label = QLabel("直接输入数值")
-        hint_label.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        hint_label.setStyleSheet("color: inherit; font-style: italic;")
         self.input_layout.addWidget(hint_label, row, 2)
         
         # 存储控件引用

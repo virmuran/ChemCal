@@ -31,7 +31,7 @@ except Exception as e:
 GROUP_STYLE = """
     QGroupBox {
         font-weight: bold;
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 8px;
         margin-top: 10px;
         padding-top: 10px;
@@ -44,16 +44,16 @@ GROUP_STYLE = """
 """
 COMBOBOX_STYLE = """
     QComboBox {
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 4px;
         padding: 6px 10px;
-        background: white;
-        color: black;
+        /* background via theme */
+        /* color via theme */
     }
     QComboBox QAbstractItemView {
-        background-color: white;
-        color: black;
-        border: 1px solid #bdc3c7;
+        /* background-color via theme */
+        /* color via theme */
+        border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
     }
@@ -62,7 +62,7 @@ COMBOBOX_STYLE = """
     }
 """
 
-LINEEDIT_STYLE = "padding: 6px 10px; border: 1px solid #bdc3c7; border-radius: 4px; background-color: white;"
+LINEEDIT_STYLE = "padding: 6px 10px; border: 1px solid #888; border-radius: 4px; background-color: white;"
 
 # 制冷剂数据库
 REFRIGERANT_DB = {
@@ -136,7 +136,7 @@ class RefrigerantPropertiesCalculator(QWidget):
         scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         left_widget = QWidget()
-        left_widget.setStyleSheet("QWidget { background: transparent; }")
+        left_widget.setStyleSheet("")
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
 
@@ -146,7 +146,7 @@ class RefrigerantPropertiesCalculator(QWidget):
             "基于 Peng-Robinson 状态方程 + Antoine 方程 + Rackett 方程，工业级精度。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
 
         # 2. 制冷剂选择组
@@ -174,7 +174,7 @@ class RefrigerantPropertiesCalculator(QWidget):
         ref_layout.addWidget(self.refrigerant_selection, 0, 1)
 
         ref_hint = QLabel("选择制冷剂类型")
-        ref_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        ref_hint.setStyleSheet("color: inherit; font-style: italic;")
         ref_layout.addWidget(ref_hint, 0, 2)
 
         # 制冷剂信息显示
@@ -215,7 +215,7 @@ class RefrigerantPropertiesCalculator(QWidget):
         condition_layout.addWidget(self.calculation_type, 0, 1)
 
         ctype_hint = QLabel("选择计算类型")
-        ctype_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        ctype_hint.setStyleSheet("color: inherit; font-style: italic;")
         condition_layout.addWidget(ctype_hint, 0, 2)
 
         # 温度
@@ -232,7 +232,7 @@ class RefrigerantPropertiesCalculator(QWidget):
         condition_layout.addWidget(self.temperature_input, 1, 1)
 
         temp_hint = QLabel("°C")
-        temp_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        temp_hint.setStyleSheet("color: inherit; font-style: italic;")
         condition_layout.addWidget(temp_hint, 1, 2)
 
         # 压力
@@ -249,7 +249,7 @@ class RefrigerantPropertiesCalculator(QWidget):
         condition_layout.addWidget(self.pressure_input, 2, 1)
 
         pres_hint = QLabel("kPa")
-        pres_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        pres_hint.setStyleSheet("color: inherit; font-style: italic;")
         condition_layout.addWidget(pres_hint, 2, 2)
 
         # 干度
@@ -266,7 +266,7 @@ class RefrigerantPropertiesCalculator(QWidget):
         condition_layout.addWidget(self.quality_input, 3, 1)
 
         quality_hint = QLabel("0~1")
-        quality_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        quality_hint.setStyleSheet("color: inherit; font-style: italic;")
         condition_layout.addWidget(quality_hint, 3, 2)
 
         # 冷凝温度（热力循环分析用）
@@ -285,7 +285,7 @@ class RefrigerantPropertiesCalculator(QWidget):
         condition_layout.addWidget(self.cond_temp_input, 4, 1)
 
         cond_hint = QLabel("°C")
-        cond_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        cond_hint.setStyleSheet("color: inherit; font-style: italic;")
         cond_hint.setVisible(False)
         self._cond_hint = cond_hint
         condition_layout.addWidget(cond_hint, 4, 2)
@@ -391,8 +391,7 @@ class RefrigerantPropertiesCalculator(QWidget):
         self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet("""
             QTextEdit {
-                background-color: #f8f9fa;
-                border: 1px solid #ecf0f1;
+                /* bg via theme */border: 1px solid #ecf0f1;
                 border-radius: 6px;
                 padding: 8px;
             }

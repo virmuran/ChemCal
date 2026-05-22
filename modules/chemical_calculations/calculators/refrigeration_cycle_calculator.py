@@ -35,7 +35,7 @@ except Exception as e:
 GROUP_STYLE = """
     QGroupBox {
         font-weight: bold;
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 8px;
         margin-top: 10px;
         padding-top: 10px;
@@ -48,16 +48,16 @@ GROUP_STYLE = """
 """
 COMBOBOX_STYLE = """
     QComboBox {
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 4px;
         padding: 6px 10px;
-        background: white;
-        color: black;
+        /* background via theme */
+        /* color via theme */
     }
     QComboBox QAbstractItemView {
-        background-color: white;
-        color: black;
-        border: 1px solid #bdc3c7;
+        /* background-color via theme */
+        /* color via theme */
+        border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
     }
@@ -116,7 +116,7 @@ class RefrigerationCycleCalculator(QWidget):
         scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         left_widget = QWidget()
-        left_widget.setStyleSheet("QWidget { background: transparent; }")
+        left_widget.setStyleSheet("")
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
         left_layout.setContentsMargins(0, 0, 0, 0)
@@ -126,7 +126,7 @@ class RefrigerationCycleCalculator(QWidget):
             "计算蒸汽压缩制冷循环的性能参数，包括制冷量、压缩功、COP等。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
 
         # ========== 循环类型选择组 ==========
@@ -150,11 +150,11 @@ class RefrigerationCycleCalculator(QWidget):
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             btn.setStyleSheet("""
                 QPushButton {
-                    background-color: #ecf0f1;
-                    border: 1px solid #bdc3c7;
+                    /* unselected bg via theme */
+                    border: 1px solid #888;
                     border-radius: 4px;
                     padding: 8px;
-                    color: black;
+                    /* color via theme */
                     text-align: center;
                 }
                 QPushButton:checked {
@@ -202,7 +202,7 @@ class RefrigerationCycleCalculator(QWidget):
         input_layout.addWidget(self.refrigerant_combo, row, 1)
 
         hint_ref = QLabel("选择循环工质")
-        hint_ref.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        hint_ref.setStyleSheet("color: inherit; font-style: italic;")
         hint_ref.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(hint_ref, row, 2)
 
@@ -223,7 +223,7 @@ class RefrigerationCycleCalculator(QWidget):
         input_layout.addWidget(self.evap_temp_input, row, 1)
 
         hint_evap = QLabel("制冷剂蒸发温度")
-        hint_evap.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        hint_evap.setStyleSheet("color: inherit; font-style: italic;")
         hint_evap.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(hint_evap, row, 2)
 
@@ -244,7 +244,7 @@ class RefrigerationCycleCalculator(QWidget):
         input_layout.addWidget(self.cond_temp_input, row, 1)
 
         hint_cond = QLabel("制冷剂冷凝温度")
-        hint_cond.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        hint_cond.setStyleSheet("color: inherit; font-style: italic;")
         hint_cond.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(hint_cond, row, 2)
 
@@ -265,7 +265,7 @@ class RefrigerationCycleCalculator(QWidget):
         input_layout.addWidget(self.subcool_input, row, 1)
 
         self.subcool_hint = QLabel("仅实际循环")
-        self.subcool_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.subcool_hint.setStyleSheet("color: inherit; font-style: italic;")
         self.subcool_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.subcool_hint, row, 2)
 
@@ -286,7 +286,7 @@ class RefrigerationCycleCalculator(QWidget):
         input_layout.addWidget(self.superheat_input, row, 1)
 
         self.superheat_hint = QLabel("仅实际循环")
-        self.superheat_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.superheat_hint.setStyleSheet("color: inherit; font-style: italic;")
         self.superheat_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.superheat_hint, row, 2)
 
@@ -307,7 +307,7 @@ class RefrigerationCycleCalculator(QWidget):
         input_layout.addWidget(self.mass_flow_input, row, 1)
 
         hint_flow = QLabel("循环制冷剂流量")
-        hint_flow.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        hint_flow.setStyleSheet("color: inherit; font-style: italic;")
         hint_flow.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(hint_flow, row, 2)
 
@@ -328,7 +328,7 @@ class RefrigerationCycleCalculator(QWidget):
         input_layout.addWidget(self.comp_eff_input, row, 1)
 
         hint_eff = QLabel("等熵效率")
-        hint_eff.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        hint_eff.setStyleSheet("color: inherit; font-style: italic;")
         hint_eff.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(hint_eff, row, 2)
 
@@ -403,7 +403,7 @@ class RefrigerationCycleCalculator(QWidget):
         self.result_text.setMinimumHeight(500)
         self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet(
-            "QTextEdit { background-color: #f8f9fa; border: 1px solid #ecf0f1; "
+            "QTextEdit { /* bg via theme */border: 1px solid #ecf0f1; "
             "border-radius: 6px; font-family: Consolas, monospace; font-size: 13px; padding: 8px; }"
         )
         self.result_text.setPlaceholderText("计算结果将在此显示……")

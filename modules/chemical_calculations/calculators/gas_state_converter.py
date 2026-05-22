@@ -13,16 +13,16 @@ from datetime import datetime
 
 COMBOBOX_STYLE = """
     QComboBox {
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 4px;
         padding: 6px 10px;
-        background: white;
-        color: black;
+        /* background via theme */
+        /* color via theme */
     }
     QComboBox QAbstractItemView {
-        background-color: white;
-        color: black;
-        border: 1px solid #bdc3c7;
+        /* background-color via theme */
+        /* color via theme */
+        border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
     }
@@ -34,7 +34,7 @@ COMBOBOX_STYLE = """
 GROUP_STYLE = """
 QGroupBox {
     font-weight: bold;
-    border: 1px solid #bdc3c7;
+    border: 1px solid #888;
     border-radius: 8px;
     margin-top: 10px;
     padding-top: 10px;
@@ -85,7 +85,7 @@ class 气体标态转压缩态(QWidget):
         scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         left_widget = QWidget()
-        left_widget.setStyleSheet("QWidget { background: transparent; }")  # 限制最大宽度
+        left_widget.setStyleSheet("")  # 限制最大宽度
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
         
@@ -94,7 +94,7 @@ class 气体标态转压缩态(QWidget):
             "将气体从标准状态(0°C, 101.325kPa)转换为实际状态(压缩状态)，用于工程设计和设备选型。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
         # 2. 输入参数组 - 使用GridLayout实现整齐的布局
@@ -135,7 +135,7 @@ class 气体标态转压缩态(QWidget):
         
         # 流量输入不需要下拉，替换为提示标签
         self.flow_hint = QLabel("直接输入标准状态流量")
-        self.flow_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.flow_hint.setStyleSheet("color: inherit; font-style: italic;")
         self.flow_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.flow_hint, row, 2)
         
@@ -162,7 +162,7 @@ class 气体标态转压缩态(QWidget):
         
         # 标准状态提示标签
         self.standard_hint = QLabel("选择标准状态定义")
-        self.standard_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.standard_hint.setStyleSheet("color: inherit; font-style: italic;")
         self.standard_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.standard_hint, row, 2)
         
@@ -187,7 +187,7 @@ class 气体标态转压缩态(QWidget):
         
         # 标准温度提示
         self.std_temp_hint = QLabel("输入标准温度")
-        self.std_temp_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.std_temp_hint.setStyleSheet("color: inherit; font-style: italic;")
         self.std_temp_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         custom_layout.addWidget(self.std_temp_hint, 0, 2)
         
@@ -205,7 +205,7 @@ class 气体标态转压缩态(QWidget):
         
         # 标准压力提示
         self.std_pressure_hint = QLabel("输入标准压力")
-        self.std_pressure_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.std_pressure_hint.setStyleSheet("color: inherit; font-style: italic;")
         self.std_pressure_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         custom_layout.addWidget(self.std_pressure_hint, 1, 2)
         custom_layout.setColumnStretch(0, 4)
@@ -232,7 +232,7 @@ class 气体标态转压缩态(QWidget):
         
         # 压力输入不需要下拉，替换为提示标签
         self.pressure_hint = QLabel("直接输入实际压力值")
-        self.pressure_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.pressure_hint.setStyleSheet("color: inherit; font-style: italic;")
         self.pressure_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.pressure_hint, row, 2)
         
@@ -252,7 +252,7 @@ class 气体标态转压缩态(QWidget):
         
         # 温度输入不需要下拉，替换为提示标签
         self.temp_hint = QLabel("直接输入实际温度值")
-        self.temp_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.temp_hint.setStyleSheet("color: inherit; font-style: italic;")
         self.temp_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.temp_hint, row, 2)
         
@@ -369,8 +369,7 @@ class 气体标态转压缩态(QWidget):
                 border: 1px solid #ecf0f1;
                 border-radius: 6px;
                 padding: 8px;
-                background-color: #f8f9fa;
-                min-height: 500px;
+                /* bg via theme */min-height: 500px;
             }
         """)
         result_layout.addWidget(self.result_text)

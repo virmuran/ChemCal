@@ -13,16 +13,16 @@ from PySide6.QtGui import QFont, QDoubleValidator
 
 COMBOBOX_STYLE = """
     QComboBox {
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 4px;
         padding: 6px 10px;
-        background: white;
-        color: black;
+        /* background via theme */
+        /* color via theme */
     }
     QComboBox QAbstractItemView {
-        background-color: white;
-        color: black;
-        border: 1px solid #bdc3c7;
+        /* background-color via theme */
+        /* color via theme */
+        border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
     }
@@ -31,7 +31,7 @@ COMBOBOX_STYLE = """
     }
 """
 
-LINEEDIT_STYLE = "padding: 6px 10px; border: 1px solid #bdc3c7; border-radius: 4px; background-color: white;"
+LINEEDIT_STYLE = "padding: 6px 10px; border: 1px solid #888; border-radius: 4px; background-color: white;"
 
 class WetAirCalculator(QWidget):
     """湿空气计算器"""
@@ -50,7 +50,7 @@ class WetAirCalculator(QWidget):
         group_style = """
             QGroupBox {
                 font-weight: bold;
-                border: 1px solid #bdc3c7;
+                border: 1px solid #888;
                 border-radius: 8px;
                 margin-top: 10px;
                 padding-top: 10px;
@@ -75,7 +75,7 @@ class WetAirCalculator(QWidget):
         scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         left_widget = QWidget()
-        left_widget.setStyleSheet("QWidget { background: transparent; }")
+        left_widget.setStyleSheet("")
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
 
@@ -83,7 +83,7 @@ class WetAirCalculator(QWidget):
         desc = QLabel("计算湿空气的各种物性参数：相对湿度、绝对湿度、露点温度、比焓、比容等。"
                        "至少需要输入干球温度，并提供相对湿度、绝对湿度、湿球温度或露点温度之一。")
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: #7f8c8d; font-size: 12px;")
+        desc.setStyleSheet("color: inherit; font-size: 12px;")
         left_layout.addWidget(desc)
 
         # ── 输入参数组 ──
@@ -255,8 +255,7 @@ class WetAirCalculator(QWidget):
         self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet("""
             QTextEdit {
-                background-color: #f8f9fa;
-                border: 1px solid #ecf0f1;
+                /* bg via theme */border: 1px solid #ecf0f1;
                 border-radius: 6px;
                 font-family: Consolas, monospace;
                 font-size: 13px;

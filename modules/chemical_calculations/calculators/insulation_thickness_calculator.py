@@ -15,16 +15,16 @@ from PySide6.QtGui import QFont, QDoubleValidator
 
 COMBOBOX_STYLE = """
     QComboBox {
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 4px;
         padding: 6px 10px;
-        background: white;
-        color: black;
+        /* background via theme */
+        /* color via theme */
     }
     QComboBox QAbstractItemView {
-        background-color: white;
-        color: black;
-        border: 1px solid #bdc3c7;
+        /* background-color via theme */
+        /* color via theme */
+        border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
     }
@@ -36,7 +36,7 @@ COMBOBOX_STYLE = """
 GROUP_STYLE = """
 QGroupBox {
     font-weight: bold;
-    border: 1px solid #bdc3c7;
+    border: 1px solid #888;
     border-radius: 8px;
     margin-top: 10px;
     padding-top: 10px;
@@ -100,7 +100,7 @@ class InsulationThicknessCalculator(QWidget):
         scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         left_widget = QWidget()
-        left_widget.setStyleSheet("QWidget { background: transparent; }")
+        left_widget.setStyleSheet("")
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
 
@@ -111,7 +111,7 @@ class InsulationThicknessCalculator(QWidget):
             "请根据实际工况选择计算方法并填写参数。"
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
+        desc.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
         left_layout.addWidget(desc)
 
         # ── 计算类型选择（按钮组）──
@@ -133,9 +133,9 @@ class InsulationThicknessCalculator(QWidget):
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             btn.setStyleSheet("""
                 QPushButton {
-                    background-color: #ecf0f1;
-                    color: black;
-                    border: 1px solid #bdc3c7;
+                    /* unselected bg via theme */
+                    /* color via theme */
+                    border: 1px solid #888;
                     border-radius: 6px;
                     padding: 7px 4px;
                     font-size: 12px;
@@ -329,8 +329,7 @@ class InsulationThicknessCalculator(QWidget):
         self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet("""
             QTextEdit {
-                background-color: #f8f9fa;
-                border: 1px solid #ecf0f1;
+                /* bg via theme */border: 1px solid #ecf0f1;
                 border-radius: 6px;
                 padding: 8px;
             }

@@ -29,7 +29,7 @@ except Exception as e:
 GROUP_STYLE = """
     QGroupBox {
         font-weight: bold;
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 8px;
         margin-top: 10px;
         padding-top: 10px;
@@ -141,16 +141,16 @@ PDF_BUTTON_STYLE = """
 """
 COMBOBOX_STYLE = """
     QComboBox {
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 4px;
         padding: 6px 10px;
-        background: white;
-        color: black;
+        /* background via theme */
+        /* color via theme */
     }
     QComboBox QAbstractItemView {
-        background-color: white;
-        color: black;
-        border: 1px solid #bdc3c7;
+        /* background-color via theme */
+        /* color via theme */
+        border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
     }
@@ -200,14 +200,14 @@ class LongDistanceSteamPipeCalculator(QWidget):
         scroll_area.setMaximumWidth(900)
 
         scroll_content = QWidget()
-        scroll_content.setStyleSheet("QWidget { background: transparent; }")
+        scroll_content.setStyleSheet("")
         scroll_layout = QVBoxLayout(scroll_content)
         scroll_layout.setSpacing(15)
 
         # 顶部说明文字
         desc_label = QLabel("计算长距离蒸汽管道的温度降、压力损失和热损失，基于能量平衡和动量平衡方程进行分段计算。")
         desc_label.setWordWrap(True)
-        desc_label.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
+        desc_label.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
         scroll_layout.addWidget(desc_label)
 
         # --- 蒸汽参数组 ---
@@ -471,7 +471,7 @@ class LongDistanceSteamPipeCalculator(QWidget):
         self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet(
             "QTextEdit {"
-            "  background-color: #f8f9fa;"
+            "  /* bg via theme */"
             "  border: 1px solid #ecf0f1;"
             "  border-radius: 6px;"
             "  padding: 8px;"

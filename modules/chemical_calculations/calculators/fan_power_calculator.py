@@ -15,7 +15,7 @@ from datetime import datetime
 _GROUP_STYLE = """
     QGroupBox {
         font-weight: bold;
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 8px;
         margin-top: 10px;
         padding-top: 10px;
@@ -28,16 +28,16 @@ _GROUP_STYLE = """
 """
 COMBOBOX_STYLE = """
     QComboBox {
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 4px;
         padding: 6px 10px;
-        background: white;
-        color: black;
+        /* background via theme */
+        /* color via theme */
     }
     QComboBox QAbstractItemView {
-        background-color: white;
-        color: black;
-        border: 1px solid #bdc3c7;
+        /* background-color via theme */
+        /* color via theme */
+        border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
     }
@@ -85,7 +85,7 @@ class FanPowerCalculator(QWidget):
         scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         left_widget = QWidget()
-        left_widget.setStyleSheet("QWidget { background: transparent; }")
+        left_widget.setStyleSheet("")
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
 
@@ -93,7 +93,7 @@ class FanPowerCalculator(QWidget):
             "根据风量、风压、效率参数计算风机轴功率和电机功率，并估算能耗与运行成本。"
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
+        desc.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
         left_layout.addWidget(desc)
 
         # ── 输入参数 GroupBox ─────────────────────────────────────
@@ -312,8 +312,7 @@ class FanPowerCalculator(QWidget):
                 border: 1px solid #ecf0f1;
                 border-radius: 6px;
                 padding: 8px;
-                background-color: #f8f9fa;
-                min-height: 500px;
+                /* bg via theme */min-height: 500px;
             }
         """)
         rlayout.addWidget(self.result_text)
@@ -333,7 +332,7 @@ class FanPowerCalculator(QWidget):
 
     def _hint(self, text):
         lbl = QLabel(text)
-        lbl.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        lbl.setStyleSheet("color: inherit; font-style: italic;")
         return lbl
 
     # ────────────────────────────────────────────────────────────

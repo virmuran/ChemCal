@@ -96,16 +96,16 @@ SUBSTANCE_DATABASE = {
 
 COMBOBOX_STYLE = """
     QComboBox {
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 4px;
         padding: 6px 10px;
-        background: white;
-        color: black;
+        /* background via theme */
+        /* color via theme */
     }
     QComboBox QAbstractItemView {
-        background-color: white;
-        color: black;
-        border: 1px solid #bdc3c7;
+        /* background-color via theme */
+        /* color via theme */
+        border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
     }
@@ -117,7 +117,7 @@ COMBOBOX_STYLE = """
 GROUP_STYLE = """
 QGroupBox {
     font-weight: bold;
-    border: 1px solid #bdc3c7;
+    border: 1px solid #888;
     border-radius: 8px;
     margin-top: 10px;
     padding-top: 10px;
@@ -161,7 +161,7 @@ class EOSCalculator(QWidget):
         scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         left = QWidget()
-        left.setStyleSheet("QWidget { background: transparent; }")
+        left.setStyleSheet("")
         ll = QVBoxLayout(left)
         ll.setSpacing(15)
 
@@ -171,7 +171,7 @@ class EOSCalculator(QWidget):
             "可计算压缩因子、逸度系数、剩余焓/熵/Gibbs 自由能等。"
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: #7f8c8d; font-size: 12px;")
+        desc.setStyleSheet("color: inherit; font-size: 12px;")
         ll.addWidget(desc)
 
         # 标签工厂（不再设固定宽度）
@@ -185,7 +185,7 @@ class EOSCalculator(QWidget):
         # 提示标签工厂
         def H(t):
             l = QLabel(t)
-            l.setStyleSheet("color: #95a5a6; font-size: 11px;")
+            l.setStyleSheet("color: inherit; font-size: 11px;")
             l.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
             return l
 
@@ -432,7 +432,7 @@ class EOSCalculator(QWidget):
         self.result_text.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.result_text.setStyleSheet(
             "QTextEdit {"
-            "  background-color: #f8f9fa;"
+            "  /* bg via theme */"
             "  border: 1px solid #dee2e6;"
             "  border-radius: 6px;"
             "  font-family: Consolas, monospace;"

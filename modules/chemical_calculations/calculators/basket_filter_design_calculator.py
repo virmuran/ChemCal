@@ -13,16 +13,16 @@ from datetime import datetime
 
 COMBOBOX_STYLE = """
     QComboBox {
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 4px;
         padding: 6px 10px;
-        background: white;
-        color: black;
+        /* background via theme */
+        /* color via theme */
     }
     QComboBox QAbstractItemView {
-        background-color: white;
-        color: black;
-        border: 1px solid #bdc3c7;
+        /* background-color via theme */
+        /* color via theme */
+        border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
     }
@@ -70,7 +70,7 @@ class 篮式过滤器(QWidget):
         scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         left_widget = QWidget()
-        left_widget.setStyleSheet("QWidget { background: transparent; }")
+        left_widget.setStyleSheet("")
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
         
@@ -79,7 +79,7 @@ class 篮式过滤器(QWidget):
             "篮式过滤器设计计算器 - 根据流体参数、工况条件和过滤要求，进行过滤器设计和压降计算。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
         # 流体介质参数组
@@ -157,7 +157,7 @@ class 篮式过滤器(QWidget):
         group.setStyleSheet("""
             QGroupBox {
                 font-weight: bold;
-                border: 1px solid #bdc3c7;
+                border: 1px solid #888;
                 border-radius: 8px;
                 margin-top: 10px;
                 padding-top: 10px;
@@ -341,9 +341,9 @@ class 篮式过滤器(QWidget):
         tabs = QTabWidget()
         tabs.setStyleSheet("""
             QTabWidget::pane {
-                border: 1px solid #bdc3c7;
+                border: 1px solid #888;
                 border-radius: 8px;
-                background: white;
+                /* background via theme */
             }
             QTabBar::tab {
                 background: #ecf0f1;
@@ -372,8 +372,7 @@ class 篮式过滤器(QWidget):
                 border: 1px solid #ecf0f1;
                 border-radius: 6px;
                 padding: 8px;
-                background-color: #f8f9fa;
-            }
+                /* bg via theme */}
         """)
         self.result_text.setMaximumHeight(700)
         detailed_layout.addWidget(self.result_text)
@@ -389,8 +388,7 @@ class 篮式过滤器(QWidget):
                 border: 1px solid #ecf0f1;
                 border-radius: 6px;
                 padding: 8px;
-                background-color: #f8f9fa;
-            }
+                /* bg via theme */}
         """)
         self.selection_text.setMaximumHeight(700)
         selection_layout.addWidget(self.selection_text)

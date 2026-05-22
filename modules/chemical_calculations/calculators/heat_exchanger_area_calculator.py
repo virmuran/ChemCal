@@ -32,16 +32,16 @@ except Exception as _e:
 
 COMBOBOX_STYLE = """
     QComboBox {
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 4px;
         padding: 6px 10px;
-        background: white;
-        color: black;
+        /* background via theme */
+        /* color via theme */
     }
     QComboBox QAbstractItemView {
-        background-color: white;
-        color: black;
-        border: 1px solid #bdc3c7;
+        /* background-color via theme */
+        /* color via theme */
+        border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
     }
@@ -53,7 +53,7 @@ COMBOBOX_STYLE = """
 GROUP_STYLE = """
 QGroupBox {
     font-weight: bold;
-    border: 1px solid #bdc3c7;
+    border: 1px solid #888;
     border-radius: 8px;
     margin-top: 10px;
     padding-top: 10px;
@@ -224,7 +224,7 @@ class 换热器面积(QWidget):
         scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         left_widget = QWidget()
-        left_widget.setStyleSheet("QWidget { background: transparent; }")  # 限制最大宽度
+        left_widget.setStyleSheet("")  # 限制最大宽度
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
         
@@ -233,7 +233,7 @@ class 换热器面积(QWidget):
             "基于《传热技术、设备与工业应用》原理，计算换热器传热面积，支持多种计算模式。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
         # 2. 然后添加计算模式选择
@@ -259,12 +259,12 @@ class 换热器面积(QWidget):
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             btn.setStyleSheet("""
                 QPushButton {
-                    background-color: #ecf0f1;
-                    border: 1px solid #bdc3c7;
+                    /* unselected bg via theme */
+                    border: 1px solid #888;
                     border-radius: 4px;
                     padding: 8px;
                     text-align: center;
-                    color: black;
+                    /* color via theme */
                 }
                 QPushButton:checked {
                     background-color: #3498db;
@@ -439,8 +439,7 @@ class 换热器面积(QWidget):
                 border: 1px solid #ecf0f1;
                 border-radius: 6px;
                 padding: 8px;
-                background-color: #f8f9fa;
-                min-height: 500px;
+                /* bg via theme */min-height: 500px;
             }
         """)
         result_layout.addWidget(self.result_text)
@@ -647,7 +646,7 @@ class 换热器面积(QWidget):
         self.input_layout.addWidget(self.input_widgets["steam_flow"], row, 1)
         
         self.steam_flow_label = QLabel("（设计计算自动计算）")
-        self.steam_flow_label.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.steam_flow_label.setStyleSheet("color: inherit; font-style: italic;")
         self.input_layout.addWidget(self.steam_flow_label, row, 2)
         
         row += 1
@@ -899,7 +898,7 @@ class 换热器面积(QWidget):
         
         # 添加提示标签
         hint_label = QLabel("直接输入值")
-        hint_label.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        hint_label.setStyleSheet("color: inherit; font-style: italic;")
         self.input_layout.addWidget(hint_label, row, 2)
     
     def add_cp_section(self, row, label_text, cp_key, combo_key, input_width, combo_width, label_style):
@@ -1062,34 +1061,34 @@ class 换热器面积(QWidget):
     def _get_history_data(self):
         """提供历史记录数据"""
         mode = self.get_current_mode()
-        Q_heat = self.get_widget_value("heat_load")
         K = self.get_widget_value("k_value")
-        T1 = self.get_widget_value("hot_in_temp")
-        T2 = self.get_widget_value("hot_out_temp")
 
-        inputs = {
-            "计算模式": mode,
-            "热负荷_kW": Q_heat,
-            "传热系数_W_m2K": K,
-            "热流体进口温度_C": T1,
-            "热流体出口温度_C": T2
-        }
-
+        inputs = {"计算模式": mode, "传热系数_W_m2K": K}
         outputs = {}
+
         try:
-            delta_T1 = T1 - T2
             if mode == "直接计算":
+                Q_heat = self.get_widget_value("heat_load")
+                T1 = self.get_widget_value("hot_in_temp")
+                T2 = self.get_widget_value("hot_out_temp")
                 t1 = self.get_widget_value("cold_in_temp")
                 t2 = self.get_widget_value("cold_out_temp")
-                inputs["冷流体进口温度_C"] = t1
-                inputs["冷流体出口温度_C"] = t2
-                delta_T2 = t2 - t1
+                inputs.update({
+                    "热负荷_kW": Q_heat,
+                    "热流体进口温度_C": T1,
+                    "热流体出口温度_C": T2,
+                    "冷流体进口温度_C": t1,
+                    "冷流体出口温度_C": t2,
+                })
+                delta_T1 = T1 - T2 if T1 is not None and T2 is not None else 0
+                delta_T2 = t2 - t1 if t2 is not None and t1 is not None else 0
                 lmtd = (delta_T1 - delta_T2) / math.log(delta_T1 / delta_T2) if delta_T1 != delta_T2 else (delta_T1 + delta_T2) / 2
-                area = (Q_heat * 1000) / (K * lmtd)
-                outputs = {
-                    "对数平均温差_C": round(lmtd, 2),
-                    "所需换热面积_m2": round(area, 2)
-                }
+                if Q_heat and K and lmtd:
+                    area = (Q_heat * 1000) / (K * lmtd)
+                    outputs = {
+                        "对数平均温差_C": round(lmtd, 2),
+                        "所需换热面积_m2": round(area, 2)
+                    }
             elif mode == "未知侧设计":
                 W_known = self.get_widget_value("known_flow")
                 Tk_in = self.get_widget_value("known_in_temp")
@@ -1098,7 +1097,14 @@ class 换热器面积(QWidget):
                 Tu_in = self.get_widget_value("unknown_in_temp")
                 Tu_out = self.get_widget_value("unknown_out_temp")
                 Wu = self.get_widget_value("unknown_flow")
+                Cp_u = self.get_widget_value("unknown_cp")
+                flow_arrangement = self.get_widget_value("flow_arrangement", "逆流")
+                safety_factor = self.get_advanced_value("safety_factor", 1.15)
+                infer_mode = self.get_widget_value("unknown_infer", "给定出口温度 → 计算流量")
+                guess_temp = infer_mode.startswith("给定出口温度")
+
                 direction = "加热" if (Tk_in or 0) > (Tu_in or 0) else "冷却"
+                is_heating = direction == "加热"
                 inputs.update({
                     "换热方向": direction,
                     "已知侧流量_kg_h": W_known,
@@ -1108,9 +1114,55 @@ class 换热器面积(QWidget):
                     "未知侧进口_C": Tu_in,
                     "未知侧出口_C": Tu_out,
                     "未知侧流量_kg_h": Wu,
+                    "未知侧比热_kJ_kgK": Cp_u,
                 })
-                Q = W_known / 3600 * Cp_k * 1000 * abs(Tk_in - Tk_out) if all([W_known, Cp_k, Tk_in, Tk_out]) else 0
-                outputs["热负荷_kW"] = round(Q / 1000, 2) if Q else None
+                if not all([W_known, Cp_k, Tk_in, Tk_out, Tu_in]):
+                    return {"inputs": inputs, "outputs": outputs}
+
+                Q_W = W_known / 3600 * Cp_k * 1000 * abs(Tk_in - Tk_out)
+                Q_kW = Q_W / 1000
+                outputs["热负荷_kW"] = round(Q_kW, 2)
+
+                # 推算未知侧
+                Cp_u_J = (Cp_u or 4.187) * 1000
+                T_calc = Tu_in + 20  # 默认估算
+                if guess_temp and Tu_out is not None:
+                    dT_u = abs(Tu_out - Tu_in)
+                    T_calc = Tu_out
+                    if dT_u > 0.1:
+                        outputs["推算流量_kg_h"] = round(Q_W / (Cp_u_J * dT_u) * 3600)
+                    outputs["未知侧温差_C"] = round(dT_u, 1)
+                elif Wu is not None and Wu > 0:
+                    dT_u = Q_W / (Cp_u_J * Wu / 3600)
+                    T_calc = Tu_in + dT_u if is_heating else Tu_in - dT_u
+                    outputs["推算出口温度_C"] = round(T_calc, 1)
+                    outputs["未知侧温差_C"] = round(abs(dT_u), 1)
+
+                # LMTD（t2 优先用给定出口温度，否则用推算值）
+                if is_heating:
+                    T1, T2 = Tk_in, Tk_out
+                    t1 = Tu_in
+                    t2 = Tu_out if Tu_out else T_calc
+                else:
+                    T1, T2 = Tu_in, (Tu_out if Tu_out else T_calc)
+                    t1, t2 = Tk_in, Tk_out
+
+                if flow_arrangement == "逆流":
+                    dT1 = T1 - t2
+                    dT2 = T2 - t1
+                else:
+                    dT1 = T1 - t1
+                    dT2 = T2 - t2
+
+                if dT1 > 0 and dT2 > 0 and K and Q_W > 0:
+                    lmtd = (dT1 - dT2) / math.log(dT1 / dT2) if dT1 != dT2 else dT1
+                    A_theo = Q_W / (K * lmtd)
+                    A_design = A_theo * safety_factor
+                    outputs.update({
+                        "LMTD_C": round(lmtd, 1),
+                        "理论面积_m2": round(A_theo, 3),
+                        "设计面积_m2": round(A_design, 3),
+                    })
         except Exception as e:
             outputs["计算错误"] = str(e)
 

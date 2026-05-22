@@ -13,16 +13,16 @@ from datetime import datetime
 
 COMBOBOX_STYLE = """
     QComboBox {
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 4px;
         padding: 6px 10px;
-        background: white;
-        color: black;
+        /* background via theme */
+        /* color via theme */
     }
     QComboBox QAbstractItemView {
-        background-color: white;
-        color: black;
-        border: 1px solid #bdc3c7;
+        /* background-color via theme */
+        /* color via theme */
+        border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
     }
@@ -326,7 +326,7 @@ class 管径计算(QWidget):
         scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         left_widget = QWidget()
-        left_widget.setStyleSheet("QWidget { background: transparent; }")
+        left_widget.setStyleSheet("")
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
         
@@ -335,7 +335,7 @@ class 管径计算(QWidget):
             "根据流体类型和计算条件计算管道直径或流量，依据《化工管路设计手册》表1.3-1推荐值。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
         # 2. 计算模式选择
@@ -343,7 +343,7 @@ class 管径计算(QWidget):
         mode_group.setStyleSheet("""
             QGroupBox {
                 font-weight: bold;
-                border: 1px solid #bdc3c7;
+                border: 1px solid #888;
                 border-radius: 8px;
                 margin-top: 10px;
                 padding-top: 10px;
@@ -371,12 +371,12 @@ class 管径计算(QWidget):
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             btn.setStyleSheet("""
                 QPushButton {
-                    background-color: #ecf0f1;
-                    border: 1px solid #bdc3c7;
+                    /* unselected bg via theme */
+                    border: 1px solid #888;
                     border-radius: 4px;
                     padding: 8px;
                     text-align: center;
-                    color: black;
+                    /* color via theme */
                 }
                 QPushButton:checked {
                     background-color: #27ae60;
@@ -403,7 +403,7 @@ class 管径计算(QWidget):
         input_group.setStyleSheet("""
             QGroupBox {
                 font-weight: bold;
-                border: 1px solid #bdc3c7;
+                border: 1px solid #888;
                 border-radius: 8px;
                 margin-top: 10px;
                 padding-top: 10px;
@@ -459,7 +459,7 @@ class 管径计算(QWidget):
         
         # 条件提示标签
         self.condition_hint = QLabel("选择流体后出现")
-        self.condition_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.condition_hint.setStyleSheet("color: inherit; font-style: italic;")
         self.condition_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.condition_hint, row, 2)
         
@@ -588,7 +588,7 @@ class 管径计算(QWidget):
         
         # 密度提示标签
         self.density_hint = QLabel("根据流体自动计算")
-        self.density_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.density_hint.setStyleSheet("color: inherit; font-style: italic;")
         self.density_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.density_hint, row, 2)
         
@@ -667,7 +667,7 @@ class 管径计算(QWidget):
         self.result_group.setStyleSheet("""
             QGroupBox {
                 font-weight: bold;
-                border: 1px solid #bdc3c7;
+                border: 1px solid #888;
                 border-radius: 8px;
                 margin-top: 10px;
                 padding-top: 10px;
@@ -688,8 +688,7 @@ class 管径计算(QWidget):
                 border: 1px solid #ecf0f1;
                 border-radius: 6px;
                 padding: 8px;
-                background-color: #f8f9fa;
-                min-height: 500px;
+                /* bg via theme */min-height: 500px;
             }
         """)
         result_layout.addWidget(self.result_text)

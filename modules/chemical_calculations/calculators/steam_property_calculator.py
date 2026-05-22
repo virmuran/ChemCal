@@ -42,7 +42,7 @@ except Exception as e:
 GROUP_STYLE = """
     QGroupBox {
         font-weight: bold;
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 8px;
         margin-top: 10px;
         padding-top: 10px;
@@ -88,16 +88,16 @@ SCROLLBAR_STYLE = """
 """
 COMBOBOX_STYLE = """
     QComboBox {
-        border: 1px solid #bdc3c7;
+        border: 1px solid #888;
         border-radius: 4px;
         padding: 6px 10px;
-        background: white;
-        color: black;
+        /* background via theme */
+        /* color via theme */
     }
     QComboBox QAbstractItemView {
-        background-color: white;
-        color: black;
-        border: 1px solid #bdc3c7;
+        /* background-color via theme */
+        /* color via theme */
+        border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
     }
@@ -166,7 +166,7 @@ class SteamPropertyCalculator(QWidget):
         scroll_left.setStyleSheet("QScrollArea { border: none; background: transparent; } " + SCROLLBAR_STYLE)
 
         left_widget = QWidget()
-        left_widget.setStyleSheet("QWidget { background: transparent; }")
+        left_widget.setStyleSheet("")
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
         left_layout.setContentsMargins(0, 0, 0, 0)
@@ -177,7 +177,7 @@ class SteamPropertyCalculator(QWidget):
             "查询水蒸气在不同状态下的热力学性质，包括密度、比焓、比熵等。支持饱和状态和其他状态查询。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
         # 2. 查询模式选择
@@ -201,12 +201,12 @@ class SteamPropertyCalculator(QWidget):
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             btn.setStyleSheet("""
                 QPushButton {
-                    background-color: #ecf0f1;
-                    border: 1px solid #bdc3c7;
+                    /* unselected bg via theme */
+                    border: 1px solid #888;
                     border-radius: 4px;
                     padding: 8px;
                     text-align: center;
-                    color: black;
+                    /* color via theme */
                 }
                 QPushButton:checked {
                     background-color: #3498db;
@@ -341,8 +341,7 @@ class SteamPropertyCalculator(QWidget):
                 border: 1px solid #ecf0f1;
                 border-radius: 6px;
                 padding: 8px;
-                background-color: #f8f9fa;
-                min-height: 500px;
+                /* bg via theme */min-height: 500px;
                 font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif;
                 font-size: 12px;
                 line-height: 1.4;
@@ -376,12 +375,12 @@ class SteamPropertyCalculator(QWidget):
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             btn.setStyleSheet("""
                 QPushButton {
-                    background-color: #ecf0f1;
-                    border: 1px solid #bdc3c7;
+                    /* unselected bg via theme */
+                    border: 1px solid #888;
                     border-radius: 4px;
                     padding: 8px;
                     text-align: center;
-                    color: black;
+                    /* color via theme */
                 }
                 QPushButton:checked {
                     background-color: #3498db;
@@ -453,7 +452,7 @@ class SteamPropertyCalculator(QWidget):
 
         # 干度说明
         self.dryness_hint = QLabel("干度=0:饱和水，干度=1:干饱和蒸汽")
-        self.dryness_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        self.dryness_hint.setStyleSheet("color: inherit; font-style: italic;")
         self.dryness_hint.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.dryness_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.dryness_hint, row, 2)
@@ -482,12 +481,12 @@ class SteamPropertyCalculator(QWidget):
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             btn.setStyleSheet("""
                 QPushButton {
-                    background-color: #ecf0f1;
-                    border: 1px solid #bdc3c7;
+                    /* unselected bg via theme */
+                    border: 1px solid #888;
                     border-radius: 4px;
                     padding: 8px;
                     text-align: center;
-                    color: black;
+                    /* color via theme */
                 }
                 QPushButton:checked {
                     background-color: #3498db;
