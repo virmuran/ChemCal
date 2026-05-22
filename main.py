@@ -54,6 +54,9 @@ class CalcE(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("CalcE - 个人生产力工具")
+        # 设置窗口图标
+        from PySide6.QtGui import QIcon
+        self.setWindowIcon(QIcon(resource_path("CalcE.ico")))
         # 自适应屏幕大小，留出边距避免超出
         from PySide6.QtGui import QScreen
         screen = QApplication.primaryScreen()
@@ -445,6 +448,15 @@ Copyright 2025-2026 CalcE Team | virmuran@163.com<br><br>
 
 <b>免责声明：</b> 计算结果仅供参考，实际工程应用请由专业工程师审核确认。"""
         self._show_scrollable_dialog("关于 CalcE", text)
+
+
+def resource_path(relative_path):
+    """获取资源文件的绝对路径（兼容 PyInstaller 打包和直接运行）"""
+    if getattr(sys, 'frozen', False):
+        base_path = sys._MEIPASS
+    else:
+        base_path = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base_path, relative_path)
 
 
 def main():
