@@ -764,19 +764,6 @@ class 换热器面积(QWidget):
     
     def setup_single_side_mode(self, row, label_style, input_width, combo_width):
         """设置未知侧设计模式界面"""
-        # ── 换热方向选择 ──
-        label = QLabel("换热方向:")
-        label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        label.setStyleSheet(label_style)
-        self.input_layout.addWidget(label, row, 0)
-
-        self.input_widgets["heat_direction"] = QComboBox()
-        self.input_widgets["heat_direction"].setStyleSheet(COMBOBOX_STYLE)
-        self.input_widgets["heat_direction"].addItems(["加热（已知热侧，求面积）", "冷却（已知冷侧，求面积）"])
-        self.input_widgets["heat_direction"].setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.input_layout.addWidget(self.input_widgets["heat_direction"], row, 1)
-        row += 1
-
         # ── 已知侧（完整参数）──
         self.add_separator(row)
         row += 1
@@ -1111,7 +1098,7 @@ class 换热器面积(QWidget):
                 Tu_in = self.get_widget_value("unknown_in_temp")
                 Tu_out = self.get_widget_value("unknown_out_temp")
                 Wu = self.get_widget_value("unknown_flow")
-                direction = self.get_widget_value("heat_direction", "")
+                direction = "加热" if (Tk_in or 0) > (Tu_in or 0) else "冷却"
                 inputs.update({
                     "换热方向": direction,
                     "已知侧流量_kg_h": W_known,
@@ -1670,22 +1657,20 @@ class 换热器面积(QWidget):
         """模式3：未知侧设计——一侧参数完整，另一侧仅知入口"""
         try:
             # ── 读取输入 ──
-            heat_direction = self.get_widget_value("heat_direction", "加热（已知热侧，求面积）")
-            is_heating = "加热" in heat_direction
-
-            # 已知侧
+            # 自动判断换热方向：已知侧温度高 → 加热；已知侧温度低 → 冷却
             W_known = self.get_widget_value("known_flow")      # kg/h
             T_known_in = self.get_widget_value("known_in_temp")   # °C
             T_known_out = self.get_widget_value("known_out_temp") # °C
             Cp_known = self.get_widget_value("known_cp")          # kJ/kg·K
 
-            # 未知侧
             T_unknown_in = self.get_widget_value("unknown_in_temp")  # °C
             Cp_unknown = self.get_widget_value("unknown_cp")          # kJ/kg·K
 
+            is_heating = T_known_in > T_unknown_in  # 已知侧进口温度 > 未知侧进口 → 加热
+
             # 推断方式
             infer_mode = self.get_widget_value("unknown_infer", "给定出口温度 → 计算流量")
-            guess_temp = "出口温度" in infer_mode
+            guess_temp = infer_mode.startswith("给定出口温度")
 
             T_unknown_out = None
             W_unknown = None
@@ -1750,21 +1735,21 @@ class 换热器面积(QWidget):
                 W_unknown_kg_s = W_unknown / 3600
                 dT_unknown = Q_design_W / (Cp_unknown_J * W_unknown_kg_s)
                 if is_heating:
-                    T_unknown_out = T_unknown_in - dT_unknown  # 热侧降温，出口 < 入口
+                    T_unknown_out = T_unknown_in + dT_unknown  # 未知侧是冷侧，升温
                 else:
-                    T_unknown_out = T_unknown_in + dT_unknown  # 冷侧升温，出口 > 入口
+                    T_unknown_out = T_unknown_in - dT_unknown  # 未知侧是热侧，降温
 
-            # ── 检查温度合理性 ──
-            if guess_temp:
-                # 验证反算流量合理性
-                pass
-            else:
-                if (is_heating and T_unknown_out <= T_known_out) or \
-                   (not is_heating and T_unknown_out >= T_known_in):
-                    QMessageBox.warning(self, "温度不合理",
-                        f"推算出口温度 {T_unknown_out:.1f}°C 超出合理范围。\n"
-                        f"请增大未知侧流量或减小已知侧热负荷。")
-                    return
+            # ── 检查温度合理性（出口温度不能反向超过进口） ──
+            if is_heating and T_unknown_out <= T_unknown_in:
+                QMessageBox.warning(self, "温度不合理",
+                    f"未知侧出口温度 {T_unknown_out:.1f}°C 低于进口 {T_unknown_in:.1f}°C。\n"
+                    f"(加热模式下冷侧应升温，请检查流量是否过大)")
+                return
+            if (not is_heating) and T_unknown_out >= T_unknown_in:
+                QMessageBox.warning(self, "温度不合理",
+                    f"未知侧出口温度 {T_unknown_out:.1f}°C 高于进口 {T_unknown_in:.1f}°C。\n"
+                    f"(冷却模式下热侧应降温，请检查流量是否过大)")
+                return
 
             # ── 分配冷热侧变量名（统一后续计算） ──
             if is_heating:
