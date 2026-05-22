@@ -75,6 +75,7 @@ class HeatTransferMode(Enum):
     FLUID_PARAMS = "流体参数法"
     STEAM_HEATING = "蒸汽加热法"
     INTELLIGENT = "智能选型"
+    SINGLE_SIDE = "未知侧设计"
 
 # ==================== 主界面类 ====================
 
@@ -247,7 +248,8 @@ class 换热器面积(QWidget):
             ("直接计算", "已知热负荷、传热系数和温差"),
             ("流体参数", "根据流体进出口参数计算"),
             ("蒸汽加热", "使用蒸汽加热冷流体"),
-            ("智能选型", "自动推荐换热器类型")
+            ("智能选型", "自动推荐换热器类型"),
+            ("未知侧设计", "一侧参数完整，另一侧仅知入口温度")
         ]
         
         for i, (mode_name, tooltip) in enumerate(modes):
@@ -496,6 +498,8 @@ class 换热器面积(QWidget):
             self.setup_steam_heating_mode(row, label_style, input_width, combo_width)
         elif mode == "智能选型":
             self.setup_intelligent_selection_mode(row, label_style, input_width, combo_width)
+        elif mode == "未知侧设计":
+            self.setup_single_side_mode(row, label_style, input_width, combo_width)
     
     def setup_direct_calculation_mode(self, row, label_style, input_width, combo_width):
         """设置直接计算法界面"""
@@ -758,6 +762,141 @@ class 换热器面积(QWidget):
         self.input_widgets["phase_change"].setStyleSheet("color: #2c3e50; padding: 5px;")
         self.input_layout.addWidget(self.input_widgets["phase_change"], row, 2)
     
+    def setup_single_side_mode(self, row, label_style, input_width, combo_width):
+        """设置未知侧设计模式界面"""
+        # ── 换热方向选择 ──
+        label = QLabel("换热方向:")
+        label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        label.setStyleSheet(label_style)
+        self.input_layout.addWidget(label, row, 0)
+
+        self.input_widgets["heat_direction"] = QComboBox()
+        self.input_widgets["heat_direction"].setStyleSheet(COMBOBOX_STYLE)
+        self.input_widgets["heat_direction"].addItems(["加热（已知热侧，求面积）", "冷却（已知冷侧，求面积）"])
+        self.input_widgets["heat_direction"].setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.input_layout.addWidget(self.input_widgets["heat_direction"], row, 1)
+        row += 1
+
+        # ── 已知侧（完整参数）──
+        self.add_separator(row)
+        row += 1
+
+        known_label = QLabel("▼ 已知侧（完整参数）：")
+        known_label.setStyleSheet("font-weight: bold; color: #2c3e50; padding: 5px 0;")
+        self.input_layout.addWidget(known_label, row, 0, 1, 3)
+        row += 1
+
+        known_params = [
+            ("流量 (kg/h):", "known_flow", "例如：5000", QDoubleValidator(1, 1000000, 1)),
+            ("进口温度 (°C):", "known_in_temp", "例如：90", QDoubleValidator(-100, 1000, 1)),
+            ("出口温度 (°C):", "known_out_temp", "例如：60", QDoubleValidator(-100, 1000, 1)),
+        ]
+        for label_text, key, placeholder, validator in known_params:
+            self.add_input_field(row, label_text, key, placeholder, validator, input_width, label_style)
+            row += 1
+
+        self.add_cp_section(row, "比热容 Cp (kJ/kg·K):", "known_cp", "known_cp_combo",
+                           input_width, combo_width, label_style)
+        row += 1
+
+        # ── 未知侧（仅知入口）──
+        self.add_separator(row)
+        row += 1
+
+        unknown_label = QLabel("▼ 未知侧（仅知入口）：")
+        unknown_label.setStyleSheet("font-weight: bold; color: #e67e22; padding: 5px 0;")
+        self.input_layout.addWidget(unknown_label, row, 0, 1, 3)
+        row += 1
+
+        self.add_input_field(row, "进口温度 (°C):", "unknown_in_temp", "例如：20",
+                            QDoubleValidator(-100, 1000, 1), input_width, label_style)
+        row += 1
+
+        self.add_cp_section(row, "比热容 Cp (kJ/kg·K):", "unknown_cp", "unknown_cp_combo",
+                           input_width, combo_width, label_style)
+        row += 1
+
+        # ── 推算方式选择 ──
+        self.add_separator(row)
+        row += 1
+
+        sub_label = QLabel("▼ 推算方式（二选一）：")
+        sub_label.setStyleSheet("font-weight: bold; color: #3498db; padding: 5px 0;")
+        self.input_layout.addWidget(sub_label, row, 0, 1, 3)
+        row += 1
+
+        # 子模式选择
+        label = QLabel("选择推算方式:")
+        label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        label.setStyleSheet(label_style)
+        self.input_layout.addWidget(label, row, 0)
+
+        self.input_widgets["unknown_infer"] = QComboBox()
+        self.input_widgets["unknown_infer"].setStyleSheet(COMBOBOX_STYLE)
+        self.input_widgets["unknown_infer"].addItems([
+            "给定出口温度 → 计算流量",
+            "给定流量 → 计算出口温度"
+        ])
+        self.input_widgets["unknown_infer"].setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.input_widgets["unknown_infer"].currentTextChanged.connect(self._on_single_side_infer_changed)
+        self.input_layout.addWidget(self.input_widgets["unknown_infer"], row, 1)
+        row += 1
+
+        # 动态输入（根据子模式切换）
+        self.add_input_field(row, "出口温度 (°C):", "unknown_out_temp", "例如：40",
+                            QDoubleValidator(-100, 1000, 1), input_width, label_style)
+        self._single_side_temp_row = row
+        row += 1
+
+        self.add_input_field(row, "流量 (kg/h):", "unknown_flow", "例如：10000",
+                            QDoubleValidator(1, 1000000, 1), input_width, label_style)
+        self._single_side_flow_row = row
+        row += 1
+
+        # 初始状态：默认"给定出口温度"，隐藏流量输入
+        self.input_widgets["unknown_flow"].setEnabled(False)
+        self.input_widgets["unknown_flow"].setPlaceholderText("自动计算")
+
+        # ── 系统参数 ──
+        self.add_separator(row)
+        row += 1
+
+        self.add_k_value_section(row, input_width, combo_width, label_style)
+        row += 1
+
+        # 流动方式
+        label = QLabel("流动方式:")
+        label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        label.setStyleSheet(label_style)
+        self.input_layout.addWidget(label, row, 0)
+
+        self.input_widgets["flow_arrangement"] = QComboBox()
+        self.input_widgets["flow_arrangement"].setStyleSheet(COMBOBOX_STYLE)
+        for arrangement in self.flow_arrangements:
+            self.input_widgets["flow_arrangement"].addItem(arrangement.value)
+        self.input_widgets["flow_arrangement"].setCurrentText("逆流")
+        self.input_widgets["flow_arrangement"].setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.input_layout.addWidget(self.input_widgets["flow_arrangement"], row, 1)
+
+    def _on_single_side_infer_changed(self, text):
+        """未知侧推算方式切换——交换出口温度/流量的输入状态"""
+        if "流量" in text and "给定" in text:
+            # "给定流量 → 计算出口温度"
+            if "unknown_flow" in self.input_widgets:
+                self.input_widgets["unknown_flow"].setEnabled(True)
+                self.input_widgets["unknown_flow"].setPlaceholderText("输入已知流量")
+            if "unknown_out_temp" in self.input_widgets:
+                self.input_widgets["unknown_out_temp"].setEnabled(False)
+                self.input_widgets["unknown_out_temp"].setPlaceholderText("自动计算")
+        else:
+            # "给定出口温度 → 计算流量"
+            if "unknown_out_temp" in self.input_widgets:
+                self.input_widgets["unknown_out_temp"].setEnabled(True)
+                self.input_widgets["unknown_out_temp"].setPlaceholderText("输入目标出口温度")
+            if "unknown_flow" in self.input_widgets:
+                self.input_widgets["unknown_flow"].setEnabled(False)
+                self.input_widgets["unknown_flow"].setPlaceholderText("自动计算")
+    
     def add_input_field(self, row, label_text, key, placeholder, validator, width, style):
         """添加输入字段辅助函数"""
         label = QLabel(label_text)
@@ -919,6 +1058,8 @@ class 换热器面积(QWidget):
                 self.calculate_mode_1()
             elif mode == "蒸汽加热":
                 self.calculate_mode_2()
+            elif mode == "未知侧设计":
+                self.calculate_mode_3()
             elif mode == "智能选型":
                 self.perform_intelligent_selection()
             else:
@@ -962,6 +1103,27 @@ class 换热器面积(QWidget):
                     "对数平均温差_C": round(lmtd, 2),
                     "所需换热面积_m2": round(area, 2)
                 }
+            elif mode == "未知侧设计":
+                W_known = self.get_widget_value("known_flow")
+                Tk_in = self.get_widget_value("known_in_temp")
+                Tk_out = self.get_widget_value("known_out_temp")
+                Cp_k = self.get_widget_value("known_cp")
+                Tu_in = self.get_widget_value("unknown_in_temp")
+                Tu_out = self.get_widget_value("unknown_out_temp")
+                Wu = self.get_widget_value("unknown_flow")
+                direction = self.get_widget_value("heat_direction", "")
+                inputs.update({
+                    "换热方向": direction,
+                    "已知侧流量_kg_h": W_known,
+                    "已知侧进口_C": Tk_in,
+                    "已知侧出口_C": Tk_out,
+                    "已知侧比热_kJ_kgK": Cp_k,
+                    "未知侧进口_C": Tu_in,
+                    "未知侧出口_C": Tu_out,
+                    "未知侧流量_kg_h": Wu,
+                })
+                Q = W_known / 3600 * Cp_k * 1000 * abs(Tk_in - Tk_out) if all([W_known, Cp_k, Tk_in, Tk_out]) else 0
+                outputs["热负荷_kW"] = round(Q / 1000, 2) if Q else None
         except Exception as e:
             outputs["计算错误"] = str(e)
 
@@ -1503,6 +1665,207 @@ class 换热器面积(QWidget):
 """
         
         self.result_text.setText(result_text)
+    
+    def calculate_mode_3(self):
+        """模式3：未知侧设计——一侧参数完整，另一侧仅知入口"""
+        try:
+            # ── 读取输入 ──
+            heat_direction = self.get_widget_value("heat_direction", "加热（已知热侧，求面积）")
+            is_heating = "加热" in heat_direction
+
+            # 已知侧
+            W_known = self.get_widget_value("known_flow")      # kg/h
+            T_known_in = self.get_widget_value("known_in_temp")   # °C
+            T_known_out = self.get_widget_value("known_out_temp") # °C
+            Cp_known = self.get_widget_value("known_cp")          # kJ/kg·K
+
+            # 未知侧
+            T_unknown_in = self.get_widget_value("unknown_in_temp")  # °C
+            Cp_unknown = self.get_widget_value("unknown_cp")          # kJ/kg·K
+
+            # 推断方式
+            infer_mode = self.get_widget_value("unknown_infer", "给定出口温度 → 计算流量")
+            guess_temp = "出口温度" in infer_mode
+
+            T_unknown_out = None
+            W_unknown = None
+            if guess_temp:
+                T_unknown_out = self.get_widget_value("unknown_out_temp")
+            else:
+                W_unknown = self.get_widget_value("unknown_flow")
+
+            # 系统参数
+            K = self.get_widget_value("k_value")  # W/m²·K
+            flow_arrangement = self.get_widget_value("flow_arrangement", "逆流")
+            safety_factor = self.get_advanced_value("safety_factor", 1.15)
+
+            # ── 验证 ──
+            required = ["known_flow", "known_in_temp", "known_out_temp", "known_cp",
+                       "unknown_in_temp", "unknown_cp", "k_value"]
+            if guess_temp:
+                required.append("unknown_out_temp")
+            else:
+                required.append("unknown_flow")
+
+            inputs = {
+                "known_flow": W_known, "known_in_temp": T_known_in,
+                "known_out_temp": T_known_out, "known_cp": Cp_known,
+                "unknown_in_temp": T_unknown_in, "unknown_cp": Cp_unknown, "k_value": K
+            }
+            if guess_temp:
+                inputs["unknown_out_temp"] = T_unknown_out
+            else:
+                inputs["unknown_flow"] = W_unknown
+
+            is_valid, error_msg = self.validate_inputs(inputs, required)
+            if not is_valid:
+                QMessageBox.warning(self, "输入错误", error_msg)
+                return
+
+            # ── 单位转换 ──
+            W_known_kg_s = W_known / 3600
+            Cp_known_J = Cp_known * 1000
+            Cp_unknown_J = Cp_unknown * 1000
+
+            # ── 已知侧热负荷 ──
+            Q_design_W = abs(W_known_kg_s * Cp_known_J * (T_known_in - T_known_out))
+            Q_design_kW = Q_design_W / 1000
+
+            if Q_design_kW < 0.001:
+                QMessageBox.warning(self, "输入错误", "已知侧进出口温差为零，热负荷为零")
+                return
+
+            # ── 推算未知侧 ──
+            if guess_temp:
+                # 给定出口温度 → 反算流量
+                dT_unknown = abs(T_unknown_out - T_unknown_in)
+                if dT_unknown < 0.1:
+                    QMessageBox.warning(self, "输入错误",
+                        f"未知侧进出口温差仅 {dT_unknown:.1f}°C，"
+                        f"计算出的流量会极大。请增大目标温差。")
+                    return
+                W_unknown = Q_design_W / (Cp_unknown_J * dT_unknown) * 3600  # kg/h
+            else:
+                # 给定流量 → 反算出口温度
+                W_unknown_kg_s = W_unknown / 3600
+                dT_unknown = Q_design_W / (Cp_unknown_J * W_unknown_kg_s)
+                if is_heating:
+                    T_unknown_out = T_unknown_in - dT_unknown  # 热侧降温，出口 < 入口
+                else:
+                    T_unknown_out = T_unknown_in + dT_unknown  # 冷侧升温，出口 > 入口
+
+            # ── 检查温度合理性 ──
+            if guess_temp:
+                # 验证反算流量合理性
+                pass
+            else:
+                if (is_heating and T_unknown_out <= T_known_out) or \
+                   (not is_heating and T_unknown_out >= T_known_in):
+                    QMessageBox.warning(self, "温度不合理",
+                        f"推算出口温度 {T_unknown_out:.1f}°C 超出合理范围。\n"
+                        f"请增大未知侧流量或减小已知侧热负荷。")
+                    return
+
+            # ── 分配冷热侧变量名（统一后续计算） ──
+            if is_heating:
+                T1, T2 = T_known_in, T_known_out      # 热侧
+                t1, t2 = T_unknown_in, T_unknown_out   # 冷侧
+                side_label, unknow_label = "热侧（已知）", "冷侧（推算）"
+            else:
+                T1, T2 = T_unknown_in, T_unknown_out   # 热侧
+                t1, t2 = T_known_in, T_known_out       # 冷侧
+                side_label, unknow_label = "冷侧（已知）", "热侧（推算）"
+
+            # ── LMTD ──
+            if flow_arrangement == "逆流":
+                dT1 = T1 - t2
+                dT2 = T2 - t1
+            else:
+                dT1 = T1 - t1
+                dT2 = T2 - t2
+
+            if dT1 <= 0 or dT2 <= 0:
+                QMessageBox.warning(self, "温度交叉",
+                    f"温差出现负值（ΔT1={dT1:.1f}, ΔT2={dT2:.1f}）。\n"
+                    f"请调整出口温度或流量参数。")
+                return
+
+            if abs(dT1 - dT2) < 1e-10:
+                dT_m = dT1
+            else:
+                dT_m = (dT1 - dT2) / math.log(dT1 / dT2)
+
+            # ── 面积 ──
+            A_theo = Q_design_W / (K * dT_m)
+            A_design = A_theo * safety_factor
+
+            # ── 结果输出 ──
+            if guess_temp:
+                infer_note = f"给定出口温度 {T_unknown_out:.1f}°C，推算所需流量 {W_unknown:.0f} kg/h"
+            else:
+                infer_note = f"给定流量 {W_unknown:.0f} kg/h，推算出口温度 {T_unknown_out:.1f}°C"
+
+            direction_text = "加热" if is_heating else "冷却"
+
+            result_text = f"""═══════════
+  输入参数
+══════════
+
+    计算模式: 未知侧设计
+    换热方向: {direction_text}
+    {side_label}:
+    • 流量: {W_known:.0f} kg/h
+    • 温度: {T_known_in:.1f} → {T_known_out:.1f} °C
+    • 比热容: {Cp_known:.3f} kJ/(kg·K)
+    {unknow_label}:
+    • 进口温度: {T_unknown_in:.1f} °C
+    • 比热容: {Cp_unknown:.3f} kJ/(kg·K)
+    • {infer_note}
+    总传热系数: {K:.0f} W/(m²·K)
+    流动方式: {flow_arrangement}
+    安全系数: {safety_factor:.2f}
+
+══════════
+  计算结果
+══════════
+
+    热负荷:
+    • 计算热负荷: {Q_design_kW:.1f} kW
+
+    未知侧推算:
+    • 推算流量: {W_unknown:.0f} kg/h
+    • 推算出口温度: {T_unknown_out:.1f} °C
+    • 温差: {abs(T_unknown_out - T_unknown_in):.1f} °C
+
+    温差分析:
+    • ΔT1 = {dT1:.1f} °C
+    • ΔT2 = {dT2:.1f} °C
+    • LMTD = {dT_m:.1f} °C
+
+    面积:
+    • 理论面积: {A_theo:.3f} m²
+    • 设计面积: {A_design:.3f} m²
+    • 裕量: {A_design - A_theo:.3f} m²
+
+══════════
+  计算说明
+══════════
+
+    • 已知侧热负荷 Q = W × Cp × |ΔT|
+    • 未知侧参数由 Q 和给定条件反推
+    • 采用逆流/并流 LMTD 法计算面积
+    • 安全系数 {safety_factor:.2f} 考虑污垢和波动
+    • 实际选型时应咨询设备厂家确认
+"""
+
+            self.result_text.setText(result_text)
+
+        except ValueError as e:
+            QMessageBox.warning(self, "计算错误", str(e))
+        except ZeroDivisionError:
+            QMessageBox.warning(self, "计算错误", "出现除零错误，请检查输入参数")
+        except Exception as e:
+            QMessageBox.critical(self, "计算错误", f"计算异常: {str(e)}")
     
     # ==================== 报告生成功能 ====================
     

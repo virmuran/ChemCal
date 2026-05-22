@@ -99,52 +99,24 @@ def _global_unraisablehook(unraisable):
         _safe_save_data()
 
 
-# ── 4. 自定义 SafeApplication（真正继承 QApplication） ──
+# ── 4. SafeApplication（轻量包装，不覆盖 notify） ──
 
 class SafeApplication:
     """
-    SafeApplication 代理类——替代 QApplication 的入口点。
+    SafeApplication 轻量包装——替代 QApplication 的入口点。
 
     用法：
-        app = SafeApplication(sys.argv)   # 内部创建 SafeQApp
+        app = SafeApplication(sys.argv)
         app.run()   # 替代 app.exec()
 
-    内部通过 SafeQApp（真正的 QApplication 子类）重写 notify 方法，
-    捕获 Qt 事件处理链中所有异常并记录崩溃日志，防止程序直接闪退。
+    注意：不覆盖 notify()，因为 PySide6 的类型检查会导致 QWidgetItem
+    （非 QObject）被传递给 notify 时抛出 TypeError 并崩溃。
+    异常捕获完全由 sys.excepthook / blockSignals 等机制处理。
     """
 
-    _safe_app_instance = None
-
-    def __new__(cls, argv):
-        # 确保只创建一次 SafeQApp 实例
-        if cls._safe_app_instance is not None:
-            return cls._safe_app_instance
-        instance = super().__new__(cls)
-        return instance
-
     def __init__(self, argv):
-        if self._safe_app_instance is not None:
-            return
         from PySide6.QtWidgets import QApplication
-
-        class SafeQApp(QApplication):
-            """真正的 QApplication 子类，重写 notify 实现异常安全"""
-
-            def notify(self, receiver, event):
-                try:
-                    return super().notify(receiver, event)
-                except Exception as e:
-                    exc_type = type(e)
-                    exc_tb = e.__traceback__
-                    crash_file = write_crash_log(exc_type, e, exc_tb)
-                    traceback.print_exception(exc_type, e, exc_tb)
-                    print(f"[SafeApplication] 事件处理异常已捕获并记录: {crash_file}",
-                          file=sys.stderr)
-                    _safe_save_data()
-                    return False
-
-        self._app = SafeQApp(argv)
-        SafeApplication._safe_app_instance = self
+        self._app = QApplication(argv)
 
     def __getattr__(self, name):
         return getattr(self._app, name)

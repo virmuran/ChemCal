@@ -207,9 +207,12 @@ class HistoryViewer(QWidget):
         """加载历史记录"""
         if not append:
             self._current_page = 0
-            # blockSignals 防止 clear() 过程中 Qt 内部信号访问已删除的内存
+            # 不用 clear()——PySide6 在某些条件下 clear() 会触发 access violation
+            # 改为逐条 takeItem 安全移除（takeItem 不触发内部 mass-deletion）
             self.history_list.blockSignals(True)
-            self.history_list.clear()
+            while self.history_list.count() > 0:
+                item = self.history_list.takeItem(0)
+                del item
             self.history_list.blockSignals(False)
 
         records, total = self.db.get_all(
