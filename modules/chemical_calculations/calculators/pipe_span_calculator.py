@@ -261,7 +261,7 @@ class 管道跨距(QWidget):
         
         # 材料属性提示标签
         self.material_hint = QLabel("根据材料自动计算")
-        self.material_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.material_hint.setStyleSheet("font-style: italic;")
         self.material_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.material_hint, row, 2)
         

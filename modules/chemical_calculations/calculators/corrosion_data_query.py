@@ -101,7 +101,7 @@ class CorrosionDataQuery(QWidget):
         # 顶部说明文字
         desc_label = QLabel("查询工程材料和腐蚀介质的组合腐蚀数据，提供腐蚀速率、耐蚀评级和使用建议。支持多种材料和介质的腐蚀性能查询。")
         desc_label.setWordWrap(True)
-        desc_label.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
+        desc_label.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(desc_label)
 
         # 查询条件组 — QGridLayout 三列 stretch(4,8,5)

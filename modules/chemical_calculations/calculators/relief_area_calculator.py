@@ -112,7 +112,7 @@ class ReliefAreaCalculator(QWidget):
             "支持气体/蒸汽临界流与亚临界流、液体泄放、两相流计算。"
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
+        desc.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(desc)
 
         label_style = "font-weight: bold; padding-right: 10px;"
@@ -125,7 +125,7 @@ class ReliefAreaCalculator(QWidget):
 
         def make_hint(text):
             lbl = QLabel(text)
-            lbl.setStyleSheet("color: inherit; font-style: italic;")
+            lbl.setStyleSheet("font-style: italic;")
             return lbl
 
         # ── 泄放场景组 ──

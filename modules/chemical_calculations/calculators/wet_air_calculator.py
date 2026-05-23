@@ -83,7 +83,7 @@ class WetAirCalculator(QWidget):
         desc = QLabel("计算湿空气的各种物性参数：相对湿度、绝对湿度、露点温度、比焓、比容等。"
                        "至少需要输入干球温度，并提供相对湿度、绝对湿度、湿球温度或露点温度之一。")
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: inherit; font-size: 12px;")
+        desc.setStyleSheet("font-size: 12px;")
         left_layout.addWidget(desc)
 
         # ── 输入参数组 ──

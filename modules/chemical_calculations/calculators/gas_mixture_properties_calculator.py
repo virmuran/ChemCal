@@ -301,7 +301,7 @@ class GasMixturePropertiesCalculator(QWidget):
         condition_layout.addWidget(self.mixture_type, 2, 1)
 
         mix_hint = QLabel("真实气体用Lee-Kesler")
-        mix_hint.setStyleSheet("color: inherit; font-style: italic;")
+        mix_hint.setStyleSheet("font-style: italic;")
         condition_layout.addWidget(mix_hint, 2, 2)
 
         # 计算方法
@@ -317,7 +317,7 @@ class GasMixturePropertiesCalculator(QWidget):
         condition_layout.addWidget(self.calculation_method, 3, 1)
 
         method_hint = QLabel("Kay规则/对应状态")
-        method_hint.setStyleSheet("color: inherit; font-style: italic;")
+        method_hint.setStyleSheet("font-style: italic;")
         condition_layout.addWidget(method_hint, 3, 2)
 
         # 组分数
@@ -334,7 +334,7 @@ class GasMixturePropertiesCalculator(QWidget):
         condition_layout.addWidget(self.component_count, 4, 1)
 
         comp_hint = QLabel("2~5组分混合")
-        comp_hint.setStyleSheet("color: inherit; font-style: italic;")
+        comp_hint.setStyleSheet("font-style: italic;")
         condition_layout.addWidget(comp_hint, 4, 2)
 
         condition_layout.setColumnStretch(0, 4)

@@ -646,7 +646,7 @@ class 换热器面积(QWidget):
         self.input_layout.addWidget(self.input_widgets["steam_flow"], row, 1)
         
         self.steam_flow_label = QLabel("（设计计算自动计算）")
-        self.steam_flow_label.setStyleSheet("color: inherit; font-style: italic;")
+        self.steam_flow_label.setStyleSheet("font-style: italic;")
         self.input_layout.addWidget(self.steam_flow_label, row, 2)
         
         row += 1
@@ -898,7 +898,7 @@ class 换热器面积(QWidget):
         
         # 添加提示标签
         hint_label = QLabel("直接输入值")
-        hint_label.setStyleSheet("color: inherit; font-style: italic;")
+        hint_label.setStyleSheet("font-style: italic;")
         self.input_layout.addWidget(hint_label, row, 2)
     
     def add_cp_section(self, row, label_text, cp_key, combo_key, input_width, combo_width, label_style):

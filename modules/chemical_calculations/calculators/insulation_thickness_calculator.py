@@ -111,7 +111,7 @@ class InsulationThicknessCalculator(QWidget):
             "请根据实际工况选择计算方法并填写参数。"
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
+        desc.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(desc)
 
         # ── 计算类型选择（按钮组）──

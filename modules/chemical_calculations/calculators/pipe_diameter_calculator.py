@@ -459,7 +459,7 @@ class 管径计算(QWidget):
         
         # 条件提示标签
         self.condition_hint = QLabel("选择流体后出现")
-        self.condition_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.condition_hint.setStyleSheet("font-style: italic;")
         self.condition_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.condition_hint, row, 2)
         
@@ -588,7 +588,7 @@ class 管径计算(QWidget):
         
         # 密度提示标签
         self.density_hint = QLabel("根据流体自动计算")
-        self.density_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.density_hint.setStyleSheet("font-style: italic;")
         self.density_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.density_hint, row, 2)
         

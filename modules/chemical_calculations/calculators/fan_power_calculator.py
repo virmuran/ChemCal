@@ -93,7 +93,7 @@ class FanPowerCalculator(QWidget):
             "根据风量、风压、效率参数计算风机轴功率和电机功率，并估算能耗与运行成本。"
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
+        desc.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(desc)
 
         # ── 输入参数 GroupBox ─────────────────────────────────────
@@ -332,7 +332,7 @@ class FanPowerCalculator(QWidget):
 
     def _hint(self, text):
         lbl = QLabel(text)
-        lbl.setStyleSheet("color: inherit; font-style: italic;")
+        lbl.setStyleSheet("font-style: italic;")
         return lbl
 
     # ────────────────────────────────────────────────────────────

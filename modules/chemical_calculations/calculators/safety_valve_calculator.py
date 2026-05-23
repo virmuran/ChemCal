@@ -91,7 +91,7 @@ class SafetyValveCalculator(QWidget):
             "支持气体/蒸汽临界流与亚临界流、液体泄放、火灾工况计算。"
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
+        desc.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(desc)
 
         # ── 工况条件组 ──
@@ -122,7 +122,7 @@ class SafetyValveCalculator(QWidget):
         grid.addWidget(make_lbl("介质类型:"), 0, 0)
         grid.addWidget(self.medium_combo, 0, 1)
         hint_m = QLabel("选择后自动填充分子量和绝热指数")
-        hint_m.setStyleSheet("color: inherit; font-style: italic;")
+        hint_m.setStyleSheet("font-style: italic;")
         grid.addWidget(hint_m, 0, 2)
 
         # 行1：分子量
@@ -132,7 +132,7 @@ class SafetyValveCalculator(QWidget):
         grid.addWidget(make_lbl("分子量 (g/mol):"), 1, 0)
         grid.addWidget(self.mw_input, 1, 1)
         hint_mw = QLabel("蒸汽=18, 空气=29")
-        hint_mw.setStyleSheet("color: inherit; font-style: italic;")
+        hint_mw.setStyleSheet("font-style: italic;")
         grid.addWidget(hint_mw, 1, 2)
 
         # 行2：绝热指数
@@ -142,7 +142,7 @@ class SafetyValveCalculator(QWidget):
         grid.addWidget(make_lbl("绝热指数 (γ):"), 2, 0)
         grid.addWidget(self.gamma_input, 2, 1)
         hint_g = QLabel("双原子=1.4")
-        hint_g.setStyleSheet("color: inherit; font-style: italic;")
+        hint_g.setStyleSheet("font-style: italic;")
         grid.addWidget(hint_g, 2, 2)
 
         # 行3：设定压力
@@ -170,7 +170,7 @@ class SafetyValveCalculator(QWidget):
         grid.addWidget(make_lbl("超压百分比:"), 5, 0)
         grid.addWidget(self.overpressure_input, 5, 1)
         hint_op = QLabel("通常 10% 或 21%")
-        hint_op.setStyleSheet("color: inherit; font-style: italic;")
+        hint_op.setStyleSheet("font-style: italic;")
         grid.addWidget(hint_op, 5, 2)
 
         # 行6：操作温度
@@ -198,7 +198,7 @@ class SafetyValveCalculator(QWidget):
         grid.addWidget(make_lbl("压缩因子 Z:"), 8, 0)
         grid.addWidget(self.z_input, 8, 1)
         hint_z = QLabel("理想气体=1.0")
-        hint_z.setStyleSheet("color: inherit; font-style: italic;")
+        hint_z.setStyleSheet("font-style: italic;")
         grid.addWidget(hint_z, 8, 2)
 
         left_layout.addWidget(cond_group)
@@ -220,7 +220,7 @@ class SafetyValveCalculator(QWidget):
         rgrid.addWidget(make_lbl("泄放量 (kg/h):"), 0, 0)
         rgrid.addWidget(self.relief_rate_input, 0, 1)
         hint_rr = QLabel("已知泄放量")
-        hint_rr.setStyleSheet("color: inherit; font-style: italic;")
+        hint_rr.setStyleSheet("font-style: italic;")
         rgrid.addWidget(hint_rr, 0, 2)
 
         # 行1：润湿面积 + 工况类型
@@ -243,7 +243,7 @@ class SafetyValveCalculator(QWidget):
         rgrid.addWidget(make_lbl("环境因子 F:"), 2, 0)
         rgrid.addWidget(self.env_factor_input, 2, 1)
         hint_ef = QLabel("标准=1.0")
-        hint_ef.setStyleSheet("color: inherit; font-style: italic;")
+        hint_ef.setStyleSheet("font-style: italic;")
         rgrid.addWidget(hint_ef, 2, 2)
 
         left_layout.addWidget(relief_group)

@@ -321,7 +321,7 @@ class 压降计算(QWidget):
         
         # 长度输入不需要下拉菜单，替换为提示标签
         self.length_hint = QLabel("直接输入长度值")
-        self.length_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.length_hint.setStyleSheet("font-style: italic;")
         self.length_hint.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         input_layout.addWidget(self.length_hint, row, 2)
         
@@ -341,7 +341,7 @@ class 压降计算(QWidget):
         
         # 流量输入不需要下拉菜单，替换为提示标签
         self.flow_hint = QLabel("直接输入流量值")
-        self.flow_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.flow_hint.setStyleSheet("font-style: italic;")
         self.flow_hint.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         input_layout.addWidget(self.flow_hint, row, 2)
         
@@ -382,7 +382,7 @@ class 压降计算(QWidget):
         
         # 密度不需要下拉，替换为提示标签
         self.density_hint = QLabel("根据流体自动计算")
-        self.density_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.density_hint.setStyleSheet("font-style: italic;")
         self.density_hint.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         input_layout.addWidget(self.density_hint, row, 2)
         
@@ -402,7 +402,7 @@ class 压降计算(QWidget):
         
         # 粘度不需要下拉，替换为提示标签
         self.viscosity_hint = QLabel("根据流体自动计算")
-        self.viscosity_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.viscosity_hint.setStyleSheet("font-style: italic;")
         self.viscosity_hint.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         input_layout.addWidget(self.viscosity_hint, row, 2)
         
@@ -423,7 +423,7 @@ class 压降计算(QWidget):
         
         # 标高变化不需要下拉，替换为提示标签
         self.elevation_hint = QLabel("正值为上升，负值为下降")
-        self.elevation_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.elevation_hint.setStyleSheet("font-style: italic;")
         self.elevation_hint.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         input_layout.addWidget(self.elevation_hint, row, 2)
         
@@ -470,7 +470,7 @@ class 压降计算(QWidget):
         
         # 压力不需要下拉，替换为提示标签
         self.pressure_hint = QLabel("标准大气压: 101.3 kPa")
-        self.pressure_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.pressure_hint.setStyleSheet("font-style: italic;")
         self.pressure_hint.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         input_layout.addWidget(self.pressure_hint, row, 2)
         

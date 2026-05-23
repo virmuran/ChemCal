@@ -93,7 +93,7 @@ class PureSubstanceProperties(QWidget):
         # 顶部说明文字
         desc_label = QLabel("查询纯物质的基本物性和热力学性质，支持温度和压力条件设置，提供物性数据计算和温度影响分析。")
         desc_label.setWordWrap(True)
-        desc_label.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
+        desc_label.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(desc_label)
         
         # 查询条件组
@@ -124,7 +124,7 @@ class PureSubstanceProperties(QWidget):
         query_layout.addWidget(self.category_combo, 0, 1)
         
         category_hint = QLabel("选择物质类别")
-        category_hint.setStyleSheet("color: inherit; font-style: italic;")
+        category_hint.setStyleSheet("font-style: italic;")
         query_layout.addWidget(category_hint, 0, 2)
         
         # 具体物质选择 - 第1行
@@ -140,7 +140,7 @@ class PureSubstanceProperties(QWidget):
         query_layout.addWidget(self.substance_combo, 1, 1)
         
         substance_hint = QLabel("选择具体物质")
-        substance_hint.setStyleSheet("color: inherit; font-style: italic;")
+        substance_hint.setStyleSheet("font-style: italic;")
         query_layout.addWidget(substance_hint, 1, 2)
         
         # CAS号显示 - 第2行
@@ -154,7 +154,7 @@ class PureSubstanceProperties(QWidget):
         query_layout.addWidget(self.cas_label, 2, 1)
         
         cas_hint = QLabel("物质标识符")
-        cas_hint.setStyleSheet("color: inherit; font-style: italic;")
+        cas_hint.setStyleSheet("font-style: italic;")
         query_layout.addWidget(cas_hint, 2, 2)
         
         # 温度输入 - 第3行（普通输入框）
@@ -170,7 +170,7 @@ class PureSubstanceProperties(QWidget):
         query_layout.addWidget(self.temperature_input, 3, 1)
 
         temp_hint = QLabel("查询温度条件")
-        temp_hint.setStyleSheet("color: inherit; font-style: italic;")
+        temp_hint.setStyleSheet("font-style: italic;")
         query_layout.addWidget(temp_hint, 3, 2)
         
         # 压力输入 - 第4行（普通输入框）
@@ -186,7 +186,7 @@ class PureSubstanceProperties(QWidget):
         query_layout.addWidget(self.pressure_input, 4, 1)
 
         pressure_hint = QLabel("查询压力条件")
-        pressure_hint.setStyleSheet("color: inherit; font-style: italic;")
+        pressure_hint.setStyleSheet("font-style: italic;")
         query_layout.addWidget(pressure_hint, 4, 2)
         
         # 状态显示 - 第5行
@@ -200,7 +200,7 @@ class PureSubstanceProperties(QWidget):
         query_layout.addWidget(self.state_label, 5, 1)
         
         state_hint = QLabel("根据温度自动判断")
-        state_hint.setStyleSheet("color: inherit; font-style: italic;")
+        state_hint.setStyleSheet("font-style: italic;")
         query_layout.addWidget(state_hint, 5, 2)
         
         left_layout.addWidget(query_group)

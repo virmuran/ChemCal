@@ -207,7 +207,7 @@ class LongDistanceSteamPipeCalculator(QWidget):
         # 顶部说明文字
         desc_label = QLabel("计算长距离蒸汽管道的温度降、压力损失和热损失，基于能量平衡和动量平衡方程进行分段计算。")
         desc_label.setWordWrap(True)
-        desc_label.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
+        desc_label.setStyleSheet("font-size: 12px; padding: 5px;")
         scroll_layout.addWidget(desc_label)
 
         # --- 蒸汽参数组 ---

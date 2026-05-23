@@ -345,7 +345,7 @@ class SolutionDensityCalculator(QWidget):
         # 顶部说明文字
         desc_label = QLabel("计算常见溶液（水、柠檬酸、葡萄糖、蔗糖、NaOH、HCl、H₂SO₄、NaCl）在不同温度和浓度下的密度，支持单点计算和温度扫描。")
         desc_label.setWordWrap(True)
-        desc_label.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
+        desc_label.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(desc_label)
 
         # Tab：单点计算 / 温度扫描 / 公式参考
@@ -478,7 +478,7 @@ class SolutionDensityCalculator(QWidget):
         grid.addWidget(self.w_input, 1, 1)
 
         self.w_hint = QLabel("范围：0~0.70")
-        self.w_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.w_hint.setStyleSheet("font-style: italic;")
         grid.addWidget(self.w_hint, 1, 2)
 
         # 温度 - 第2行
@@ -493,7 +493,7 @@ class SolutionDensityCalculator(QWidget):
         grid.addWidget(self.T_input, 2, 1)
 
         T_hint = QLabel("有效范围见公式参考")
-        T_hint.setStyleSheet("color: inherit; font-style: italic;")
+        T_hint.setStyleSheet("font-style: italic;")
         grid.addWidget(T_hint, 2, 2)
 
         layout.addLayout(grid)

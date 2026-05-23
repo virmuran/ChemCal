@@ -308,7 +308,7 @@ class CentrifugalPumpCalculator(QWidget):
         input_layout.addWidget(self.safety_combo, row, 1)
 
         self.safety_hint = QLabel("默认选用标准安全系数")
-        self.safety_hint.setStyleSheet("color: inherit; font-style: italic; padding-left: 10px;")
+        self.safety_hint.setStyleSheet("font-style: italic; padding-left: 10px;")
         self.safety_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.safety_hint, row, 2)
         

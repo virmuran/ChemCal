@@ -171,7 +171,7 @@ class EOSCalculator(QWidget):
             "可计算压缩因子、逸度系数、剩余焓/熵/Gibbs 自由能等。"
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: inherit; font-size: 12px;")
+        desc.setStyleSheet("font-size: 12px;")
         ll.addWidget(desc)
 
         # 标签工厂（不再设固定宽度）
@@ -185,7 +185,7 @@ class EOSCalculator(QWidget):
         # 提示标签工厂
         def H(t):
             l = QLabel(t)
-            l.setStyleSheet("color: inherit; font-size: 11px;")
+            l.setStyleSheet("font-size: 11px;")
             l.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
             return l
 

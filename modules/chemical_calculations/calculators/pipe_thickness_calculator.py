@@ -161,7 +161,7 @@ class 管道壁厚(QWidget):
         
         # 压力提示
         self.pressure_hint = QLabel("1 MPa = 10 bar")
-        self.pressure_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.pressure_hint.setStyleSheet("font-style: italic;")
         self.pressure_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.pressure_hint, row, 2)
         
@@ -185,7 +185,7 @@ class 管道壁厚(QWidget):
         
         # 温度提示
         self.temp_hint = QLabel("直接输入温度值")
-        self.temp_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.temp_hint.setStyleSheet("font-style: italic;")
         self.temp_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.temp_hint, row, 2)
         

@@ -184,7 +184,7 @@ class 罐体重量(QWidget):
         self.input_layout.addWidget(self.diameter_input, row, 1)
         
         self.diameter_hint = QLabel("直接输入直径值")
-        self.diameter_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.diameter_hint.setStyleSheet("font-style: italic;")
         self.input_layout.addWidget(self.diameter_hint, row, 2)
         
         row += 1
@@ -203,7 +203,7 @@ class 罐体重量(QWidget):
         self.input_layout.addWidget(self.height_input, row, 1)
         
         self.height_hint = QLabel("直接输入高度值")
-        self.height_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.height_hint.setStyleSheet("font-style: italic;")
         self.input_layout.addWidget(self.height_hint, row, 2)
         
         row += 1
@@ -222,7 +222,7 @@ class 罐体重量(QWidget):
         self.input_layout.addWidget(self.shell_thickness_input, row, 1)
         
         self.shell_thickness_hint = QLabel("直接输入壁厚值")
-        self.shell_thickness_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.shell_thickness_hint.setStyleSheet("font-style: italic;")
         self.input_layout.addWidget(self.shell_thickness_hint, row, 2)
         
         row += 1
@@ -241,7 +241,7 @@ class 罐体重量(QWidget):
         self.input_layout.addWidget(self.cone_height_input, row, 1)
         
         self.cone_height_hint = QLabel("直接输入锥体高度")
-        self.cone_height_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.cone_height_hint.setStyleSheet("font-style: italic;")
         self.input_layout.addWidget(self.cone_height_hint, row, 2)
         
         row += 1
@@ -260,7 +260,7 @@ class 罐体重量(QWidget):
         self.input_layout.addWidget(self.nozzle_diameter_input, row, 1)
         
         self.nozzle_diameter_hint = QLabel("直接输入锥口直径")
-        self.nozzle_diameter_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.nozzle_diameter_hint.setStyleSheet("font-style: italic;")
         self.input_layout.addWidget(self.nozzle_diameter_hint, row, 2)
         
         row += 1
@@ -279,7 +279,7 @@ class 罐体重量(QWidget):
         self.input_layout.addWidget(self.length_input, row, 1)
         
         self.length_hint = QLabel("直接输入长度值")
-        self.length_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.length_hint.setStyleSheet("font-style: italic;")
         self.input_layout.addWidget(self.length_hint, row, 2)
         
         row += 1
@@ -298,7 +298,7 @@ class 罐体重量(QWidget):
         self.input_layout.addWidget(self.liquid_level_input, row, 1)
         
         self.liquid_level_hint = QLabel("直接输入液位高度")
-        self.liquid_level_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.liquid_level_hint.setStyleSheet("font-style: italic;")
         self.input_layout.addWidget(self.liquid_level_hint, row, 2)
         
         row += 1
@@ -317,7 +317,7 @@ class 罐体重量(QWidget):
         self.input_layout.addWidget(self.sphere_thickness_input, row, 1)
         
         self.sphere_thickness_hint = QLabel("直接输入壁厚值")
-        self.sphere_thickness_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.sphere_thickness_hint.setStyleSheet("font-style: italic;")
         self.input_layout.addWidget(self.sphere_thickness_hint, row, 2)
         
         left_layout.addWidget(input_group)
@@ -389,7 +389,7 @@ class 罐体重量(QWidget):
         material_layout.addWidget(self.liquid_density_input, row, 1)
         
         self.liquid_density_hint = QLabel("水: 1000 kg/m³")
-        self.liquid_density_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.liquid_density_hint.setStyleSheet("font-style: italic;")
         material_layout.addWidget(self.liquid_density_hint, row, 2)
         
         left_layout.addWidget(material_group)

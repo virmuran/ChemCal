@@ -440,7 +440,7 @@ class 换热器计算(QWidget):
 
         # 提示标签 - 第2列
         hint_label = QLabel("直接输入数值")
-        hint_label.setStyleSheet("color: inherit; font-style: italic;")
+        hint_label.setStyleSheet("font-style: italic;")
         self.input_layout.addWidget(hint_label, row, 2)
         
         # 存储控件引用

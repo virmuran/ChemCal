@@ -507,7 +507,7 @@ class HazardousChemicalsQuery(QWidget):
 
         # 统计信息
         self.stats_label = QLabel("共加载 0 种化学品")
-        self.stats_label.setStyleSheet("color: inherit; font-style: italic; padding: 5px;")
+        self.stats_label.setStyleSheet("font-style: italic; padding: 5px;")
         left_layout.addWidget(self.stats_label)
 
         # 设置左侧scroll area的内容

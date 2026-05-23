@@ -317,7 +317,7 @@ class 管道补偿(QWidget):
         
         # 材质描述（第2列）
         self.material_desc_label = QLabel("")
-        self.material_desc_label.setStyleSheet("color: inherit; font-style: italic;")
+        self.material_desc_label.setStyleSheet("font-style: italic;")
         self.material_desc_label.setWordWrap(True)
         input_layout.addWidget(self.material_desc_label, row, 2)
         
@@ -364,7 +364,7 @@ class 管道补偿(QWidget):
         input_layout.addWidget(self.length_input, row, 1)
         
         self.length_hint = QLabel("基本计算时使用")
-        self.length_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.length_hint.setStyleSheet("font-style: italic;")
         input_layout.addWidget(self.length_hint, row, 2)
         
         row += 1
@@ -382,7 +382,7 @@ class 管道补偿(QWidget):
         input_layout.addWidget(self.l1_input, row, 1)
         
         self.l1_hint = QLabel("L形和Z形补偿时使用")
-        self.l1_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.l1_hint.setStyleSheet("font-style: italic;")
         input_layout.addWidget(self.l1_hint, row, 2)
         
         row += 1
@@ -400,7 +400,7 @@ class 管道补偿(QWidget):
         input_layout.addWidget(self.l2_input, row, 1)
         
         self.l2_hint = QLabel("L形和Z形补偿时使用")
-        self.l2_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.l2_hint.setStyleSheet("font-style: italic;")
         input_layout.addWidget(self.l2_hint, row, 2)
         
         row += 1
@@ -418,7 +418,7 @@ class 管道补偿(QWidget):
         input_layout.addWidget(self.l3_input, row, 1)
         
         self.l3_hint = QLabel("仅Z形补偿时使用")
-        self.l3_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.l3_hint.setStyleSheet("font-style: italic;")
         input_layout.addWidget(self.l3_hint, row, 2)
         
         row += 1
@@ -437,7 +437,7 @@ class 管道补偿(QWidget):
         input_layout.addWidget(self.temp_install_input, row, 1)
         
         self.temp_install_hint = QLabel("管道安装时的温度")
-        self.temp_install_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.temp_install_hint.setStyleSheet("font-style: italic;")
         input_layout.addWidget(self.temp_install_hint, row, 2)
         
         row += 1
@@ -454,7 +454,7 @@ class 管道补偿(QWidget):
         input_layout.addWidget(self.temp_operate_input, row, 1)
         
         self.temp_operate_hint = QLabel("管道运行时的温度")
-        self.temp_operate_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.temp_operate_hint.setStyleSheet("font-style: italic;")
         input_layout.addWidget(self.temp_operate_hint, row, 2)
         
         row += 1
@@ -472,7 +472,7 @@ class 管道补偿(QWidget):
         input_layout.addWidget(self.alpha_value_input, row, 1)
         
         self.alpha_hint = QLabel("根据材质自动计算")
-        self.alpha_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.alpha_hint.setStyleSheet("font-style: italic;")
         input_layout.addWidget(self.alpha_hint, row, 2)
         
         row += 1
@@ -490,7 +490,7 @@ class 管道补偿(QWidget):
         input_layout.addWidget(self.elastic_value_input, row, 1)
         
         self.elastic_hint = QLabel("根据材质自动计算")
-        self.elastic_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.elastic_hint.setStyleSheet("font-style: italic;")
         input_layout.addWidget(self.elastic_hint, row, 2)
         
         row += 1
@@ -508,7 +508,7 @@ class 管道补偿(QWidget):
         input_layout.addWidget(self.stress_value_input, row, 1)
         
         self.stress_hint = QLabel("根据材质自动计算")
-        self.stress_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.stress_hint.setStyleSheet("font-style: italic;")
         input_layout.addWidget(self.stress_hint, row, 2)
         
         left_layout.addWidget(input_group)

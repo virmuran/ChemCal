@@ -202,7 +202,7 @@ class RefrigerationCycleCalculator(QWidget):
         input_layout.addWidget(self.refrigerant_combo, row, 1)
 
         hint_ref = QLabel("选择循环工质")
-        hint_ref.setStyleSheet("color: inherit; font-style: italic;")
+        hint_ref.setStyleSheet("font-style: italic;")
         hint_ref.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(hint_ref, row, 2)
 
@@ -223,7 +223,7 @@ class RefrigerationCycleCalculator(QWidget):
         input_layout.addWidget(self.evap_temp_input, row, 1)
 
         hint_evap = QLabel("制冷剂蒸发温度")
-        hint_evap.setStyleSheet("color: inherit; font-style: italic;")
+        hint_evap.setStyleSheet("font-style: italic;")
         hint_evap.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(hint_evap, row, 2)
 
@@ -244,7 +244,7 @@ class RefrigerationCycleCalculator(QWidget):
         input_layout.addWidget(self.cond_temp_input, row, 1)
 
         hint_cond = QLabel("制冷剂冷凝温度")
-        hint_cond.setStyleSheet("color: inherit; font-style: italic;")
+        hint_cond.setStyleSheet("font-style: italic;")
         hint_cond.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(hint_cond, row, 2)
 
@@ -265,7 +265,7 @@ class RefrigerationCycleCalculator(QWidget):
         input_layout.addWidget(self.subcool_input, row, 1)
 
         self.subcool_hint = QLabel("仅实际循环")
-        self.subcool_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.subcool_hint.setStyleSheet("font-style: italic;")
         self.subcool_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.subcool_hint, row, 2)
 
@@ -286,7 +286,7 @@ class RefrigerationCycleCalculator(QWidget):
         input_layout.addWidget(self.superheat_input, row, 1)
 
         self.superheat_hint = QLabel("仅实际循环")
-        self.superheat_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.superheat_hint.setStyleSheet("font-style: italic;")
         self.superheat_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.superheat_hint, row, 2)
 
@@ -307,7 +307,7 @@ class RefrigerationCycleCalculator(QWidget):
         input_layout.addWidget(self.mass_flow_input, row, 1)
 
         hint_flow = QLabel("循环制冷剂流量")
-        hint_flow.setStyleSheet("color: inherit; font-style: italic;")
+        hint_flow.setStyleSheet("font-style: italic;")
         hint_flow.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(hint_flow, row, 2)
 
@@ -328,7 +328,7 @@ class RefrigerationCycleCalculator(QWidget):
         input_layout.addWidget(self.comp_eff_input, row, 1)
 
         hint_eff = QLabel("等熵效率")
-        hint_eff.setStyleSheet("color: inherit; font-style: italic;")
+        hint_eff.setStyleSheet("font-style: italic;")
         hint_eff.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(hint_eff, row, 2)
 

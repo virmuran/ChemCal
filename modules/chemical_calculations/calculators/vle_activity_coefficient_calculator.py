@@ -383,7 +383,7 @@ class VLEActivityCoefficientCalculator(QWidget):
         condition_layout.addWidget(self.model_selection, 2, 1)
 
         model_hint = QLabel("选择活度系数模型")
-        model_hint.setStyleSheet("color: inherit; font-style: italic;")
+        model_hint.setStyleSheet("font-style: italic;")
         model_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         condition_layout.addWidget(model_hint, 2, 2)
 
@@ -400,7 +400,7 @@ class VLEActivityCoefficientCalculator(QWidget):
         condition_layout.addWidget(self.calc_type, 3, 1)
 
         ctype_hint = QLabel("泡点/露点/闪蒸")
-        ctype_hint.setStyleSheet("color: inherit; font-style: italic;")
+        ctype_hint.setStyleSheet("font-style: italic;")
         ctype_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         condition_layout.addWidget(ctype_hint, 3, 2)
 
@@ -418,7 +418,7 @@ class VLEActivityCoefficientCalculator(QWidget):
         condition_layout.addWidget(self.component_count, 4, 1)
 
         comp_hint = QLabel("2~4组分体系")
-        comp_hint.setStyleSheet("color: inherit; font-style: italic;")
+        comp_hint.setStyleSheet("font-style: italic;")
         comp_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         condition_layout.addWidget(comp_hint, 4, 2)
 

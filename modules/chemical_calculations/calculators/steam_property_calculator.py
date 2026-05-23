@@ -452,7 +452,7 @@ class SteamPropertyCalculator(QWidget):
 
         # 干度说明
         self.dryness_hint = QLabel("干度=0:饱和水，干度=1:干饱和蒸汽")
-        self.dryness_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.dryness_hint.setStyleSheet("font-style: italic;")
         self.dryness_hint.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.dryness_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.dryness_hint, row, 2)

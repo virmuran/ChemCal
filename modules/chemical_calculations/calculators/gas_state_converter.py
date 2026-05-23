@@ -135,7 +135,7 @@ class 气体标态转压缩态(QWidget):
         
         # 流量输入不需要下拉，替换为提示标签
         self.flow_hint = QLabel("直接输入标准状态流量")
-        self.flow_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.flow_hint.setStyleSheet("font-style: italic;")
         self.flow_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.flow_hint, row, 2)
         
@@ -162,7 +162,7 @@ class 气体标态转压缩态(QWidget):
         
         # 标准状态提示标签
         self.standard_hint = QLabel("选择标准状态定义")
-        self.standard_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.standard_hint.setStyleSheet("font-style: italic;")
         self.standard_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.standard_hint, row, 2)
         
@@ -187,7 +187,7 @@ class 气体标态转压缩态(QWidget):
         
         # 标准温度提示
         self.std_temp_hint = QLabel("输入标准温度")
-        self.std_temp_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.std_temp_hint.setStyleSheet("font-style: italic;")
         self.std_temp_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         custom_layout.addWidget(self.std_temp_hint, 0, 2)
         
@@ -205,7 +205,7 @@ class 气体标态转压缩态(QWidget):
         
         # 标准压力提示
         self.std_pressure_hint = QLabel("输入标准压力")
-        self.std_pressure_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.std_pressure_hint.setStyleSheet("font-style: italic;")
         self.std_pressure_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         custom_layout.addWidget(self.std_pressure_hint, 1, 2)
         custom_layout.setColumnStretch(0, 4)
@@ -232,7 +232,7 @@ class 气体标态转压缩态(QWidget):
         
         # 压力输入不需要下拉，替换为提示标签
         self.pressure_hint = QLabel("直接输入实际压力值")
-        self.pressure_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.pressure_hint.setStyleSheet("font-style: italic;")
         self.pressure_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.pressure_hint, row, 2)
         
@@ -252,7 +252,7 @@ class 气体标态转压缩态(QWidget):
         
         # 温度输入不需要下拉，替换为提示标签
         self.temp_hint = QLabel("直接输入实际温度值")
-        self.temp_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.temp_hint.setStyleSheet("font-style: italic;")
         self.temp_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.temp_hint, row, 2)
         

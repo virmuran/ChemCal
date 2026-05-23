@@ -239,7 +239,7 @@ class SolidSolubilityCalculator(QWidget):
             "数据来源包括 CRC Handbook、Merck Index 等。"
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
+        desc.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(desc)
 
         # ── 查询条件组 ──

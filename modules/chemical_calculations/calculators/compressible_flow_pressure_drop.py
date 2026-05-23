@@ -96,7 +96,7 @@ class CompressibleFlowPressureDrop(QWidget):
             "可反算最大流量及阻塞流检测。"
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
+        desc.setStyleSheet("font-size: 12px; padding: 5px;")
         ll.addWidget(desc)
 
         def L(t):
@@ -107,7 +107,7 @@ class CompressibleFlowPressureDrop(QWidget):
 
         def H(t):
             l = QLabel(t)
-            l.setStyleSheet("color: inherit; font-style: italic;")
+            l.setStyleSheet("font-style: italic;")
             return l
 
         # ---- 流体性质 ----

@@ -248,7 +248,7 @@ class 设备尺寸计算(QWidget):
         # 说明
         desc = QLabel("计算设备的直径、高度、容积、重量等参数，支持正向/反向计算。")
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
+        desc.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(desc)
 
         # ----- 计算模式选择（按钮组）-----
@@ -320,7 +320,7 @@ class 设备尺寸计算(QWidget):
         self.fill_factor_input.setPlaceholderText("0.85")
         grid.addWidget(self.fill_factor_input, row, 1)
         self.fill_hint = QLabel("工作容积 / 几何容积")
-        self.fill_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.fill_hint.setStyleSheet("font-style: italic;")
         grid.addWidget(self.fill_hint, row, 2)
         row += 1
 
@@ -349,7 +349,7 @@ class 设备尺寸计算(QWidget):
         self.target_vol_input.setPlaceholderText("例如 10.0")
         grid.addWidget(self.target_vol_input, row, 1)
         self.target_vol_hint = QLabel("用户期望的工作容积")
-        self.target_vol_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.target_vol_hint.setStyleSheet("font-style: italic;")
         grid.addWidget(self.target_vol_hint, row, 2)
         row += 1
 
@@ -362,7 +362,7 @@ class 设备尺寸计算(QWidget):
         self.diameter_input.setPlaceholderText("例如 1000")
         grid.addWidget(self.diameter_input, row, 1)
         self.diameter_hint = QLabel("标准直径参考")
-        self.diameter_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.diameter_hint.setStyleSheet("font-style: italic;")
         grid.addWidget(self.diameter_hint, row, 2)
         row += 1
 
@@ -375,7 +375,7 @@ class 设备尺寸计算(QWidget):
         self.cyl_height_input.setPlaceholderText("例如 2000")
         grid.addWidget(self.cyl_height_input, row, 1)
         self.cyl_height_hint = QLabel("圆柱部分高度")
-        self.cyl_height_hint.setStyleSheet("color: inherit; font-style: italic;")
+        self.cyl_height_hint.setStyleSheet("font-style: italic;")
         grid.addWidget(self.cyl_height_hint, row, 2)
         row += 1
 
