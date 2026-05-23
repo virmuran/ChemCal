@@ -91,7 +91,7 @@ class 罐体重量(QWidget):
             "计算各种类型罐体的重量，包括空罐重量、液体重量和总重量。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
         # 2. 罐体类型选择

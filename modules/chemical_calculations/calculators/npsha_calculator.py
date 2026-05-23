@@ -85,7 +85,7 @@ class NPSHaCalculator(QWidget):
             "计算离心泵的可用汽蚀余量(NPSHa)，评估泵的汽蚀性能。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
         # 输入参数组 - 使用GridLayout实现整齐的布局

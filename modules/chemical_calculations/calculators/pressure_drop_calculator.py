@@ -189,7 +189,7 @@ class 压降计算(QWidget):
             "计算流体在管道中流动时的压力损失，支持不可压缩流体和可压缩流体计算。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
         # 2. 然后添加计算模式选择

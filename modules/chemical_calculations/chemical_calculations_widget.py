@@ -70,12 +70,12 @@ class ChemicalCalculationsWidget(QWidget):
         title_label = QLabel("工程计算")
         title_label.setFont(QFont("Arial", 16, QFont.Bold))
         title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: inherit; padding: 5px 0px 10px 0px;")
-        
+        title_label.setStyleSheet("font-size: 16px; font-weight: bold; padding: 5px 0px 10px 0px;")
+
         # 说明文本
         desc_label = QLabel("专业工程计算工具集\n逐步完善中...")
         desc_label.setAlignment(Qt.AlignCenter)
-        desc_label.setStyleSheet("color: inherit; font-size: 12px; margin: 0px;")
+        desc_label.setStyleSheet("font-size: 12px; margin: 0px;")
         desc_label.setWordWrap(True)
         
         left_layout.addWidget(title_label)

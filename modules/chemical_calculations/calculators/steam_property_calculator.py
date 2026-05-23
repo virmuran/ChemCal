@@ -177,7 +177,7 @@ class SteamPropertyCalculator(QWidget):
             "查询水蒸气在不同状态下的热力学性质，包括密度、比焓、比熵等。支持饱和状态和其他状态查询。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
         # 2. 查询模式选择

@@ -335,7 +335,7 @@ class 管径计算(QWidget):
             "根据流体类型和计算条件计算管道直径或流量，依据《化工管路设计手册》表1.3-1推荐值。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
         # 2. 计算模式选择

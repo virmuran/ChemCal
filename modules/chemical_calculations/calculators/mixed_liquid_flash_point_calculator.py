@@ -300,7 +300,7 @@ class MixedLiquidFlashPointCalculator(QWidget):
             "计算混合液体的闪点，支持多种计算方法。闪点是液体安全性评估的重要参数。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
         # 计算方法选择

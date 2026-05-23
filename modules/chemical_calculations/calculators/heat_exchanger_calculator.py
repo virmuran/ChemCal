@@ -190,7 +190,7 @@ class 换热器计算(QWidget):
             "换热器计算器 - 支持多种计算模式，包含流体比热容和传热系数选择，可用于热负荷、流量、温度等参数计算。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
         # 2. 计算模式选择

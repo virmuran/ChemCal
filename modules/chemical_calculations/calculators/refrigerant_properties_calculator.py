@@ -146,7 +146,7 @@ class RefrigerantPropertiesCalculator(QWidget):
             "基于 Peng-Robinson 状态方程 + Antoine 方程 + Rackett 方程，工业级精度。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
 
         # 2. 制冷剂选择组

@@ -242,7 +242,7 @@ class GasMixturePropertiesCalculator(QWidget):
             "支持 Lee-Kesler 压缩因子、Chapman-Enskog 粘度、Wilke 混合规则、NASA 比热多项式。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
 
         # 2. 计算条件组

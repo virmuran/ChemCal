@@ -98,7 +98,7 @@ class 管道壁厚(QWidget):
             "根据ASME B31.3等标准计算管道壁厚，支持MPa(g)表压单位，包含详细的焊接接头系数和材料数据库。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
         # 2. 计算标准选择

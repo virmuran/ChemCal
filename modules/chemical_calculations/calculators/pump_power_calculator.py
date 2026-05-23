@@ -126,7 +126,7 @@ class CentrifugalPumpCalculator(QWidget):
             "计算离心泵的轴功率、电机功率和效率，考虑流量、扬程、介质密度和泵效率。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
         # 输入参数组

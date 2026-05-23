@@ -126,7 +126,7 @@ class RefrigerationCycleCalculator(QWidget):
             "计算蒸汽压缩制冷循环的性能参数，包括制冷量、压缩功、COP等。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
 
         # ========== 循环类型选择组 ==========

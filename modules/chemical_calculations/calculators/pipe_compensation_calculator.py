@@ -183,7 +183,7 @@ class 管道补偿(QWidget):
             "计算管道热膨胀量和需要的补偿量，评估管道热应力，支持L形和Z形补偿计算。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
         # 2. 计算模式选择

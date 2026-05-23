@@ -94,7 +94,7 @@ class 气体标态转压缩态(QWidget):
             "将气体从标准状态(0°C, 101.325kPa)转换为实际状态(压缩状态)，用于工程设计和设备选型。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
         # 2. 输入参数组 - 使用GridLayout实现整齐的布局

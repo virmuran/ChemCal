@@ -183,7 +183,7 @@ class 管道跨距(QWidget):
             "计算管道在不同支撑条件下的最大允许跨距。考虑管道重量、流体重量和保温层重量。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
         # 2. 输入参数组 - 使用GridLayout实现整齐的布局

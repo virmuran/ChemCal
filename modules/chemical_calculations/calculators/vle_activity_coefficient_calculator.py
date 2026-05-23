@@ -319,7 +319,7 @@ class VLEActivityCoefficientCalculator(QWidget):
             "使用活度系数法计算多组分系统的气液平衡，支持 Wilson、NRTL、UNIQUAC 方程（纯 Python，无需 numpy/scipy）。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
 
         # 2. 计算条件组

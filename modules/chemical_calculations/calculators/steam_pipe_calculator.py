@@ -139,7 +139,7 @@ class 蒸汽管径流量(QWidget):
             "根据蒸汽压力、温度和流量计算推荐管径，或根据管径计算最大蒸汽流量。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
         # 2. 计算模式选择 - 使用按钮组

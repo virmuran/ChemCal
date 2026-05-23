@@ -79,7 +79,7 @@ class 篮式过滤器(QWidget):
             "篮式过滤器设计计算器 - 根据流体参数、工况条件和过滤要求，进行过滤器设计和压降计算。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
         # 流体介质参数组

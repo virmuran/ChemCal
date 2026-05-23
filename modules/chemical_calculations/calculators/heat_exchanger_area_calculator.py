@@ -233,7 +233,7 @@ class 换热器面积(QWidget):
             "基于《传热技术、设备与工业应用》原理，计算换热器传热面积，支持多种计算模式。"
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: inherit; font-size: 12px; padding: 5px;")
+        description.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
         # 2. 然后添加计算模式选择
