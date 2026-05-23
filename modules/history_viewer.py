@@ -50,7 +50,7 @@ class HistoryViewer(QWidget):
         # 标题
         title = QLabel("计算历史")
         title.setFont(QFont("Arial", 14, QFont.Bold))
-        title.setStyleSheet("color: #2c3e50; padding: 5px 0;")
+        title.setStyleSheet("font-weight: bold; padding: 5px 0;")
         left_layout.addWidget(title)
 
         # 搜索框
@@ -60,7 +60,7 @@ class HistoryViewer(QWidget):
         self.search_edit.textChanged.connect(self._on_search_changed)
         self.search_edit.setStyleSheet("""
             QLineEdit {
-                border: 1px solid #bdc3c7;
+                border: 1px solid #666;
                 border-radius: 6px;
                 padding: 0 10px;
                 font-size: 13px;
@@ -75,7 +75,7 @@ class HistoryViewer(QWidget):
         self.calc_filter.currentIndexChanged.connect(self._on_filter_changed)
         self.calc_filter.setStyleSheet("""
             QComboBox {
-                border: 1px solid #bdc3c7;
+                border: 1px solid #666;
                 border-radius: 6px;
                 padding: 0 10px;
                 font-size: 13px;
@@ -85,42 +85,15 @@ class HistoryViewer(QWidget):
 
         # 历史列表
         self.history_list = QListWidget()
+        self.history_list.setObjectName("historyList")
         self.history_list.setAlternatingRowColors(True)
         self.history_list.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.history_list.itemClicked.connect(self._on_item_clicked)
-        self.history_list.setStyleSheet("""
-            QListWidget {
-                border: 1px solid #dee2e6;
-                border-radius: 6px;
-                font-size: 13px;
-            }
-            QListWidget::item {
-                padding: 8px;
-                border-bottom: 1px solid #f1f3f4;
-                /* background via theme */
-                /* color via theme */
-            }
-            QListWidget::item:alternate {
-                background: #f8f9fa;
-                /* color via theme */
-            }
-            QListWidget::item:selected {
-                background: #3498db;
-                color: white;
-            }
-            QListWidget::item:alternate:selected {
-                background: #3498db;
-                color: white;
-            }
-            QListWidget::item:hover:!selected {
-                background: #e3f2fd;
-            }
-        """)
         left_layout.addWidget(self.history_list, 1)
 
         # 分页信息
         self.page_label = QLabel("共 0 条记录")
-        self.page_label.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 4px;")
+        self.page_label.setStyleSheet("font-size: 12px; padding: 4px;")
         left_layout.addWidget(self.page_label)
 
         # 右侧：详情
@@ -131,20 +104,12 @@ class HistoryViewer(QWidget):
 
         detail_title = QLabel("记录详情")
         detail_title.setFont(QFont("Arial", 14, QFont.Bold))
-        detail_title.setStyleSheet("color: #2c3e50; padding: 5px 0;")
+        detail_title.setStyleSheet("font-weight: bold; padding: 5px 0;")
         right_layout.addWidget(detail_title)
 
         self.detail_text = QTextEdit()
         self.detail_text.setReadOnly(True)
-        self.detail_text.setStyleSheet("""
-            QTextEdit {
-                border: 1px solid #dee2e6;
-                border-radius: 6px;
-                font-size: 13px;
-                padding: 8px;
-                background: #f8f9fa;
-            }
-        """)
+        self.detail_text.setObjectName("historyDetailText")
         right_layout.addWidget(self.detail_text, 1)
 
         # 操作按钮

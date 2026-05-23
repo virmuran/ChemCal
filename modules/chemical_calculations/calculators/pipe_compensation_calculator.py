@@ -208,7 +208,7 @@ class 管道补偿(QWidget):
             btn.setStyleSheet("""
                 QPushButton {
                     /* unselected bg via theme */
-                    border: 1px solid #888;
+                    border: 1px solid #666;
                     border-radius: 4px;
                     padding: 8px;
                     text-align: center;
@@ -592,7 +592,7 @@ class 管道补偿(QWidget):
         self.result_text.setReadOnly(True)
         self.result_text.setStyleSheet("""
             QTextEdit {
-                border: 1px solid #ecf0f1;
+                border: 1px solid #666;
                 border-radius: 6px;
                 padding: 8px;
                 /* bg via theme */min-height: 500px;

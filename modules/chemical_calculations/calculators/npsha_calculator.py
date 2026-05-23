@@ -365,7 +365,7 @@ class NPSHaCalculator(QWidget):
         self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet("""
             QTextEdit {
-                border: 1px solid #ecf0f1;
+                border: 1px solid #666;
                 border-radius: 6px;
                 padding: 8px;
                 /* bg via theme */min-height: 500px;

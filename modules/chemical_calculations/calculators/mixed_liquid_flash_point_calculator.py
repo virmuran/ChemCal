@@ -308,7 +308,7 @@ class MixedLiquidFlashPointCalculator(QWidget):
         method_group.setStyleSheet("""
             QGroupBox {
                 font-weight: bold;
-                border: 1px solid #888;
+                border: 1px solid #666;
                 border-radius: 8px;
                 margin-top: 10px;
                 padding-top: 10px;
@@ -340,7 +340,7 @@ class MixedLiquidFlashPointCalculator(QWidget):
         components_group.setStyleSheet("""
             QGroupBox {
                 font-weight: bold;
-                border: 1px solid #888;
+                border: 1px solid #666;
                 border-radius: 8px;
                 margin-top: 10px;
                 padding-top: 10px;
@@ -447,7 +447,7 @@ class MixedLiquidFlashPointCalculator(QWidget):
         self.result_group.setStyleSheet("""
             QGroupBox {
                 font-weight: bold;
-                border: 1px solid #888;
+                border: 1px solid #666;
                 border-radius: 8px;
                 margin-top: 10px;
                 padding-top: 10px;
@@ -465,7 +465,7 @@ class MixedLiquidFlashPointCalculator(QWidget):
         self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet("""
             QTextEdit {
-                border: 1px solid #ecf0f1;
+                border: 1px solid #666;
                 border-radius: 6px;
                 padding: 8px;
                 /* bg via theme */min-height: 500px;

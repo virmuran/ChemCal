@@ -151,7 +151,7 @@ class RefrigerationCycleCalculator(QWidget):
             btn.setStyleSheet("""
                 QPushButton {
                     /* unselected bg via theme */
-                    border: 1px solid #888;
+                    border: 1px solid #666;
                     border-radius: 4px;
                     padding: 8px;
                     /* color via theme */

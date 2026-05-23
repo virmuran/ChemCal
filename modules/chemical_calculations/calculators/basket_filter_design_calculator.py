@@ -157,7 +157,7 @@ class 篮式过滤器(QWidget):
         group.setStyleSheet("""
             QGroupBox {
                 font-weight: bold;
-                border: 1px solid #888;
+                border: 1px solid #666;
                 border-radius: 8px;
                 margin-top: 10px;
                 padding-top: 10px;
@@ -341,23 +341,23 @@ class 篮式过滤器(QWidget):
         tabs = QTabWidget()
         tabs.setStyleSheet("""
             QTabWidget::pane {
-                border: 1px solid #888;
+                border: 1px solid #666;
                 border-radius: 8px;
                 /* background via theme */
             }
             QTabBar::tab {
-                background: #ecf0f1;
+                /* bg via theme */
                 padding: 8px 16px;
                 margin-right: 2px;
                 border-radius: 4px;
             }
             QTabBar::tab:selected {
-                background: #3498db;
-                color: white;
+                /* bg via theme */
+                /* color via theme */
                 font-weight: bold;
             }
             QTabBar::tab:hover:!selected {
-                background: #bdc3c7;
+                /* bg via theme */
             }
         """)
         
@@ -369,7 +369,7 @@ class 篮式过滤器(QWidget):
         self.result_text.setReadOnly(True)
         self.result_text.setStyleSheet("""
             QTextEdit {
-                border: 1px solid #ecf0f1;
+                border: 1px solid #666;
                 border-radius: 6px;
                 padding: 8px;
                 /* bg via theme */}
@@ -385,7 +385,7 @@ class 篮式过滤器(QWidget):
         self.selection_text.setReadOnly(True)
         self.selection_text.setStyleSheet("""
             QTextEdit {
-                border: 1px solid #ecf0f1;
+                border: 1px solid #666;
                 border-radius: 6px;
                 padding: 8px;
                 /* bg via theme */}

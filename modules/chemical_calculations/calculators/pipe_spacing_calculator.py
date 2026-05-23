@@ -216,8 +216,8 @@ class 管道间距(QWidget):
         self.result_main_label.setFont(QFont("Arial", 14, QFont.Bold))
         self.result_main_label.setAlignment(Qt.AlignCenter)
         self.result_main_label.setStyleSheet("""
-            color: #27ae60;
-            background-color: #f8f9fa;
+            /* color via theme */
+            /* bg via theme */
             padding: 15px;
             border-radius: 8px;
             border: 2px solid #27ae60;
@@ -230,7 +230,7 @@ class 管道间距(QWidget):
             /* color via theme */
             font-size: 13px;
             padding: 10px;
-            background-color: #f8f9fa;
+            /* bg via theme */
             border-radius: 5px;
         """)
         self.result_detail_label.setWordWrap(True)

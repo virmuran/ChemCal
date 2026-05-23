@@ -70,41 +70,11 @@ class ConverterWidget(QWidget):
         # 创建左侧导航列表
         self.nav_list = QListWidget()
         self.nav_list.setFixedWidth(130)
-        self.nav_list.setStyleSheet("""
-            QListWidget {
-                background-color: #f0f0f0;
-                border: none;
-                border-right: 1px solid #c0c0c0;
-                outline: none;
-                font-size: 13px;
-            }
-            QListWidget::item {
-                height: 35px;
-                border: none;
-                padding-left: 15px;
-                color: #333333;
-                border-bottom: 1px solid #e0e0e0;
-            }
-            QListWidget::item:selected {
-                background-color: #ffffff;
-                color: #000000;
-                font-weight: bold;
-                border-left: 4px solid #4a6fa5;
-                border-bottom: 1px solid #e0e0e0;
-            }
-            QListWidget::item:hover:!selected {
-                background-color: #e8e8e8;
-            }
-        """)
+        self.nav_list.setObjectName("converterNavList")  # 样式由主题 QSS 提供
         
         # 创建右侧内容区域
         self.content_stack = QStackedWidget()
-        self.content_stack.setStyleSheet("""
-            QStackedWidget {
-                background-color: #ffffff;
-                border: none;
-            }
-        """)
+        self.content_stack.setObjectName("converterContentStack")  # 样式由主题 QSS 提供
         
         # 添加导航项和对应的页面
         self.pages = []

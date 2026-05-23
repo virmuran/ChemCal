@@ -135,7 +135,7 @@ class InsulationThicknessCalculator(QWidget):
                 QPushButton {
                     /* unselected bg via theme */
                     /* color via theme */
-                    border: 1px solid #888;
+                    border: 1px solid #666;
                     border-radius: 6px;
                     padding: 7px 4px;
                     font-size: 12px;

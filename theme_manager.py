@@ -138,7 +138,7 @@ class ThemeManager(QObject):
             background-color: #e8edf2;
         }
 
-        /* 列表和树状视图 */
+        /* 列表和树状视图 (light) */
         QListWidget, QTreeWidget {
             border: 1px solid #d1d5db;
             border-radius: 6px;
@@ -151,8 +151,63 @@ class ThemeManager(QObject):
             background-color: #4a6fa5;
             color: white;
         }
-        
-        /* 菜单栏 */
+
+        /* ======== 框架控件（objectName 驱动） ======== */
+        QListWidget#calcNavList {
+            border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px;
+            padding: 5px 0px; background-color: #f8f9fa; color: #374151;
+        }
+        QListWidget#calcNavList::item {
+            height: 40px; padding-left: 15px; border-bottom: 1px solid #e9ecef;
+            margin: 2px 8px; border-radius: 6px; color: #495057;
+        }
+        QListWidget#calcNavList::item:selected {
+            background-color: #3498db; color: white; font-weight: bold;
+            border-left: 4px solid #2980b9; border-bottom: 1px solid #2980b9;
+        }
+        QListWidget#calcNavList::item:hover:!selected {
+            background-color: #e9ecef; color: #212529;
+        }
+        QStackedWidget#calcContentStack {
+            background-color: #ffffff; border: 1px solid #d1d5db;
+            border-radius: 8px; margin-left: 10px;
+        }
+        QListWidget#converterNavList {
+            border: none; border-right: 1px solid #dee2e6; font-size: 13px;
+            background-color: #f8f9fa; color: #374151;
+        }
+        QListWidget#converterNavList::item {
+            height: 35px; padding-left: 15px; border-bottom: 1px solid #e9ecef; color: #495057;
+        }
+        QListWidget#converterNavList::item:selected {
+            background-color: #4a6fa5; color: white; font-weight: bold;
+            border-left: 4px solid #3a5f95; border-bottom: 1px solid #e9ecef;
+        }
+        QListWidget#converterNavList::item:hover:!selected {
+            background-color: #e9ecef;
+        }
+        QStackedWidget#converterContentStack {
+            background-color: #ffffff; border: none;
+        }
+        QListWidget#historyList {
+            border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px;
+            background-color: #ffffff; color: #374151;
+        }
+        QListWidget#historyList::item {
+            padding: 8px; border-bottom: 1px solid #f1f3f4;
+        }
+        QListWidget#historyList::item:selected {
+            background-color: #4a6fa5; color: white;
+        }
+        QListWidget#historyList::item:hover:!selected {
+            background-color: #e9ecef;
+        }
+        QTextEdit#historyDetailText {
+            border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px;
+            padding: 8px; background-color: #ffffff; color: #374151;
+        }
+
+        /* 菜单栏 (light) */
         QMenuBar {
             background-color: white;
             border-bottom: 1px solid #e5e7eb;
@@ -337,8 +392,97 @@ class ThemeManager(QObject):
             background-color: #4a6fa5;
             color: white;
         }
-        
-        /* 菜单栏 */
+
+        /* ======== 框架控件（objectName 驱动） ======== */
+
+        /* 工程计算-左侧导航 */
+        QListWidget#calcNavList {
+            border: 1px solid #555;
+            border-radius: 8px;
+            font-size: 13px;
+            padding: 5px 0px;
+            background-color: #2d2d2d;
+            color: #e0e0e0;
+        }
+        QListWidget#calcNavList::item {
+            height: 40px;
+            padding-left: 15px;
+            border-bottom: 1px solid #444;
+            margin: 2px 8px;
+            border-radius: 6px;
+            color: #e0e0e0;
+        }
+        QListWidget#calcNavList::item:selected {
+            background-color: #3498db;
+            color: white;
+            font-weight: bold;
+            border-left: 4px solid #2980b9;
+            border-bottom: 1px solid #2980b9;
+        }
+        QListWidget#calcNavList::item:hover:!selected {
+            background-color: #3a3a3a;
+            color: #ffffff;
+        }
+
+        /* 工程计算-右侧内容 */
+        QStackedWidget#calcContentStack {
+            background-color: #2d2d2d;
+            border: 1px solid #555;
+            border-radius: 8px;
+            margin-left: 10px;
+        }
+
+        /* 换算器-左侧导航 */
+        QListWidget#converterNavList {
+            border: none;
+            border-right: 1px solid #555;
+            font-size: 13px;
+            background-color: #2d2d2d;
+            color: #e0e0e0;
+        }
+        QListWidget#converterNavList::item {
+            height: 35px;
+            padding-left: 15px;
+            border-bottom: 1px solid #444;
+            color: #e0e0e0;
+        }
+        QListWidget#converterNavList::item:selected {
+            background-color: #4a6fa5;
+            color: white;
+            font-weight: bold;
+            border-left: 4px solid #5a8fc5;
+            border-bottom: 1px solid #444;
+        }
+        QListWidget#converterNavList::item:hover:!selected {
+            background-color: #3a3a3a;
+        }
+
+        /* 换算器-右侧内容 */
+        QStackedWidget#converterContentStack {
+            background-color: #2d2d2d;
+            border: none;
+        }
+
+        /* 计算历史 */
+        QListWidget#historyList {
+            border: 1px solid #555; border-radius: 6px; font-size: 13px;
+            background-color: #2d2d2d; color: #e0e0e0;
+        }
+        QListWidget#historyList::item {
+            padding: 8px; border-bottom: 1px solid #444;
+        }
+        QListWidget#historyList::item:selected {
+            background-color: #4a6fa5; color: white;
+        }
+        QListWidget#historyList::item:hover:!selected {
+            background-color: #3a3a3a;
+        }
+        QTextEdit#historyDetailText {
+            border: 1px solid #555; border-radius: 6px; font-size: 13px;
+            padding: 8px; background-color: #2d2d2d; color: #e0e0e0;
+        }
+
+        /* ======== 菜单栏 ======== */
         QMenuBar {
             background-color: #2d2d2d;
             border-bottom: 1px solid #444;
@@ -509,7 +653,7 @@ class ThemeManager(QObject):
             background-color: #ebf4ff;
         }
 
-        /* 列表和树状视图 */
+        /* 列表和树状视图 (blue) */
         QListWidget, QTreeWidget {
             border: 1px solid #bee3f8;
             border-radius: 6px;
@@ -522,8 +666,65 @@ class ThemeManager(QObject):
             background-color: #3182ce;
             color: white;
         }
-        
-        /* 菜单栏 */
+
+        /* ======== 框架控件（objectName 驱动） ======== */
+        QListWidget#calcNavList {
+            border: 1px solid #bee3f8; border-radius: 8px; font-size: 13px;
+            padding: 5px 0px; background-color: #f0f7ff; color: #2d3748;
+        }
+        QListWidget#calcNavList::item {
+            height: 40px; padding-left: 15px; border-bottom: 1px solid #c8ddf0;
+            margin: 2px 8px; border-radius: 6px; color: #2d3748;
+        }
+        QListWidget#calcNavList::item:selected {
+            background-color: #3182ce; color: white; font-weight: bold;
+            border-left: 4px solid #2c5282; border-bottom: 1px solid #2c5282;
+        }
+        QListWidget#calcNavList::item:hover:!selected {
+            background-color: #d8e8f8; color: #1a365d;
+        }
+        QStackedWidget#calcContentStack {
+            background-color: #ffffff; border: 1px solid #bee3f8;
+            border-radius: 8px; margin-left: 10px;
+        }
+        QListWidget#converterNavList {
+            border: none; border-right: 1px solid #bee3f8; font-size: 13px;
+            background-color: #f0f7ff; color: #2d3748;
+        }
+        QListWidget#converterNavList::item {
+            height: 35px; padding-left: 15px; border-bottom: 1px solid #c8ddf0; color: #2d3748;
+        }
+        QListWidget#converterNavList::item:selected {
+            background-color: #3182ce; color: white; font-weight: bold;
+            border-left: 4px solid #2c5282; border-bottom: 1px solid #c8ddf0;
+        }
+        QListWidget#converterNavList::item:hover:!selected {
+            background-color: #d8e8f8;
+        }
+        QStackedWidget#converterContentStack {
+            background-color: #ffffff; border: none;
+        }
+
+        /* 计算历史 (blue) */
+        QListWidget#historyList {
+            border: 1px solid #bee3f8; border-radius: 6px; font-size: 13px;
+            background-color: #ffffff; color: #2d3748;
+        }
+        QListWidget#historyList::item {
+            padding: 8px; border-bottom: 1px solid #c8ddf0;
+        }
+        QListWidget#historyList::item:selected {
+            background-color: #3182ce; color: white;
+        }
+        QListWidget#historyList::item:hover:!selected {
+            background-color: #d8e8f8;
+        }
+        QTextEdit#historyDetailText {
+            border: 1px solid #bee3f8; border-radius: 6px; font-size: 13px;
+            padding: 8px; background-color: #ffffff; color: #2d3748;
+        }
+
+        /* 菜单栏 (blue) */
         QMenuBar {
             background-color: white;
             border-bottom: 1px solid #bee3f8;

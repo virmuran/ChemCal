@@ -224,7 +224,7 @@ class 换热器计算(QWidget):
         self.mode_combo.setStyleSheet("""
             QComboBox {
                 padding: 6px;
-                border: 1px solid #888;
+                border: 1px solid #666;
                 border-radius: 4px;
                 /* background-color via theme */
                 min-width: 350px;
@@ -362,7 +362,7 @@ class 换热器计算(QWidget):
         self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet("""
             QTextEdit {
-                border: 1px solid #ecf0f1;
+                border: 1px solid #666;
                 border-radius: 6px;
                 padding: 8px;
                 /* bg via theme */min-height: 500px;

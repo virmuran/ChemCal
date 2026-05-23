@@ -430,7 +430,7 @@ class 管道跨距(QWidget):
         self.result_text.setReadOnly(True)
         self.result_text.setStyleSheet("""
             QTextEdit {
-                border: 1px solid #ecf0f1;
+                border: 1px solid #666;
                 border-radius: 6px;
                 padding: 8px;
                 /* bg via theme */min-height: 500px;

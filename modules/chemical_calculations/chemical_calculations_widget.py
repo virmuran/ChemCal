@@ -48,47 +48,11 @@ class ChemicalCalculationsWidget(QWidget):
         # 创建左侧导航列表
         self.nav_list = QListWidget()
         self.nav_list.setFixedWidth(220)
-        self.nav_list.setStyleSheet("""
-            QListWidget {
-                background-color: #f8f9fa;
-                border: 1px solid #dee2e6;
-                border-radius: 8px;
-                outline: none;
-                font-size: 13px;
-                padding: 5px 0px;
-            }
-            QListWidget::item {
-                height: 40px;
-                border: none;
-                padding-left: 15px;
-                color: #495057;
-                border-bottom: 1px solid #e9ecef;
-                margin: 2px 8px;
-                border-radius: 6px;
-            }
-            QListWidget::item:selected {
-                background-color: #3498db;
-                color: white;
-                font-weight: bold;
-                border-left: 4px solid #2980b9;
-                border-bottom: 1px solid #2980b9;
-            }
-            QListWidget::item:hover:!selected {
-                background-color: #e9ecef;
-                color: #212529;
-            }
-        """)
+        self.nav_list.setObjectName("calcNavList")  # 样式由主题 QSS 提供
         
         # 创建右侧内容区域
         self.content_stack = QStackedWidget()
-        self.content_stack.setStyleSheet("""
-            QStackedWidget {
-                background-color: #ffffff;
-                border: 1px solid #dee2e6;
-                border-radius: 8px;
-                margin-left: 10px;
-            }
-        """)
+        self.content_stack.setObjectName("calcContentStack")  # 样式由主题 QSS 提供
         
         # 添加导航项和对应的页面
         self.add_calculator_pages()
@@ -106,12 +70,12 @@ class ChemicalCalculationsWidget(QWidget):
         title_label = QLabel("工程计算")
         title_label.setFont(QFont("Arial", 16, QFont.Bold))
         title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("color: #2c3e50; margin: 0px; padding: 10px;")
+        title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: inherit; padding: 5px 0px 10px 0px;")
         
         # 说明文本
         desc_label = QLabel("专业工程计算工具集\n逐步完善中...")
         desc_label.setAlignment(Qt.AlignCenter)
-        desc_label.setStyleSheet("color: #7f8c8d; font-size: 12px; margin: 0px;")
+        desc_label.setStyleSheet("color: inherit; font-size: 12px; margin: 0px;")
         desc_label.setWordWrap(True)
         
         left_layout.addWidget(title_label)
@@ -247,7 +211,7 @@ class ChemicalCalculationsWidget(QWidget):
         
         desc_label = QLabel("该计算器正在开发中...\n敬请期待！")
         desc_label.setAlignment(Qt.AlignCenter)
-        desc_label.setStyleSheet("color: #7f8c8d; font-size: 14px; padding: 10px;")
+        desc_label.setStyleSheet("color: inherit; font-size: 14px; padding: 10px;")
         layout.addWidget(desc_label)
         
         return widget
@@ -259,7 +223,7 @@ class ChemicalCalculationsWidget(QWidget):
         
         title_label = QLabel("工程计算模块")
         title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #2c3e50; padding: 30px;")
+        title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: inherit; padding: 30px;")
         layout.addWidget(title_label)
         
         desc_label = QLabel(
@@ -271,7 +235,7 @@ class ChemicalCalculationsWidget(QWidget):
             "• 模块导入路径是否正确"
         )
         desc_label.setAlignment(Qt.AlignCenter)
-        desc_label.setStyleSheet("color: #7f8c8d; font-size: 14px; padding: 20px;")
+        desc_label.setStyleSheet("color: inherit; font-size: 14px; padding: 20px;")
         desc_label.setWordWrap(True)
         layout.addWidget(desc_label)
         
