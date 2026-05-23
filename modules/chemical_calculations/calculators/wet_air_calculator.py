@@ -31,7 +31,7 @@ COMBOBOX_STYLE = """
     }
 """
 
-LINEEDIT_STYLE = "padding: 6px 10px; border: 1px solid #888; border-radius: 4px; background-color: white;"
+LINEEDIT_STYLE = "padding: 6px 10px; border: 1px solid #888; border-radius: 4px;"
 
 class WetAirCalculator(QWidget):
     """湿空气计算器"""

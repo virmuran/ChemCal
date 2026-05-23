@@ -138,7 +138,7 @@ class ThemeManager(QObject):
             background-color: #e8edf2;
         }
 
-        /* 列表和树状视图 (light) */
+        /* 列表和树状视图 */
         QListWidget, QTreeWidget {
             border: 1px solid #d1d5db;
             border-radius: 6px;
@@ -146,8 +146,30 @@ class ThemeManager(QObject):
             alternate-background-color: #f8f9fa;
             color: #374151;
         }
-        
+
         QListWidget::item:selected, QTreeWidget::item:selected {
+            background-color: #4a6fa5;
+            color: white;
+        }
+
+        /* 表格样式 */
+        QTableWidget {
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background-color: white;
+            alternate-background-color: #f8f9fa;
+            color: #374151;
+        }
+
+        QHeaderView::section {
+            background-color: #f8f9fa;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            padding: 5px;
+            font-weight: bold;
+        }
+
+        QTableWidget::item:selected {
             background-color: #4a6fa5;
             color: white;
         }
@@ -387,8 +409,30 @@ class ThemeManager(QObject):
             alternate-background-color: #3a3a3a;
             color: #e0e0e0;
         }
-        
+
         QListWidget::item:selected, QTreeWidget::item:selected {
+            background-color: #4a6fa5;
+            color: white;
+        }
+
+        /* 表格样式 */
+        QTableWidget {
+            border: 1px solid #555;
+            border-radius: 6px;
+            background-color: #333;
+            alternate-background-color: #3a3a3a;
+            color: #e0e0e0;
+        }
+
+        QHeaderView::section {
+            background-color: #3a3a3a;
+            color: #e0e0e0;
+            border: 1px solid #555;
+            padding: 5px;
+            font-weight: bold;
+        }
+
+        QTableWidget::item:selected {
             background-color: #4a6fa5;
             color: white;
         }
@@ -661,8 +705,30 @@ class ThemeManager(QObject):
             alternate-background-color: #f7fafc;
             color: #2d3748;
         }
-        
+
         QListWidget::item:selected, QTreeWidget::item:selected {
+            background-color: #3182ce;
+            color: white;
+        }
+
+        /* 表格样式 */
+        QTableWidget {
+            border: 1px solid #bee3f8;
+            border-radius: 6px;
+            background-color: white;
+            alternate-background-color: #f7fafc;
+            color: #2d3748;
+        }
+
+        QHeaderView::section {
+            background-color: #f7fafc;
+            color: #2d3748;
+            border: 1px solid #bee3f8;
+            padding: 5px;
+            font-weight: bold;
+        }
+
+        QTableWidget::item:selected {
             background-color: #3182ce;
             color: white;
         }

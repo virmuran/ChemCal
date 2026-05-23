@@ -62,7 +62,7 @@ COMBOBOX_STYLE = """
     }
 """
 
-LINEEDIT_STYLE = "padding: 6px 10px; border: 1px solid #888; border-radius: 4px; background-color: white;"
+LINEEDIT_STYLE = "padding: 6px 10px; border: 1px solid #888; border-radius: 4px;"
 
 # 制冷剂数据库
 REFRIGERANT_DB = {

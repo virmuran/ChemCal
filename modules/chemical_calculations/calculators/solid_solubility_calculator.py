@@ -253,7 +253,7 @@ class SolidSolubilityCalculator(QWidget):
         grid.setColumnStretch(2, 5)
 
         label_style = "font-weight: bold; padding-right: 10px;"
-        hint_style = "color: inherit; font-style: italic;"
+        hint_style = "font-style: italic;"
 
         def make_lbl(text):
             lbl = QLabel(text)
