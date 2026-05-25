@@ -1,5 +1,5 @@
 # ================================
-# CalcE 项目专用 .gitignore 文件
+# ChemCal 项目专用 .gitignore 文件
 # ================================
 
 # Python 字节码和缓存文件
@@ -30,8 +30,8 @@ Thumbs.db
 desktop.ini
 
 # 项目特定的可执行文件和打包文件
-CalcE.exe
+ChemCal.exe
 *.exe
 
 # 用户数据文件（本地存储的用户数据，不上传）
-CalcE_data.json
+ChemCal_data.json

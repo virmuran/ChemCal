@@ -4,7 +4,7 @@
 - faulthandler: 在 C 级段错误时输出 Python traceback
 - sys.excepthook: 捕获所有未处理的 Python 异常
 - SafeApplication: 自定义 QApplication，捕获 Qt 事件处理链中的异常
-- 自动保存崩溃日志到 ~/.calce/crashes/
+- 自动保存崩溃日志到 ~/.ChemCal/crashes/
 """
 
 import sys
@@ -14,7 +14,7 @@ import faulthandler
 from datetime import datetime
 
 # ── 1. 启用 faulthandler（段错误时输出 traceback 到 stderr 和崩溃日志） ──
-_CRASH_DIR = os.path.join(os.path.expanduser("~"), ".calce", "crashes")
+_CRASH_DIR = os.path.join(os.path.expanduser("~"), ".ChemCal", "crashes")
 os.makedirs(_CRASH_DIR, exist_ok=True)
 
 # 将 faulthandler 输出定向到崩溃日志文件

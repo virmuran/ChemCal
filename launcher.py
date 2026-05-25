@@ -33,7 +33,7 @@ from datetime import datetime, timedelta
 # ── 配置 ──
 MAX_RESTARTS = 3          # 5分钟内最多重启次数
 WINDOW_SECONDS = 300      # 时间窗口（秒）
-CRASH_DIR = os.path.join(os.path.expanduser("~"), ".calce", "crashes")
+CRASH_DIR = os.path.join(os.path.expanduser("~"), ".ChemCal", "crashes")
 
 # ── Windows API 消息框 ──
 MB_OK = 0
@@ -137,7 +137,7 @@ def run_watchdog():
                 f"已停止自动重启。\n\n"
                 f"请尝试：\n"
                 f"1. 更新 ChemCal 到最新版本\n"
-                f"2. 检查 ~/.calce/crashes/ 中的崩溃日志\n"
+                f"2. 检查 ~/.ChemCal/crashes/ 中的崩溃日志\n"
                 f"3. 联系开发者 virmuran@163.com"
             )
             _win_message_box(msg, "ChemCal 连续崩溃", MB_ICONERROR)

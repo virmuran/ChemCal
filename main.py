@@ -28,10 +28,10 @@ from theme_manager import ThemeManager
 from module_loader import ModuleLoader
 
 # 配置日志：输出到控制台 + 写入文件
-_log_dir = os.path.join(os.path.expanduser("~"), ".calce", "logs")
+_log_dir = os.path.join(os.path.expanduser("~"), ".ChemCal", "logs")
 os.makedirs(_log_dir, exist_ok=True)
 logger.add(
-    os.path.join(_log_dir, "calce_{time:YYYY-MM-DD}.log"),
+    os.path.join(_log_dir, "ChemCal_{time:YYYY-MM-DD}.log"),
     rotation="1 day",
     retention="7 days",
     encoding="utf-8",
@@ -281,7 +281,7 @@ class ChemCal(QMainWindow):
 - 顶部标签页切换功能模块<br>
 - 菜单「主题」切换亮/暗/蓝三套主题，自动保存<br>
 - 菜单「文件→备份数据」备份 JSON 数据文件<br>
-- 数据自动保存在 <code>~/.calce/</code> 目录<br><br>
+- 数据自动保存在 <code>~/.ChemCal/</code> 目录<br><br>
 
 <b>工程计算使用：</b><br>
 1. 选择计算类别（左侧列表）<br>
@@ -291,7 +291,7 @@ class ChemCal(QMainWindow):
 
 <b>数据安全：</b><br>
 - 所有数据仅本地存储，不上传任何服务器<br>
-- 日志保存在 <code>~/.calce/logs/</code>，保留 7 天<br><br>
+- 日志保存在 <code>~/.ChemCal/logs/</code>，保留 7 天<br><br>
 
 <b>联系方式：</b> virmuran@163.com"""
         self._show_scrollable_dialog("用户手册", text)
@@ -366,9 +366,9 @@ A: 结果仅供参考，实际工程须由专业工程师审核确认。<br><br>
         self._show_scrollable_dialog("系统信息", text)
 
     def _show_logs(self):
-        log_dir = os.path.join(os.path.expanduser("~"), ".calce", "logs")
+        log_dir = os.path.join(os.path.expanduser("~"), ".ChemCal", "logs")
         today = datetime.now().strftime("%Y-%m-%d")
-        log_file = os.path.join(log_dir, f"calce_{today}.log")
+        log_file = os.path.join(log_dir, f"ChemCal_{today}.log")
 
         status_lines = "".join(
             f"- {name}：{'已加载' if ok else '加载失败'}<br>" for name, ok in self._module_status.items()
