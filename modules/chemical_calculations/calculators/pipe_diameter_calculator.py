@@ -200,9 +200,9 @@ class 管径计算(QWidget):
             "P>0.8MPa": {"velocity": (1.2, 3.5), "flow": (0, 0), "pressure": (0.8, 10), "flow_unit": "m³/h"}
         }
         
-        # 蒸汽冷凝水
-        self.fluid_ranges["蒸汽冷凝水"] = {
-            "蒸汽冷凝水": {"velocity": (0.5, 1.5), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "m³/h"}
+        # 蒸汽冷凝液
+        self.fluid_ranges["蒸汽冷凝液"] = {
+            "蒸汽冷凝液": {"velocity": (0.5, 1.5), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "m³/h"}
         }
         
         # 冷凝水
@@ -306,6 +306,50 @@ class 管径计算(QWidget):
         # 三氯乙烷
         self.fluid_ranges["三氯乙烷"] = {
             "三氯乙烷": {"velocity": (2, 2), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "m³/h"}
+        }
+
+        # 氯仿
+        self.fluid_ranges["氯仿"] = {
+            "液体": {"velocity": (1.5, 2.0), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "m³/h"}
+        }
+
+        # 氯化氢
+        self.fluid_ranges["氯化氢"] = {
+            "气体": {"velocity": (10, 15), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "Nm³/h"}
+        }
+
+        # 溴
+        self.fluid_ranges["溴"] = {
+            "液体": {"velocity": (1.0, 1.5), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "m³/h"}
+        }
+
+        # 氯化甲烷
+        self.fluid_ranges["氯化甲烷"] = {
+            "气体": {"velocity": (10, 15), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "Nm³/h"},
+            "液体": {"velocity": (1.5, 2.0), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "m³/h"}
+        }
+
+        # 氯乙烷
+        self.fluid_ranges["氯乙烷"] = {
+            "气体": {"velocity": (10, 15), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "Nm³/h"},
+            "液体": {"velocity": (1.5, 2.0), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "m³/h"}
+        }
+
+        # 气体（通用）
+        self.fluid_ranges["气体"] = {
+            "一般": {"velocity": (10, 20), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "Nm³/h"}
+        }
+
+        # 氢气
+        self.fluid_ranges["氢气"] = {
+            "P≤0.1MPa": {"velocity": (8, 15), "flow": (0, 0), "pressure": (0, 0.1), "flow_unit": "Nm³/h"},
+            "高压": {"velocity": (15, 25), "flow": (0, 0), "pressure": (0.1, 30), "flow_unit": "Nm³/h"}
+        }
+
+        # 氮（同氮气参数）
+        self.fluid_ranges["氮"] = {
+            "P=5~10MPa": {"velocity": (2, 5), "flow": (0, 0), "pressure": (5, 10), "flow_unit": "Nm³/h"},
+            "P=20~30MPa": {"velocity": (5, 10), "flow": (0, 0), "pressure": (20, 30), "flow_unit": "Nm³/h"}
         }
     
     def setup_ui(self):
@@ -743,13 +787,52 @@ class 管径计算(QWidget):
         """设置流体选项"""
         # 更新流体选项列表
         fluid_options = [
-            "- 请选择流体类型 -",  # 添加空选项
-            "饱和蒸汽", "过热蒸汽", "二次蒸汽", "高压乏汽", "乏汽",
-            "压缩气体", "氧气", "煤气", "半水煤气", "天然气", "烟道气", "石灰窑窑气",
-            "氮气", "氢氮混合气", "氨气", "乙炔气", "乙烯气",
-            "水及粘度相似的液体", "自来水", "锅炉给水", "蒸汽冷凝水", "冷凝水", "过热水",
-            "海水，微碱水", "粘度较大的液体", "液氨", "氢氧化钠", "四氯化碳", "硫酸", "盐酸",
-            "氯化钠", "排除废水", "泥状混合物", "乙二醇", "苯乙烯", "二溴乙烯", "二氯乙烷", "三氯乙烷"
+            "- 请选择流体类型 -",
+            "饱和蒸汽",
+            "水及粘度相似的液体",
+            "自来水",
+            "压缩气体",
+            "锅炉给水",
+            "蒸汽冷凝液",
+            "冷凝水",
+            "过热水",
+            "过热蒸汽",
+            "二次蒸汽",
+            "高压乏汽",
+            "乏汽",
+            "氧气",
+            "煤气",
+            "半水煤气",
+            "天然气",
+            "烟道气",
+            "石灰窑窑气",
+            "氮气",
+            "氢氮混合气",
+            "氨气",
+            "乙炔气",
+            "氮",
+            "氯仿",
+            "氯化氢",
+            "溴",
+            "氯化甲烷",
+            "氯乙烷",
+            "二氯乙烷",
+            "三氯乙烷",
+            "乙二醇",
+            "苯乙烯",
+            "二溴乙烯",
+            "海水，微碱水",
+            "粘度较大的液体",
+            "液氨",
+            "氢氧化钠",
+            "四氯化碳",
+            "硫酸",
+            "盐酸",
+            "氯化钠",
+            "排除废水",
+            "泥状混合物",
+            "气体",
+            "氢气"
         ]
         
         self.fluid_combo.clear()
@@ -800,7 +883,15 @@ class 管径计算(QWidget):
             "苯乙烯": 909,
             "二溴乙烯": 2179,
             "二氯乙烷": 1256,
-            "三氯乙烷": 1320
+            "三氯乙烷": 1320,
+            "氯仿": 1490,
+            "氯化氢": 1.64,
+            "溴": 3120,
+            "氯化甲烷": 2.3,
+            "氯乙烷": 2.6,
+            "氮": 1.25,
+            "气体": 1.29,
+            "氢气": 0.09
         }
 
         # 标态密度数据 (0°C, 101.325 kPa, kg/Nm³)
@@ -819,32 +910,39 @@ class 管径计算(QWidget):
             "氨气": 0.771,
             "乙炔气": 1.171,
             "乙烯气": 1.264,
+            "氯化氢": 1.639,
+            "氯化甲烷": 2.307,
+            "氯乙烷": 2.867,
+            "氮": 1.251,
+            "气体": 1.293,
+            "氢气": 0.090
         }
     
     def on_fluid_changed(self, text):
         """处理流体选择变化"""
-        # 检查是否为空选项
         if text.startswith("-") or not text.strip():
             self.condition_combo.clear()
             self.condition_combo.addItem("- 请先选择流体类型 -")
             self.density_input.clear()
+            self.velocity_input.clear()
             self.velocity_input.setToolTip("")
             self.pressure_range_label.setText("")
+            self.pressure_input.clear()
+            self.pressure_input.setReadOnly(False)
+            self.flow_input.clear()
             self.flow_input.setToolTip("")
             self.condition_hint.setText("选择流体后出现")
             return
-            
-        # 更新条件选项
+
+        # 清空旧值
+        self.velocity_input.clear()
+        self.pressure_input.clear()
+        self.pressure_input.setReadOnly(False)
+        self.flow_input.clear()
+
         self.update_condition_options(text)
-        
-        # 更新密度
         self.update_density(text)
-        
-        # 更新提示
-        self.condition_hint.setText("根据流体显示可选条件")
-        
-        # 更新参数范围和推荐值
-        self.update_parameter_ranges()
+        self.condition_hint.setText("请选择计算条件")
     
     def update_condition_options(self, fluid):
         """根据流体更新条件选项"""
@@ -869,35 +967,40 @@ class 管径计算(QWidget):
             self.density_input.setText("")
     
     def on_condition_changed(self, text):
-        """处理条件变化 - 更新参数范围和推荐值"""
-        # 检查是否为空选项
+        """处理条件变化 - 自动填入推荐值"""
         if text.startswith("-") or not text.strip():
+            self.velocity_input.clear()
             self.velocity_input.setToolTip("")
             self.pressure_range_label.setText("")
+            self.pressure_input.clear()
+            self.pressure_input.setReadOnly(False)
+            self.flow_input.clear()
             self.flow_input.setToolTip("")
             return
-            
-        if text:  # 确保不是空文本
+
+        if text:
             self.update_parameter_ranges()
-            self.condition_hint.setText("已选择计算条件")
+            self.condition_hint.setText("推荐值已自动填入")
     
     def update_parameter_ranges(self):
-        """更新参数范围和推荐值标签"""
+        """更新参数范围并自动填入推荐值"""
         fluid = self.fluid_combo.currentText()
         condition = self.condition_combo.currentText()
-        
-        # 检查是否选择了空选项
+
         if fluid.startswith("-") or condition.startswith("-"):
             return
-            
+
         if fluid in self.fluid_ranges and condition in self.fluid_ranges[fluid]:
             ranges = self.fluid_ranges[fluid][condition]
-            
-            # 更新流速范围标签（但不自动填入数值）
+
+            # 自动填入推荐流速（取范围中值）
             vel_min, vel_max = ranges["velocity"]
-            self.velocity_input.setToolTip(f"推荐范围: {vel_min}~{vel_max} m/s")
-            
-            # 更新压力范围
+            if vel_min > 0 and vel_max > 0:
+                vel_mid = (vel_min + vel_max) / 2
+                self.velocity_input.setText(f"{vel_mid:.1f}")
+                self.velocity_input.setToolTip(f"推荐范围: {vel_min}~{vel_max} m/s（已自动填入中值 {vel_mid:.1f}）")
+
+            # 更新压力范围并自动填入
             pressure_min, pressure_max = ranges["pressure"]
             if pressure_min == pressure_max and pressure_min > 0:
                 self.pressure_range_label.setText(f"固定值: {pressure_min} MPa")
@@ -906,11 +1009,15 @@ class 管径计算(QWidget):
             elif pressure_min > 0 or pressure_max > 0:
                 self.pressure_range_label.setText(f"适用范围: {pressure_min}~{pressure_max} MPa")
                 self.pressure_input.setReadOnly(False)
+                # 如果有范围，填入中值作为默认
+                if pressure_min > 0 and pressure_max > 0:
+                    p_mid = (pressure_min + pressure_max) / 2
+                    self.pressure_input.setText(f"{p_mid:.2f}")
             else:
                 self.pressure_range_label.setText("")
                 self.pressure_input.setReadOnly(False)
-            
-            # 更新流量标签和范围
+
+            # 更新流量标签和推荐值
             flow_unit = ranges["flow_unit"]
             self.flow_label.setText(f"流量 ({flow_unit}):")
             

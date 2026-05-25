@@ -427,7 +427,7 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.<br><br>
 
     def _show_about(self):
         text = """<h2>ChemCal - 化工工程师个人生产力工具</h2>
-<h3>v1.3.20260523</h3><br>
+<h3>v1.3.20260525</h3><br>
 Copyright 2025-2026 ChemCal Team | virmuran@163.com<br><br>
 
 <b>核心功能：</b><br>
