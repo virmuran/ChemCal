@@ -635,7 +635,7 @@ class FanPowerCalculator(QWidget):
         report = (
             f"工程计算书 - 风机功率计算\n"
             f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-            f"计算工具: CalcE 工程计算模块\n"
+            f"计算工具: ChemCal 工程计算模块\n"
             f"{'='*40}\n\n"
             + result_text
             + f"""
@@ -668,7 +668,7 @@ class FanPowerCalculator(QWidget):
     4. 重要工程参数应经专业工程师审核确认
 
 ---
-生成于 CalcE 工程计算模块
+生成于 ChemCal 工程计算模块
 """
         )
         return report

@@ -1,4 +1,4 @@
-# CalcE/main.py
+# ChemCal/main.py
 import sys
 import os
 import traceback
@@ -40,8 +40,8 @@ logger.add(
 )
 
 
-class CalcE(QMainWindow):
-    """CalcE 主窗口"""
+class ChemCal(QMainWindow):
+    """ChemCal 主窗口"""
 
     # 模块配置：(模块路径, 类名, 标签名)
     MODULES_CONFIG = [
@@ -53,10 +53,10 @@ class CalcE(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("CalcE - 个人生产力工具")
+        self.setWindowTitle("ChemCal - 化算")
         # 设置窗口图标
         from PySide6.QtGui import QIcon
-        self.setWindowIcon(QIcon(resource_path("CalcE.ico")))
+        self.setWindowIcon(QIcon(resource_path("ChemCal.ico")))
         # 自适应屏幕大小，留出边距避免超出
         from PySide6.QtGui import QScreen
         screen = QApplication.primaryScreen()
@@ -77,7 +77,7 @@ class CalcE(QMainWindow):
 
         self._setup_ui()
         self._load_settings()
-        logger.info("CalcE 启动成功，加载模块数: {}", len(self.modules))
+        logger.info("ChemCal 启动成功，加载模块数: {}", len(self.modules))
 
     # ------------------------------------------------------------------ UI
 
@@ -138,7 +138,7 @@ class CalcE(QMainWindow):
         self._add_action(help_menu, "系统信息", self._show_system_info)
         self._add_action(help_menu, "查看日志", self._show_logs)
         self._add_action(help_menu, "开源许可", self._show_license)
-        self._add_action(help_menu, "关于 CalcE", self._show_about)
+        self._add_action(help_menu, "关于 ChemCal", self._show_about)
 
     @staticmethod
     def _add_action(menu, text, slot):
@@ -153,7 +153,7 @@ class CalcE(QMainWindow):
         bar = QStatusBar()
         self.setStatusBar(bar)
 
-        bar.addWidget(QLabel("CalcE - 您的个人生产力助手"))
+        bar.addWidget(QLabel("ChemCal - 化工工程师的桌面生产力工具"))
         bar.addPermanentWidget(QLabel("|"))
         self.theme_label = QLabel(f"主题: {self.theme_manager.current_theme.capitalize()}")
         bar.addPermanentWidget(self.theme_label)
@@ -236,7 +236,7 @@ class CalcE(QMainWindow):
             self.data_manager._save_data()
         except Exception as e:
             logger.error("主数据保存失败: {}", e)
-        logger.info("CalcE 正常退出")
+        logger.info("ChemCal 正常退出")
         event.accept()
 
     # ------------------------------------------------------------------ 对话框
@@ -265,8 +265,8 @@ class CalcE(QMainWindow):
         dialog.exec()
 
     def _show_user_manual(self):
-        text = """<h2>CalcE 用户手册</h2>
-<h3>欢迎使用 CalcE 化工工程师生产力工具！</h3><br>
+        text = """<h2>ChemCal 用户手册</h2>
+<h3>欢迎使用 ChemCal 化工工程师生产力工具！</h3><br>
 
 <b>功能模块：</b><br>
 - <b>工程计算</b>：38+ 化工计算器，涵盖管道、换热、泵、制冷等<br>
@@ -303,7 +303,7 @@ class CalcE(QMainWindow):
 A: <code>pip install -r requirements.txt</code>，需要 Python 3.8+ 和 PySide6 6.5+。<br><br>
 
 <b>Q: 数据存在哪里？</b><br>
-A: Windows 下存储在 <code>C:\\Users\\[用户名]\\AppData\\Roaming\\CalcE\\CalcE_data.json</code>。<br><br>
+A: Windows 下存储在 <code>C:\\Users\\[用户名]\\AppData\\Roaming\\ChemCal\\ChemCal_data.json</code>。<br><br>
 
 <b>Q: 如何备份数据？</b><br>
 A: 菜单「文件→备份数据」，备份文件与原文件同目录，带时间戳命名。<br><br>
@@ -355,7 +355,7 @@ A: 结果仅供参考，实际工程须由专业工程师审核确认。<br><br>
 - 处理器：{platform.processor() or '未知'}<br>
 {hw}<br>
 
-<b>CalcE 信息：</b><br>
+<b>ChemCal 信息：</b><br>
 - 版本：v1.3.20260523<br>
 - 数据目录：{os.path.dirname(data_file)}<br>
 - 已加载模块：{loaded}/{total}<br>
@@ -396,8 +396,8 @@ A: 结果仅供参考，实际工程须由专业工程师审核确认。<br><br>
 
     def _show_license(self):
         text = """<h2>开源许可协议</h2><br>
-<b>CalcE - MIT License</b><br>
-Copyright 2025 CalcE Team<br><br>
+<b>ChemCal - MIT License</b><br>
+Copyright 2025 ChemCal Team<br><br>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -421,14 +421,14 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.<br><br>
 - psutil - BSD-3-Clause<br>
 - Loguru - MIT<br><br>
 
-<b>源码：</b> https://github.com/virmuran/CalcE<br>
+<b>源码：</b> https://github.com/virmuran/ChemCal<br>
 <b>联系：</b> virmuran@163.com"""
         self._show_scrollable_dialog("开源许可", text)
 
     def _show_about(self):
-        text = """<h2>CalcE - 化工工程师个人生产力工具</h2>
+        text = """<h2>ChemCal - 化工工程师个人生产力工具</h2>
 <h3>v1.3.20260523</h3><br>
-Copyright 2025-2026 CalcE Team | virmuran@163.com<br><br>
+Copyright 2025-2026 ChemCal Team | virmuran@163.com<br><br>
 
 <b>核心功能：</b><br>
 - 工程计算（换热、管道、泵、换热器面积/未知侧设计、安全阀等）<br>
@@ -438,7 +438,7 @@ Copyright 2025-2026 CalcE Team | virmuran@163.com<br><br>
 
 <b>数据安全：</b><br>
 - 数据仅本地存储，不联网，不收集隐私<br>
-- 代码 MIT 开源：https://github.com/virmuran/CalcE<br><br>
+- 代码 MIT 开源：https://github.com/virmuran/ChemCal<br><br>
 
 <b>更新日志：</b><br>
 <b>v1.3</b> - 新增"未知侧设计"换热器模式；防闪退保护层 crash_shield；看门狗自动重启；修复 QListWidget 内存违例；UI 全面规范化；主题系统全面优化（暗色/蓝色主题适配）；修复 QLabel 颜色不随主题变化；修复表格样式不随主题变化<br>
@@ -447,7 +447,7 @@ Copyright 2025-2026 CalcE Team | virmuran@163.com<br><br>
 <b>v1.0</b> - 初始版本发布<br><br>
 
 <b>免责声明：</b> 计算结果仅供参考，实际工程应用请由专业工程师审核确认。"""
-        self._show_scrollable_dialog("关于 CalcE", text)
+        self._show_scrollable_dialog("关于 ChemCal", text)
 
 
 def resource_path(relative_path):
@@ -461,12 +461,12 @@ def resource_path(relative_path):
 
 def main():
     app = SafeApplication(sys.argv)
-    app.setApplicationName("CalcE")
+    app.setApplicationName("ChemCal")
     app.setApplicationVersion("1.3")
-    app.setOrganizationName("CalcE")
+    app.setOrganizationName("ChemCal")
 
     try:
-        window = CalcE()
+        window = ChemCal()
         window.show()
         return app.run()
     except Exception as e:

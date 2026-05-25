@@ -1084,7 +1084,7 @@ class VLEActivityCoefficientCalculator(QWidget):
             )
             if file_path:
                 from datetime import datetime
-                header = f"CalcE - 气液平衡计算（活度系数法）\n生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n{'='*50}\n\n"
+                header = f"ChemCal - 气液平衡计算（活度系数法）\n生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n{'='*50}\n\n"
                 with open(file_path, "w", encoding="utf-8") as f:
                     f.write(header + content)
                 QMessageBox.information(self, "成功", f"计算书已保存至:\n{file_path}")

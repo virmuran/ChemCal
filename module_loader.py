@@ -1,4 +1,4 @@
-# CalcE/module_loader.py
+# ChemCal/module_loader.py
 import importlib
 import traceback
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QTextEdit

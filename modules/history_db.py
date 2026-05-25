@@ -1,4 +1,4 @@
-# CalcE/modules/history_db.py
+# ChemCal/modules/history_db.py
 """计算历史记录 SQLite 数据库管理"""
 import sqlite3
 import json
@@ -74,7 +74,7 @@ class HistoryDB(QObject):
         super().__init__()  # 初始化 QObject
         self._initialized = True
 
-        db_dir = os.path.join(os.path.expandvars("%APPDATA%"), "CalcE", "CalcE")
+        db_dir = os.path.join(os.path.expandvars("%APPDATA%"), "ChemCal", "ChemCal")
         os.makedirs(db_dir, exist_ok=True)
         self.db_path = os.path.join(db_dir, "calc_history.db")
 

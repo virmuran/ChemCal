@@ -1,4 +1,4 @@
-# CalcE/theme_manager.py
+# ChemCal/theme_manager.py
 from PySide6.QtCore import QObject, Signal
 
 class ThemeManager(QObject):

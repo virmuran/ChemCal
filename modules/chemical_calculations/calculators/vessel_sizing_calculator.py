@@ -1139,7 +1139,7 @@ class 设备尺寸计算(QWidget):
         lines.append("    • 重量按均匀壁厚估算，未扣除开孔等")
         lines.append("    • 液位报警为线性近似值，仅供参考")
         lines.append("    • 结果仅供参考，详细设计请咨询专业人员")
-        lines.append("\n--- 生成于 CalcE 设备尺寸模块 ---")
+        lines.append("\n--- 生成于 ChemCal 设备尺寸模块 ---")
 
         return "\n".join(lines)
 
@@ -1240,7 +1240,7 @@ class 设备尺寸计算(QWidget):
 
         header = f"""工程计算书 - 设备尺寸计算
 生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-计算工具: CalcE 工程计算模块
+计算工具: ChemCal 工程计算模块
 ========================================
 
 """
@@ -1271,7 +1271,7 @@ class 设备尺寸计算(QWidget):
     2. 计算结果仅供参考，需经专业工程师审核
     3. 变更条件应重新计算
 
---- 生成于 CalcE 工程计算模块
+--- 生成于 ChemCal 工程计算模块
 """
         return header + result_text + footer
 

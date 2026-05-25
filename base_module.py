@@ -1,4 +1,4 @@
-# CalcE/base_module.py
+# ChemCal/base_module.py
 from PySide6.QtWidgets import QWidget
 from PySide6.QtCore import Signal
 

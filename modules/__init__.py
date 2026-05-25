@@ -1,6 +1,6 @@
-# CalcE/modules/__init__.py
+# ChemCal/modules/__init__.py
 __version__ = "v1.0.20260131"
-__author__ = "CalcE Team"
+__author__ = "ChemCal Team"
 
 import os
 import sys
@@ -81,7 +81,7 @@ def get_data_manager(data_file=None):
 def setup_module_paths():
     added_paths = []
     
-    # 添加当前目录的父目录（CalcE 根目录）
+    # 添加当前目录的父目录（ChemCal 根目录）
     root_dir = Path(__file__).parent.parent
     if str(root_dir) not in sys.path:
         sys.path.insert(0, str(root_dir))
@@ -147,7 +147,7 @@ __all__ = [
 
 # 如果直接运行此文件，执行测试
 if __name__ == "__main__":
-    print(f"CalcE 模块包 v{__version__}")
+    print(f"ChemCal 模块包 v{__version__}")
     print(f"作者: {__author__}")
     
     print("\n检查模块依赖...")
@@ -160,7 +160,7 @@ if __name__ == "__main__":
     print("\n测试数据库初始化...")
     try:
         # 使用测试数据文件
-        test_data_file = "test_CalcE_data.json"
+        test_data_file = "test_ChemCal_data.json"
         if os.path.exists(test_data_file):
             os.remove(test_data_file)
         
@@ -180,4 +180,4 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"数据库初始化测试失败: {e}")
     
-    print("\nCalcE 模块初始化完成")
+    print("\nChemCal 模块初始化完成")

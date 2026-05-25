@@ -1510,7 +1510,7 @@ class 管径计算(QWidget):
             # 添加报告头信息
             report = f"""工程计算书 - 管道直径计算
 生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-计算工具: CalcE 工程计算模块
+计算工具: ChemCal 工程计算模块
 ========================================
 
 """
@@ -1545,7 +1545,7 @@ class 管径计算(QWidget):
     4. 计算条件变更时应重新进行计算
 
 ---
-生成于 CalcE 工程计算模块
+生成于 ChemCal 工程计算模块
 """
             return report
             

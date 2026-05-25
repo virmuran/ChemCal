@@ -1,10 +1,10 @@
-# CalcE/launcher.py
+# ChemCal/launcher.py
 """
-CalcE 看门狗启动器
+ChemCal 看门狗启动器
 
-原理：将 CalcE 作为子进程运行。当子进程因任何原因崩溃（包括 access violation、
+原理：将 ChemCal 作为子进程运行。当子进程因任何原因崩溃（包括 access violation、
 segfault 等无法被 Python 捕获的 C 级错误）时，看门狗检测到非零退出码，
-自动重启 CalcE 并提示用户。
+自动重启 ChemCal 并提示用户。
 
 运行方式：
     python launcher.py
@@ -12,14 +12,14 @@ segfault 等无法被 Python 捕获的 C 级错误）时，看门狗检测到非
 架构：
     launcher.py (看门狗进程，无 Qt 依赖，不易崩溃)
         │
-        ├── subprocess.Popen → calc_main.py (CalcE GUI)
+        ├── subprocess.Popen → calc_main.py (ChemCal GUI)
         ├── wait → 等待子进程退出
         ├── exit_code == 0 → 用户正常关闭，看门狗也退出
         ├── exit_code != 0 → 崩溃检测：
         │   ├── 显示 Windows 消息框提示
         │   ├── 写崩溃日志
         │   ├── 检查重启频率（防无限循环）
-        │   └── 自动重启 CalcE
+        │   └── 自动重启 ChemCal
         └── 最多 3 次/5分钟，超限则停止
 """
 
@@ -78,13 +78,13 @@ def run_watchdog():
     crash_history = []  # [(timestamp, exit_code), ...]
     restart_count = 0
 
-    _write_launcher_log(f"CalcE 看门狗启动，主程序: {main_script}")
+    _write_launcher_log(f"ChemCal 看门狗启动，主程序: {main_script}")
 
     while True:
-        # ── 启动 CalcE ──
-        startup_msg = "正在启动 CalcE..."
+        # ── 启动 ChemCal ──
+        startup_msg = "正在启动 ChemCal..."
         if restart_count > 0:
-            startup_msg = f"正在重启 CalcE（第 {restart_count} 次）..."
+            startup_msg = f"正在重启 ChemCal（第 {restart_count} 次）..."
         print(f"[launcher] {startup_msg}")
 
         try:
@@ -95,15 +95,15 @@ def run_watchdog():
                 creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
             )
         except Exception as e:
-            _write_launcher_log(f"启动 CalcE 失败: {e}")
+            _write_launcher_log(f"启动 ChemCal 失败: {e}")
             _win_message_box(
-                f"无法启动 CalcE:\n{e}",
-                "CalcE 启动失败",
+                f"无法启动 ChemCal:\n{e}",
+                "ChemCal 启动失败",
                 MB_ICONERROR
             )
             return 1
 
-        # ── 等待 CalcE 退出 ──
+        # ── 等待 ChemCal 退出 ──
         try:
             exit_code = process.wait()
         except Exception as e:
@@ -113,13 +113,13 @@ def run_watchdog():
         # ── 检查退出码 ──
         # 正常退出（exit code 0）
         if exit_code == 0:
-            _write_launcher_log("CalcE 正常退出")
-            print("[launcher] CalcE 正常退出")
+            _write_launcher_log("ChemCal 正常退出")
+            print("[launcher] ChemCal 正常退出")
             return 0
 
         # 用户通过 Ctrl+C 中断
         if exit_code == -1 or exit_code == 3221225786:  # 0xC000013A = Ctrl+C
-            _write_launcher_log("CalcE 被用户中断")
+            _write_launcher_log("ChemCal 被用户中断")
             return 0
 
         # ── 崩溃处理 ──
@@ -133,27 +133,27 @@ def run_watchdog():
         # 检查崩溃频率
         if restart_count > MAX_RESTARTS:
             msg = (
-                f"CalcE 在短时间内连续崩溃 {restart_count} 次，"
+                f"ChemCal 在短时间内连续崩溃 {restart_count} 次，"
                 f"已停止自动重启。\n\n"
                 f"请尝试：\n"
-                f"1. 更新 CalcE 到最新版本\n"
+                f"1. 更新 ChemCal 到最新版本\n"
                 f"2. 检查 ~/.calce/crashes/ 中的崩溃日志\n"
                 f"3. 联系开发者 virmuran@163.com"
             )
-            _win_message_box(msg, "CalcE 连续崩溃", MB_ICONERROR)
+            _win_message_box(msg, "ChemCal 连续崩溃", MB_ICONERROR)
             _write_launcher_log(f"连续崩溃 {restart_count} 次，停止重启")
             return 1
 
         # ── 记录崩溃并重启 ──
         exit_code_str = f"0x{exit_code & 0xFFFFFFFF:08X}" if exit_code < 0 else str(exit_code)
-        _write_launcher_log(f"CalcE 崩溃 (exit code: {exit_code_str})，第 {restart_count} 次重启")
+        _write_launcher_log(f"ChemCal 崩溃 (exit code: {exit_code_str})，第 {restart_count} 次重启")
 
         # 显示重启提示
         _win_message_box(
-            f"CalcE 遇到意外错误，正在自动重启...\n"
+            f"ChemCal 遇到意外错误，正在自动重启...\n"
             f"(第 {restart_count}/{MAX_RESTARTS} 次)\n\n"
             f"退出码: {exit_code_str}",
-            "CalcE",
+            "ChemCal",
             MB_ICONWARNING
         )
 
@@ -169,7 +169,7 @@ def main():
 
     # 先显示一个提示
     print("=" * 50)
-    print("  CalcE 看门狗启动器")
+    print("  ChemCal 看门狗启动器")
     print("  崩溃后自动重启 (最多 3 次/5 分钟)")
     print("=" * 50)
 

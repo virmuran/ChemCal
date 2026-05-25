@@ -925,7 +925,7 @@ class CorrosionDataQuery(QWidget):
                 pdf.line(10, pdf.get_y(), 200, pdf.get_y())
                 pdf.ln(3)
                 pdf.set_font("msyh", "", 9)
-                pdf.cell(0, 8, "CalcE 化工计算工具 - 腐蚀数据查询模块", ln=True, align="C")
+                pdf.cell(0, 8, "ChemCal 化工计算工具 - 腐蚀数据查询模块", ln=True, align="C")
 
                 # 保存文件
                 pdf.output(file_path)

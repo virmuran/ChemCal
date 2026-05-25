@@ -1,31 +1,31 @@
 <p align="center">
-  <img src="CalcE.png" alt="CalcE Logo" width="128" />
+  <img src="ChemCal.png" alt="ChemCal Logo" width="128" />
 </p>
 
-<h1 align="center">CalcE</h1>
+<h1 align="center">ChemCal</h1>
 
 <p align="center">
   <strong>化工工程师的桌面生产力工具</strong>
 </p>
 
 <p align="center">
-  <a href="https://github.com/virmuran/CalcE/blob/main/LICENSE">
+  <a href="https://github.com/virmuran/ChemCal/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License">
   </a>
   <a href="https://www.python.org/downloads/">
     <img src="https://img.shields.io/badge/python-3.8%2B-blue.svg" alt="Python">
   </a>
-  <a href="https://github.com/virmuran/CalcE">
+  <a href="https://github.com/virmuran/ChemCal">
     <img src="https://img.shields.io/badge/version-1.3.20260523-green.svg" alt="Version">
   </a>
-  <a href="https://github.com/virmuran/CalcE">
+  <a href="https://github.com/virmuran/ChemCal">
     <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg" alt="Platform">
   </a>
 </p>
 
 ---
 
-**CalcE** 是一款面向化工工程师的专业桌面应用，集成了 37 种工程计算器、单位换算、计算历史记录和可视化倒计时。基于 PySide6 构建，支持三套主题（亮色 / 暗色 / 蓝色），所有数据本地存储，不上传任何服务器。
+**ChemCal** 是一款面向化工工程师的专业桌面应用，集成了 37 种工程计算器、单位换算、计算历史记录和可视化倒计时。基于 PySide6 构建，支持三套主题（亮色 / 暗色 / 蓝色），所有数据本地存储，不上传任何服务器。
 
 ---
 
@@ -33,7 +33,7 @@
 
 ### 工程计算
 
-CalcE 提供六大类共 37 个工程计算器，覆盖化工设计核心场景：
+ChemCal 提供六大类共 37 个工程计算器，覆盖化工设计核心场景：
 
 | 类别 | 计算器 | 数量 |
 |------|--------|:--:|
@@ -81,8 +81,8 @@ CalcE 提供六大类共 37 个工程计算器，覆盖化工设计核心场景�
 
 ```bash
 # 克隆仓库
-git clone https://github.com/virmuran/CalcE.git
-cd CalcE
+git clone https://github.com/virmuran/ChemCal.git
+cd ChemCal
 
 # 安装依赖
 pip install -r requirements.txt
@@ -107,7 +107,7 @@ psutil
 ## 项目结构
 
 ```
-CalcE/
+ChemCal/
 ├── main.py                     # 主入口，窗口框架与菜单
 ├── crash_shield.py             # 防闪退保护层 + 看门狗
 ├── launcher.py                 # 启动器（异常重启）
@@ -116,8 +116,8 @@ CalcE/
 ├── module_loader.py            # 模块动态加载器
 ├── history_db.py               # 历史记录 SQLite 数据库
 ├── requirements.txt
-├── CalcE.ico                   # 应用图标（多分辨率）
-├── CalcE.png                   # Logo
+├── ChemCal.ico                   # 应用图标（多分辨率）
+├── ChemCal.png                   # Logo
 │
 ├── modules/
 │   ├── chemical_calculations/
@@ -152,7 +152,7 @@ CalcE/
 - `launcher.py` --- 看门狗进程，异常退出后自动重启
 - 代码层面 --- QListWidget 使用 `takeItem()` 代替 `clear()`，`blockSignals()` 阻断信号风暴
 
-详见 [pyside6-crash-prevention](https://github.com/virmuran/CalcE) 技能文档。
+详见 [pyside6-crash-prevention](https://github.com/virmuran/ChemCal) 技能文档。
 
 ### 计算精度
 
@@ -169,7 +169,7 @@ CalcE/
 
 ## 数据安全
 
-- 所有数据仅保存在本地 **`%APPDATA%/CalcE/`** 目录
+- 所有数据仅保存在本地 **`%APPDATA%/ChemCal/`** 目录
 - 不联网、不上传、不收集任何隐私信息
 - 支持数据备份（菜单 → 文件 → 备份数据，自动带时间戳）
 
@@ -187,12 +187,12 @@ CalcE/
 
 - 代码规范：中文注释 + Python 类型注解
 - 计算器开发：参考 `modules/chemical_calculations/calculators/` 中的现有实现
-- UI 规范：遵循 CalcE UI 标准（QGridLayout 三列、按比例伸缩）
+- UI 规范：遵循 ChemCal UI 标准（QGridLayout 三列、按比例伸缩）
 
 ---
 
 ## 许可证
 
-[MIT License](LICENSE)  © 2025-2026 CalcE Team
+[MIT License](LICENSE)  © 2025-2026 ChemCal Team
 
 联系方式：virmuran@163.com

@@ -1,4 +1,4 @@
-# CalcE/crash_shield.py
+# ChemCal/crash_shield.py
 """
 全局防闪退保护层
 - faulthandler: 在 C 级段错误时输出 Python traceback
@@ -34,7 +34,7 @@ def write_crash_log(exc_type, exc_value, exc_tb):
     crash_file = os.path.join(_CRASH_DIR, f"crash_{ts}.log")
     try:
         with open(crash_file, "w", encoding="utf-8") as f:
-            f.write(f"=== CalcE Crash Report ===\n")
+            f.write(f"=== ChemCal Crash Report ===\n")
             f.write(f"Time: {datetime.now().isoformat()}\n")
             f.write(f"Exception Type: {exc_type.__name__}\n")
             f.write(f"Exception Value: {exc_value}\n")
@@ -57,7 +57,7 @@ def _safe_show_crash_message(exc_type_name, exc_value, crash_file):
                 f"错误类型: {exc_type_name}\n"
                 f"错误信息: {exc_value}\n\n"
                 f"崩溃日志路径:\n{crash_file}\n\n"
-                f"建议重启 CalcE。"
+                f"建议重启 ChemCal。"
             )
     except Exception:
         pass  # Qt 不可用时静默处理

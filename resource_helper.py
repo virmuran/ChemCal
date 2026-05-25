@@ -1,4 +1,4 @@
-# CalcE/resource_helper.py
+# ChemCal/resource_helper.py
 import sys
 import os
 

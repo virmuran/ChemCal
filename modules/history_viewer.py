@@ -1,4 +1,4 @@
-# CalcE/modules/history_viewer.py
+# ChemCal/modules/history_viewer.py
 """计算历史记录查看器"""
 import json
 from datetime import datetime
