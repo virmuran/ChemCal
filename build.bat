@@ -42,7 +42,7 @@ if %errorlevel% == 0 (
 
 echo Building application...
 
-pyinstaller --name="ChemCal v1.3" ^
+pyinstaller --name="ChemCal" ^
             --windowed ^
             --onefile ^
             --icon="ChemCal.ico" ^

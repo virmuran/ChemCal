@@ -461,6 +461,7 @@ class 管径计算(QWidget):
         
         # 使用GridLayout确保整齐排列
         input_layout = QGridLayout(input_group)
+        self.input_layout = input_layout  # 保存引用，供模式切换使用
         input_layout.setVerticalSpacing(12)
         input_layout.setHorizontalSpacing(10)
         input_layout.setColumnStretch(0, 4)
@@ -468,174 +469,150 @@ class 管径计算(QWidget):
         input_layout.setColumnStretch(2, 5)
         
         row = 0
-        
-        # 流体类型
+
+        # ── 第1行：流体类型 ──
         fluid_label = QLabel("流体类型:")
         fluid_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         fluid_label.setStyleSheet(label_style)
         input_layout.addWidget(fluid_label, row, 0)
-        
+
         self.fluid_combo = QComboBox()
         self.fluid_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_fluid_options()
         self.fluid_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.fluid_combo.currentTextChanged.connect(self.on_fluid_changed)
         input_layout.addWidget(self.fluid_combo, row, 1)
-        
-        # 流体选择不需要额外提示，留空
+
         self.fluid_hint = QLabel("")
         self.fluid_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.fluid_hint, row, 2)
-        
+
         row += 1
-        
-        # 计算条件
+
+        # ── 第2行：计算条件 ──
         condition_label = QLabel("计算条件:")
         condition_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         condition_label.setStyleSheet(label_style)
         input_layout.addWidget(condition_label, row, 0)
-        
+
         self.condition_combo = QComboBox()
         self.condition_combo.setStyleSheet(COMBOBOX_STYLE)
         self.condition_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.condition_combo.currentTextChanged.connect(self.on_condition_changed)
         input_layout.addWidget(self.condition_combo, row, 1)
-        
-        # 条件提示标签
+
         self.condition_hint = QLabel("选择流体后出现")
         self.condition_hint.setStyleSheet("font-style: italic;")
         self.condition_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.condition_hint, row, 2)
-        
-        row += 1
-        
-        # 压力
-        pressure_label = QLabel("压力 (MPa):")
-        pressure_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        pressure_label.setStyleSheet(label_style)
-        input_layout.addWidget(pressure_label, row, 0)
-        
-        self.pressure_input = QLineEdit()
-        self.pressure_input.setPlaceholderText("例如: 0.9")
-        self.pressure_input.setValidator(QDoubleValidator(0.0, 30.0, 2))
-        self.pressure_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        input_layout.addWidget(self.pressure_input, row, 1)
-        
-        # 压力范围标签
-        self.pressure_range_label = QLabel("")
-        self.pressure_range_label.setStyleSheet("color: #7f8c8d; font-size: 10px;")
-        self.pressure_range_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        input_layout.addWidget(self.pressure_range_label, row, 2)
-        
+
         row += 1
 
-        # 流速
+        # ── 第3行：流速（始终显示）──
         velocity_label = QLabel("流速 (m/s):")
         velocity_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         velocity_label.setStyleSheet(label_style)
         input_layout.addWidget(velocity_label, row, 0)
 
-        # 流速输入框（第1列）
         self.velocity_input = QLineEdit()
-        self.velocity_input.setPlaceholderText("例如: 35")
-        self.velocity_input.setValidator(QDoubleValidator(0.1, 100.0, 2))
+        self.velocity_input.setPlaceholderText("选择流体后自动填入")
+        self.velocity_input.setValidator(QDoubleValidator(0.1, 150.0, 2))
         self.velocity_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.velocity_input, row, 1)
 
-        # 推荐流速按钮（第2列）
         self.velocity_recommend_btn = QPushButton("获取推荐流速")
         self.velocity_recommend_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.velocity_recommend_btn.clicked.connect(self.set_recommended_velocity)
         self.velocity_recommend_btn.setStyleSheet("""
             QPushButton {
-                background-color: #95a5a6;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                padding: 6px;
-                font-weight: bold;
+                background-color: #95a5a6; color: white; border: none;
+                border-radius: 4px; padding: 6px; font-weight: bold;
             }
-            QPushButton:hover {
-                background-color: #7f8c8d;
-            }
+            QPushButton:hover { background-color: #7f8c8d; }
         """)
         input_layout.addWidget(self.velocity_recommend_btn, row, 2)
 
         row += 1
 
-        # 流量输入 - 流量计算管径模式
+        # ── 第4行：流量（默认模式）──
         self.flow_label = QLabel("流量:")
         self.flow_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.flow_label.setStyleSheet(label_style)
-        input_layout.addWidget(self.flow_label, row, 0)
 
-        # 流量输入框（第1列）
         self.flow_input = QLineEdit()
-        self.flow_input.setPlaceholderText("例如: 100")
-        self.flow_input.setValidator(QDoubleValidator(0.1, 10000.0, 2))
-        self.flow_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        input_layout.addWidget(self.flow_input, row, 1)
+        self.flow_input.setPlaceholderText("请填写流量值")
+        self.flow_input.setValidator(QDoubleValidator(0.1, 100000.0, 2))
 
-        # 推荐流量按钮（第2列）
         self.flow_recommend_btn = QPushButton("获取推荐流量")
-        self.flow_recommend_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.flow_recommend_btn.clicked.connect(self.set_recommended_flow)
         self.flow_recommend_btn.setStyleSheet("""
             QPushButton {
-                background-color: #95a5a6;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                padding: 6px;
-                font-weight: bold;
+                background-color: #95a5a6; color: white; border: none;
+                border-radius: 4px; padding: 6px 10px; font-weight: bold;
             }
-            QPushButton:hover {
-                background-color: #7f8c8d;
-            }
+            QPushButton:hover { background-color: #7f8c8d; }
         """)
-        input_layout.addWidget(self.flow_recommend_btn, row, 2)
 
-        row += 1
-        
-        # 管径输入 - 管径计算流量模式
+        # 内径控件（备用，初始不出现在网格中）
         self.diameter_label = QLabel("管道内径 (mm):")
         self.diameter_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.diameter_label.setStyleSheet(label_style)
-        input_layout.addWidget(self.diameter_label, row, 0)
-        
+
         self.diameter_input = QLineEdit()
         self.diameter_input.setPlaceholderText("例如: 80")
         self.diameter_input.setValidator(QDoubleValidator(1.0, 2000.0, 1))
-        self.diameter_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        input_layout.addWidget(self.diameter_input, row, 1)
-        
+
         self.diameter_combo = QComboBox()
         self.diameter_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_diameter_options()
-        self.diameter_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.diameter_combo.currentTextChanged.connect(self.on_diameter_changed)
-        input_layout.addWidget(self.diameter_combo, row, 2)
-        
+
+        # 默认：流量控件放入网格
+        self._flow_diameter_row = row
+        input_layout.addWidget(self.flow_label, row, 0)
+        input_layout.addWidget(self.flow_input, row, 1)
+        input_layout.addWidget(self.flow_recommend_btn, row, 2)
+        self._current_row_widgets = [self.flow_label, self.flow_input, self.flow_recommend_btn]
         row += 1
-        
-        # 密度显示
-        density_label = QLabel("密度 (kg/m³):")
-        density_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        density_label.setStyleSheet(label_style)
-        input_layout.addWidget(density_label, row, 0)
-        
-        self.density_input = QLineEdit()
-        self.density_input.setPlaceholderText("自动计算")
-        self.density_input.setReadOnly(True)
-        self.density_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        input_layout.addWidget(self.density_input, row, 1)
-        
-        # 密度提示标签
-        self.density_hint = QLabel("根据流体自动计算")
-        self.density_hint.setStyleSheet("font-style: italic;")
-        self.density_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        input_layout.addWidget(self.density_hint, row, 2)
-        
+
+        # ── 第5行：压力（部分流体显示）──
+        self.pressure_label = QLabel("压力 (MPa):")
+        self.pressure_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.pressure_label.setStyleSheet(label_style)
+
+        self.pressure_input = QLineEdit()
+        self.pressure_input.setPlaceholderText("选择流体后自动填入")
+        self.pressure_input.setValidator(QDoubleValidator(0.0, 150.0, 2))
+        self.pressure_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+        self.pressure_range_label = QLabel("")
+        self.pressure_range_label.setStyleSheet("color: #7f8c8d; font-size: 10px;")
+        self.pressure_range_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+        # 压力行初始显示（默认可见）
+        self._add_pressure_row(input_layout, row)
+        self._pressure_row = row
+
+        row += 1
+
+        # ── 第6行：温度（仅过热蒸汽显示）──
+        self.temp_label = QLabel("温度 (°C):")
+        self.temp_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.temp_label.setStyleSheet(label_style)
+
+        self.temp_input = QLineEdit()
+        self.temp_input.setPlaceholderText("例如: 350")
+        self.temp_input.setValidator(QDoubleValidator(100.0, 600.0, 1))
+        self.temp_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+        self.temp_hint = QLabel("过热蒸汽输入温度")
+        self.temp_hint.setStyleSheet("font-style: italic;")
+        self.temp_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+        self._add_temp_row(input_layout, row)
+        self._temp_row = row
+        self._hide_temp_row()
+
         left_layout.addWidget(input_group)
         
         # 4. 计算按钮
@@ -747,9 +724,44 @@ class 管径计算(QWidget):
         # 设置默认值
         self.set_default_values()
     
+    def _add_pressure_row(self, layout, row):
+        """将压力行控件添加到布局（便于后续显示/隐藏切换）"""
+        layout.addWidget(self.pressure_label, row, 0)
+        layout.addWidget(self.pressure_input, row, 1)
+        layout.addWidget(self.pressure_range_label, row, 2)
+
+    def _remove_pressure_row(self):
+        """从布局中移除压力行"""
+        for w in [self.pressure_label, self.pressure_input, self.pressure_range_label]:
+            w.setVisible(False)
+
+    def _show_pressure_row(self):
+        """显示压力行"""
+        for w in [self.pressure_label, self.pressure_input, self.pressure_range_label]:
+            w.setVisible(True)
+
+    def _add_temp_row(self, layout, row):
+        layout.addWidget(self.temp_label, row, 0)
+        layout.addWidget(self.temp_input, row, 1)
+        layout.addWidget(self.temp_hint, row, 2)
+
+    def _show_temp_row(self):
+        for w in [self.temp_label, self.temp_input, self.temp_hint]:
+            w.setVisible(True)
+        if not self.temp_input.text():
+            self.temp_input.setText("200")
+
+    def _hide_temp_row(self):
+        for w in [self.temp_label, self.temp_input, self.temp_hint]:
+            w.setVisible(False)
+        self.temp_input.clear()
+
+    # ------------------------------------------------------------
+    #  模式 / 流体 / 条件联动
+    # ------------------------------------------------------------
+
     def setup_mode_dependencies(self):
         """设置计算模式的依赖关系"""
-        # 初始状态 - 由流量计算管径
         self.on_mode_changed("由流量计算管径")
     
     def on_mode_button_clicked(self, button):
@@ -765,23 +777,38 @@ class 管径计算(QWidget):
         return "由流量计算管径"  # 默认值
     
     def on_mode_changed(self, mode):
-        """处理计算模式变化"""
+        """处理计算模式变化 - 在网格中直接替换流量/内径行控件"""
+        layout = self.input_layout
+        row = self._flow_diameter_row
+
+        # 先隐藏当前行所有控件（removeWidget 只会移除布局管理，不会隐藏）
+        for w in self._current_row_widgets:
+            layout.removeWidget(w)
+            w.hide()
+        self._current_row_widgets.clear()
+
         if mode == "由流量计算管径":
-            # 显示流量输入，隐藏管径输入
-            self.flow_label.setVisible(True)
-            self.flow_input.setVisible(True)
-            self.flow_recommend_btn.setVisible(True)
-            self.diameter_label.setVisible(False)
-            self.diameter_input.setVisible(False)
-            self.diameter_combo.setVisible(False)
-        else:  # "由管径计算流量"
-            # 显示管径输入，隐藏流量输入
-            self.flow_label.setVisible(False)
-            self.flow_input.setVisible(False)
-            self.flow_recommend_btn.setVisible(False)
-            self.diameter_label.setVisible(True)
-            self.diameter_input.setVisible(True)
-            self.diameter_combo.setVisible(True)
+            # 放入流量控件
+            layout.addWidget(self.flow_label, row, 0)
+            layout.addWidget(self.flow_input, row, 1)
+            layout.addWidget(self.flow_recommend_btn, row, 2)
+            # 确保显示
+            self.flow_label.show()
+            self.flow_input.show()
+            self.flow_recommend_btn.show()
+            self._current_row_widgets = [self.flow_label, self.flow_input, self.flow_recommend_btn]
+        else:
+            # 放入内径控件
+            layout.addWidget(self.diameter_label, row, 0)
+            layout.addWidget(self.diameter_input, row, 1)
+            layout.addWidget(self.diameter_combo, row, 2)
+            # 确保显示
+            self.diameter_label.show()
+            self.diameter_input.show()
+            self.diameter_combo.show()
+            self._current_row_widgets = [self.diameter_label, self.diameter_input, self.diameter_combo]
+            if not self.diameter_input.text():
+                self.diameter_input.setText("80")
     
     def setup_fluid_options(self):
         """设置流体选项"""
@@ -923,57 +950,69 @@ class 管径计算(QWidget):
         if text.startswith("-") or not text.strip():
             self.condition_combo.clear()
             self.condition_combo.addItem("- 请先选择流体类型 -")
-            self.density_input.clear()
             self.velocity_input.clear()
             self.velocity_input.setToolTip("")
-            self.pressure_range_label.setText("")
             self.pressure_input.clear()
             self.pressure_input.setReadOnly(False)
+            self.pressure_range_label.setText("")
             self.flow_input.clear()
             self.flow_input.setToolTip("")
             self.condition_hint.setText("选择流体后出现")
+            self._show_pressure_row()
+            self._hide_temp_row()
             return
 
-        # 清空旧值
+        # 清空旧值，设置默认值
         self.velocity_input.clear()
         self.pressure_input.clear()
         self.pressure_input.setReadOnly(False)
+        self.pressure_range_label.setText("")
         self.flow_input.clear()
+        self.flow_input.setText("70")  # 默认流量
 
         self.update_condition_options(text)
         self.update_density(text)
         self.condition_hint.setText("请选择计算条件")
+
+        # 默认为全部流体显示压力行
+        self._show_pressure_row()
+
+        # 过热蒸汽 → 显示温度行
+        if text == "过热蒸汽":
+            self._show_temp_row()
+        else:
+            self._hide_temp_row()
     
     def update_condition_options(self, fluid):
         """根据流体更新条件选项"""
-        self.condition_combo.blockSignals(True)  # 防止触发多次事件
+        self.condition_combo.blockSignals(True)
         self.condition_combo.clear()
-        
-        # 添加空选项
+
         self.condition_combo.addItem("- 请选择计算条件 -")
-        
+
         if fluid in self.fluid_ranges:
             conditions = list(self.fluid_ranges[fluid].keys())
             self.condition_combo.addItems(conditions)
-        
+
+        self.condition_combo.setCurrentIndex(0)
         self.condition_combo.blockSignals(False)
     
     def update_density(self, fluid):
-        """更新密度值"""
+        """更新密度值（存入内部变量，不在UI显示）"""
         if fluid in self.fluid_data:
-            density = self.fluid_data[fluid]
-            self.density_input.setText(f"{density:.2f}")
+            self._current_density = self.fluid_data[fluid]
         else:
-            self.density_input.setText("")
+            self._current_density = 1000.0
     
     def on_condition_changed(self, text):
-        """处理条件变化 - 自动填入推荐值"""
+        """处理条件变化 - 自动填入推荐值并控制压力/温度可见性"""
         if text.startswith("-") or not text.strip():
             self.velocity_input.clear()
             self.velocity_input.setToolTip("")
             self.pressure_range_label.setText("")
             self.pressure_input.clear()
             self.pressure_input.setReadOnly(False)
+            self._show_pressure_row()
             self.flow_input.clear()
             self.flow_input.setToolTip("")
             return
@@ -1000,8 +1039,13 @@ class 管径计算(QWidget):
                 self.velocity_input.setText(f"{vel_mid:.1f}")
                 self.velocity_input.setToolTip(f"推荐范围: {vel_min}~{vel_max} m/s（已自动填入中值 {vel_mid:.1f}）")
 
-            # 更新压力范围并自动填入
-            pressure_min, pressure_max = ranges["pressure"]
+        # 更新压力范围/自动填入/隐藏
+        pressure_min, pressure_max = ranges["pressure"]
+        if pressure_min == 0 and pressure_max == 0:
+            # 不需要压力 → 隐藏压力行
+            self._remove_pressure_row()
+        else:
+            self._show_pressure_row()
             if pressure_min == pressure_max and pressure_min > 0:
                 self.pressure_range_label.setText(f"固定值: {pressure_min} MPa")
                 self.pressure_input.setText(f"{pressure_min}")
@@ -1009,24 +1053,17 @@ class 管径计算(QWidget):
             elif pressure_min > 0 or pressure_max > 0:
                 self.pressure_range_label.setText(f"适用范围: {pressure_min}~{pressure_max} MPa")
                 self.pressure_input.setReadOnly(False)
-                # 如果有范围，填入中值作为默认
                 if pressure_min > 0 and pressure_max > 0:
                     p_mid = (pressure_min + pressure_max) / 2
                     self.pressure_input.setText(f"{p_mid:.2f}")
-            else:
-                self.pressure_range_label.setText("")
-                self.pressure_input.setReadOnly(False)
 
-            # 更新流量标签和推荐值
+            # 更新流量标签和默认值
             flow_unit = ranges["flow_unit"]
             self.flow_label.setText(f"流量 ({flow_unit}):")
-            
-            # 如果有流量范围，显示范围
-            flow_min, flow_max = ranges["flow"]
-            if flow_min > 0 or flow_max > 0:
-                self.flow_input.setToolTip(f"流量范围: {flow_min}~{flow_max} {flow_unit}")
-            else:
-                self.flow_input.setToolTip("")
+
+            # 默认填入 70
+            if not self.flow_input.text():
+                self.flow_input.setText("70")
     
     def setup_diameter_options(self):
         """设置管道内径选项"""
@@ -1137,23 +1174,18 @@ class 管径计算(QWidget):
             # 获取数值输入
             pressure_text = self.pressure_input.text()
             velocity_text = self.velocity_input.text()
-            density_text = self.density_input.text()
-            
-            # 验证数值输入
+
             if not velocity_text:
                 QMessageBox.warning(self, "输入错误", "请输入流速")
                 return
-            
+
             velocity = float(velocity_text)
-            
-            # 设置默认值用于计算
+
             pressure = 0.0
-            if pressure_text:
+            if pressure_text and self.pressure_label.isVisible():
                 pressure = float(pressure_text)
-            
-            density = 1000.0  # 默认密度
-            if density_text:
-                density = float(density_text)
+
+            density = getattr(self, '_current_density', 1000.0)
             
             # 验证参数范围
             self.validate_parameters(fluid, condition, velocity, pressure)
@@ -1425,7 +1457,7 @@ class 管径计算(QWidget):
         fluid = self.fluid_combo.currentText()
         condition = self.condition_combo.currentText()
         velocity = float(self.velocity_input.text() or 0)
-        density = float(self.density_input.text() or 0) if self.density_input.text() else 1000.0
+        density = getattr(self, '_current_density', 1000.0)
         pressure = float(self.pressure_input.text() or 0)
 
         inputs = {
