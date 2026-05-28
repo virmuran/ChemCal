@@ -93,11 +93,11 @@ COMBOBOX_STYLE = """
         border-radius: 4px;
         padding: 6px 10px;
         /* background via theme */
-        /* color via theme */
+        color: black;
     }
     QComboBox QAbstractItemView {
         /* background-color via theme */
-        /* color via theme */
+        color: black;
         border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
@@ -188,7 +188,6 @@ class SteamPropertyCalculator(QWidget):
         
         # 2. 查询模式选择
         mode_group = QGroupBox("查询模式")
-        mode_group.setStyleSheet(GROUP_STYLE)
         mode_layout = QHBoxLayout(mode_group)
         
         self.mode_button_group = QButtonGroup(self)
@@ -207,19 +206,19 @@ class SteamPropertyCalculator(QWidget):
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             btn.setStyleSheet("""
                 QPushButton {
-                    /* unselected bg via theme */
+                    background-color: #ffffff;
                     border: 1px solid #666;
                     border-radius: 4px;
                     padding: 8px;
                     text-align: center;
-                    /* color via theme */
+                    color: black;
                 }
                 QPushButton:checked {
-                    background-color: #3498db;
+                    background-color: #4b5cc4;
                     color: white;
                 }
                 QPushButton:hover:!checked {
-                    background-color: #d5dbdb;
+                    background-color: #c0ebd7;
                 } """)
             self.mode_button_group.addButton(btn, i)
             mode_layout.addWidget(btn)
@@ -257,8 +256,8 @@ class SteamPropertyCalculator(QWidget):
                 min-height: 50px; padding: 0px;
                 font-weight: bold;
             }
-            QPushButton:hover {
-                background-color: #219955;
+            QPushButton:hover:!checked {
+                background-color: #c0ebd7;
             } """)
         left_layout.addWidget(self.calculate_btn)
         
@@ -279,8 +278,8 @@ class SteamPropertyCalculator(QWidget):
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover {
-                background-color: #7f8c8d;
+            QPushButton:hover:!checked {
+                background-color: #c0ebd7;
             } """)
         
         # 下载TXT按钮（绿色）
@@ -297,8 +296,8 @@ class SteamPropertyCalculator(QWidget):
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover {
-                background-color: #219955;
+            QPushButton:hover:!checked {
+                background-color: #c0ebd7;
             } """)
         
         # 下载PDF按钮（红色）
@@ -315,8 +314,8 @@ class SteamPropertyCalculator(QWidget):
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover {
-                background-color: #c0392b;
+            QPushButton:hover:!checked {
+                background-color: #c0ebd7;
             } """)
         
         bottom_layout.addWidget(self.clear_btn)
@@ -336,7 +335,6 @@ class SteamPropertyCalculator(QWidget):
         
         # 结果显示
         self.result_group = QGroupBox("计算结果")
-        self.result_group.setStyleSheet(GROUP_STYLE)
         result_layout = QVBoxLayout(self.result_group)
         
         self.result_text = QTextEdit()
@@ -365,7 +363,6 @@ class SteamPropertyCalculator(QWidget):
         """创建饱和状态的已知参数 + 输入参数两个框，直接加入 left_layout"""
         # --- 框1：已知参数选择 ---
         self.sat_known_group = QGroupBox("已知参数")
-        self.sat_known_group.setStyleSheet(GROUP_STYLE)
         known_btn_layout = QHBoxLayout(self.sat_known_group)
         known_btn_layout.setSpacing(8)
 
@@ -381,20 +378,20 @@ class SteamPropertyCalculator(QWidget):
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             btn.setStyleSheet("""
                 QPushButton {
-                    /* unselected bg via theme */
+                    background-color: #ffffff;
                     border: 1px solid #666;
                     border-radius: 4px;
                     padding: 8px;
                     text-align: center;
-                    /* color via theme */
+                    color: black;
                 }
                 QPushButton:checked {
-                    background-color: #3498db;
+                    background-color: #4b5cc4;
                     color: white;
                 }
                 QPushButton:hover:!checked {
-                    background-color: #d5dbdb;
-                    color: green;
+                    background-color: #c0ebd7;
+                    color: black;
                 } """)
             self.sat_known_button_group.addButton(btn, i)
             known_btn_layout.addWidget(btn)
@@ -408,7 +405,6 @@ class SteamPropertyCalculator(QWidget):
 
         # --- 框2：输入参数 ---
         self.sat_input_group = QGroupBox("输入参数")
-        self.sat_input_group.setStyleSheet(GROUP_STYLE)
         input_layout = QGridLayout(self.sat_input_group)
         input_layout.setVerticalSpacing(12)
         input_layout.setHorizontalSpacing(10)
@@ -469,7 +465,6 @@ class SteamPropertyCalculator(QWidget):
         """创建其他状态的已知参数组合 + 输入参数两个框，直接加入 left_layout"""
         # --- 框1：已知参数组合选择 ---
         self.other_known_group = QGroupBox("已知参数组合")
-        self.other_known_group.setStyleSheet(GROUP_STYLE)
         known_btn_layout = QHBoxLayout(self.other_known_group)
         known_btn_layout.setSpacing(8)
 
@@ -487,20 +482,20 @@ class SteamPropertyCalculator(QWidget):
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             btn.setStyleSheet("""
                 QPushButton {
-                    /* unselected bg via theme */
+                    background-color: #ffffff;
                     border: 1px solid #666;
                     border-radius: 4px;
                     padding: 8px;
                     text-align: center;
-                    /* color via theme */
+                    color: black;
                 }
                 QPushButton:checked {
-                    background-color: #3498db;
+                    background-color: #4b5cc4;
                     color: white;
                 }
                 QPushButton:hover:!checked {
-                    background-color: #d5dbdb;
-                    color: green;
+                    background-color: #c0ebd7;
+                    color: black;
                 } """)
             self.other_known_button_group.addButton(btn, i)
             known_btn_layout.addWidget(btn)
@@ -514,7 +509,6 @@ class SteamPropertyCalculator(QWidget):
 
         # --- 框2：输入参数 ---
         self.other_input_group = QGroupBox("输入参数")
-        self.other_input_group.setStyleSheet(GROUP_STYLE)
         input_layout = QGridLayout(self.other_input_group)
         input_layout.setVerticalSpacing(12)
         input_layout.setHorizontalSpacing(10)

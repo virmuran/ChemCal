@@ -20,11 +20,11 @@ COMBOBOX_STYLE = """
         border-radius: 4px;
         padding: 6px 10px;
         /* background via theme */
-        /* color via theme */
+        color: black;
     }
     QComboBox QAbstractItemView {
         /* background-color via theme */
-        /* color via theme */
+        color: black;
         border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
@@ -122,7 +122,6 @@ class InsulationThicknessCalculator(QWidget):
 
         # ── 计算类型选择（按钮组）──
         type_group = QGroupBox("计算类型")
-        type_group.setStyleSheet(GROUP_STYLE)
         type_layout = QHBoxLayout(type_group)
 
         self.calc_type_group = QButtonGroup(self)
@@ -139,20 +138,20 @@ class InsulationThicknessCalculator(QWidget):
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             btn.setStyleSheet("""
                 QPushButton {
-                    /* unselected bg via theme */
-                    /* color via theme */
+                    background-color: #ffffff;
+                    color: black;
                     border: 1px solid #666;
                     border-radius: 6px;
                     padding: 7px 4px;
                     font-size: 12px;
                 }
                 QPushButton:checked {
-                    background-color: #3498db;
+                    background-color: #4b5cc4;
                     color: white;
                     font-weight: bold;
                 }
-                QPushButton:hover {
-                    background-color: #d5dbdb;
+                QPushButton:hover:!checked {
+                    background-color: #c0ebd7;
                 }
             """)
             self.calc_type_group.addButton(btn, i)
@@ -164,7 +163,6 @@ class InsulationThicknessCalculator(QWidget):
 
         # ── 输入参数组（四列网格，适配多计算方法）──
         input_group = QGroupBox("输入参数")
-        input_group.setStyleSheet(GROUP_STYLE)
         grid = QGridLayout(input_group)
         grid.setHorizontalSpacing(10)
         grid.setVerticalSpacing(12)
@@ -269,7 +267,7 @@ class InsulationThicknessCalculator(QWidget):
                 border-radius: 8px;
                 min-height: 50px; padding: 0px;
             }
-            QPushButton:hover { background-color: #219955; }
+            QPushButton:hover:!checked { background-color: #c0ebd7; }
         """)
         calc_btn.clicked.connect(self.calculate)
         left_layout.addWidget(calc_btn)
@@ -284,7 +282,7 @@ class InsulationThicknessCalculator(QWidget):
                 font-weight: bold; border-radius: 6px;
                 padding: 8px 20px;
             }
-            QPushButton:hover { background-color: #7f8c8d; }
+            QPushButton:hover:!checked { background-color: #c0ebd7; }
         """)
         clear_btn.clicked.connect(self.clear_inputs)
 
@@ -296,7 +294,7 @@ class InsulationThicknessCalculator(QWidget):
                 font-weight: bold; border-radius: 6px;
                 padding: 8px 20px;
             }
-            QPushButton:hover { background-color: #219a52; }
+            QPushButton:hover:!checked { background-color: #c0ebd7; }
         """)
         dl_txt_btn.clicked.connect(self.download_txt_report)
 
@@ -308,7 +306,7 @@ class InsulationThicknessCalculator(QWidget):
                 font-weight: bold; border-radius: 6px;
                 padding: 8px 20px;
             }
-            QPushButton:hover { background-color: #c0392b; }
+            QPushButton:hover:!checked { background-color: #c0ebd7; }
         """)
         dl_pdf_btn.clicked.connect(self.generate_pdf_report)
 
@@ -326,7 +324,6 @@ class InsulationThicknessCalculator(QWidget):
         right_layout.setSpacing(15)
 
         result_group = QGroupBox("计算结果")
-        result_group.setStyleSheet(GROUP_STYLE)
         result_vbox = QVBoxLayout(result_group)
 
         self.result_text = QTextEdit()

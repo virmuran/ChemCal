@@ -77,7 +77,7 @@ class ThemeManager(QObject):
             min-height: 20px;
         }
         
-        QPushButton:hover {
+        QPushButton:hover:!checked {
             background-color: #3a5a8c;
         }
         
@@ -93,7 +93,7 @@ class ThemeManager(QObject):
         /* 分组框样式 */
         QGroupBox {
             font-weight: bold;
-            border: 1px solid #d1d5db;
+            border: 1px solid #333333;
             border-radius: 8px;
             margin-top: 10px;
             padding-top: 10px;
@@ -340,7 +340,7 @@ class ThemeManager(QObject):
             min-height: 20px;
         }
         
-        QPushButton:hover {
+        QPushButton:hover:!checked {
             background-color: #3a5a8c;
         }
         
@@ -356,7 +356,7 @@ class ThemeManager(QObject):
         /* 分组框样式 */
         QGroupBox {
             font-weight: bold;
-            border: 1px solid #444;
+            border: 1px solid #cccccc;
             border-radius: 8px;
             margin-top: 10px;
             padding-top: 10px;
@@ -636,7 +636,7 @@ class ThemeManager(QObject):
             min-height: 20px;
         }
         
-        QPushButton:hover {
+        QPushButton:hover:!checked {
             background-color: #2b6cb0;
         }
         
@@ -652,7 +652,7 @@ class ThemeManager(QObject):
         /* 分组框样式 */
         QGroupBox {
             font-weight: bold;
-            border: 1px solid #bee3f8;
+            border: 1px solid #3182ce;
             border-radius: 8px;
             margin-top: 10px;
             padding-top: 10px;

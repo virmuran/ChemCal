@@ -330,7 +330,6 @@ class VLEActivityCoefficientCalculator(QWidget):
 
         # 2. 计算条件组
         condition_group = QGroupBox("计算条件")
-        condition_group.setStyleSheet(GROUP_STYLE)
         condition_layout = QGridLayout(condition_group)
         condition_layout.setVerticalSpacing(12)
         condition_layout.setHorizontalSpacing(10)
@@ -439,7 +438,6 @@ class VLEActivityCoefficientCalculator(QWidget):
 
         # 组分参数表
         comp_group = QGroupBox("组分参数（Antoine + UNIQUAC）")
-        comp_group.setStyleSheet(GROUP_STYLE)
         comp_table_layout = QVBoxLayout(comp_group)
         self.component_table = QTableWidget()
         self.component_table.setColumnCount(7)
@@ -452,7 +450,6 @@ class VLEActivityCoefficientCalculator(QWidget):
 
         # 二元交互参数表
         binary_group = QGroupBox("二元交互参数")
-        binary_group.setStyleSheet(GROUP_STYLE)
         binary_layout = QVBoxLayout(binary_group)
         self.binary_table = QTableWidget()
         self.binary_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -462,7 +459,7 @@ class VLEActivityCoefficientCalculator(QWidget):
         self.load_preset_btn = QPushButton("加载预设参数")
         self.load_preset_btn.setStyleSheet(
             "QPushButton { background-color: #27ae60; color: white; border: none; border-radius: 4px; padding: 6px; font-weight: bold; }"
-            "QPushButton:hover { background-color: #219653; }"
+            "QPushButton:hover:!checked { background-color: #219653; }"
         )
         self.load_preset_btn.clicked.connect(self.load_preset_binary_params)
         btn_row.addWidget(self.load_preset_btn)
@@ -476,7 +473,6 @@ class VLEActivityCoefficientCalculator(QWidget):
         comp_tab = QWidget()
         comp_tab_layout = QVBoxLayout(comp_tab)
         comp_input_group = QGroupBox("液相摩尔分数（总和应为 1.0）")
-        comp_input_group.setStyleSheet(GROUP_STYLE)
         comp_input_inner = QVBoxLayout(comp_input_group)
         self.comp_input_table = QTableWidget()
         self.comp_input_table.setColumnCount(3)
@@ -502,7 +498,7 @@ class VLEActivityCoefficientCalculator(QWidget):
                 min-height: 50px; padding: 0px;
                 font-weight: bold;
             }
-            QPushButton:hover {
+            QPushButton:hover:!checked {
                 background-color: #219955;
             }
         """)
@@ -515,7 +511,7 @@ class VLEActivityCoefficientCalculator(QWidget):
         clear_btn = QPushButton("清空")
         clear_btn.setStyleSheet("""
             QPushButton { background-color: #95a5a6; color: white; border: none; border-radius: 6px; padding: 8px; font-weight: bold; }
-            QPushButton:hover { background-color: #7f8c8d; }
+            QPushButton:hover:!checked { background-color: #7f8c8d; }
         """)
         clear_btn.clicked.connect(self.clear_inputs)
         download_layout.addWidget(clear_btn)
@@ -526,14 +522,14 @@ class VLEActivityCoefficientCalculator(QWidget):
         download_txt_btn.clicked.connect(self.download_txt_report)
         download_txt_btn.setStyleSheet("""
             QPushButton { background-color: #27ae60; color: white; border: none; border-radius: 6px; padding: 8px; font-weight: bold; }
-            QPushButton:hover { background-color: #219653; }
+            QPushButton:hover:!checked { background-color: #219653; }
         """)
 
         download_pdf_btn = QPushButton("下载计算书(PDF)")
         download_pdf_btn.clicked.connect(self.generate_pdf_report)
         download_pdf_btn.setStyleSheet("""
             QPushButton { background-color: #e74c3c; color: white; border: none; border-radius: 6px; padding: 8px; font-weight: bold; }
-            QPushButton:hover { background-color: #c0392b; }
+            QPushButton:hover:!checked { background-color: #c0392b; }
         """)
 
         download_layout.addWidget(download_txt_btn)
@@ -550,7 +546,6 @@ class VLEActivityCoefficientCalculator(QWidget):
         right_layout.setSpacing(15)
 
         result_group = QGroupBox("计算结果")
-        result_group.setStyleSheet(GROUP_STYLE)
         result_inner = QVBoxLayout(result_group)
 
         self.result_text = QTextEdit()

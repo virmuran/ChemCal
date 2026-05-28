@@ -146,7 +146,7 @@ class 篮式过滤器(QWidget):
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover {
+            QPushButton:hover:!checked {
                 background-color: #8e44ad;
             }
         """)
@@ -160,20 +160,6 @@ class 篮式过滤器(QWidget):
     def create_group_box(self, title):
         """创建统一的GroupBox"""
         group = QGroupBox(title)
-        group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #666;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
         return group
     
     def add_labeled_input(self, layout, row, col, label_text, widget, placeholder=None, validator=None, read_only=False):
@@ -297,7 +283,7 @@ class 篮式过滤器(QWidget):
                 min-height: 50px; padding: 0px;
                 font-weight: bold;
             }
-            QPushButton:hover {
+            QPushButton:hover:!checked {
                 background-color: #219955;
             }
         """)
@@ -317,7 +303,7 @@ class 篮式过滤器(QWidget):
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover {
+            QPushButton:hover:!checked {
                 background-color: #219653;
             }
         """)
@@ -333,7 +319,7 @@ class 篮式过滤器(QWidget):
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover {
+            QPushButton:hover:!checked {
                 background-color: #c0392b;
             }
         """)

@@ -54,11 +54,11 @@ COMBOBOX_STYLE = """
         border-radius: 4px;
         padding: 6px 10px;
         /* background via theme */
-        /* color via theme */
+        color: black;
     }
     QComboBox QAbstractItemView {
         /* background-color via theme */
-        /* color via theme */
+        color: black;
         border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
@@ -138,7 +138,6 @@ class RefrigerationCycleCalculator(QWidget):
 
         # ========== 循环类型选择组 ==========
         cycle_group = QGroupBox("循环类型")
-        cycle_group.setStyleSheet(GROUP_STYLE)
         cycle_layout = QHBoxLayout(cycle_group)
         cycle_layout.setSpacing(10)
 
@@ -157,19 +156,20 @@ class RefrigerationCycleCalculator(QWidget):
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             btn.setStyleSheet("""
                 QPushButton {
-                    /* unselected bg via theme */
+                    background-color: #ffffff;
                     border: 1px solid #666;
                     border-radius: 4px;
                     padding: 8px;
-                    /* color via theme */
+                    color: black;
                     text-align: center;
                 }
                 QPushButton:checked {
-                    background-color: #3498db;
+                    background-color: #4b5cc4;
                     color: white;
                 }
                 QPushButton:hover:!checked {
-                    background-color: #d5dbdb;
+                    background-color: #c0ebd7;
+                    color: black;
                 }
             """)
             self.cycle_button_group.addButton(btn, i)
@@ -183,7 +183,6 @@ class RefrigerationCycleCalculator(QWidget):
 
         # ========== 输入参数组 ==========
         input_group = QGroupBox("输入参数")
-        input_group.setStyleSheet(GROUP_STYLE)
 
         input_layout = QGridLayout(input_group)
         input_layout.setVerticalSpacing(12)
@@ -349,7 +348,7 @@ class RefrigerationCycleCalculator(QWidget):
         calculate_btn.setStyleSheet(
             "QPushButton { background-color: #27ae60; color: white; font-weight: bold; "
             "border: none; border-radius: 8px; min-height: 50px; padding: 0px; }"
-            "QPushButton:hover { background-color: #219955; }"
+            "QPushButton:hover:!checked { background-color: #c0ebd7; }"
         )
         calculate_btn.clicked.connect(self.calculate)
         left_layout.addWidget(calculate_btn)
@@ -364,7 +363,7 @@ class RefrigerationCycleCalculator(QWidget):
         btn_clear.setStyleSheet(
             "QPushButton { background-color: #95a5a6; color: white; font-weight: bold; "
             "border: none; border-radius: 6px; padding: 8px; }"
-            "QPushButton:hover { background-color: #7f8c8d; }"
+            "QPushButton:hover:!checked { background-color: #c0ebd7; }"
         )
         btn_clear.clicked.connect(self.clear_inputs)
         btn_layout.addWidget(btn_clear)
@@ -376,7 +375,7 @@ class RefrigerationCycleCalculator(QWidget):
         btn_txt.setStyleSheet(
             "QPushButton { background-color: #27ae60; color: white; font-weight: bold; "
             "border: none; border-radius: 6px; padding: 8px; }"
-            "QPushButton:hover { background-color: #219653; }"
+            "QPushButton:hover:!checked { background-color: #c0ebd7; }"
         )
         btn_txt.clicked.connect(self.download_txt_report)
         btn_layout.addWidget(btn_txt)
@@ -386,7 +385,7 @@ class RefrigerationCycleCalculator(QWidget):
         btn_pdf.setStyleSheet(
             "QPushButton { background-color: #e74c3c; color: white; font-weight: bold; "
             "border: none; border-radius: 6px; padding: 8px; }"
-            "QPushButton:hover { background-color: #c0392b; }"
+            "QPushButton:hover:!checked { background-color: #c0ebd7; }"
         )
         btn_pdf.clicked.connect(self.generate_pdf_report)
         btn_layout.addWidget(btn_pdf)
@@ -402,7 +401,6 @@ class RefrigerationCycleCalculator(QWidget):
 
         # 结果显示组
         result_group = QGroupBox("计算结果")
-        result_group.setStyleSheet(GROUP_STYLE)
         result_layout = QVBoxLayout(result_group)
 
         self.result_text = QTextEdit()

@@ -14,7 +14,6 @@ from PySide6.QtGui import QFont, QDoubleValidator, QIntValidator
 import math
 from modules.combo_box_utils import ComboBoxWheelBlocker
 
-
 COMBOBOX_STYLE = """
     QComboBox {
         border: 1px solid #888;
@@ -92,7 +91,6 @@ class 管道间距(QWidget):
         
         # 创建管道参数组（双列）
         pipes_group = QGroupBox("管道参数")
-        pipes_group.setStyleSheet(self.get_groupbox_style("#3498db"))
         pipes_layout = QGridLayout()
         pipes_layout.setVerticalSpacing(10)
         pipes_layout.setHorizontalSpacing(15)
@@ -149,7 +147,7 @@ class 管道间距(QWidget):
         
         # 布置参数组
         layout_group = QGroupBox("布置参数")
-        layout_group.setStyleSheet(self.get_groupbox_style("#9b59b6"))
+        layout_group
         layout_form = QFormLayout()
         layout_form.setVerticalSpacing(10)
         layout_form.setHorizontalSpacing(15)
@@ -181,7 +179,7 @@ class 管道间距(QWidget):
         
         # 特殊要求组
         special_group = QGroupBox("特殊要求")
-        special_group.setStyleSheet(self.get_groupbox_style("#e74c3c"))
+        special_group
         special_form = QFormLayout()
         
         # 法兰面对面布置
@@ -214,7 +212,7 @@ class 管道间距(QWidget):
         
         # 计算结果组
         result_group = QGroupBox("计算结果")
-        result_group.setStyleSheet(self.get_groupbox_style("#27ae60"))
+        result_group
         result_layout = QVBoxLayout()
         
         # 主要结果
@@ -247,7 +245,7 @@ class 管道间距(QWidget):
         
         # 标准间距表组
         table_group = QGroupBox("标准间距要求")
-        table_group.setStyleSheet(self.get_groupbox_style("#f39c12"))
+        table_group
         table_layout = QVBoxLayout()
         
         table_text = QLabel(
@@ -270,7 +268,7 @@ class 管道间距(QWidget):
         
         # 计算原理说明
         principle_group = QGroupBox("计算原理")
-        principle_group.setStyleSheet(self.get_groupbox_style("#3498db"))
+        principle_group
         principle_layout = QVBoxLayout()
         
         principle_text = QLabel(
@@ -307,7 +305,7 @@ class 管道间距(QWidget):
                 font-weight: bold;
                 font-size: 14px;
             }
-            QPushButton:hover {
+            QPushButton:hover:!checked {
                 background-color: #219653;
             }
             QPushButton:pressed {
@@ -328,7 +326,7 @@ class 管道间距(QWidget):
                 font-weight: bold;
                 font-size: 14px;
             }
-            QPushButton:hover {
+            QPushButton:hover:!checked {
                 background-color: #7f8c8d;
             }
         """)
@@ -346,7 +344,7 @@ class 管道间距(QWidget):
                 font-weight: bold;
                 font-size: 14px;
             }
-            QPushButton:hover {
+            QPushButton:hover:!checked {
                 background-color: #2980b9;
             }
         """)
@@ -359,25 +357,6 @@ class 管道间距(QWidget):
         button_layout.addStretch()
         
         layout.addLayout(button_layout)
-    
-    def get_groupbox_style(self, color):
-        """获取分组框样式"""
-        return f"""
-            QGroupBox {{
-                font-weight: bold;
-                border: 2px solid {color};
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-                color: {color};
-            }}
-            QGroupBox::title {{
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 5px 0 5px;
-                color: {color};
-            }}
-        """
     
     def load_flange_data(self):
         """加载法兰标准数据（简化版，实际应使用完整数据库）"""
@@ -730,7 +709,6 @@ class 管道间距(QWidget):
         """获取当前时间字符串"""
         from datetime import datetime
         return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
 
 if __name__ == "__main__":
     # 测试代码

@@ -11,20 +11,6 @@ import datetime
 from modules.combo_box_utils import ComboBoxWheelBlocker
 
 # 统一GroupBox样式
-GROUP_STYLE = """
-    QGroupBox {
-        font-weight: bold;
-        border: 1px solid #888;
-        border-radius: 8px;
-        margin-top: 10px;
-        padding-top: 10px;
-    }
-    QGroupBox::title {
-        subcontrol-origin: margin;
-        left: 10px;
-        padding: 0 8px 0 8px;
-    }
-"""
 COMBOBOX_STYLE = """
     QComboBox {
         border: 1px solid #888;
@@ -112,7 +98,6 @@ class CorrosionDataQuery(QWidget):
 
         # 查询条件组 — QGridLayout 三列 stretch(4,8,5)
         query_group = QGroupBox("查询条件")
-        query_group.setStyleSheet(GROUP_STYLE)
         query_grid = QGridLayout(query_group)
         query_grid.setSpacing(12)
         query_grid.setHorizontalSpacing(10)
@@ -226,13 +211,12 @@ class CorrosionDataQuery(QWidget):
             "border-radius: 8px; "
             "min-height: 50px; padding: 0px; "
             "}"
-            "QPushButton:hover { background-color: #219955; }"
+            "QPushButton:hover:!checked { background-color: #219955; }"
         )
         left_layout.addWidget(self.query_btn)
 
         # 搜索功能
         search_group = QGroupBox("快速搜索")
-        search_group.setStyleSheet(GROUP_STYLE)
         search_layout = QHBoxLayout(search_group)
 
         search_label = QLabel("搜索关键词:")
@@ -255,7 +239,7 @@ class CorrosionDataQuery(QWidget):
             "border: none; "
             "border-radius: 8px; "
             "}"
-            "QPushButton:hover { background-color: #219955; }"
+            "QPushButton:hover:!checked { background-color: #219955; }"
         )
         search_layout.addWidget(self.search_btn)
         left_layout.addWidget(search_group)
@@ -310,7 +294,6 @@ class CorrosionDataQuery(QWidget):
         right_layout.setContentsMargins(0, 0, 0, 0)
 
         result_group = QGroupBox("查询结果")
-        result_group.setStyleSheet(GROUP_STYLE)
         result_vbox = QVBoxLayout(result_group)
 
         # 右侧 QTextEdit：只读、浅灰背景、圆角、最小高度500px
@@ -347,7 +330,7 @@ class CorrosionDataQuery(QWidget):
             "border-radius: 6px; "
             "padding: 8px; "
             "}"
-            "QPushButton:hover { background-color: #7f8c8d; }"
+            "QPushButton:hover:!checked { background-color: #7f8c8d; }"
         )
         bottom_layout.addWidget(self.clear_btn)
 
@@ -366,7 +349,7 @@ class CorrosionDataQuery(QWidget):
             "border-radius: 6px; "
             "padding: 8px; "
             "}"
-            "QPushButton:hover { background-color: #219653; }"
+            "QPushButton:hover:!checked { background-color: #219653; }"
         )
         bottom_layout.addWidget(self.download_txt_btn)
 
@@ -383,7 +366,7 @@ class CorrosionDataQuery(QWidget):
             "border-radius: 6px; "
             "padding: 8px; "
             "}"
-            "QPushButton:hover { background-color: #c0392b; }"
+            "QPushButton:hover:!checked { background-color: #c0392b; }"
         )
         bottom_layout.addWidget(self.download_pdf_btn)
 
@@ -472,7 +455,6 @@ class CorrosionDataQuery(QWidget):
 
         # 材料库说明
         info_group = QGroupBox("常用工程材料耐腐蚀性能参考")
-        info_group.setStyleSheet(GROUP_STYLE)
         info_layout = QVBoxLayout(info_group)
 
         # 材料参数表
@@ -515,7 +497,6 @@ class CorrosionDataQuery(QWidget):
         layout.setSpacing(12)
 
         corrosion_group = QGroupBox("常见腐蚀类型知识")
-        corrosion_group.setStyleSheet(GROUP_STYLE)
         group_layout = QVBoxLayout(corrosion_group)
 
         corrosion_text = QTextEdit()

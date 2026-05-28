@@ -102,7 +102,6 @@ class SafetyValveCalculator(QWidget):
 
         # ── 工况条件组 ──
         cond_group = QGroupBox("工况条件")
-        cond_group.setStyleSheet(GROUP_STYLE)
         grid = QGridLayout(cond_group)
         grid.setHorizontalSpacing(10)
         grid.setVerticalSpacing(12)
@@ -211,7 +210,6 @@ class SafetyValveCalculator(QWidget):
 
         # ── 泄放条件组 ──
         relief_group = QGroupBox("泄放条件")
-        relief_group.setStyleSheet(GROUP_STYLE)
         rgrid = QGridLayout(relief_group)
         rgrid.setHorizontalSpacing(10)
         rgrid.setVerticalSpacing(12)
@@ -256,7 +254,6 @@ class SafetyValveCalculator(QWidget):
 
         # ── 安全阀参数组 ──
         valve_group = QGroupBox("安全阀参数")
-        valve_group.setStyleSheet(GROUP_STYLE)
         vgrid = QGridLayout(valve_group)
         vgrid.setHorizontalSpacing(10)
         vgrid.setVerticalSpacing(12)
@@ -306,14 +303,13 @@ class SafetyValveCalculator(QWidget):
                 border-radius: 8px;
                 min-height: 50px; padding: 0px;
             }
-            QPushButton:hover { background-color: #219955; }
+            QPushButton:hover:!checked { background-color: #219955; }
         """)
         calc_btn.clicked.connect(self.calculate)
         left_layout.addWidget(calc_btn)
 
         # ── 详细参数表 ──
         detail_group = QGroupBox("详细参数")
-        detail_group.setStyleSheet(GROUP_STYLE)
         detail_vbox = QVBoxLayout(detail_group)
 
         self.detail_table = QTableWidget()
@@ -335,7 +331,7 @@ class SafetyValveCalculator(QWidget):
                 font-weight: bold; border-radius: 6px;
                 padding: 8px 20px;
             }
-            QPushButton:hover { background-color: #7f8c8d; }
+            QPushButton:hover:!checked { background-color: #7f8c8d; }
         """)
         clear_btn.clicked.connect(self.clear_inputs)
 
@@ -347,7 +343,7 @@ class SafetyValveCalculator(QWidget):
                 font-weight: bold; border-radius: 6px;
                 padding: 8px;
             }
-            QPushButton:hover { background-color: #219653; }
+            QPushButton:hover:!checked { background-color: #219653; }
         """)
         dl_txt_btn.clicked.connect(self.download_txt_report)
 
@@ -359,7 +355,7 @@ class SafetyValveCalculator(QWidget):
                 font-weight: bold; border-radius: 6px;
                 padding: 8px;
             }
-            QPushButton:hover { background-color: #c0392b; }
+            QPushButton:hover:!checked { background-color: #c0392b; }
         """)
         dl_pdf_btn.clicked.connect(self.generate_pdf_report)
 
@@ -376,7 +372,6 @@ class SafetyValveCalculator(QWidget):
         right_layout.setSpacing(15)
 
         result_group = QGroupBox("计算结果")
-        result_group.setStyleSheet(GROUP_STYLE)
         result_vbox = QVBoxLayout(result_group)
 
         self.result_text = QTextEdit()

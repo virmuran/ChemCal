@@ -16,11 +16,11 @@ COMBOBOX_STYLE = """
         border-radius: 4px;
         padding: 6px 10px;
         /* background via theme */
-        /* color via theme */
+        color: black;
     }
     QComboBox QAbstractItemView {
         /* background-color via theme */
-        /* color via theme */
+        color: black;
         border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
@@ -102,7 +102,6 @@ class 罐体重量(QWidget):
         
         # 2. 罐体类型选择
         type_group = QGroupBox("罐体类型")
-        type_group.setStyleSheet(GROUP_STYLE)
         type_layout = QHBoxLayout(type_group)
         
         self.type_button_group = QButtonGroup(self)
@@ -122,20 +121,20 @@ class 罐体重量(QWidget):
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             btn.setStyleSheet("""
                 QPushButton {
-                    /* unselected bg via theme */
+                    background-color: #ffffff;
                     border: 1px solid #666;
                     border-radius: 4px;
                     padding: 8px;
                     text-align: center;
-                    /* color via theme */
+                    color: black;
                 }
                 QPushButton:checked {
-                    background-color: #3498db;
+                    background-color: #4b5cc4;
                     color: white;
                 }
-                QPushButton:hover {
-                    background-color: #d5dbdb;
-                    color: green;
+                QPushButton:hover:!checked {
+                    background-color: #c0ebd7;
+                    color: black;
                 }
             """)
             self.type_button_group.addButton(btn, i)
@@ -150,7 +149,6 @@ class 罐体重量(QWidget):
         
         # 3. 输入参数组 - 使用GridLayout实现整齐的布局
         input_group = QGroupBox("尺寸参数")
-        input_group.setStyleSheet(GROUP_STYLE)
         
         # 使用GridLayout确保整齐排列
         self.input_layout = QGridLayout(input_group)
@@ -330,7 +328,6 @@ class 罐体重量(QWidget):
         
         # 4. 材料参数组
         material_group = QGroupBox("材料参数")
-        material_group.setStyleSheet(GROUP_STYLE)
         
         material_layout = QGridLayout(material_group)
         material_layout.setVerticalSpacing(12)
@@ -413,8 +410,8 @@ class 罐体重量(QWidget):
                 min-height: 50px; padding: 0px;
                 font-weight: bold;
             }
-            QPushButton:hover {
-                background-color: #219955;
+            QPushButton:hover:!checked {
+                background-color: #c0ebd7;
             }
         """)
         calculate_btn.setMinimumHeight(50)
@@ -435,8 +432,8 @@ class 罐体重量(QWidget):
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover {
-                background-color: #219653;
+            QPushButton:hover:!checked {
+                background-color: #c0ebd7;
             }
         """)
 
@@ -452,8 +449,8 @@ class 罐体重量(QWidget):
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover {
-                background-color: #c0392b;
+            QPushButton:hover:!checked {
+                background-color: #c0ebd7;
             }
         """)
 
@@ -473,8 +470,8 @@ class 罐体重量(QWidget):
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover {
-                background-color: #7f8c8d;
+            QPushButton:hover:!checked {
+                background-color: #c0ebd7;
             }
         """)
         left_layout.addWidget(clear_btn)
@@ -490,7 +487,6 @@ class 罐体重量(QWidget):
         
         # 结果显示
         self.result_group = QGroupBox("计算结果")
-        self.result_group.setStyleSheet(GROUP_STYLE)
         result_layout = QVBoxLayout(self.result_group)
         
         self.result_text = QTextEdit()

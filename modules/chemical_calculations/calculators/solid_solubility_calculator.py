@@ -250,7 +250,6 @@ class SolidSolubilityCalculator(QWidget):
 
         # ── 查询条件组 ──
         query_group = QGroupBox("查询条件")
-        query_group.setStyleSheet(GROUP_STYLE)
         grid = QGridLayout(query_group)
         grid.setSpacing(12)
         grid.setHorizontalSpacing(10)
@@ -325,7 +324,7 @@ class SolidSolubilityCalculator(QWidget):
                 border-radius: 8px;
                 min-height: 50px; padding: 0px;
             }
-            QPushButton:hover { background-color: #219955; }
+            QPushButton:hover:!checked { background-color: #219955; }
         """)
         calc_btn.clicked.connect(self.query_solubility)
         left_layout.addWidget(calc_btn)
@@ -337,7 +336,6 @@ class SolidSolubilityCalculator(QWidget):
 
         # ── 参考数据表 ──
         ref_group = QGroupBox("常见固体溶解度参考表")
-        ref_group.setStyleSheet(GROUP_STYLE)
         ref_vbox = QVBoxLayout(ref_group)
 
         self.data_table = QTableWidget()
@@ -357,7 +355,6 @@ class SolidSolubilityCalculator(QWidget):
         right_layout.setSpacing(15)
 
         result_group = QGroupBox("查询结果")
-        result_group.setStyleSheet(GROUP_STYLE)
         result_vbox = QVBoxLayout(result_group)
 
         self.result_text = QTextEdit()
@@ -388,7 +385,7 @@ class SolidSolubilityCalculator(QWidget):
             "background-color: #95a5a6; color: white; "
             "font-weight: bold; border: none; border-radius: 6px; padding: 8px; "
             "}"
-            "QPushButton:hover { background-color: #7f8c8d; }"
+            "QPushButton:hover:!checked { background-color: #7f8c8d; }"
         )
 
         self.dl_txt_btn = QPushButton("下载计算书(TXT)")
@@ -400,7 +397,7 @@ class SolidSolubilityCalculator(QWidget):
             "background-color: #27ae60; color: white; "
             "font-weight: bold; border: none; border-radius: 6px; padding: 8px; "
             "}"
-            "QPushButton:hover { background-color: #219653; }"
+            "QPushButton:hover:!checked { background-color: #219653; }"
         )
 
         self.dl_pdf_btn = QPushButton("下载计算书(PDF)")
@@ -412,7 +409,7 @@ class SolidSolubilityCalculator(QWidget):
             "background-color: #e74c3c; color: white; "
             "font-weight: bold; border: none; border-radius: 6px; padding: 8px; "
             "}"
-            "QPushButton:hover { background-color: #c0392b; }"
+            "QPushButton:hover:!checked { background-color: #c0392b; }"
         )
 
         btn_row.addWidget(self.clear_btn)

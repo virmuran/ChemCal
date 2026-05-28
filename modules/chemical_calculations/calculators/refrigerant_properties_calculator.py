@@ -157,7 +157,6 @@ class RefrigerantPropertiesCalculator(QWidget):
 
         # 2. 制冷剂选择组
         ref_group = QGroupBox("制冷剂选择")
-        ref_group.setStyleSheet(GROUP_STYLE)
         ref_layout = QGridLayout(ref_group)
         ref_layout.setVerticalSpacing(12)
         ref_layout.setHorizontalSpacing(10)
@@ -197,7 +196,6 @@ class RefrigerantPropertiesCalculator(QWidget):
 
         # 3. 计算条件组
         condition_group = QGroupBox("计算条件")
-        condition_group.setStyleSheet(GROUP_STYLE)
         condition_layout = QGridLayout(condition_group)
         condition_layout.setVerticalSpacing(12)
         condition_layout.setHorizontalSpacing(10)
@@ -300,7 +298,6 @@ class RefrigerantPropertiesCalculator(QWidget):
 
         # 4. 制冷剂基本信息组
         info_group = QGroupBox("制冷剂基本信息")
-        info_group.setStyleSheet(GROUP_STYLE)
         info_layout = QGridLayout(info_group)
         info_layout.setVerticalSpacing(12)
         info_layout.setHorizontalSpacing(10)
@@ -345,7 +342,7 @@ class RefrigerantPropertiesCalculator(QWidget):
                 border-radius: 8px;
                 min-height: 50px; padding: 0px;
             }
-            QPushButton:hover { background-color: #219955; }
+            QPushButton:hover:!checked { background-color: #219955; }
         """)
         calculate_btn.setMinimumHeight(50)
         left_layout.addWidget(calculate_btn)
@@ -355,7 +352,7 @@ class RefrigerantPropertiesCalculator(QWidget):
         clear_btn = QPushButton("清空")
         clear_btn.setStyleSheet("""
             QPushButton { background-color: #95a5a6; color: white; border: none; border-radius: 6px; padding: 8px; font-weight: bold; }
-            QPushButton:hover { background-color: #7f8c8d; }
+            QPushButton:hover:!checked { background-color: #7f8c8d; }
         """)
         clear_btn.clicked.connect(self.clear_inputs)
         clear_btn.setMinimumHeight(50)
@@ -367,14 +364,14 @@ class RefrigerantPropertiesCalculator(QWidget):
         download_txt_btn.setMinimumHeight(50)
         download_txt_btn.setStyleSheet("""
             QPushButton { background-color: #27ae60; color: white; border: none; border-radius: 6px; padding: 8px; font-weight: bold; }
-            QPushButton:hover { background-color: #219653; }
+            QPushButton:hover:!checked { background-color: #219653; }
         """)
         download_pdf_btn = QPushButton("下载计算书(PDF)")
         download_pdf_btn.clicked.connect(self.generate_pdf_report)
         download_pdf_btn.setMinimumHeight(50)
         download_pdf_btn.setStyleSheet("""
             QPushButton { background-color: #e74c3c; color: white; border: none; border-radius: 6px; padding: 8px; font-weight: bold; }
-            QPushButton:hover { background-color: #c0392b; }
+            QPushButton:hover:!checked { background-color: #c0392b; }
         """)
         download_layout.addWidget(download_txt_btn)
         download_layout.addWidget(download_pdf_btn)
@@ -388,7 +385,6 @@ class RefrigerantPropertiesCalculator(QWidget):
         right_layout.setSpacing(15)
 
         result_group = QGroupBox("计算结果")
-        result_group.setStyleSheet(GROUP_STYLE)
         result_inner = QVBoxLayout(result_group)
 
         self.result_text = QTextEdit()

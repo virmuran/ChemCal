@@ -115,25 +115,6 @@ COMBOBOX_STYLE = """
     }
 """
 
-GROUP_STYLE = """
-QGroupBox {
-    font-weight: bold;
-    border: 1px solid #888;
-    border-radius: 8px;
-    margin-top: 10px;
-    padding-top: 10px;
-}
-QGroupBox::title {
-    subcontrol-origin: margin;
-    left: 10px;
-    padding: 0 8px 0 8px;
-}
-"""
-
-# ---------------------------------------------------------------------------
-#  EOS 计算器主类（统一 UI 规范版）
-# ---------------------------------------------------------------------------
-
 class EOSCalculator(QWidget):
     """状态方程计算器 — 支持 vdW / RK / SRK / PR 立方型 EOS"""
     calculation_type = "eos_calculator"
@@ -197,7 +178,6 @@ class EOSCalculator(QWidget):
 
         # ---- 物质参数 ----
         sg = QGroupBox("物质参数")
-        sg.setStyleSheet(GROUP_STYLE)
         sgrid = QGridLayout(sg)
         sgrid.setHorizontalSpacing(10)
         sgrid.setVerticalSpacing(10)
@@ -258,7 +238,6 @@ class EOSCalculator(QWidget):
 
         # ---- 状态方程选择 ----
         eg = QGroupBox("状态方程选择")
-        eg.setStyleSheet(GROUP_STYLE)
         egrid = QGridLayout(eg)
         egrid.setHorizontalSpacing(10)
         egrid.setVerticalSpacing(10)
@@ -297,7 +276,6 @@ class EOSCalculator(QWidget):
 
         # ---- 计算条件 ----
         cg = QGroupBox("计算条件")
-        cg.setStyleSheet(GROUP_STYLE)
         cgrid = QGridLayout(cg)
         cgrid.setHorizontalSpacing(10)
         cgrid.setVerticalSpacing(10)
@@ -333,7 +311,6 @@ class EOSCalculator(QWidget):
 
         # ---- 方程说明 ----
         info_group = QGroupBox("状态方程说明")
-        info_group.setStyleSheet(GROUP_STYLE)
         info_layout = QVBoxLayout(info_group)
         info_text = QLabel(
             "理想气体: PV=RT，适用于低压高温\n"
@@ -361,7 +338,7 @@ class EOSCalculator(QWidget):
             "  min-height: 50px;"
             "  padding: 0px;"
             "}"
-            "QPushButton:hover { background-color: #219955; }"
+            "QPushButton:hover:!checked { background-color: #219955; }"
         )
         b_calc.clicked.connect(self.calculate)
 
@@ -381,7 +358,7 @@ class EOSCalculator(QWidget):
             "  border-radius: 6px;"
             "  padding: 8px;"
             "}"
-            "QPushButton:hover { background-color: #7f8c8d; }"
+            "QPushButton:hover:!checked { background-color: #7f8c8d; }"
         )
         b_clr.clicked.connect(self.clear_inputs)
 
@@ -396,7 +373,7 @@ class EOSCalculator(QWidget):
             "  border-radius: 6px;"
             "  padding: 8px;"
             "}"
-            "QPushButton:hover { background-color: #219653; }"
+            "QPushButton:hover:!checked { background-color: #219653; }"
         )
         b_txt.clicked.connect(self.download_txt_report)
 
@@ -411,7 +388,7 @@ class EOSCalculator(QWidget):
             "  border-radius: 6px;"
             "  padding: 8px;"
             "}"
-            "QPushButton:hover { background-color: #c0392b; }"
+            "QPushButton:hover:!checked { background-color: #c0392b; }"
         )
         b_pdf.clicked.connect(self.generate_pdf_report)
 
@@ -429,7 +406,6 @@ class EOSCalculator(QWidget):
         rl.setSpacing(10)
 
         rg = QGroupBox("计算结果")
-        rg.setStyleSheet(GROUP_STYLE)
         rv = QVBoxLayout(rg)
 
         self.result_text = QTextEdit()

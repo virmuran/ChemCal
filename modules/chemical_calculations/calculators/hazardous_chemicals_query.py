@@ -18,20 +18,6 @@ import os
 from modules.combo_box_utils import ComboBoxWheelBlocker
 
 # QGroupBox统一样式
-GROUP_STYLE = """
-    QGroupBox {
-        font-weight: bold;
-        border: 1px solid #888;
-        border-radius: 8px;
-        margin-top: 10px;
-        padding-top: 10px;
-    }
-    QGroupBox::title {
-        subcontrol-origin: margin;
-        left: 10px;
-        padding: 0 8px 0 8px;
-    }
-"""
 
 # 统一滚动条样式
 SCROLLBAR_STYLE = """
@@ -139,7 +125,7 @@ class ChemicalDetailDialog(QDialog):
                 padding: 8px 16px;
                 font-weight: bold;
             }
-            QPushButton:hover {
+            QPushButton:hover:!checked {
                 background-color: #7f8c8d;
             }
         """)
@@ -249,7 +235,6 @@ class ChemicalDetailDialog(QDialog):
         # 危险性类别
         if self.chemical_data.get('hazard_class'):
             class_group = QGroupBox("危险性类别")
-            class_group.setStyleSheet(GROUP_STYLE)
             class_layout = QVBoxLayout(class_group)
             hazards = self.chemical_data['hazard_class'].split(';')
             for hazard in hazards:
@@ -261,7 +246,6 @@ class ChemicalDetailDialog(QDialog):
         # GHS象形图
         if self.chemical_data.get('ghs_symbols'):
             ghs_group = QGroupBox("GHS象形图")
-            ghs_group.setStyleSheet(GROUP_STYLE)
             ghs_layout = QVBoxLayout(ghs_group)
             symbols = self.chemical_data['ghs_symbols'].split(';')
             for symbol in symbols:
@@ -273,7 +257,6 @@ class ChemicalDetailDialog(QDialog):
         # 危险性说明
         if self.chemical_data.get('hazard_statements'):
             state_group = QGroupBox("危险性说明")
-            state_group.setStyleSheet(GROUP_STYLE)
             state_layout = QVBoxLayout(state_group)
             statements = self.chemical_data['hazard_statements'].split(';')
             for statement in statements:
@@ -286,7 +269,6 @@ class ChemicalDetailDialog(QDialog):
         # 防范说明
         if self.chemical_data.get('precautionary_statements'):
             prec_group = QGroupBox("防范说明")
-            prec_group.setStyleSheet(GROUP_STYLE)
             prec_layout = QVBoxLayout(prec_group)
             statements = self.chemical_data['precautionary_statements'].split(';')
             for statement in statements:
@@ -311,7 +293,6 @@ class ChemicalDetailDialog(QDialog):
         # 操作处置
         if self.chemical_data.get('handling'):
             handle_group = QGroupBox("操作处置")
-            handle_group.setStyleSheet(GROUP_STYLE)
             handle_layout = QVBoxLayout(handle_group)
             handle_layout.addWidget(QLabel(self.chemical_data['handling']))
             layout.addWidget(handle_group)
@@ -319,7 +300,6 @@ class ChemicalDetailDialog(QDialog):
         # 储存
         if self.chemical_data.get('storage'):
             storage_group = QGroupBox("储存条件")
-            storage_group.setStyleSheet(GROUP_STYLE)
             storage_layout = QVBoxLayout(storage_group)
             storage_layout.addWidget(QLabel(self.chemical_data['storage']))
             layout.addWidget(storage_group)
@@ -327,7 +307,6 @@ class ChemicalDetailDialog(QDialog):
         # 个人防护
         if self.chemical_data.get('personal_protection'):
             protect_group = QGroupBox("个人防护")
-            protect_group.setStyleSheet(GROUP_STYLE)
             protect_layout = QVBoxLayout(protect_group)
             protections = self.chemical_data['personal_protection'].split(';')
             for protection in protections:
@@ -339,7 +318,6 @@ class ChemicalDetailDialog(QDialog):
         # 工程控制
         if self.chemical_data.get('engineering_controls'):
             control_group = QGroupBox("工程控制")
-            control_group.setStyleSheet(GROUP_STYLE)
             control_layout = QVBoxLayout(control_group)
             controls = self.chemical_data['engineering_controls'].split(';')
             for control in controls:
@@ -363,7 +341,6 @@ class ChemicalDetailDialog(QDialog):
         # 火灾爆炸措施
         if self.chemical_data.get('fire_fighting'):
             fire_group = QGroupBox("火灾爆炸措施")
-            fire_group.setStyleSheet(GROUP_STYLE)
             fire_layout = QVBoxLayout(fire_group)
             fire_layout.addWidget(QLabel(self.chemical_data['fire_fighting']))
             layout.addWidget(fire_group)
@@ -371,7 +348,6 @@ class ChemicalDetailDialog(QDialog):
         # 泄漏应急处理
         if self.chemical_data.get('spill_handling'):
             spill_group = QGroupBox("泄漏应急处理")
-            spill_group.setStyleSheet(GROUP_STYLE)
             spill_layout = QVBoxLayout(spill_group)
             spill_layout.addWidget(QLabel(self.chemical_data['spill_handling']))
             layout.addWidget(spill_group)
@@ -379,7 +355,6 @@ class ChemicalDetailDialog(QDialog):
         # 急救措施
         if self.chemical_data.get('first_aid'):
             aid_group = QGroupBox("急救措施")
-            aid_group.setStyleSheet(GROUP_STYLE)
             aid_layout = QVBoxLayout(aid_group)
             aid_measures = self.chemical_data['first_aid'].split(';')
             for measure in aid_measures:
@@ -528,7 +503,6 @@ class HazardousChemicalsQuery(QWidget):
 
         # 结果详情GroupBox
         result_group = QGroupBox("查询结果")
-        result_group.setStyleSheet(GROUP_STYLE)
         result_layout = QVBoxLayout(result_group)
 
         # 右侧QTextEdit：readOnly=True，背景#f8f9fa，圆角6px，minHeight=500px
@@ -563,7 +537,7 @@ class HazardousChemicalsQuery(QWidget):
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover {
+            QPushButton:hover:!checked {
                 background-color: #219955;
             }
             QPushButton:disabled {
@@ -592,7 +566,7 @@ class HazardousChemicalsQuery(QWidget):
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover {
+            QPushButton:hover:!checked {
                 background-color: #7f8c8d;
             }
         """)
@@ -612,7 +586,7 @@ class HazardousChemicalsQuery(QWidget):
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover {
+            QPushButton:hover:!checked {
                 background-color: #219653;
             }
             QPushButton:disabled {
@@ -636,7 +610,7 @@ class HazardousChemicalsQuery(QWidget):
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover {
+            QPushButton:hover:!checked {
                 background-color: #c0392b;
             }
             QPushButton:disabled {

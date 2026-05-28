@@ -128,7 +128,7 @@ class HistoryViewer(QWidget):
                 padding: 0 16px;
                 font-size: 13px;
             }
-            QPushButton:hover { background: #2980b9; }
+            QPushButton:hover:!checked { background: #2980b9; }
         """)
         btn_layout.addWidget(self.load_more_btn)
 
@@ -144,7 +144,7 @@ class HistoryViewer(QWidget):
                 padding: 0 16px;
                 font-size: 13px;
             }
-            QPushButton:hover { background: #c0392b; }
+            QPushButton:hover:!checked { background: #c0392b; }
         """)
         self.delete_btn.setEnabled(False)
         btn_layout.addWidget(self.delete_btn)

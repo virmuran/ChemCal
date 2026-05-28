@@ -375,7 +375,6 @@ class SolutionDensityCalculator(QWidget):
 
         # 查询结果组
         result_group = QGroupBox("查询结果")
-        result_group.setStyleSheet(GROUP_STYLE)
         result_layout = QVBoxLayout(result_group)
 
         self.result_text = QTextEdit()
@@ -406,7 +405,7 @@ class SolutionDensityCalculator(QWidget):
             "background-color: #95a5a6; color: white; "
             "font-weight: bold; border: none; border-radius: 6px; padding: 8px; "
             "}"
-            "QPushButton:hover { background-color: #7f8c8d; }"
+            "QPushButton:hover:!checked { background-color: #7f8c8d; }"
         )
         button_layout.addWidget(self.clear_btn)
 
@@ -421,7 +420,7 @@ class SolutionDensityCalculator(QWidget):
             "background-color: #27ae60; color: white; "
             "font-weight: bold; border: none; border-radius: 6px; padding: 8px; "
             "}"
-            "QPushButton:hover { background-color: #219653; }"
+            "QPushButton:hover:!checked { background-color: #219653; }"
         )
         button_layout.addWidget(self.download_txt_btn)
 
@@ -434,7 +433,7 @@ class SolutionDensityCalculator(QWidget):
             "background-color: #e74c3c; color: white; "
             "font-weight: bold; border: none; border-radius: 6px; padding: 8px; "
             "}"
-            "QPushButton:hover { background-color: #c0392b; }"
+            "QPushButton:hover:!checked { background-color: #c0392b; }"
         )
         button_layout.addWidget(self.download_pdf_btn)
 
@@ -515,7 +514,7 @@ class SolutionDensityCalculator(QWidget):
             "font-weight: bold; border: none; "
             "border-radius: 8px; min-height: 50px; padding: 0px; "
             "}"
-            "QPushButton:hover { background-color: #219955; }"
+            "QPushButton:hover:!checked { background-color: #219955; }"
         )
         self.calc_btn.clicked.connect(self._calculate_single)
         layout.addWidget(self.calc_btn)
@@ -547,7 +546,6 @@ class SolutionDensityCalculator(QWidget):
 
         # 参数行
         param_group = QGroupBox("扫描参数")
-        param_group.setStyleSheet(GROUP_STYLE)
         param_grid = QGridLayout(param_group)
         param_grid.setSpacing(12)
         param_grid.setHorizontalSpacing(10)
@@ -635,7 +633,7 @@ class SolutionDensityCalculator(QWidget):
             "font-weight: bold; border: none; "
             "border-radius: 8px; padding: 8px; "
             "}"
-            "QPushButton:hover { background-color: #7d3c98; }"
+            "QPushButton:hover:!checked { background-color: #7d3c98; }"
         )
         scan_btn.clicked.connect(self._run_scan)
         layout.addWidget(scan_btn)
@@ -653,7 +651,6 @@ class SolutionDensityCalculator(QWidget):
 
         for name, cfg in SUBSTANCE_CONFIG.items():
             box = QGroupBox(name)
-            box.setStyleSheet(GROUP_STYLE)
             box_layout = QGridLayout(box)
             box_layout.setSpacing(6)
 

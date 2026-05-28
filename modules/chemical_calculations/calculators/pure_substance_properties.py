@@ -104,7 +104,6 @@ class PureSubstanceProperties(QWidget):
         
         # 查询条件组
         query_group = QGroupBox("查询条件")
-        query_group.setStyleSheet(GROUP_STYLE)
         query_layout = QGridLayout(query_group)
         query_layout.setSpacing(12)  # 行间距12px
         query_layout.setHorizontalSpacing(10)  # 列间距10px
@@ -226,7 +225,7 @@ class PureSubstanceProperties(QWidget):
             "border-radius: 8px; "
             "min-height: 50px; padding: 0px; "
             "}"
-            "QPushButton:hover { background-color: #219955; }"
+            "QPushButton:hover:!checked { background-color: #219955; }"
         )
         left_layout.addWidget(self.query_btn)
         
@@ -244,7 +243,7 @@ class PureSubstanceProperties(QWidget):
             "border-radius: 8px; "
             "padding: 8px; "
             "}"
-            "QPushButton:hover { background-color: #7d3c98; }"
+            "QPushButton:hover:!checked { background-color: #7d3c98; }"
         )
         left_layout.addWidget(self.temp_calc_btn)
         
@@ -254,7 +253,6 @@ class PureSubstanceProperties(QWidget):
 
         # 基本物性组（左）
         basic_prop_group = QGroupBox("基本物性")
-        basic_prop_group.setStyleSheet(GROUP_STYLE)
         basic_prop_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         basic_prop_layout = QVBoxLayout(basic_prop_group)
         basic_prop_layout.setContentsMargins(6, 6, 6, 6)
@@ -270,7 +268,6 @@ class PureSubstanceProperties(QWidget):
 
         # 热力学性质组（右）
         thermo_prop_group = QGroupBox("热力学性质")
-        thermo_prop_group.setStyleSheet(GROUP_STYLE)
         thermo_prop_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         thermo_prop_layout = QVBoxLayout(thermo_prop_group)
         thermo_prop_layout.setContentsMargins(6, 6, 6, 6)
@@ -298,7 +295,6 @@ class PureSubstanceProperties(QWidget):
         
         # 查询结果组（与左侧查询条件统一风格）
         result_group = QGroupBox("查询结果")
-        result_group.setStyleSheet(GROUP_STYLE)
         result_layout = QVBoxLayout(result_group)
         
         # 结果文本区（按照规范：背景#f8f9fa，边框1px solid #ecf0f1，圆角6px，padding 8px，minHeight 500px，Expanding/Expanding）
@@ -336,7 +332,7 @@ class PureSubstanceProperties(QWidget):
             "border-radius: 6px; "
             "padding: 8px; "
             "}"
-            "QPushButton:hover { background-color: #7f8c8d; }"
+            "QPushButton:hover:!checked { background-color: #7f8c8d; }"
         )
         button_layout.addWidget(self.clear_btn)
         
@@ -356,7 +352,7 @@ class PureSubstanceProperties(QWidget):
             "border-radius: 6px; "
             "padding: 8px; "
             "}"
-            "QPushButton:hover { background-color: #219653; }"
+            "QPushButton:hover:!checked { background-color: #219653; }"
         )
         button_layout.addWidget(self.download_txt_btn)
         
@@ -374,7 +370,7 @@ class PureSubstanceProperties(QWidget):
             "border-radius: 6px; "
             "padding: 8px; "
             "}"
-            "QPushButton:hover { background-color: #c0392b; }"
+            "QPushButton:hover:!checked { background-color: #c0392b; }"
         )
         button_layout.addWidget(self.download_pdf_btn)
         

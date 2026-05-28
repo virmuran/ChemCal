@@ -311,20 +311,6 @@ class MixedLiquidFlashPointCalculator(QWidget):
         
         # 计算方法选择
         method_group = QGroupBox("计算方法")
-        method_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #666;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
         method_layout = QVBoxLayout(method_group)
         
         self.method_combo = QComboBox()
@@ -343,20 +329,6 @@ class MixedLiquidFlashPointCalculator(QWidget):
         
         # 组分管理
         components_group = QGroupBox("混合物组分")
-        components_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #666;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
         components_layout = QVBoxLayout(components_group)
         
         # 组分表格
@@ -393,7 +365,7 @@ class MixedLiquidFlashPointCalculator(QWidget):
                 padding: 8px 16px;
                 font-weight: bold;
             }
-            QPushButton:hover {
+            QPushButton:hover:!checked {
                 background-color: #219955;
             }
         """)
@@ -410,7 +382,7 @@ class MixedLiquidFlashPointCalculator(QWidget):
                 padding: 8px 16px;
                 font-weight: bold;
             }
-            QPushButton:hover {
+            QPushButton:hover:!checked {
                 background-color: #c0392b;
             }
         """)
@@ -434,7 +406,7 @@ class MixedLiquidFlashPointCalculator(QWidget):
                 min-height: 50px; padding: 0px;
                 font-weight: bold;
             }
-            QPushButton:hover {
+            QPushButton:hover:!checked {
                 background-color: #219955;
             }
         """)
@@ -450,20 +422,6 @@ class MixedLiquidFlashPointCalculator(QWidget):
         
         # 结果显示
         self.result_group = QGroupBox("计算结果")
-        self.result_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #666;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
         result_layout = QVBoxLayout(self.result_group)
         
         self.result_text = QTextEdit()
@@ -581,7 +539,7 @@ class MixedLiquidFlashPointCalculator(QWidget):
                     padding: 3px;
                     font-size: 11px;
                 }
-                QPushButton:hover {
+                QPushButton:hover:!checked {
                     background-color: #2980b9;
                 }
             """)
@@ -598,7 +556,7 @@ class MixedLiquidFlashPointCalculator(QWidget):
                     padding: 3px;
                     font-size: 11px;
                 }
-                QPushButton:hover {
+                QPushButton:hover:!checked {
                     background-color: #c0392b;
                 }
             """)

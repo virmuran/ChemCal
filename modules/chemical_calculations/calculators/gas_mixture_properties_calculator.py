@@ -154,20 +154,6 @@ def _lee_kesler_z(Tr, Pr, omega):
 # ---------------------------------------------------------------------------
 #  QGroupBox 统一样式
 # ---------------------------------------------------------------------------
-GROUP_STYLE = """
-    QGroupBox {
-        font-weight: bold;
-        border: 1px solid #888;
-        border-radius: 8px;
-        margin-top: 10px;
-        padding-top: 10px;
-    }
-    QGroupBox::title {
-        subcontrol-origin: margin;
-        left: 10px;
-        padding: 0 8px 0 8px;
-    }
-"""
 COMBOBOX_STYLE = """
     QComboBox {
         border: 1px solid #888;
@@ -253,7 +239,6 @@ class GasMixturePropertiesCalculator(QWidget):
 
         # 2. 计算条件组
         condition_group = QGroupBox("计算条件")
-        condition_group.setStyleSheet(GROUP_STYLE)
         condition_layout = QGridLayout(condition_group)
         condition_layout.setVerticalSpacing(12)
         condition_layout.setHorizontalSpacing(10)
@@ -350,7 +335,6 @@ class GasMixturePropertiesCalculator(QWidget):
 
         # 3. 组分参数表
         component_group = QGroupBox("组分参数")
-        component_group.setStyleSheet(GROUP_STYLE)
         component_table_layout = QVBoxLayout(component_group)
         self.component_table = QTableWidget()
         self.component_table.setColumnCount(8)
@@ -374,7 +358,7 @@ class GasMixturePropertiesCalculator(QWidget):
                 min-height: 50px; padding: 0px;
                 font-weight: bold;
             }
-            QPushButton:hover {
+            QPushButton:hover:!checked {
                 background-color: #219955;
             }
         """)
@@ -386,7 +370,7 @@ class GasMixturePropertiesCalculator(QWidget):
         clear_btn = QPushButton("清空")
         clear_btn.setStyleSheet("""
             QPushButton { background-color: #95a5a6; color: white; border: none; border-radius: 6px; padding: 8px; font-weight: bold; }
-            QPushButton:hover { background-color: #7f8c8d; }
+            QPushButton:hover:!checked { background-color: #7f8c8d; }
         """)
         clear_btn.clicked.connect(self.clear_inputs)
         download_layout.addWidget(clear_btn)
@@ -397,14 +381,14 @@ class GasMixturePropertiesCalculator(QWidget):
         download_txt_btn.clicked.connect(self.download_txt_report)
         download_txt_btn.setStyleSheet("""
             QPushButton { background-color: #27ae60; color: white; border: none; border-radius: 6px; padding: 8px; font-weight: bold; }
-            QPushButton:hover { background-color: #219653; }
+            QPushButton:hover:!checked { background-color: #219653; }
         """)
 
         download_pdf_btn = QPushButton("下载计算书(PDF)")
         download_pdf_btn.clicked.connect(self.generate_pdf_report)
         download_pdf_btn.setStyleSheet("""
             QPushButton { background-color: #e74c3c; color: white; border: none; border-radius: 6px; padding: 8px; font-weight: bold; }
-            QPushButton:hover { background-color: #c0392b; }
+            QPushButton:hover:!checked { background-color: #c0392b; }
         """)
 
         download_layout.addWidget(download_txt_btn)
@@ -421,7 +405,6 @@ class GasMixturePropertiesCalculator(QWidget):
         right_layout.setSpacing(15)
 
         result_group = QGroupBox("计算结果")
-        result_group.setStyleSheet(GROUP_STYLE)
         result_inner = QVBoxLayout(result_group)
 
         self.result_text = QTextEdit()

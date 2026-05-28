@@ -137,7 +137,6 @@ class CentrifugalPumpCalculator(QWidget):
         
         # 输入参数组
         input_group = QGroupBox("输入参数")
-        input_group.setStyleSheet(GROUP_STYLE)
         
         # GridLayout三列布局
         input_layout = QGridLayout(input_group)
@@ -329,7 +328,7 @@ class CentrifugalPumpCalculator(QWidget):
         calculate_btn.setStyleSheet(
             "QPushButton { background-color: #27ae60; color: white; font-weight: bold; "
             "border: none; border-radius: 8px; min-height: 50px; padding: 0px; }"
-            "QPushButton:hover { background-color: #219955; }"
+            "QPushButton:hover:!checked { background-color: #219955; }"
         )
         left_layout.addWidget(calculate_btn)
         
@@ -343,7 +342,7 @@ class CentrifugalPumpCalculator(QWidget):
         b_clr.setStyleSheet(
             "QPushButton { background-color: #95a5a6; color: white; font-weight: bold; "
             "border: none; border-radius: 6px; padding: 8px; }"
-            "QPushButton:hover { background-color: #7f8c8d; }"
+            "QPushButton:hover:!checked { background-color: #7f8c8d; }"
         )
         b_clr.clicked.connect(self.clear_inputs)
 
@@ -352,7 +351,7 @@ class CentrifugalPumpCalculator(QWidget):
         b_txt.setStyleSheet(
             "QPushButton { background-color: #27ae60; color: white; font-weight: bold; "
             "border: none; border-radius: 6px; padding: 8px; }"
-            "QPushButton:hover { background-color: #219653; }"
+            "QPushButton:hover:!checked { background-color: #219653; }"
         )
         b_txt.clicked.connect(self.download_txt_report)
 
@@ -361,7 +360,7 @@ class CentrifugalPumpCalculator(QWidget):
         b_pdf.setStyleSheet(
             "QPushButton { background-color: #e74c3c; color: white; font-weight: bold; "
             "border: none; border-radius: 6px; padding: 8px; }"
-            "QPushButton:hover { background-color: #c0392b; }"
+            "QPushButton:hover:!checked { background-color: #c0392b; }"
         )
         b_pdf.clicked.connect(self.generate_pdf_report)
         
@@ -381,7 +380,6 @@ class CentrifugalPumpCalculator(QWidget):
         
         # 结果显示组
         result_group = QGroupBox("计算结果")
-        result_group.setStyleSheet(GROUP_STYLE)
         result_layout = QVBoxLayout(result_group)
         
         self.result_text = QTextEdit()

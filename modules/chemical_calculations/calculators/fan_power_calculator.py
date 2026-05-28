@@ -13,20 +13,6 @@ from modules.combo_box_utils import ComboBoxWheelBlocker
 
 
 # 标准 QGroupBox 样式
-_GROUP_STYLE = """
-    QGroupBox {
-        font-weight: bold;
-        border: 1px solid #888;
-        border-radius: 8px;
-        margin-top: 10px;
-        padding-top: 10px;
-    }
-    QGroupBox::title {
-        subcontrol-origin: margin;
-        left: 10px;
-        padding: 0 8px 0 8px;
-    }
-"""
 COMBOBOX_STYLE = """
     QComboBox {
         border: 1px solid #888;
@@ -104,7 +90,6 @@ class FanPowerCalculator(QWidget):
 
         # ── 输入参数 GroupBox ─────────────────────────────────────
         input_group = QGroupBox("输入参数")
-        input_group.setStyleSheet(_GROUP_STYLE)
         grid = QGridLayout(input_group)
         grid.setVerticalSpacing(12)
         grid.setHorizontalSpacing(10)
@@ -252,7 +237,7 @@ class FanPowerCalculator(QWidget):
                 min-height: 50px; padding: 0px;
                 font-weight: bold;
             }
-            QPushButton:hover { background-color: #219955; }
+            QPushButton:hover:!checked { background-color: #219955; }
         """)
         calc_btn.clicked.connect(self.calculate)
         left_layout.addWidget(calc_btn)
@@ -266,7 +251,7 @@ class FanPowerCalculator(QWidget):
                 background-color: #95a5a6; color: white; border: none;
                 border-radius: 6px; padding: 8px; font-weight: bold;
             }
-            QPushButton:hover { background-color: #7f8c8d; }
+            QPushButton:hover:!checked { background-color: #7f8c8d; }
         """)
         clear_btn.clicked.connect(self.clear_inputs)
         btn_row.addWidget(clear_btn)
@@ -279,7 +264,7 @@ class FanPowerCalculator(QWidget):
                 background-color: #27ae60; color: white; border: none;
                 border-radius: 6px; padding: 8px; font-weight: bold;
             }
-            QPushButton:hover { background-color: #219653; }
+            QPushButton:hover:!checked { background-color: #219653; }
         """)
         txt_btn.clicked.connect(self.download_txt_report)
         btn_row.addWidget(txt_btn)
@@ -291,7 +276,7 @@ class FanPowerCalculator(QWidget):
                 background-color: #e74c3c; color: white; border: none;
                 border-radius: 6px; padding: 8px; font-weight: bold;
             }
-            QPushButton:hover { background-color: #c0392b; }
+            QPushButton:hover:!checked { background-color: #c0392b; }
         """)
         pdf_btn.clicked.connect(self.generate_pdf_report)
         btn_row.addWidget(pdf_btn)
@@ -306,7 +291,6 @@ class FanPowerCalculator(QWidget):
         right_layout.setSpacing(15)
 
         result_group = QGroupBox("计算结果")
-        result_group.setStyleSheet(_GROUP_STYLE)
         rlayout = QVBoxLayout(result_group)
 
         self.result_text = QTextEdit()

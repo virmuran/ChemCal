@@ -21,11 +21,11 @@ COMBOBOX_STYLE = """
         border-radius: 4px;
         padding: 6px 10px;
         /* background via theme */
-        /* color via theme */
+        color: black;
     }
     QComboBox QAbstractItemView {
         /* background-color via theme */
-        /* color via theme */
+        color: black;
         border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
@@ -259,7 +259,6 @@ class 设备尺寸计算(QWidget):
 
         # ----- 计算模式选择（按钮组）-----
         mode_group = QGroupBox("计算模式")
-        mode_group.setStyleSheet(GROUP_STYLE)
         mode_layout = QHBoxLayout(mode_group)
 
         self.mode_button_group = QButtonGroup(self)
@@ -278,20 +277,20 @@ class 设备尺寸计算(QWidget):
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             btn.setStyleSheet("""
                 QPushButton {
-                    /* unselected bg via theme */
+                    background-color: #ffffff;
                     border: 1px solid #666;
                     border-radius: 4px;
                     padding: 8px;
                     text-align: center;
-                    /* color via theme */
+                    color: black;
                 }
                 QPushButton:checked {
-                    background-color: #3498db;
+                    background-color: #4b5cc4;
                     color: white;
                 }
-                QPushButton:hover {
-                    background-color: #d5dbdb;
-                    color: green;
+                QPushButton:hover:!checked {
+                    background-color: #c0ebd7;
+                    color: black;
                 }
             """)
             self.mode_button_group.addButton(btn, i)
@@ -307,7 +306,6 @@ class 设备尺寸计算(QWidget):
 
         # ----- 输入参数组 -----
         input_group = QGroupBox("设备参数")
-        input_group.setStyleSheet(GROUP_STYLE)
         grid = QGridLayout(input_group)
         grid.setVerticalSpacing(12)
         grid.setHorizontalSpacing(10)
@@ -484,7 +482,7 @@ class 设备尺寸计算(QWidget):
                 background-color: #95a5a6; color: white; border: none;
                 border-radius: 6px; padding: 8px; font-weight: bold;
             }
-            QPushButton:hover { background-color: #7f8c8d; }
+            QPushButton:hover:!checked { background-color: #c0ebd7; }
         """)
         left_layout.addWidget(self.accessory_btn)
 
@@ -497,7 +495,7 @@ class 设备尺寸计算(QWidget):
                 background-color: #27ae60; color: white; border: none;
                 border-radius: 8px; min-height: 50px; padding: 0px; font-weight: bold;
             }
-            QPushButton:hover { background-color: #219955; }
+            QPushButton:hover:!checked { background-color: #c0ebd7; }
         """)
         calc_btn.setMinimumHeight(50)
         calc_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -512,7 +510,7 @@ class 设备尺寸计算(QWidget):
                 background-color: #27ae60; color: white; border: none;
                 border-radius: 6px; padding: 8px; font-weight: bold;
             }
-            QPushButton:hover { background-color: #219653; }
+            QPushButton:hover:!checked { background-color: #c0ebd7; }
         """)
         txt_btn.clicked.connect(self.download_txt_report)
         pdf_btn = QPushButton("下载计算书(PDF)")
@@ -522,7 +520,7 @@ class 设备尺寸计算(QWidget):
                 background-color: #e74c3c; color: white; border: none;
                 border-radius: 6px; padding: 8px; font-weight: bold;
             }
-            QPushButton:hover { background-color: #c0392b; }
+            QPushButton:hover:!checked { background-color: #c0ebd7; }
         """)
         pdf_btn.clicked.connect(self.generate_pdf_report)
         download_layout.addWidget(txt_btn)
@@ -537,7 +535,6 @@ class 设备尺寸计算(QWidget):
         right_layout.setSpacing(15)
 
         self.result_group = QGroupBox("计算结果")
-        self.result_group.setStyleSheet(GROUP_STYLE)
         result_layout = QVBoxLayout(self.result_group)
 
         self.result_text = QTextEdit()

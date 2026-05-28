@@ -19,11 +19,11 @@ COMBOBOX_STYLE = """
         border-radius: 4px;
         padding: 6px 10px;
         /* background via theme */
-        /* color via theme */
+        color: black;
     }
     QComboBox QAbstractItemView {
         /* background-color via theme */
-        /* color via theme */
+        color: black;
         border: 1px solid #888;
         selection-background-color: #3498db;
         selection-color: black;
@@ -383,20 +383,6 @@ class 管径计算(QWidget):
         
         # 2. 计算模式选择
         mode_group = QGroupBox("计算模式")
-        mode_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #666;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
         mode_layout = QHBoxLayout(mode_group)
         
         self.mode_button_group = QButtonGroup(self)
@@ -414,20 +400,20 @@ class 管径计算(QWidget):
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             btn.setStyleSheet("""
                 QPushButton {
-                    /* unselected bg via theme */
+                    background-color: #ffffff;
                     border: 1px solid #666;
                     border-radius: 4px;
                     padding: 8px;
                     text-align: center;
-                    /* color via theme */
+                    color: black;
                 }
                 QPushButton:checked {
-                    background-color: #27ae60;
+                    background-color: #4b5cc4;
                     color: white;
                 }
-                QPushButton:hover {
-                    background-color: #d5dbdb;
-                    color: green;
+                QPushButton:hover:!checked {
+                    background-color: #c0ebd7;
+                    color: black;
                 }
             """)
             self.mode_button_group.addButton(btn, i)
@@ -443,20 +429,6 @@ class 管径计算(QWidget):
         
         # 3. 输入参数组 - 使用GridLayout实现整齐的布局
         input_group = QGroupBox("输入参数")
-        input_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #666;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
         
         # 使用GridLayout确保整齐排列
         input_layout = QGridLayout(input_group)
@@ -603,8 +575,8 @@ class 管径计算(QWidget):
                 min-height: 50px; padding: 0px;
                 font-weight: bold;
             }
-            QPushButton:hover {
-                background-color: #219955;
+            QPushButton:hover:!checked {
+                background-color: #c0ebd7;
             }
         """)
         calculate_btn.setMinimumHeight(50)
@@ -624,8 +596,8 @@ class 管径计算(QWidget):
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover {
-                background-color: #219653;
+            QPushButton:hover:!checked {
+                background-color: #c0ebd7;
             }
         """)
 
@@ -640,8 +612,8 @@ class 管径计算(QWidget):
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover {
-                background-color: #c0392b;
+            QPushButton:hover:!checked {
+                background-color: #c0ebd7;
             }
         """)
 
@@ -660,20 +632,6 @@ class 管径计算(QWidget):
         
         # 结果显示
         self.result_group = QGroupBox("计算结果")
-        self.result_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #666;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-            }
-        """)
         result_layout = QVBoxLayout(self.result_group)
         
         self.result_text = QTextEdit()

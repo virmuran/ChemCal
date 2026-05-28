@@ -94,7 +94,6 @@ class WetAirCalculator(QWidget):
 
         # ── 输入参数组 ──
         input_group = QGroupBox("输入参数")
-        input_group.setStyleSheet(group_style)
         grid = QGridLayout(input_group)
         grid.setHorizontalSpacing(10)
         grid.setVerticalSpacing(12)
@@ -197,7 +196,7 @@ class WetAirCalculator(QWidget):
                 border-radius: 8px;
                 min-height: 50px; padding: 0px;
             }
-            QPushButton:hover { background-color: #219955; }
+            QPushButton:hover:!checked { background-color: #219955; }
         """)
         calc_btn.clicked.connect(self.calculate)
         left_layout.addWidget(calc_btn)
@@ -212,7 +211,7 @@ class WetAirCalculator(QWidget):
                 font-weight: bold; border-radius: 6px;
                 padding: 8px 20px;
             }
-            QPushButton:hover { background-color: #7f8c8d; }
+            QPushButton:hover:!checked { background-color: #7f8c8d; }
         """)
         clear_btn.clicked.connect(self.clear_inputs)
 
@@ -223,7 +222,7 @@ class WetAirCalculator(QWidget):
                 font-weight: bold; border-radius: 6px;
                 padding: 8px 20px;
             }
-            QPushButton:hover { background-color: #219a52; }
+            QPushButton:hover:!checked { background-color: #219a52; }
         """)
         dl_txt_btn.clicked.connect(self.download_txt_report)
 
@@ -234,7 +233,7 @@ class WetAirCalculator(QWidget):
                 font-weight: bold; border-radius: 6px;
                 padding: 8px 20px;
             }
-            QPushButton:hover { background-color: #c0392b; }
+            QPushButton:hover:!checked { background-color: #c0392b; }
         """)
         dl_pdf_btn.clicked.connect(self.generate_pdf_report)
 
@@ -252,7 +251,6 @@ class WetAirCalculator(QWidget):
         right_layout.setSpacing(10)
 
         result_group = QGroupBox("计算结果")
-        result_group.setStyleSheet(group_style)
         result_vbox = QVBoxLayout(result_group)
 
         self.result_text = QTextEdit()

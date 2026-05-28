@@ -86,7 +86,7 @@ class ScientificCalculator(QWidget):
                             font-weight: bold;
                             border-radius: 5px;
                         }
-                        QPushButton:hover {
+                        QPushButton:hover:!checked {
                             background-color: #3a5a8c;
                         }
                     """)
@@ -97,7 +97,7 @@ class ScientificCalculator(QWidget):
                             color: #333;
                             border-radius: 5px;
                         }
-                        QPushButton:hover {
+                        QPushButton:hover:!checked {
                             background-color: #d0d0d0;
                         }
                     """)
@@ -108,7 +108,7 @@ class ScientificCalculator(QWidget):
                             color: #333;
                             border-radius: 5px;
                         }
-                        QPushButton:hover {
+                        QPushButton:hover:!checked {
                             background-color: #e0e0e0;
                         }
                     """)

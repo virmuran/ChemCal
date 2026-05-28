@@ -93,7 +93,7 @@ CALC_BUTTON_STYLE = """
         font-size: 14px;
         font-weight: bold;
     }
-    QPushButton:hover {
+    QPushButton:hover:!checked {
         background-color: #2980b9;
     }
 """
@@ -108,7 +108,7 @@ CLEAR_BUTTON_STYLE = """
         padding: 10px 20px;
         font-size: 13px;
     }
-    QPushButton:hover {
+    QPushButton:hover:!checked {
         background-color: #7f8c8d;
     }
 """
@@ -122,7 +122,7 @@ TXT_BUTTON_STYLE = """
         border-radius: 8px;
         padding: 8px;
     }
-    QPushButton:hover {
+    QPushButton:hover:!checked {
         background-color: #219653;
     }
 """
@@ -136,7 +136,7 @@ PDF_BUTTON_STYLE = """
         border-radius: 8px;
         padding: 8px;
     }
-    QPushButton:hover {
+    QPushButton:hover:!checked {
         background-color: #c0392b;
     }
 """
@@ -218,7 +218,6 @@ class LongDistanceSteamPipeCalculator(QWidget):
 
         # --- 蒸汽参数组 ---
         steam_group = QGroupBox("蒸汽参数")
-        steam_group.setStyleSheet(GROUP_STYLE)
         steam_layout = QGridLayout(steam_group)
         steam_layout.setVerticalSpacing(12)
         steam_layout.setHorizontalSpacing(10)
@@ -287,7 +286,6 @@ class LongDistanceSteamPipeCalculator(QWidget):
 
         # --- 管道参数组 ---
         pipe_group = QGroupBox("管道参数")
-        pipe_group.setStyleSheet(GROUP_STYLE)
         pipe_layout = QGridLayout(pipe_group)
         pipe_layout.setVerticalSpacing(12)
         pipe_layout.setHorizontalSpacing(10)
@@ -351,7 +349,6 @@ class LongDistanceSteamPipeCalculator(QWidget):
 
         # --- 保温参数组 ---
         insulation_group = QGroupBox("保温参数")
-        insulation_group.setStyleSheet(GROUP_STYLE)
         insulation_layout = QGridLayout(insulation_group)
         insulation_layout.setVerticalSpacing(12)
         insulation_layout.setHorizontalSpacing(10)
@@ -426,7 +423,7 @@ class LongDistanceSteamPipeCalculator(QWidget):
                 border-radius: 8px;
                 min-height: 50px; padding: 0px;
             }
-            QPushButton:hover {
+            QPushButton:hover:!checked {
                 background-color: #219955;
             }
         """)
@@ -468,7 +465,6 @@ class LongDistanceSteamPipeCalculator(QWidget):
         right_layout.setSpacing(15)
 
         self.result_group = QGroupBox("计算结果")
-        self.result_group.setStyleSheet(GROUP_STYLE)
         result_inner = QVBoxLayout(self.result_group)
 
         self.result_text = QTextEdit()

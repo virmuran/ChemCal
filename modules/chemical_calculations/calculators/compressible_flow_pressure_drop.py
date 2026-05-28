@@ -32,20 +32,6 @@ COMBOBOX_STYLE = """
     }
 """
 
-GROUP_STYLE = """
-QGroupBox {
-    font-weight: bold;
-    border: 1px solid #888;
-    border-radius: 8px;
-    margin-top: 10px;
-    padding-top: 10px;
-}
-QGroupBox::title {
-    subcontrol-origin: margin;
-    left: 10px;
-    padding: 0 8px 0 8px;
-}
-"""
 class CompressibleFlowPressureDrop(QWidget):
     """可压缩流体压降计算器（统一 UI 规范版）"""
     calculation_type = "compressible_flow_pressure_drop"
@@ -117,7 +103,7 @@ class CompressibleFlowPressureDrop(QWidget):
             return l
 
         # ---- 流体性质 ----
-        fg = QGroupBox("流体性质"); fg.setStyleSheet(GROUP_STYLE)
+        fg = QGroupBox("流体性质")
         fgrid = QGridLayout(fg); fgrid.setHorizontalSpacing(10); fgrid.setVerticalSpacing(12)
         fgrid.setColumnStretch(0, 4)
         fgrid.setColumnStretch(1, 8)
@@ -163,7 +149,7 @@ class CompressibleFlowPressureDrop(QWidget):
         ll.addWidget(fg)
 
         # ---- 管道参数 ----
-        pg = QGroupBox("管道参数"); pg.setStyleSheet(GROUP_STYLE)
+        pg = QGroupBox("管道参数")
         pgrid = QGridLayout(pg); pgrid.setHorizontalSpacing(10); pgrid.setVerticalSpacing(12)
         pgrid.setColumnStretch(0, 4)
         pgrid.setColumnStretch(1, 8)
@@ -199,7 +185,7 @@ class CompressibleFlowPressureDrop(QWidget):
         ll.addWidget(pg)
 
         # ---- 操作条件 ----
-        cg = QGroupBox("操作条件"); cg.setStyleSheet(GROUP_STYLE)
+        cg = QGroupBox("操作条件")
         cgrid = QGridLayout(cg); cgrid.setHorizontalSpacing(10); cgrid.setVerticalSpacing(12)
         cgrid.setColumnStretch(0, 4)
         cgrid.setColumnStretch(1, 8)
@@ -235,7 +221,7 @@ class CompressibleFlowPressureDrop(QWidget):
         ll.addWidget(cg)
 
         # ---- 计算方法 ----
-        mg = QGroupBox("计算方法"); mg.setStyleSheet(GROUP_STYLE)
+        mg = QGroupBox("计算方法")
         mgrid = QGridLayout(mg)
         self.mbg = QButtonGroup(self)
         self.rb_darcy = QRadioButton("Darcy-Weisbach 等温积分（推荐）")
@@ -267,7 +253,7 @@ class CompressibleFlowPressureDrop(QWidget):
                 min-height: 50px;
                 padding: 0px;
             }
-            QPushButton:hover {
+            QPushButton:hover:!checked {
                 background-color: #219955;
             }
         """)
@@ -284,7 +270,7 @@ class CompressibleFlowPressureDrop(QWidget):
                 min-height: 50px;
                 padding: 0px;
             }
-            QPushButton:hover {
+            QPushButton:hover:!checked {
                 background-color: #219955;
             }
         """)
@@ -293,7 +279,7 @@ class CompressibleFlowPressureDrop(QWidget):
         ll.addLayout(bb)
 
         # ---- 详细参数表 ----
-        dg = QGroupBox("详细参数"); dg.setStyleSheet(GROUP_STYLE)
+        dg = QGroupBox("详细参数")
         dv = QVBoxLayout(dg)
         self.dtable = QTableWidget()
         self.dtable.setColumnCount(3)
@@ -322,7 +308,7 @@ class CompressibleFlowPressureDrop(QWidget):
         # ---- 右侧结果区 ----
         right = QWidget(); right.setMinimumWidth(300)
         rl = QVBoxLayout(right); rl.setSpacing(15)
-        rg = QGroupBox("计算结果"); rg.setStyleSheet(GROUP_STYLE)
+        rg = QGroupBox("计算结果")
         rv = QVBoxLayout(rg)
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)

@@ -32,21 +32,6 @@ COMBOBOX_STYLE = """
     }
 """
 
-GROUP_STYLE = """
-QGroupBox {
-    font-weight: bold;
-    border: 1px solid #888;
-    border-radius: 8px;
-    margin-top: 10px;
-    padding-top: 10px;
-}
-QGroupBox::title {
-    subcontrol-origin: margin;
-    left: 10px;
-    padding: 0 8px 0 8px;
-}
-"""
-
 class 气体标态转压缩态(QWidget):
     """气体标准状态转压缩状态（左右布局优化版）"""
     
@@ -105,7 +90,6 @@ class 气体标态转压缩态(QWidget):
         
         # 2. 输入参数组 - 使用GridLayout实现整齐的布局
         input_group = QGroupBox("输入参数")
-        input_group.setStyleSheet(GROUP_STYLE)
         
         # 使用GridLayout确保整齐排列
         input_layout = QGridLayout(input_group)
@@ -176,7 +160,6 @@ class 气体标态转压缩态(QWidget):
         
         # 自定义标准状态（隐藏时占用一行但不显示）
         self.custom_standard_group = QGroupBox("自定义标准状态")
-        self.custom_standard_group.setStyleSheet(GROUP_STYLE)
         custom_layout = QGridLayout(self.custom_standard_group)
         
         # 标准温度
@@ -307,7 +290,7 @@ class 气体标态转压缩态(QWidget):
                 min-height: 50px;
                 padding: 0px;
             }
-            QPushButton:hover {
+            QPushButton:hover:!checked {
                 background-color: #219955;
             }
         """)
@@ -327,7 +310,7 @@ class 气体标态转压缩态(QWidget):
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover {
+            QPushButton:hover:!checked {
                 background-color: #219653;
             }
         """)
@@ -344,7 +327,7 @@ class 气体标态转压缩态(QWidget):
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover {
+            QPushButton:hover:!checked {
                 background-color: #c0392b;
             }
         """)
@@ -364,7 +347,6 @@ class 气体标态转压缩态(QWidget):
         
         # 结果显示
         self.result_group = QGroupBox("转换结果")
-        self.result_group.setStyleSheet(GROUP_STYLE)
         result_layout = QVBoxLayout(self.result_group)
         
         self.result_text = QTextEdit()

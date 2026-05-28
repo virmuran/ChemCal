@@ -136,7 +136,6 @@ class ReliefAreaCalculator(QWidget):
 
         # ── 泄放场景组 ──
         scenario_group = QGroupBox("泄放场景")
-        scenario_group.setStyleSheet(GROUP_STYLE)
         sg = QGridLayout(scenario_group)
         sg.setHorizontalSpacing(10)
         sg.setVerticalSpacing(12)
@@ -179,7 +178,6 @@ class ReliefAreaCalculator(QWidget):
 
         # ── 设备参数组 ──
         vessel_group = QGroupBox("设备参数")
-        vessel_group.setStyleSheet(GROUP_STYLE)
         vg = QGridLayout(vessel_group)
         vg.setHorizontalSpacing(10)
         vg.setVerticalSpacing(12)
@@ -239,7 +237,6 @@ class ReliefAreaCalculator(QWidget):
 
         # ── 介质参数组 ──
         fluid_group = QGroupBox("介质参数")
-        fluid_group.setStyleSheet(GROUP_STYLE)
         fg = QGridLayout(fluid_group)
         fg.setHorizontalSpacing(10)
         fg.setVerticalSpacing(12)
@@ -298,7 +295,6 @@ class ReliefAreaCalculator(QWidget):
 
         # ── 泄放参数组 ──
         relief_group = QGroupBox("泄放参数")
-        relief_group.setStyleSheet(GROUP_STYLE)
         rg = QGridLayout(relief_group)
         rg.setHorizontalSpacing(10)
         rg.setVerticalSpacing(12)
@@ -357,14 +353,13 @@ class ReliefAreaCalculator(QWidget):
                 border-radius: 8px;
                 min-height: 50px; padding: 0px;
             }
-            QPushButton:hover { background-color: #219955; }
+            QPushButton:hover:!checked { background-color: #219955; }
         """)
         calc_btn.clicked.connect(self.calculate)
         left_layout.addWidget(calc_btn)
 
         # ── 标准安全阀规格表 ──
         valve_group = QGroupBox("标准安全阀喉径规格")
-        valve_group.setStyleSheet(GROUP_STYLE)
         valve_vbox = QVBoxLayout(valve_group)
 
         self.valve_table = QTableWidget()
@@ -388,7 +383,7 @@ class ReliefAreaCalculator(QWidget):
                 font-weight: bold; border-radius: 6px;
                 padding: 8px 20px;
             }
-            QPushButton:hover { background-color: #7f8c8d; }
+            QPushButton:hover:!checked { background-color: #7f8c8d; }
         """)
         clear_btn.clicked.connect(self.clear_inputs)
 
@@ -400,7 +395,7 @@ class ReliefAreaCalculator(QWidget):
                 font-weight: bold; border-radius: 6px;
                 padding: 8px;
             }
-            QPushButton:hover { background-color: #219653; }
+            QPushButton:hover:!checked { background-color: #219653; }
         """)
         dl_txt_btn.clicked.connect(self.download_txt_report)
 
@@ -412,7 +407,7 @@ class ReliefAreaCalculator(QWidget):
                 font-weight: bold; border-radius: 6px;
                 padding: 8px;
             }
-            QPushButton:hover { background-color: #c0392b; }
+            QPushButton:hover:!checked { background-color: #c0392b; }
         """)
         dl_pdf_btn.clicked.connect(self.generate_pdf_report)
 
@@ -429,7 +424,6 @@ class ReliefAreaCalculator(QWidget):
         right_layout.setSpacing(15)
 
         result_group = QGroupBox("计算结果")
-        result_group.setStyleSheet(GROUP_STYLE)
         result_vbox = QVBoxLayout(result_group)
 
         self.result_text = QTextEdit()
