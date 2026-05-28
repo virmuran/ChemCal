@@ -9,6 +9,7 @@ from PySide6.QtGui import QFont, QDoubleValidator
 import math
 import re
 from datetime import datetime
+import random
 
 
 COMBOBOX_STYLE = """
@@ -61,14 +62,54 @@ class 管径计算(QWidget):
     
     def setup_fluid_ranges(self):
         """根据化工管路设计手册表1.3-1设置流体对应的参数范围"""
-        # 饱和蒸汽
         self.fluid_ranges["饱和蒸汽"] = {
-            "DN>200": {"velocity": (30, 40), "flow": (0, 0), "pressure": (0, 12), "flow_unit": "t/h"},
-            "100<DN<200": {"velocity": (25, 35), "flow": (0, 0), "pressure": (0, 12), "flow_unit": "t/h"},
-            "DN<100": {"velocity": (15, 30), "flow": (0, 0), "pressure": (0, 12), "flow_unit": "t/h"},
-            "P<1MPa": {"velocity": (15, 20), "flow": (0, 0), "pressure": (0, 1), "flow_unit": "t/h"},
+            "DN>200": {"velocity": (30, 40), "flow": (0, 0), "pressure": (0.1, 12), "flow_unit": "t/h"},
+            "100<DN<200": {"velocity": (25, 35), "flow": (0, 0), "pressure": (0.1, 12), "flow_unit": "t/h"},
+            "DN<100": {"velocity": (15, 30), "flow": (0, 0), "pressure": (0.1, 12), "flow_unit": "t/h"},
+            "P<1MPa": {"velocity": (15, 20), "flow": (0, 0), "pressure": (0.1, 1), "flow_unit": "t/h"},
             "1MPa<P<4MPa": {"velocity": (20, 40), "flow": (0, 0), "pressure": (1, 4), "flow_unit": "t/h"},
             "4MPa<P<12MPa": {"velocity": (40, 60), "flow": (0, 0), "pressure": (4, 12), "flow_unit": "t/h"}
+        }
+
+        self.fluid_ranges["水及粘度相似的液体"] = {
+            "P=0.1~0.3MPa": {"velocity": (0.5, 2), "flow": (0, 0), "pressure": (0.1, 0.3), "flow_unit": "m³/h"},
+            "P≤1MPa": {"velocity": (0.5, 3), "flow": (0, 0), "pressure": (0.1, 1), "flow_unit": "m³/h"},
+            "P≤8MPa": {"velocity": (2, 3), "flow": (0, 0), "pressure": (0.1, 8), "flow_unit": "m³/h"},
+            "P≤20~30MPa": {"velocity": (2, 3.5), "flow": (0, 0), "pressure": (20, 30), "flow_unit": "m³/h"},
+            "往复式泵吸入管": {"velocity": (0.5, 1.5), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "m³/h"},
+            "往复式泵排出管": {"velocity": (1, 2), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "m³/h"},
+            "离心泵吸入管(常温)": {"velocity": (1.5, 2), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "m³/h"},
+            "离心泵排出管(70~110℃)": {"velocity": (0.5, 1.5), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "m³/h"},
+            "离心泵排出管": {"velocity": (1.5, 3), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "m³/h"},
+            "高压离心泵排出管": {"velocity": (3, 3.5), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "m³/h"},
+            "齿轮泵吸入管": {"velocity": (0, 1), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "m³/h"},
+            "齿轮泵排出管": {"velocity": (1, 2), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "m³/h"}
+        }
+        
+        self.fluid_ranges["自来水"] = {
+            "主管P=0.3MPa": {"velocity": (1.5, 3.5), "flow": (0, 0), "pressure": (0.3, 0.3), "flow_unit": "m³/h"},
+            "支管P=0.3MPa": {"velocity": (1, 1.5), "flow": (0, 0), "pressure": (0.3, 0.3), "flow_unit": "m³/h"}
+        }
+        
+        self.fluid_ranges["压缩气体"] = {
+            "P≤0.3MPa": {"velocity": (8, 12), "flow": (0, 0), "pressure": (0.1, 0.3), "flow_unit": "Nm³/h"},
+            "P=0.3~0.6MPa": {"velocity": (10, 20), "flow": (0, 0), "pressure": (0.3, 0.6), "flow_unit": "Nm³/h"},
+            "P=0.6~1MPa": {"velocity": (10, 15), "flow": (0, 0), "pressure": (0.6, 1), "flow_unit": "Nm³/h"},
+            "P=1~2MPa": {"velocity": (8, 12), "flow": (0, 0), "pressure": (1, 2), "flow_unit": "Nm³/h"},
+            "P=2~3MPa": {"velocity": (3, 8), "flow": (0, 0), "pressure": (2, 3), "flow_unit": "Nm³/h"},
+            "P=3~30MPa": {"velocity": (0.5, 3), "flow": (0, 0), "pressure": (3, 30), "flow_unit": "Nm³/h"}
+        }
+        
+        self.fluid_ranges["锅炉给水"] = {
+            "P>0.8MPa": {"velocity": (1.2, 3.5), "flow": (0, 0), "pressure": (0.8, 10), "flow_unit": "m³/h"}
+        }
+        
+        self.fluid_ranges["蒸汽冷凝液"] = {
+            "蒸汽冷凝液": {"velocity": (0.5, 1.5), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "m³/h"}
+        }
+        
+        self.fluid_ranges["冷凝水"] = {
+            "自流": {"velocity": (0.2, 0.5), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "m³/h"}
         }
         
         # 过热蒸汽
@@ -94,21 +135,10 @@ class 管径计算(QWidget):
             "排气管,从受压容器排出": {"velocity": (80, 80), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "t/h"},
             "从无压容器排出": {"velocity": (15, 30), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "t/h"}
         }
-        
-        # 压缩气体
-        self.fluid_ranges["压缩气体"] = {
-            "真空": {"velocity": (5, 10), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "Nm³/h"},
-            "P≤0.3MPa": {"velocity": (8, 12), "flow": (0, 0), "pressure": (0, 0.3), "flow_unit": "Nm³/h"},
-            "P=0.3~0.6MPa": {"velocity": (10, 20), "flow": (0, 0), "pressure": (0.3, 0.6), "flow_unit": "Nm³/h"},
-            "P=0.6~1MPa": {"velocity": (10, 15), "flow": (0, 0), "pressure": (0.6, 1), "flow_unit": "Nm³/h"},
-            "P=1~2MPa": {"velocity": (8, 12), "flow": (0, 0), "pressure": (1, 2), "flow_unit": "Nm³/h"},
-            "P=2~3MPa": {"velocity": (3, 8), "flow": (0, 0), "pressure": (2, 3), "flow_unit": "Nm³/h"},
-            "P=3~30MPa": {"velocity": (0.5, 3), "flow": (0, 0), "pressure": (3, 30), "flow_unit": "Nm³/h"}
-        }
-        
+
         # 氧气
         self.fluid_ranges["氧气"] = {
-            "P=0~0.05MPa": {"velocity": (5, 10), "flow": (0, 0), "pressure": (0, 0.05), "flow_unit": "Nm³/h"},
+            "P=0~0.05MPa": {"velocity": (5, 10), "flow": (0, 0), "pressure": (0.1, 0.1), "flow_unit": "Nm³/h"},
             "P=0.05~0.6MPa": {"velocity": (6, 8), "flow": (0, 0), "pressure": (0.05, 0.6), "flow_unit": "Nm³/h"},
             "P=0.6~1MPa": {"velocity": (4, 6), "flow": (0, 0), "pressure": (0.6, 1), "flow_unit": "Nm³/h"},
             "P=2~3MPa": {"velocity": (3, 4), "flow": (0, 0), "pressure": (2, 3), "flow_unit": "Nm³/h"}
@@ -117,8 +147,8 @@ class 管径计算(QWidget):
         # 煤气
         self.fluid_ranges["煤气"] = {
             "管道长50~100m": {"velocity": (0.75, 3), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "Nm³/h"},
-            "P≤0.027MPa": {"velocity": (8, 12), "flow": (0, 0), "pressure": (0, 0.027), "flow_unit": "Nm³/h"},
-            "P≤0.27MPa": {"velocity": (3, 12), "flow": (0, 0), "pressure": (0, 0.27), "flow_unit": "Nm³/h"}
+            "P≤0.027MPa": {"velocity": (8, 12), "flow": (0, 0), "pressure": (0.1, 0.1), "flow_unit": "Nm³/h"},
+            "P≤0.27MPa": {"velocity": (3, 12), "flow": (0, 0), "pressure": (0.1, 0.27), "flow_unit": "Nm³/h"}
         }
         
         # 半水煤气
@@ -150,9 +180,9 @@ class 管径计算(QWidget):
         # 氢氮混合气
         self.fluid_ranges["氢氮混合气"] = {
             "P=真空": {"velocity": (15, 25), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "Nm³/h"},
-            "P<0.3MPa": {"velocity": (8, 15), "flow": (0, 0), "pressure": (0, 0.3), "flow_unit": "Nm³/h"},
-            "P<0.6MPa": {"velocity": (10, 20), "flow": (0, 0), "pressure": (0, 0.6), "flow_unit": "Nm³/h"},
-            "P<2MPa": {"velocity": (3, 8), "flow": (0, 0), "pressure": (0, 2), "flow_unit": "Nm³/h"},
+            "P<0.3MPa": {"velocity": (8, 15), "flow": (0, 0), "pressure": (0.1, 0.3), "flow_unit": "Nm³/h"},
+            "P<0.6MPa": {"velocity": (10, 20), "flow": (0, 0), "pressure": (0.1, 0.6), "flow_unit": "Nm³/h"},
+            "P<2MPa": {"velocity": (3, 8), "flow": (0, 0), "pressure": (0.1, 2), "flow_unit": "Nm³/h"},
             "P=22~150MPa": {"velocity": (5, 6), "flow": (0, 0), "pressure": (22, 150), "flow_unit": "Nm³/h"}
         }
         
@@ -164,52 +194,15 @@ class 管径计算(QWidget):
         
         # 乙炔气
         self.fluid_ranges["乙炔气"] = {
-            "P<0.15MPa": {"velocity": (4, 8), "flow": (0, 0), "pressure": (0, 0.15), "flow_unit": "Nm³/h"},
-            "P<2.5MPa": {"velocity": (4, 4), "flow": (0, 0), "pressure": (0, 2.5), "flow_unit": "Nm³/h"}
+            "P<0.15MPa": {"velocity": (4, 8), "flow": (0, 0), "pressure": (0.1, 0.15), "flow_unit": "Nm³/h"},
+            "P<2.5MPa": {"velocity": (4, 4), "flow": (0, 0), "pressure": (0.1, 2.5), "flow_unit": "Nm³/h"}
         }
         
         # 乙烯气
         self.fluid_ranges["乙烯气"] = {
-            "P<0.01MPa": {"velocity": (3, 4), "flow": (0, 0), "pressure": (0, 0.01), "flow_unit": "Nm³/h"}
+            "P<0.01MPa": {"velocity": (3, 4), "flow": (0, 0), "pressure": (0.1, 0.1), "flow_unit": "Nm³/h"}
         }
-        
-        # 水及粘度相似的液体
-        self.fluid_ranges["水及粘度相似的液体"] = {
-            "P=0.1~0.3MPa": {"velocity": (0.5, 2), "flow": (0, 0), "pressure": (0.1, 0.3), "flow_unit": "m³/h"},
-            "P≤1MPa": {"velocity": (0.5, 3), "flow": (0, 0), "pressure": (0, 1), "flow_unit": "m³/h"},
-            "P≤8MPa": {"velocity": (2, 3), "flow": (0, 0), "pressure": (0, 8), "flow_unit": "m³/h"},
-            "P≤20~30MPa": {"velocity": (2, 3.5), "flow": (0, 0), "pressure": (20, 30), "flow_unit": "m³/h"},
-            "往复式泵吸入管": {"velocity": (0.5, 1.5), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "m³/h"},
-            "往复式泵排出管": {"velocity": (1, 2), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "m³/h"},
-            "离心泵吸入管（常温）": {"velocity": (1.5, 2), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "m³/h"},
-            "离心泵排出管（70~110℃）": {"velocity": (0.5, 1.5), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "m³/h"},
-            "离心泵排出管": {"velocity": (1.5, 3), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "m³/h"},
-            "高压离心泵排出管": {"velocity": (3, 3.5), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "m³/h"},
-            "齿轮泵吸入管": {"velocity": (0, 1), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "m³/h"},
-            "齿轮泵排出管": {"velocity": (1, 2), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "m³/h"}
-        }
-        
-        # 自来水
-        self.fluid_ranges["自来水"] = {
-            "主管P=0.3MPa": {"velocity": (1.5, 3.5), "flow": (0, 0), "pressure": (0.3, 0.3), "flow_unit": "m³/h"},
-            "支管P=0.3MPa": {"velocity": (1, 1.5), "flow": (0, 0), "pressure": (0.3, 0.3), "flow_unit": "m³/h"}
-        }
-        
-        # 锅炉给水
-        self.fluid_ranges["锅炉给水"] = {
-            "P>0.8MPa": {"velocity": (1.2, 3.5), "flow": (0, 0), "pressure": (0.8, 10), "flow_unit": "m³/h"}
-        }
-        
-        # 蒸汽冷凝液
-        self.fluid_ranges["蒸汽冷凝液"] = {
-            "蒸汽冷凝液": {"velocity": (0.5, 1.5), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "m³/h"}
-        }
-        
-        # 冷凝水
-        self.fluid_ranges["冷凝水"] = {
-            "自流": {"velocity": (0.2, 0.5), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "m³/h"}
-        }
-        
+
         # 过热水
         self.fluid_ranges["过热水"] = {
             "过热水": {"velocity": (2, 2), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "m³/h"}
@@ -217,7 +210,7 @@ class 管径计算(QWidget):
         
         # 海水，微碱水
         self.fluid_ranges["海水，微碱水"] = {
-            "P<0.6MPa": {"velocity": (1.5, 2.5), "flow": (0, 0), "pressure": (0, 0.6), "flow_unit": "m³/h"}
+            "P<0.6MPa": {"velocity": (1.5, 2.5), "flow": (0, 0), "pressure": (0.1, 0.6), "flow_unit": "m³/h"}
         }
         
         # 粘度较大的液体
@@ -238,8 +231,8 @@ class 管径计算(QWidget):
         # 液氨
         self.fluid_ranges["液氨"] = {
             "P=真空": {"velocity": (0.05, 0.3), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "t/h"},
-            "P≤0.6MPa": {"velocity": (0.3, 0.8), "flow": (0, 0), "pressure": (0, 0.6), "flow_unit": "t/h"},
-            "P≤2MPa": {"velocity": (0.8, 1.5), "flow": (0, 0), "pressure": (0, 2), "flow_unit": "t/h"}
+            "P≤0.6MPa": {"velocity": (0.3, 0.8), "flow": (0, 0), "pressure": (0.1, 0.6), "flow_unit": "t/h"},
+            "P≤2MPa": {"velocity": (0.8, 1.5), "flow": (0, 0), "pressure": (0.1, 2), "flow_unit": "t/h"}
         }
         
         # 氢氧化钠
@@ -342,7 +335,7 @@ class 管径计算(QWidget):
 
         # 氢气
         self.fluid_ranges["氢气"] = {
-            "P≤0.1MPa": {"velocity": (8, 15), "flow": (0, 0), "pressure": (0, 0.1), "flow_unit": "Nm³/h"},
+            "P≤0.1MPa": {"velocity": (8, 15), "flow": (0, 0), "pressure": (0.1, 0.1), "flow_unit": "Nm³/h"},
             "高压": {"velocity": (15, 25), "flow": (0, 0), "pressure": (0.1, 30), "flow_unit": "Nm³/h"}
         }
 
@@ -520,18 +513,6 @@ class 管径计算(QWidget):
         self.velocity_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.velocity_input, row, 1)
 
-        self.velocity_recommend_btn = QPushButton("获取推荐流速")
-        self.velocity_recommend_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.velocity_recommend_btn.clicked.connect(self.set_recommended_velocity)
-        self.velocity_recommend_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #95a5a6; color: white; border: none;
-                border-radius: 4px; padding: 6px; font-weight: bold;
-            }
-            QPushButton:hover { background-color: #7f8c8d; }
-        """)
-        input_layout.addWidget(self.velocity_recommend_btn, row, 2)
-
         row += 1
 
         # ── 第4行：流量（默认模式）──
@@ -543,17 +524,6 @@ class 管径计算(QWidget):
         self.flow_input.setPlaceholderText("请填写流量值")
         self.flow_input.setValidator(QDoubleValidator(0.1, 100000.0, 2))
 
-        self.flow_recommend_btn = QPushButton("获取推荐流量")
-        self.flow_recommend_btn.clicked.connect(self.set_recommended_flow)
-        self.flow_recommend_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #95a5a6; color: white; border: none;
-                border-radius: 4px; padding: 6px 10px; font-weight: bold;
-            }
-            QPushButton:hover { background-color: #7f8c8d; }
-        """)
-
-        # 内径控件（备用，初始不出现在网格中）
         self.diameter_label = QLabel("管道内径 (mm):")
         self.diameter_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.diameter_label.setStyleSheet(label_style)
@@ -571,8 +541,7 @@ class 管径计算(QWidget):
         self._flow_diameter_row = row
         input_layout.addWidget(self.flow_label, row, 0)
         input_layout.addWidget(self.flow_input, row, 1)
-        input_layout.addWidget(self.flow_recommend_btn, row, 2)
-        self._current_row_widgets = [self.flow_label, self.flow_input, self.flow_recommend_btn]
+        self._current_row_widgets = [self.flow_label, self.flow_input]
         row += 1
 
         # ── 第5行：压力（部分流体显示）──
@@ -732,6 +701,7 @@ class 管径计算(QWidget):
 
     def _remove_pressure_row(self):
         """从布局中移除压力行"""
+        self.pressure_input.clear()  # 隐藏时顺手清空，避免旧值残留
         for w in [self.pressure_label, self.pressure_input, self.pressure_range_label]:
             w.setVisible(False)
 
@@ -791,12 +761,10 @@ class 管径计算(QWidget):
             # 放入流量控件
             layout.addWidget(self.flow_label, row, 0)
             layout.addWidget(self.flow_input, row, 1)
-            layout.addWidget(self.flow_recommend_btn, row, 2)
             # 确保显示
             self.flow_label.show()
             self.flow_input.show()
-            self.flow_recommend_btn.show()
-            self._current_row_widgets = [self.flow_label, self.flow_input, self.flow_recommend_btn]
+            self._current_row_widgets = [self.flow_label, self.flow_input]
         else:
             # 放入内径控件
             layout.addWidget(self.diameter_label, row, 0)
@@ -984,18 +952,21 @@ class 管径计算(QWidget):
             self._hide_temp_row()
     
     def update_condition_options(self, fluid):
-        """根据流体更新条件选项"""
+        """根据流体更新条件选项，并自动选择第一个条件"""
         self.condition_combo.blockSignals(True)
         self.condition_combo.clear()
-
-        self.condition_combo.addItem("- 请选择计算条件 -")
 
         if fluid in self.fluid_ranges:
             conditions = list(self.fluid_ranges[fluid].keys())
             self.condition_combo.addItems(conditions)
-
-        self.condition_combo.setCurrentIndex(0)
-        self.condition_combo.blockSignals(False)
+            self.condition_combo.blockSignals(False)
+            # 自动选择第一个条件并触发更新
+            self.condition_combo.setCurrentIndex(0)
+            self.on_condition_changed(conditions[0])
+        else:
+            self.condition_combo.addItem("- 请选择计算条件 -")
+            self.condition_combo.setCurrentIndex(0)
+            self.condition_combo.blockSignals(False)
     
     def update_density(self, fluid):
         """更新密度值（存入内部变量，不在UI显示）"""
@@ -1032,12 +1003,15 @@ class 管径计算(QWidget):
         if fluid in self.fluid_ranges and condition in self.fluid_ranges[fluid]:
             ranges = self.fluid_ranges[fluid][condition]
 
-            # 自动填入推荐流速（取范围中值）
+            # 自动填入推荐流速：在范围内随机取值
             vel_min, vel_max = ranges["velocity"]
             if vel_min > 0 and vel_max > 0:
-                vel_mid = (vel_min + vel_max) / 2
-                self.velocity_input.setText(f"{vel_mid:.1f}")
-                self.velocity_input.setToolTip(f"推荐范围: {vel_min}~{vel_max} m/s（已自动填入中值 {vel_mid:.1f}）")
+                if vel_min == vel_max:
+                    vel = vel_min  # 固定值
+                else:
+                    vel = random.uniform(vel_min, vel_max)  # 范围内随机
+                self.velocity_input.setText(f"{vel:.1f}")
+                self.velocity_input.setToolTip(f"推荐范围: {vel_min}~{vel_max} m/s（已随机填入 {vel:.1f}）")
 
         # 更新压力范围/自动填入/隐藏
         pressure_min, pressure_max = ranges["pressure"]
@@ -1053,6 +1027,7 @@ class 管径计算(QWidget):
             elif pressure_min > 0 or pressure_max > 0:
                 self.pressure_range_label.setText(f"适用范围: {pressure_min}~{pressure_max} MPa")
                 self.pressure_input.setReadOnly(False)
+                # 只有上下限都有效时才填中值
                 if pressure_min > 0 and pressure_max > 0:
                     p_mid = (pressure_min + pressure_max) / 2
                     self.pressure_input.setText(f"{p_mid:.2f}")
@@ -1106,44 +1081,6 @@ class 管径计算(QWidget):
                 self.diameter_input.setText(f"{diameter_value}")
         except:
             pass
-    
-    def set_recommended_velocity(self):
-        """设置推荐流速"""
-        fluid = self.fluid_combo.currentText()
-        condition = self.condition_combo.currentText()
-        
-        # 检查是否选择了空选项
-        if fluid.startswith("-") or condition.startswith("-"):
-            QMessageBox.warning(self, "选择错误", "请先选择流体类型和计算条件")
-            return
-            
-        if fluid in self.fluid_ranges and condition in self.fluid_ranges[fluid]:
-            vel_min, vel_max = self.fluid_ranges[fluid][condition]["velocity"]
-            recommended = (vel_min + vel_max) / 2
-            self.velocity_input.setText(f"{recommended:.2f}")
-            self.velocity_input.setToolTip(f"已设置推荐值: {recommended:.2f} m/s")
-    
-    def set_recommended_flow(self):
-        """设置推荐流量"""
-        fluid = self.fluid_combo.currentText()
-        condition = self.condition_combo.currentText()
-        
-        # 检查是否选择了空选项
-        if fluid.startswith("-") or condition.startswith("-"):
-            QMessageBox.warning(self, "选择错误", "请先选择流体类型和计算条件")
-            return
-            
-        if fluid in self.fluid_ranges and condition in self.fluid_ranges[fluid]:
-            ranges = self.fluid_ranges[fluid][condition]
-            flow_min, flow_max = ranges["flow"]
-            
-            # 如果有流量范围，设置推荐值
-            if flow_min > 0 or flow_max > 0:
-                recommended = (flow_min + flow_max) / 2
-                self.flow_input.setText(f"{recommended:.1f}")
-                self.flow_input.setToolTip(f"已设置推荐值: {recommended:.1f} {ranges['flow_unit']}")
-            else:
-                QMessageBox.information(self, "提示", "当前条件下无推荐的流量范围")
     
     def set_default_values(self):
         """设置默认值"""
