@@ -492,11 +492,16 @@ class 设备尺寸计算(QWidget):
         calc_btn.clicked.connect(self.calculate)
         calc_btn.setStyleSheet("""
             QPushButton {
-                background-color: #27ae60; color: white; border: none;
-                border-radius: 8px; min-height: 50px; padding: 0px; font-weight: bold;
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                min-height: 50px; padding: 0px;
+                font-weight: bold;
             }
-            QPushButton:hover:!checked { background-color: #c0ebd7; }
-        """)
+            QPushButton:hover:!checked {
+                background-color: #ae2774;
+            } """)
         calc_btn.setMinimumHeight(50)
         calc_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         left_layout.addWidget(calc_btn)

@@ -148,7 +148,18 @@ class FlangeSizeCalculator(QWidget):
         
         self.bolt_calc_btn = QPushButton("计算")
         self.bolt_calc_btn.clicked.connect(self.bolt_calculation)
-        self.bolt_calc_btn.setStyleSheet("QPushButton { background-color: #3498db; color: white; }")
+        self.bolt_calc_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                min-height: 50px; padding: 0px;
+                font-weight: bold;
+            }
+            QPushButton:hover:!checked {
+                background-color: #ae2774;
+            } """)
         button_layout.addWidget(self.bolt_calc_btn)
         
         self.clear_btn = QPushButton("清空")

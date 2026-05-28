@@ -216,17 +216,18 @@ class PureSubstanceProperties(QWidget):
         self.query_btn.setFont(QFont("Arial", 12))
         self.query_btn.setMinimumHeight(50)
         self.query_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.query_btn.setStyleSheet(
-            "QPushButton { "
-            "background-color: #27ae60; "
-            "color: white; "
-            "font-weight: bold; "
-            "border: none; "
-            "border-radius: 8px; "
-            "min-height: 50px; padding: 0px; "
-            "}"
-            "QPushButton:hover:!checked { background-color: #219955; }"
-        )
+        self.query_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                min-height: 50px; padding: 0px;
+                font-weight: bold;
+            }
+            QPushButton:hover:!checked {
+                background-color: #ae2774;
+            } """)
         left_layout.addWidget(self.query_btn)
         
         # 温度影响计算按钮

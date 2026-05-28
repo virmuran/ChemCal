@@ -257,7 +257,7 @@ class SteamPropertyCalculator(QWidget):
                 font-weight: bold;
             }
             QPushButton:hover:!checked {
-                background-color: #c0ebd7;
+                background-color: #ae2774;
             } """)
         left_layout.addWidget(self.calculate_btn)
         

@@ -284,9 +284,8 @@ class 篮式过滤器(QWidget):
                 font-weight: bold;
             }
             QPushButton:hover:!checked {
-                background-color: #219955;
-            }
-        """)
+                background-color: #ae2774;
+            } """)
         calculate_btn.setMinimumHeight(50)
         layout.addWidget(calculate_btn)
         

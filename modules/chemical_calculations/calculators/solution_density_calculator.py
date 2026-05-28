@@ -508,14 +508,18 @@ class SolutionDensityCalculator(QWidget):
         self.calc_btn.setFont(QFont("Arial", 12))
         self.calc_btn.setMinimumHeight(50)
         self.calc_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.calc_btn.setStyleSheet(
-            "QPushButton { "
-            "background-color: #27ae60; color: white; "
-            "font-weight: bold; border: none; "
-            "border-radius: 8px; min-height: 50px; padding: 0px; "
-            "}"
-            "QPushButton:hover:!checked { background-color: #219955; }"
-        )
+        self.calc_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                min-height: 50px; padding: 0px;
+                font-weight: bold;
+            }
+            QPushButton:hover:!checked {
+                background-color: #ae2774;
+            } """)
         self.calc_btn.clicked.connect(self._calculate_single)
         layout.addWidget(self.calc_btn)
 

@@ -302,9 +302,11 @@ class SafetyValveCalculator(QWidget):
                 border: none;
                 border-radius: 8px;
                 min-height: 50px; padding: 0px;
+                font-weight: bold;
             }
-            QPushButton:hover:!checked { background-color: #219955; }
-        """)
+            QPushButton:hover:!checked {
+                background-color: #ae2774;
+            } """)
         calc_btn.clicked.connect(self.calculate)
         left_layout.addWidget(calc_btn)
 

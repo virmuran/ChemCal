@@ -287,13 +287,12 @@ class 气体标态转压缩态(QWidget):
                 color: white;
                 border: none;
                 border-radius: 8px;
-                min-height: 50px;
-                padding: 0px;
+                min-height: 50px; padding: 0px;
+                font-weight: bold;
             }
             QPushButton:hover:!checked {
-                background-color: #219955;
-            }
-        """)
+                background-color: #ae2774;
+            } """)
         left_layout.addWidget(calculate_btn)
         
         # 4. 下载按钮布局

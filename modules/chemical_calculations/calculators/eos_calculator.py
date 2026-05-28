@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
     QScrollArea, QSizePolicy
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QDoubleValidator
+from PySide6.QtGui import QDoubleValidator, QFont
 from modules.combo_box_utils import ComboBoxWheelBlocker
 
 # ---------------------------------------------------------------------------
@@ -326,20 +326,21 @@ class EOSCalculator(QWidget):
 
         # ---- 计算按钮 ----
         b_calc = QPushButton("查询")
+        b_calc.setFont(QFont("Arial", 12, QFont.Bold))
         b_calc.setMinimumHeight(50)
         b_calc.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        b_calc.setStyleSheet(
-            "QPushButton {"
-            "  background-color: #27ae60;"
-            "  color: white;"
-            "  font-weight: bold;"
-            "  font-size: 16px;"
-            "  border-radius: 8px;"
-            "  min-height: 50px;"
-            "  padding: 0px;"
-            "}"
-            "QPushButton:hover:!checked { background-color: #219955; }"
-        )
+        b_calc.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                min-height: 50px; padding: 0px;
+                font-weight: bold;
+            }
+            QPushButton:hover:!checked {
+                background-color: #ae2774;
+            } """)
         b_calc.clicked.connect(self.calculate)
 
         bb = QHBoxLayout()

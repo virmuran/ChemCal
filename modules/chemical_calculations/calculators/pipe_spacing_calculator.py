@@ -301,17 +301,13 @@ class 管道间距(QWidget):
                 background-color: #27ae60;
                 color: white;
                 border: none;
-                border-radius: 5px;
+                border-radius: 8px;
+                min-height: 50px; padding: 0px;
                 font-weight: bold;
-                font-size: 14px;
             }
             QPushButton:hover:!checked {
-                background-color: #219653;
-            }
-            QPushButton:pressed {
-                background-color: #1e874b;
-            }
-        """)
+                background-color: #ae2774;
+            } """)
         self.calc_btn.clicked.connect(self.calculate_spacing)
         
         # 重置按钮

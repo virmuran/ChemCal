@@ -320,16 +320,23 @@ class CentrifugalPumpCalculator(QWidget):
         left_layout.addWidget(input_group)
         
         # 计算按钮
-        calculate_btn = QPushButton("  计  算  ")
+        calculate_btn = QPushButton("计算")
         calculate_btn.clicked.connect(self.calculate)
         calculate_btn.setFont(QFont("Arial", 12, QFont.Weight.Bold))
         calculate_btn.setMinimumHeight(50)
         calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        calculate_btn.setStyleSheet(
-            "QPushButton { background-color: #27ae60; color: white; font-weight: bold; "
-            "border: none; border-radius: 8px; min-height: 50px; padding: 0px; }"
-            "QPushButton:hover:!checked { background-color: #219955; }"
-        )
+        calculate_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                min-height: 50px; padding: 0px;
+                font-weight: bold;
+            }
+            QPushButton:hover:!checked {
+                background-color: #ae2774;
+            } """)
         left_layout.addWidget(calculate_btn)
         
         # 底部按钮行

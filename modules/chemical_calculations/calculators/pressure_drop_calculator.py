@@ -515,9 +515,8 @@ class 压降计算(QWidget):
                 font-weight: bold;
             }
             QPushButton:hover:!checked {
-                background-color: #c0ebd7;
-            }
-        """)
+                background-color: #ae2774;
+            } """)
         calculate_btn.setMinimumHeight(50)
         left_layout.addWidget(calculate_btn)
         

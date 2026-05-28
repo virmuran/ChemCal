@@ -303,9 +303,8 @@ class NPSHaCalculator(QWidget):
                 font-weight: bold;
             }
             QPushButton:hover:!checked {
-                background-color: #219955;
-            }
-        """)
+                background-color: #ae2774;
+            } """)
         calculate_btn.clicked.connect(self.calculate_npsha)
         left_layout.addWidget(calculate_btn)
 

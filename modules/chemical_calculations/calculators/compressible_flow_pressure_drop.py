@@ -250,13 +250,12 @@ class CompressibleFlowPressureDrop(QWidget):
                 color: white;
                 border: none;
                 border-radius: 8px;
-                min-height: 50px;
-                padding: 0px;
+                min-height: 50px; padding: 0px;
+                font-weight: bold;
             }
             QPushButton:hover:!checked {
-                background-color: #219955;
-            }
-        """)
+                background-color: #ae2774;
+            } """)
         b_calc.clicked.connect(self.calculate_pressure_drop)
         b_flow = QPushButton("反算流量")
         b_flow.setMinimumHeight(50)
@@ -267,13 +266,12 @@ class CompressibleFlowPressureDrop(QWidget):
                 color: white;
                 border: none;
                 border-radius: 8px;
-                min-height: 50px;
-                padding: 0px;
+                min-height: 50px; padding: 0px;
+                font-weight: bold;
             }
             QPushButton:hover:!checked {
-                background-color: #219955;
-            }
-        """)
+                background-color: #ae2774;
+            } """)
         b_flow.clicked.connect(self.auto_calculate_flow)
         bb.addWidget(b_calc); bb.addWidget(b_flow)
         ll.addLayout(bb)
