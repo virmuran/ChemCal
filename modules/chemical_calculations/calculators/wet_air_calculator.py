@@ -196,8 +196,8 @@ class WetAirCalculator(QWidget):
                 min-height: 50px; padding: 0px;
                 font-weight: bold;
             }
-            QPushButton:hover:!checked {
-                background-color: #ae2774;
+            QPushButton:hover {
+                background-color: #219955;
             } """)
         calc_btn.clicked.connect(self.calculate)
         left_layout.addWidget(calc_btn)
@@ -205,43 +205,64 @@ class WetAirCalculator(QWidget):
         # ── 底部按钮行 ──
         btn_row = QHBoxLayout()
 
-        clear_btn = QPushButton("清空")
-        clear_btn.setStyleSheet("""
+        # 清空按钮（灰色）
+        self.clear_btn = QPushButton("清空")
+        self.clear_btn.clicked.connect(self.clear_inputs)
+        self.clear_btn.setMinimumHeight(50)
+        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.clear_btn.setStyleSheet("""
             QPushButton {
-                background-color: #95a5a6; color: white;
-                font-weight: bold; border-radius: 6px;
-                padding: 8px 20px;
+                background-color: #95a5a6;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
             }
-            QPushButton:hover:!checked { background-color: #7f8c8d; }
-        """)
-        clear_btn.clicked.connect(self.clear_inputs)
+            QPushButton:hover {
+                background-color: #a59695;
+            } """)
 
-        dl_txt_btn = QPushButton("下载计算书(TXT)")
-        dl_txt_btn.setStyleSheet("""
+        # 下载TXT按钮（绿色）
+        self.download_txt_btn = QPushButton("下载计算书(TXT)")
+        self.download_txt_btn.clicked.connect(self.download_txt_report)
+        self.download_txt_btn.setMinimumHeight(50)
+        self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_txt_btn.setStyleSheet("""
             QPushButton {
-                background-color: #27ae60; color: white;
-                font-weight: bold; border-radius: 6px;
-                padding: 8px 20px;
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
             }
-            QPushButton:hover:!checked { background-color: #219a52; }
-        """)
-        dl_txt_btn.clicked.connect(self.download_txt_report)
+            QPushButton:hover:!checked {
+                background-color: #c0ebd7;
+            } """)
 
-        dl_pdf_btn = QPushButton("下载计算书(PDF)")
-        dl_pdf_btn.setStyleSheet("""
+        # 下载PDF按钮（红色）
+        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
+        self.download_pdf_btn.clicked.connect(self.generate_pdf_report)
+        self.download_pdf_btn.setMinimumHeight(50)
+        self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_pdf_btn.setStyleSheet("""
             QPushButton {
-                background-color: #e74c3c; color: white;
-                font-weight: bold; border-radius: 6px;
-                padding: 8px 20px;
+                background-color: #e74c3c;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
             }
-            QPushButton:hover:!checked { background-color: #c0392b; }
-        """)
-        dl_pdf_btn.clicked.connect(self.generate_pdf_report)
+            QPushButton:hover:!checked {
+                background-color: #c0ebd7;
+            } """)
 
-        btn_row.addWidget(clear_btn)
+        btn_row.addWidget(self.clear_btn)
         btn_row.addStretch()
-        btn_row.addWidget(dl_txt_btn)
-        btn_row.addWidget(dl_pdf_btn)
+        btn_row.addWidget(self.download_txt_btn)
+        btn_row.addWidget(self.download_pdf_btn)
         left_layout.addLayout(btn_row)
         left_layout.addStretch()
 

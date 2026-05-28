@@ -499,8 +499,8 @@ class 设备尺寸计算(QWidget):
                 min-height: 50px; padding: 0px;
                 font-weight: bold;
             }
-            QPushButton:hover:!checked {
-                background-color: #ae2774;
+            QPushButton:hover {
+                background-color: #219955;
             } """)
         calc_btn.setMinimumHeight(50)
         calc_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)

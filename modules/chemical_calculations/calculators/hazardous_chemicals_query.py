@@ -566,10 +566,9 @@ class HazardousChemicalsQuery(QWidget):
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover:!checked {
-                background-color: #7f8c8d;
-            }
-        """)
+            QPushButton:hover {
+                background-color: #a59695;
+            } """)
         button_layout.addWidget(self.clear_btn)
 
         # 下载TXT按钮（绿色）

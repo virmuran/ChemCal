@@ -498,8 +498,8 @@ class VLEActivityCoefficientCalculator(QWidget):
                 min-height: 50px; padding: 0px;
                 font-weight: bold;
             }
-            QPushButton:hover:!checked {
-                background-color: #ae2774;
+            QPushButton:hover {
+                background-color: #219955;
             } """)
         calculate_btn.setMinimumHeight(50)
         calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -509,9 +509,17 @@ class VLEActivityCoefficientCalculator(QWidget):
         download_layout = QHBoxLayout()
         clear_btn = QPushButton("清空")
         clear_btn.setStyleSheet("""
-            QPushButton { background-color: #95a5a6; color: white; border: none; border-radius: 6px; padding: 8px; font-weight: bold; }
-            QPushButton:hover:!checked { background-color: #7f8c8d; }
-        """)
+            QPushButton {
+                background-color: #95a5a6;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #a59695;
+            } """)
         clear_btn.clicked.connect(self.clear_inputs)
         download_layout.addWidget(clear_btn)
 

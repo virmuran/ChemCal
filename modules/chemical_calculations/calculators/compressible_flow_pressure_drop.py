@@ -253,8 +253,8 @@ class CompressibleFlowPressureDrop(QWidget):
                 min-height: 50px; padding: 0px;
                 font-weight: bold;
             }
-            QPushButton:hover:!checked {
-                background-color: #ae2774;
+            QPushButton:hover {
+                background-color: #219955;
             } """)
         b_calc.clicked.connect(self.calculate_pressure_drop)
         b_flow = QPushButton("反算流量")
@@ -269,8 +269,8 @@ class CompressibleFlowPressureDrop(QWidget):
                 min-height: 50px; padding: 0px;
                 font-weight: bold;
             }
-            QPushButton:hover:!checked {
-                background-color: #ae2774;
+            QPushButton:hover {
+                background-color: #219955;
             } """)
         b_flow.clicked.connect(self.auto_calculate_flow)
         bb.addWidget(b_calc); bb.addWidget(b_flow)
@@ -290,7 +290,18 @@ class CompressibleFlowPressureDrop(QWidget):
         # ---- 底部按钮行 ----
         br = QHBoxLayout()
         b_clr = QPushButton("清空")
-        b_clr.setStyleSheet("QPushButton{background-color:#95a5a6;color:white;font-weight:bold;border-radius:6px;padding:8px 20px;}QPushButton:hover{background-color:#7f8c8d;}")
+        b_clr.setStyleSheet("""
+            QPushButton {
+                background-color: #95a5a6;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #a59695;
+            } """)
         b_clr.clicked.connect(self.clear_inputs)
         b_txt = QPushButton("下载计算书(TXT)")
         b_txt.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)

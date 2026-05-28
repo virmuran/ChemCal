@@ -264,8 +264,8 @@ class 换热器计算(QWidget):
                 min-height: 50px; padding: 0px;
                 font-weight: bold;
             }
-            QPushButton:hover:!checked {
-                background-color: #ae2774;
+            QPushButton:hover {
+                background-color: #219955;
             } """)
         calculate_btn.setMinimumHeight(50)
         calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -285,10 +285,9 @@ class 换热器计算(QWidget):
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover:!checked {
-                background-color: #7f8c8d;
-            }
-        """)
+            QPushButton:hover {
+                background-color: #a59695;
+            } """)
         download_layout.addWidget(clear_btn)
         
         download_layout.addStretch()

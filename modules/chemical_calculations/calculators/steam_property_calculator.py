@@ -256,8 +256,8 @@ class SteamPropertyCalculator(QWidget):
                 min-height: 50px; padding: 0px;
                 font-weight: bold;
             }
-            QPushButton:hover:!checked {
-                background-color: #ae2774;
+            QPushButton:hover {
+                background-color: #219955;
             } """)
         left_layout.addWidget(self.calculate_btn)
         
@@ -278,8 +278,8 @@ class SteamPropertyCalculator(QWidget):
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover:!checked {
-                background-color: #c0ebd7;
+            QPushButton:hover {
+                background-color: #a59695;
             } """)
         
         # 下载TXT按钮（绿色）

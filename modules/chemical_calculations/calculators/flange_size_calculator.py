@@ -157,14 +157,25 @@ class FlangeSizeCalculator(QWidget):
                 min-height: 50px; padding: 0px;
                 font-weight: bold;
             }
-            QPushButton:hover:!checked {
-                background-color: #ae2774;
+            QPushButton:hover {
+                background-color: #219955;
             } """)
         button_layout.addWidget(self.bolt_calc_btn)
         
         self.clear_btn = QPushButton("清空")
         self.clear_btn.clicked.connect(self.clear_inputs)
-        self.clear_btn.setStyleSheet("QPushButton { background-color: #95a5a6; color: white; }")
+        self.clear_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #95a5a6;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #a59695;
+            } """)
         button_layout.addWidget(self.clear_btn)
         
         layout.addLayout(button_layout)

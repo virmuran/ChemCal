@@ -354,8 +354,8 @@ class ReliefAreaCalculator(QWidget):
                 min-height: 50px; padding: 0px;
                 font-weight: bold;
             }
-            QPushButton:hover:!checked {
-                background-color: #ae2774;
+            QPushButton:hover {
+                background-color: #219955;
             } """)
         calc_btn.clicked.connect(self.calculate)
         left_layout.addWidget(calc_btn)
@@ -381,12 +381,16 @@ class ReliefAreaCalculator(QWidget):
         clear_btn = QPushButton("清空")
         clear_btn.setStyleSheet("""
             QPushButton {
-                background-color: #95a5a6; color: white;
-                font-weight: bold; border-radius: 6px;
-                padding: 8px 20px;
+                background-color: #95a5a6;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
             }
-            QPushButton:hover:!checked { background-color: #7f8c8d; }
-        """)
+            QPushButton:hover {
+                background-color: #a59695;
+            } """)
         clear_btn.clicked.connect(self.clear_inputs)
 
         dl_txt_btn = QPushButton("下载计算书(TXT)")

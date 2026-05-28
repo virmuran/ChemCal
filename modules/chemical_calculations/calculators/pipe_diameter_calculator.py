@@ -575,8 +575,8 @@ class 管径计算(QWidget):
                 min-height: 50px; padding: 0px;
                 font-weight: bold;
             }
-            QPushButton:hover:!checked {
-                background-color: #ae2774;
+            QPushButton:hover {
+                background-color: #219955;
             } """)
         calculate_btn.setMinimumHeight(50)
         calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)

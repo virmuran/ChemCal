@@ -354,8 +354,8 @@ class RefrigerationCycleCalculator(QWidget):
                 min-height: 50px; padding: 0px;
                 font-weight: bold;
             }
-            QPushButton:hover:!checked {
-                background-color: #ae2774;
+            QPushButton:hover {
+                background-color: #219955;
             } """)
         calculate_btn.clicked.connect(self.calculate)
         left_layout.addWidget(calculate_btn)
@@ -367,11 +367,18 @@ class RefrigerationCycleCalculator(QWidget):
         btn_clear = QPushButton("清空")
         btn_clear.setMinimumHeight(50)
         btn_clear.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        btn_clear.setStyleSheet(
-            "QPushButton { background-color: #95a5a6; color: white; font-weight: bold; "
-            "border: none; border-radius: 6px; padding: 8px; }"
-            "QPushButton:hover:!checked { background-color: #c0ebd7; }"
-        )
+        btn_clear.setStyleSheet("""
+            QPushButton {
+                background-color: #95a5a6;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #a59695;
+            } """)
         btn_clear.clicked.connect(self.clear_inputs)
         btn_layout.addWidget(btn_clear)
 

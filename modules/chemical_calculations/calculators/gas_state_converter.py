@@ -290,8 +290,8 @@ class 气体标态转压缩态(QWidget):
                 min-height: 50px; padding: 0px;
                 font-weight: bold;
             }
-            QPushButton:hover:!checked {
-                background-color: #ae2774;
+            QPushButton:hover {
+                background-color: #219955;
             } """)
         left_layout.addWidget(calculate_btn)
         
