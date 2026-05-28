@@ -24,6 +24,7 @@ except Exception as e:
     USE_INDUSTRIAL_EOS = False
     refrigerant_eos = None
 
+from modules.combo_box_utils import ComboBoxWheelBlocker
 
 # ---------------------------------------------------------------------------
 #  QGroupBox 统一样式
@@ -109,6 +110,11 @@ class RefrigerantPropertiesCalculator(QWidget):
 
         self._last_calc_results = {}
         self.setup_ui()
+
+        # 禁止未展开时鼠标滚轮切换下拉菜单
+        self._wheel_blocker = ComboBoxWheelBlocker(self)
+        for combo in self.findChildren(QComboBox):
+            combo.installEventFilter(self._wheel_blocker)
 
     def init_data_manager(self):
         try:

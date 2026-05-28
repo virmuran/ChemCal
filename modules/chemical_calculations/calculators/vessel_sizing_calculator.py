@@ -12,6 +12,7 @@ from PySide6.QtGui import QFont, QDoubleValidator
 import math
 import re
 from datetime import datetime
+from modules.combo_box_utils import ComboBoxWheelBlocker
 
 # 附件选择对话框 -------------------------------------------------
 COMBOBOX_STYLE = """
@@ -216,6 +217,11 @@ class 设备尺寸计算(QWidget):
         }
         self.setup_ui()
         self.setup_defaults()
+
+        # 禁止未展开时鼠标滚轮切换下拉菜单
+        self._wheel_blocker = ComboBoxWheelBlocker(self)
+        for combo in self.findChildren(QComboBox):
+            combo.installEventFilter(self._wheel_blocker)
 
     def init_data_manager(self):
         try:

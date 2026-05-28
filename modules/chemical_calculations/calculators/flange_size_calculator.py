@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
 import math
+from modules.combo_box_utils import ComboBoxWheelBlocker
 
 COMBOBOX_STYLE = """
     QComboBox {
@@ -37,6 +38,11 @@ class FlangeSizeCalculator(QWidget):
             self.init_data_manager()
         self.flange_data = self.load_flange_data()
         self.setup_ui()
+
+        # 禁止未展开时鼠标滚轮切换下拉菜单
+        self._wheel_blocker = ComboBoxWheelBlocker(self)
+        for combo in self.findChildren(QComboBox):
+            combo.installEventFilter(self._wheel_blocker)
 
     def init_data_manager(self):
         """初始化数据管理器"""

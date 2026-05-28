@@ -9,6 +9,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
 import math
 from datetime import datetime
+from modules.combo_box_utils import ComboBoxWheelBlocker
 
 
 # 标准 QGroupBox 样式
@@ -59,6 +60,11 @@ class FanPowerCalculator(QWidget):
             self.init_data_manager()
 
         self.setup_ui()
+
+        # 禁止未展开时鼠标滚轮切换下拉菜单
+        self._wheel_blocker = ComboBoxWheelBlocker(self)
+        for combo in self.findChildren(QComboBox):
+            combo.installEventFilter(self._wheel_blocker)
 
     def init_data_manager(self):
         try:

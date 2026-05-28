@@ -12,6 +12,7 @@ import re
 import os
 import importlib.util
 from datetime import datetime
+from modules.combo_box_utils import ComboBoxWheelBlocker
 
 # 动态加载 IAPWS-IF97 蒸汽物性模块
 try:
@@ -86,6 +87,11 @@ class 换热器计算(QWidget):
         
         self.setup_ui()
         self.setup_calculation_mode(0)  # 默认第一种模式
+
+        # 禁止未展开时鼠标滚轮切换下拉菜单
+        self._wheel_blocker = ComboBoxWheelBlocker(self)
+        for combo in self.findChildren(QComboBox):
+            combo.installEventFilter(self._wheel_blocker)
     
     def init_data_manager(self):
         """初始化数据管理器 - 使用单例模式"""

@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QFont, QDoubleValidator
 from PySide6.QtCore import Qt
 import os
+from modules.combo_box_utils import ComboBoxWheelBlocker
 
 
 COMBOBOX_STYLE = """
@@ -52,6 +53,11 @@ class NPSHaCalculator(QWidget):
         else:
             self.init_data_manager()
         self.setup_ui()
+
+        # 禁止未展开时鼠标滚轮切换下拉菜单
+        self._wheel_blocker = ComboBoxWheelBlocker(self)
+        for combo in self.findChildren(QComboBox):
+            combo.installEventFilter(self._wheel_blocker)
 
     def init_data_manager(self):
         """初始化数据管理器"""

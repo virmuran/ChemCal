@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, Signal, QThread
 from PySide6.QtGui import QFont, QDoubleValidator
+from modules.combo_box_utils import ComboBoxWheelBlocker
 
 
 COMBOBOX_STYLE = """
@@ -215,6 +216,11 @@ class SolidSolubilityCalculator(QWidget):
         self._last_result = {}
         self._query_pending = False
         self.setup_ui()
+
+        # 禁止未展开时鼠标滚轮切换下拉菜单
+        self._wheel_blocker = ComboBoxWheelBlocker(self)
+        for combo in self.findChildren(QComboBox):
+            combo.installEventFilter(self._wheel_blocker)
 
     # ─────────────────────────── UI ─────────────────────────────
     def setup_ui(self):

@@ -15,6 +15,7 @@ from PySide6.QtGui import QFont, QDoubleValidator, QColor
 import json
 import re
 import os
+from modules.combo_box_utils import ComboBoxWheelBlocker
 
 # QGroupBox统一样式
 GROUP_STYLE = """
@@ -407,6 +408,11 @@ class HazardousChemicalsQuery(QWidget):
         self.current_chemical = None
         self.setup_ui()
         self.load_chemicals_database()
+
+        # 禁止未展开时鼠标滚轮切换下拉菜单
+        self._wheel_blocker = ComboBoxWheelBlocker(self)
+        for combo in self.findChildren(QComboBox):
+            combo.installEventFilter(self._wheel_blocker)
 
     def init_data_manager(self):
         """初始化数据管理器"""

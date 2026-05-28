@@ -8,6 +8,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
 import math
 from fpdf import FPDF
+from modules.combo_box_utils import ComboBoxWheelBlocker
 
 # QGroupBox统一样式
 GROUP_STYLE = """
@@ -58,6 +59,11 @@ class PureSubstanceProperties(QWidget):
             self.init_data_manager()
         self.substance_data = self.load_substance_data()
         self.setup_ui()
+
+        # 禁止未展开时鼠标滚轮切换下拉菜单
+        self._wheel_blocker = ComboBoxWheelBlocker(self)
+        for combo in self.findChildren(QComboBox):
+            combo.installEventFilter(self._wheel_blocker)
 
     def init_data_manager(self):
         """初始化数据管理器"""

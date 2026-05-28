@@ -12,6 +12,7 @@ import os
 import importlib.util
 from datetime import datetime
 from enum import Enum
+from modules.combo_box_utils import ComboBoxWheelBlocker
 
 # 动态加载 IAPWS-IF97 蒸汽物性模块
 try:
@@ -100,6 +101,11 @@ class 换热器面积(QWidget):
         
         self.setup_ui()
         self.setup_mode_dependencies()
+
+        # 禁止未展开时鼠标滚轮切换下拉菜单
+        self._wheel_blocker = ComboBoxWheelBlocker(self)
+        for combo in self.findChildren(QComboBox):
+            combo.installEventFilter(self._wheel_blocker)
 
     def init_data_manager(self):
         """初始化数据管理器"""
@@ -764,9 +770,6 @@ class 换热器面积(QWidget):
     def setup_single_side_mode(self, row, label_style, input_width, combo_width):
         """设置未知侧设计模式界面"""
         # ── 已知侧（完整参数）──
-        self.add_separator(row)
-        row += 1
-
         known_label = QLabel("▼ 已知侧（完整参数）：")
         known_label.setStyleSheet("font-weight: bold; color: #2c3e50; padding: 5px 0;")
         self.input_layout.addWidget(known_label, row, 0, 1, 3)
@@ -872,6 +875,7 @@ class 换热器面积(QWidget):
                 self.input_widgets["unknown_flow"].setEnabled(True)
                 self.input_widgets["unknown_flow"].setPlaceholderText("输入已知流量")
             if "unknown_out_temp" in self.input_widgets:
+                self.input_widgets["unknown_out_temp"].clear()  # 切换时清除旧值
                 self.input_widgets["unknown_out_temp"].setEnabled(False)
                 self.input_widgets["unknown_out_temp"].setPlaceholderText("自动计算")
         else:
@@ -880,6 +884,7 @@ class 换热器面积(QWidget):
                 self.input_widgets["unknown_out_temp"].setEnabled(True)
                 self.input_widgets["unknown_out_temp"].setPlaceholderText("输入目标出口温度")
             if "unknown_flow" in self.input_widgets:
+                self.input_widgets["unknown_flow"].clear()  # 切换时清除旧值
                 self.input_widgets["unknown_flow"].setEnabled(False)
                 self.input_widgets["unknown_flow"].setPlaceholderText("自动计算")
     

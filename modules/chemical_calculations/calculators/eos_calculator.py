@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QDoubleValidator
+from modules.combo_box_utils import ComboBoxWheelBlocker
 
 # ---------------------------------------------------------------------------
 #  纯 Python 三次方程求解器（无需 numpy）
@@ -143,6 +144,11 @@ class EOSCalculator(QWidget):
         self._last_result = {}
         self._last_params = {}
         self.setup_ui()
+
+        # 禁止未展开时鼠标滚轮切换下拉菜单
+        self._wheel_blocker = ComboBoxWheelBlocker(self)
+        for combo in self.findChildren(QComboBox):
+            combo.installEventFilter(self._wheel_blocker)
 
     def setup_ui(self):
         main = QHBoxLayout(self)

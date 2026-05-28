@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QFont, QDoubleValidator, QIntValidator
 import math
+from modules.combo_box_utils import ComboBoxWheelBlocker
 
 
 COMBOBOX_STYLE = """
@@ -41,6 +42,11 @@ class 管道间距(QWidget):
         self.data_manager = data_manager
         self.setup_ui()
         
+        # 禁止未展开时鼠标滚轮切换下拉菜单
+        self._wheel_blocker = ComboBoxWheelBlocker(self)
+        for combo in self.findChildren(QComboBox):
+            combo.installEventFilter(self._wheel_blocker)
+
         # 初始化法兰数据
         self.flange_data = self.load_flange_data()
         

@@ -11,6 +11,7 @@ import re
 import os
 import importlib.util
 from datetime import datetime
+from modules.combo_box_utils import ComboBoxWheelBlocker
 
 # IAPWS-IF97 工业标准蒸汽物性（动态导入，避免 relative import 失败）
 try:
@@ -141,6 +142,11 @@ class SteamPropertyCalculator(QWidget):
         self.setup_mode_dependencies()
         self.initialize_values()
         self.setup_connections()
+
+        # 禁止未展开时鼠标滚轮切换下拉菜单
+        self._wheel_blocker = ComboBoxWheelBlocker(self)
+        for combo in self.findChildren(QComboBox):
+            combo.installEventFilter(self._wheel_blocker)
     
     def init_data_manager(self):
         """初始化数据管理器"""

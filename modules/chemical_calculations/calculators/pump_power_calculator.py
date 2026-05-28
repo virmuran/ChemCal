@@ -11,6 +11,7 @@ from PySide6.QtGui import QFont, QDoubleValidator
 from PySide6.QtCore import Qt
 import os
 import re
+from modules.combo_box_utils import ComboBoxWheelBlocker
 
 # 统一滚动条样式
 SCROLLBAR_STYLE = """
@@ -92,6 +93,11 @@ class CentrifugalPumpCalculator(QWidget):
         self._last_result = ""
         self._last_params = {}
         self.setup_ui()
+
+        # 禁止未展开时鼠标滚轮切换下拉菜单
+        self._wheel_blocker = ComboBoxWheelBlocker(self)
+        for combo in self.findChildren(QComboBox):
+            combo.installEventFilter(self._wheel_blocker)
 
     def init_data_manager(self):
         """初始化数据管理器"""

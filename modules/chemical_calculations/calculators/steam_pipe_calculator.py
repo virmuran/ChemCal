@@ -11,6 +11,7 @@ import re
 import importlib.util
 import os
 from datetime import datetime
+from modules.combo_box_utils import ComboBoxWheelBlocker
 
 # ─────────────────── IAPWS-IF97 动态加载 ───────────────────
 _IAPWS_MODULE = None
@@ -90,6 +91,11 @@ class 蒸汽管径流量(QWidget):
             
         self.setup_ui()
         self.setup_widget_references()
+
+        # 禁止未展开时鼠标滚轮切换下拉菜单
+        self._wheel_blocker = ComboBoxWheelBlocker(self)
+        for combo in self.findChildren(QComboBox):
+            combo.installEventFilter(self._wheel_blocker)
     
     def init_data_manager(self):
         """初始化数据管理器 - 使用单例模式"""

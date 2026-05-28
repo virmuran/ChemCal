@@ -9,6 +9,7 @@ from PySide6.QtGui import QFont, QDoubleValidator
 import math
 import re
 from datetime import datetime
+from modules.combo_box_utils import ComboBoxWheelBlocker
 
 
 COMBOBOX_STYLE = """
@@ -44,6 +45,11 @@ class 篮式过滤器(QWidget):
         
         self.setup_ui()
         self.setup_default_values()
+
+        # 禁止未展开时鼠标滚轮切换下拉菜单
+        self._wheel_blocker = ComboBoxWheelBlocker(self)
+        for combo in self.findChildren(QComboBox):
+            combo.installEventFilter(self._wheel_blocker)
     
     def init_data_manager(self):
         """初始化数据管理器 - 使用单例模式"""

@@ -31,6 +31,8 @@ except Exception as e:
     USE_INDUSTRIAL_CYCLE = False
     _refrigerant_eos = None
 
+from modules.combo_box_utils import ComboBoxWheelBlocker
+
 # 统一的QGroupBox样式
 GROUP_STYLE = """
     QGroupBox {
@@ -87,6 +89,11 @@ class RefrigerationCycleCalculator(QWidget):
         self._last_params = {}
         self.setup_ui()
         self.setup_refrigerant_data()
+
+        # 禁止未展开时鼠标滚轮切换下拉菜单
+        self._wheel_blocker = ComboBoxWheelBlocker(self)
+        for combo in self.findChildren(QComboBox):
+            combo.installEventFilter(self._wheel_blocker)
 
     def init_data_manager(self):
         """初始化数据管理器"""
