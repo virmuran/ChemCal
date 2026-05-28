@@ -272,11 +272,14 @@ class 换热器计算(QWidget):
         left_layout.addWidget(calculate_btn)
         
         # 5. 下载按钮布局
-        download_layout = QHBoxLayout()
+        bottom_layout = QHBoxLayout()
         
-        clear_btn = QPushButton("清空")
-        clear_btn.clicked.connect(self.clear_inputs)
-        clear_btn.setStyleSheet("""
+        # 清空按钮
+        self.clear_btn = QPushButton("清空")
+        self.clear_btn.clicked.connect(self.clear_inputs)
+        self.clear_btn.setMinimumHeight(50)
+        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.clear_btn.setStyleSheet("""
             QPushButton {
                 background-color: #95a5a6;
                 color: white;
@@ -288,31 +291,31 @@ class 换热器计算(QWidget):
             QPushButton:hover {
                 background-color: #7f8c8d;
             } """)
-        download_layout.addWidget(clear_btn)
         
-        download_layout.addStretch()
-        
-        download_txt_btn = QPushButton("下载计算书(TXT)")
-        download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        download_txt_btn.clicked.connect(self.download_txt_report)
-        download_txt_btn.setStyleSheet("""
+        # 下载TXT按钮
+        self.download_txt_btn = QPushButton("下载计算书(TXT)")
+        self.download_txt_btn.clicked.connect(self.download_txt_report)
+        self.download_txt_btn.setMinimumHeight(50)
+        self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_txt_btn.setStyleSheet("""
             QPushButton {
-                background-color: #27ae60;
+                background-color: #3498db;
                 color: white;
                 border: none;
                 border-radius: 6px;
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover:!checked {
-                background-color: #219653;
-            }
-        """)
-
-        download_pdf_btn = QPushButton("下载计算书(PDF)")
-        download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        download_pdf_btn.clicked.connect(self.generate_pdf_report)
-        download_pdf_btn.setStyleSheet("""
+            QPushButton:hover {
+                background-color: #2980b9;
+            } """)
+        
+        # 下载PDF按钮
+        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
+        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
+        self.download_pdf_btn.setMinimumHeight(50)
+        self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_pdf_btn.setStyleSheet("""
             QPushButton {
                 background-color: #e74c3c;
                 color: white;
@@ -321,14 +324,15 @@ class 换热器计算(QWidget):
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover:!checked {
+            QPushButton:hover {
                 background-color: #c0392b;
-            }
-        """)
-
-        download_layout.addWidget(download_txt_btn)
-        download_layout.addWidget(download_pdf_btn)
-        left_layout.addLayout(download_layout)
+            } """)
+        
+        bottom_layout.addWidget(self.clear_btn)
+        bottom_layout.addStretch()
+        bottom_layout.addWidget(self.download_txt_btn)
+        bottom_layout.addWidget(self.download_pdf_btn)
+        left_layout.addLayout(bottom_layout)
         
         # 6. 在底部添加拉伸因子
         left_layout.addStretch()
@@ -1646,7 +1650,7 @@ class 换热器计算(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "下载失败", f"保存计算书时发生错误: {str(e)}")
     
-    def generate_pdf_report(self):
+    def download_pdf_report(self):
         """生成PDF格式计算书"""
         try:
             # 直接调用 generate_report，它内部会进行检查

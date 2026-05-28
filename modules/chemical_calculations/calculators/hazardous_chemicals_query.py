@@ -550,9 +550,9 @@ class HazardousChemicalsQuery(QWidget):
         right_layout.addWidget(result_group)
 
         # ========== 底部按钮行（清空/下载TXT/下载PDF）==========
-        button_layout = QHBoxLayout()
-
-        # 清空按钮（灰色）
+        bottom_layout = QHBoxLayout()
+        
+        # 清空按钮
         self.clear_btn = QPushButton("清空")
         self.clear_btn.clicked.connect(self.clear_search)
         self.clear_btn.setMinimumHeight(50)
@@ -569,35 +569,29 @@ class HazardousChemicalsQuery(QWidget):
             QPushButton:hover {
                 background-color: #7f8c8d;
             } """)
-        button_layout.addWidget(self.clear_btn)
-
-        # 下载TXT按钮（绿色）
+        
+        # 下载TXT按钮
         self.download_txt_btn = QPushButton("下载计算书(TXT)")
         self.download_txt_btn.clicked.connect(self.download_txt_report)
         self.download_txt_btn.setMinimumHeight(50)
         self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.download_txt_btn.setStyleSheet("""
             QPushButton {
-                background-color: #27ae60;
+                background-color: #3498db;
                 color: white;
                 border: none;
                 border-radius: 6px;
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover:!checked {
-                background-color: #219653;
-            }
-            QPushButton:disabled {
-                background-color: #bdc3c7;
-            }
-        """)
+            QPushButton:hover {
+                background-color: #2980b9;
+            } """)
         self.download_txt_btn.setEnabled(False)
-        button_layout.addWidget(self.download_txt_btn)
-
-        # 下载PDF按钮（红色）
+        
+        # 下载PDF按钮
         self.download_pdf_btn = QPushButton("下载计算书(PDF)")
-        self.download_pdf_btn.clicked.connect(self.generate_pdf_report)
+        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
         self.download_pdf_btn.setMinimumHeight(50)
         self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.download_pdf_btn.setStyleSheet("""
@@ -609,17 +603,15 @@ class HazardousChemicalsQuery(QWidget):
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover:!checked {
+            QPushButton:hover {
                 background-color: #c0392b;
-            }
-            QPushButton:disabled {
-                background-color: #bdc3c7;
-            }
-        """)
+            } """)
         self.download_pdf_btn.setEnabled(False)
-        button_layout.addWidget(self.download_pdf_btn)
-
-        right_layout.addLayout(button_layout)
+        
+        bottom_layout.addWidget(self.clear_btn)
+        bottom_layout.addWidget(self.download_txt_btn)
+        bottom_layout.addWidget(self.download_pdf_btn)
+        right_layout.addLayout(bottom_layout)
 
         # ========== 将左右两部分添加到主布局 ==========
         # 比例：addWidget(left, 2) / addWidget(right, 1)
@@ -1086,7 +1078,7 @@ GHS象形图: {chem.get('ghs_symbols', '未知')}
             except Exception as e:
                 QMessageBox.critical(self, "错误", f"保存文件时出错:\n{str(e)}")
 
-    def generate_pdf_report(self):
+    def download_pdf_report(self):
         """生成PDF报告"""
         from PySide6.QtWidgets import QFileDialog
 

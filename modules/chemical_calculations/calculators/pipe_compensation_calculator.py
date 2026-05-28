@@ -537,28 +537,51 @@ class 管道补偿(QWidget):
         calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         left_layout.addWidget(calculate_btn)
         
-        # 5. 下载按钮布局
-        download_layout = QHBoxLayout()
-        download_txt_btn = QPushButton("下载计算书(TXT)")
-        download_txt_btn.clicked.connect(self.download_txt_report)
-        download_txt_btn.setStyleSheet("""
+        # 5. 底部按钮行
+        bottom_layout = QHBoxLayout()
+        
+        # 清空按钮
+        self.clear_btn = QPushButton("清空")
+        self.clear_btn.clicked.connect(self.clear_inputs)
+        self.clear_btn.setMinimumHeight(50)
+        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.clear_btn.setStyleSheet("""
             QPushButton {
-                background-color: #27ae60;
+                background-color: #95a5a6;
                 color: white;
                 border: none;
                 border-radius: 6px;
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover:!checked {
-                background-color: #c0ebd7;
+            QPushButton:hover {
+                background-color: #7f8c8d;
+            } """)
+        
+        # 下载TXT按钮
+        self.download_txt_btn = QPushButton("下载计算书(TXT)")
+        self.download_txt_btn.clicked.connect(self.download_txt_report)
+        self.download_txt_btn.setMinimumHeight(50)
+        self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_txt_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
             }
-        """)
-        download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-
-        download_pdf_btn = QPushButton("下载计算书(PDF)")
-        download_pdf_btn.clicked.connect(self.generate_pdf_report)
-        download_pdf_btn.setStyleSheet("""
+            QPushButton:hover {
+                background-color: #2980b9;
+            } """)
+        
+        # 下载PDF按钮
+        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
+        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
+        self.download_pdf_btn.setMinimumHeight(50)
+        self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_pdf_btn.setStyleSheet("""
             QPushButton {
                 background-color: #e74c3c;
                 color: white;
@@ -567,15 +590,15 @@ class 管道补偿(QWidget):
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover:!checked {
-                background-color: #c0ebd7;
-            }
-        """)
-        download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-
-        download_layout.addWidget(download_txt_btn)
-        download_layout.addWidget(download_pdf_btn)
-        left_layout.addLayout(download_layout)
+            QPushButton:hover {
+                background-color: #c0392b;
+            } """)
+        
+        bottom_layout.addWidget(self.clear_btn)
+        bottom_layout.addStretch()
+        bottom_layout.addWidget(self.download_txt_btn)
+        bottom_layout.addWidget(self.download_pdf_btn)
+        left_layout.addLayout(bottom_layout)
         
         # 6. 在底部添加拉伸因子
         left_layout.addStretch()
@@ -842,6 +865,22 @@ class 管道补偿(QWidget):
             QMessageBox.critical(self, "计算错误", f"参数输入格式错误: {str(e)}")
         except Exception as e:
             QMessageBox.critical(self, "计算错误", f"计算过程中发生错误: {str(e)}")
+
+    def clear_inputs(self):
+        """清空所有输入"""
+        self.material_combo.setCurrentIndex(0)
+        self.od_combo.setCurrentIndex(0)
+        self.od_input.clear()
+        self.length_input.clear()
+        self.l1_input.clear()
+        self.l2_input.clear()
+        self.l3_input.clear()
+        self.temp_install_input.clear()
+        self.temp_operate_input.clear()
+        self.alpha_value_input.clear()
+        self.elastic_value_input.clear()
+        self.stress_value_input.clear()
+        self.result_text.clear()
 
     def _get_history_data(self):
         """提供历史记录数据"""
@@ -1440,7 +1479,7 @@ class 管道补偿(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "下载失败", f"保存计算书时发生错误: {str(e)}")
     
-    def generate_pdf_report(self):
+    def download_pdf_report(self):
         """生成PDF格式计算书"""
         try:
             # 直接调用 generate_report

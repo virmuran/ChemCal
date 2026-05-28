@@ -340,13 +340,14 @@ class CentrifugalPumpCalculator(QWidget):
         left_layout.addWidget(calculate_btn)
         
         # 底部按钮行
-        btn_row = QHBoxLayout()
-        btn_row.setSpacing(10)
-
-        b_clr = QPushButton("清空")
-        b_clr.setMinimumHeight(50)
-        b_clr.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        b_clr.setStyleSheet("""
+        bottom_layout = QHBoxLayout()
+        
+        # 清空按钮
+        self.clear_btn = QPushButton("清空")
+        self.clear_btn.clicked.connect(self.clear_inputs)
+        self.clear_btn.setMinimumHeight(50)
+        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.clear_btn.setStyleSheet("""
             QPushButton {
                 background-color: #95a5a6;
                 color: white;
@@ -358,32 +359,48 @@ class CentrifugalPumpCalculator(QWidget):
             QPushButton:hover {
                 background-color: #7f8c8d;
             } """)
-        b_clr.clicked.connect(self.clear_inputs)
-
-        b_txt = QPushButton("下载计算书(TXT)")
-        b_txt.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        b_txt.setStyleSheet(
-            "QPushButton { background-color: #27ae60; color: white; font-weight: bold; "
-            "border: none; border-radius: 6px; padding: 8px; }"
-            "QPushButton:hover:!checked { background-color: #219653; }"
-        )
-        b_txt.clicked.connect(self.download_txt_report)
-
-        b_pdf = QPushButton("下载计算书(PDF)")
-        b_pdf.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        b_pdf.setStyleSheet(
-            "QPushButton { background-color: #e74c3c; color: white; font-weight: bold; "
-            "border: none; border-radius: 6px; padding: 8px; }"
-            "QPushButton:hover:!checked { background-color: #c0392b; }"
-        )
-        b_pdf.clicked.connect(self.generate_pdf_report)
         
-        btn_row.addWidget(b_clr)
-        btn_row.addStretch()
-        btn_row.addWidget(b_txt)
-        btn_row.addWidget(b_pdf)
+        # 下载TXT按钮
+        self.download_txt_btn = QPushButton("下载计算书(TXT)")
+        self.download_txt_btn.clicked.connect(self.download_txt_report)
+        self.download_txt_btn.setMinimumHeight(50)
+        self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_txt_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            } """)
         
-        left_layout.addLayout(btn_row)
+        # 下载PDF按钮
+        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
+        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
+        self.download_pdf_btn.setMinimumHeight(50)
+        self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_pdf_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e74c3c;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #c0392b;
+            } """)
+        
+        bottom_layout.addWidget(self.clear_btn)
+        bottom_layout.addStretch()
+        bottom_layout.addWidget(self.download_txt_btn)
+        bottom_layout.addWidget(self.download_pdf_btn)
+        left_layout.addLayout(bottom_layout)
         left_layout.addStretch()
         
         # 右侧：结果显示区域
@@ -690,7 +707,7 @@ P_电机 = {shaft_power:.2f} / {motor_efficiency/100:.3f} × {safety_factor} = {
             except Exception as e:
                 QMessageBox.critical(self, "错误", f"保存失败：{e}")
     
-    def generate_pdf_report(self):
+    def download_pdf_report(self):
         """生成PDF报告"""
         content = self.result_text.toPlainText()
         if not content.strip():

@@ -507,30 +507,67 @@ class 设备尺寸计算(QWidget):
         left_layout.addWidget(calc_btn)
 
         # 下载按钮
-        download_layout = QHBoxLayout()
-        txt_btn = QPushButton("下载计算书(TXT)")
-        txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        txt_btn.setStyleSheet("""
+        bottom_layout = QHBoxLayout()
+        
+        # 清空按钮
+        self.clear_btn = QPushButton("清空")
+        self.clear_btn.clicked.connect(self.clear_inputs)
+        self.clear_btn.setMinimumHeight(50)
+        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.clear_btn.setStyleSheet("""
             QPushButton {
-                background-color: #27ae60; color: white; border: none;
-                border-radius: 6px; padding: 8px; font-weight: bold;
+                background-color: #95a5a6;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
             }
-            QPushButton:hover:!checked { background-color: #c0ebd7; }
-        """)
-        txt_btn.clicked.connect(self.download_txt_report)
-        pdf_btn = QPushButton("下载计算书(PDF)")
-        pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        pdf_btn.setStyleSheet("""
+            QPushButton:hover {
+                background-color: #7f8c8d;
+            } """)
+        
+        # 下载TXT按钮
+        self.download_txt_btn = QPushButton("下载计算书(TXT)")
+        self.download_txt_btn.clicked.connect(self.download_txt_report)
+        self.download_txt_btn.setMinimumHeight(50)
+        self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_txt_btn.setStyleSheet("""
             QPushButton {
-                background-color: #e74c3c; color: white; border: none;
-                border-radius: 6px; padding: 8px; font-weight: bold;
+                background-color: #3498db;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
             }
-            QPushButton:hover:!checked { background-color: #c0ebd7; }
-        """)
-        pdf_btn.clicked.connect(self.generate_pdf_report)
-        download_layout.addWidget(txt_btn)
-        download_layout.addWidget(pdf_btn)
-        left_layout.addLayout(download_layout)
+            QPushButton:hover {
+                background-color: #2980b9;
+            } """)
+        
+        # 下载PDF按钮
+        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
+        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
+        self.download_pdf_btn.setMinimumHeight(50)
+        self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_pdf_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e74c3c;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #c0392b;
+            } """)
+        
+        bottom_layout.addWidget(self.clear_btn)
+        bottom_layout.addStretch()
+        bottom_layout.addWidget(self.download_txt_btn)
+        bottom_layout.addWidget(self.download_pdf_btn)
+        left_layout.addLayout(bottom_layout)
         left_layout.addStretch()
 
         # 右侧结果显示区域
@@ -691,6 +728,14 @@ class 设备尺寸计算(QWidget):
             if self.accessory_data['platform']:
                 msg += ", 含操作平台"
             self.result_text.append(f"\n[附件信息] {msg}")
+
+    def clear_inputs(self):
+        """清空所有输入参数"""
+        for widget in self.findChildren((QLineEdit, QComboBox)):
+            if isinstance(widget, QLineEdit):
+                widget.clear()
+            elif isinstance(widget, QComboBox):
+                widget.setCurrentIndex(0)
 
     # 计算核心 ----------------------------------------------------
     def calculate(self):
@@ -1298,7 +1343,7 @@ class 设备尺寸计算(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "错误", f"保存失败: {e}")
 
-    def generate_pdf_report(self):
+    def download_pdf_report(self):
         try:
             content = self.generate_report()
             if not content:

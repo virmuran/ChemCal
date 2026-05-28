@@ -394,10 +394,11 @@ class SolutionDensityCalculator(QWidget):
         right_layout.addWidget(result_group)
 
         # 底部按钮行
-        button_layout = QHBoxLayout()
-
+        bottom_layout = QHBoxLayout()
+        
+        # 清空按钮
         self.clear_btn = QPushButton("清空")
-        self.clear_btn.clicked.connect(self._clear_inputs)
+        self.clear_btn.clicked.connect(self.clear_inputs)
         self.clear_btn.setMinimumHeight(50)
         self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.clear_btn.setStyleSheet("""
@@ -412,37 +413,47 @@ class SolutionDensityCalculator(QWidget):
             QPushButton:hover {
                 background-color: #7f8c8d;
             } """)
-        button_layout.addWidget(self.clear_btn)
-
-        button_layout.addStretch()
-
+        
+        # 下载TXT按钮
         self.download_txt_btn = QPushButton("下载计算书(TXT)")
         self.download_txt_btn.clicked.connect(self.download_txt_report)
         self.download_txt_btn.setMinimumHeight(50)
         self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_txt_btn.setStyleSheet(
-            "QPushButton { "
-            "background-color: #27ae60; color: white; "
-            "font-weight: bold; border: none; border-radius: 6px; padding: 8px; "
-            "}"
-            "QPushButton:hover:!checked { background-color: #219653; }"
-        )
-        button_layout.addWidget(self.download_txt_btn)
-
+        self.download_txt_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            } """)
+        
+        # 下载PDF按钮
         self.download_pdf_btn = QPushButton("下载计算书(PDF)")
-        self.download_pdf_btn.clicked.connect(self.generate_pdf_report)
+        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
         self.download_pdf_btn.setMinimumHeight(50)
         self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_pdf_btn.setStyleSheet(
-            "QPushButton { "
-            "background-color: #e74c3c; color: white; "
-            "font-weight: bold; border: none; border-radius: 6px; padding: 8px; "
-            "}"
-            "QPushButton:hover:!checked { background-color: #c0392b; }"
-        )
-        button_layout.addWidget(self.download_pdf_btn)
-
-        right_layout.addLayout(button_layout)
+        self.download_pdf_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e74c3c;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #c0392b;
+            } """)
+        
+        bottom_layout.addWidget(self.clear_btn)
+        bottom_layout.addWidget(self.download_txt_btn)
+        bottom_layout.addWidget(self.download_pdf_btn)
+        right_layout.addLayout(bottom_layout)
         main_layout.addWidget(right_widget, 1)
 
     # ── 单点计算 Tab ──────────────────────────────────────────
@@ -848,7 +859,7 @@ class SolutionDensityCalculator(QWidget):
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(content)
 
-    def generate_pdf_report(self):
+    def download_pdf_report(self):
         """下载PDF报告"""
         from PySide6.QtWidgets import QFileDialog
         from fpdf import FPDF

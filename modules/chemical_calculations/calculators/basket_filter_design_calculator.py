@@ -2,7 +2,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QGroupBox, QTextEdit, QComboBox, QMessageBox, QGridLayout,
     QFileDialog, QDialog, QDialogButtonBox, QTabWidget, QSpinBox,
-    QButtonGroup, QFrame, QScrollArea
+    QButtonGroup, QFrame, QScrollArea, QSizePolicy
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
@@ -289,27 +289,51 @@ class 篮式过滤器(QWidget):
         calculate_btn.setMinimumHeight(50)
         layout.addWidget(calculate_btn)
         
-        # 下载按钮
-        download_layout = QHBoxLayout()
-        download_txt_btn = QPushButton("下载计算书(TXT)")
-        download_txt_btn.clicked.connect(self.download_txt_report)
-        download_txt_btn.setStyleSheet("""
+        # 底部按钮行
+        bottom_layout = QHBoxLayout()
+        
+        # 清空按钮
+        self.clear_btn = QPushButton("清空")
+        self.clear_btn.clicked.connect(self.clear_inputs)
+        self.clear_btn.setMinimumHeight(50)
+        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.clear_btn.setStyleSheet("""
             QPushButton {
-                background-color: #27ae60;
+                background-color: #95a5a6;
                 color: white;
                 border: none;
                 border-radius: 6px;
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover:!checked {
-                background-color: #219653;
+            QPushButton:hover {
+                background-color: #7f8c8d;
+            } """)
+        
+        # 下载TXT按钮
+        self.download_txt_btn = QPushButton("下载计算书(TXT)")
+        self.download_txt_btn.clicked.connect(self.download_txt_report)
+        self.download_txt_btn.setMinimumHeight(50)
+        self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_txt_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
             }
-        """)
-
-        download_pdf_btn = QPushButton("下载计算书(PDF)")
-        download_pdf_btn.clicked.connect(self.generate_pdf_report)
-        download_pdf_btn.setStyleSheet("""
+            QPushButton:hover {
+                background-color: #2980b9;
+            } """)
+        
+        # 下载PDF按钮
+        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
+        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
+        self.download_pdf_btn.setMinimumHeight(50)
+        self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_pdf_btn.setStyleSheet("""
             QPushButton {
                 background-color: #e74c3c;
                 color: white;
@@ -318,14 +342,21 @@ class 篮式过滤器(QWidget):
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover:!checked {
+            QPushButton:hover {
                 background-color: #c0392b;
-            }
-        """)
-
-        download_layout.addWidget(download_txt_btn)
-        download_layout.addWidget(download_pdf_btn)
-        layout.addLayout(download_layout)
+            } """)
+        
+        bottom_layout.addWidget(self.clear_btn)
+        bottom_layout.addStretch()
+        bottom_layout.addWidget(self.download_txt_btn)
+        bottom_layout.addWidget(self.download_pdf_btn)
+        layout.addLayout(bottom_layout)
+    
+    def clear_inputs(self):
+        """清空输入"""
+        self.setup_default_values()
+        self.result_text.clear()
+        self.selection_text.clear()
     
     def create_result_tabs(self):
         """创建结果TabWidget"""
@@ -1176,7 +1207,7 @@ class 篮式过滤器(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "下载失败", f"保存计算书时发生错误: {str(e)}")
     
-    def generate_pdf_report(self):
+    def download_pdf_report(self):
         """生成PDF格式计算书"""
         try:
             # 直接调用 generate_report，它内部会进行检查

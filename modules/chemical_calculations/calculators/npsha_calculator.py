@@ -308,30 +308,51 @@ class NPSHaCalculator(QWidget):
         calculate_btn.clicked.connect(self.calculate_npsha)
         left_layout.addWidget(calculate_btn)
 
-        # 下载按钮
-        dl_layout = QHBoxLayout()
-        dl_layout.setSpacing(10)
-
-        b_txt = QPushButton("下载计算书(TXT)")
-        b_txt.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        b_txt.setStyleSheet("""
+        # 底部按钮行
+        bottom_layout = QHBoxLayout()
+        
+        # 清空按钮
+        self.clear_btn = QPushButton("清空")
+        self.clear_btn.clicked.connect(self.clear_inputs)
+        self.clear_btn.setMinimumHeight(50)
+        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.clear_btn.setStyleSheet("""
             QPushButton {
-                background-color: #27ae60;
+                background-color: #95a5a6;
                 color: white;
                 border: none;
                 border-radius: 6px;
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover:!checked {
-                background-color: #219653;
+            QPushButton:hover {
+                background-color: #7f8c8d;
+            } """)
+        
+        # 下载TXT按钮
+        self.download_txt_btn = QPushButton("下载计算书(TXT)")
+        self.download_txt_btn.clicked.connect(self.download_txt_report)
+        self.download_txt_btn.setMinimumHeight(50)
+        self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_txt_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
             }
-        """)
-        b_txt.clicked.connect(self.download_txt_report)
-
-        b_pdf = QPushButton("下载计算书(PDF)")
-        b_pdf.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        b_pdf.setStyleSheet("""
+            QPushButton:hover {
+                background-color: #2980b9;
+            } """)
+        
+        # 下载PDF按钮
+        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
+        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
+        self.download_pdf_btn.setMinimumHeight(50)
+        self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_pdf_btn.setStyleSheet("""
             QPushButton {
                 background-color: #e74c3c;
                 color: white;
@@ -340,15 +361,15 @@ class NPSHaCalculator(QWidget):
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover:!checked {
+            QPushButton:hover {
                 background-color: #c0392b;
-            }
-        """)
-        b_pdf.clicked.connect(self.generate_pdf_report)
-
-        dl_layout.addWidget(b_txt)
-        dl_layout.addWidget(b_pdf)
-        left_layout.addLayout(dl_layout)
+            } """)
+        
+        bottom_layout.addWidget(self.clear_btn)
+        bottom_layout.addStretch()
+        bottom_layout.addWidget(self.download_txt_btn)
+        bottom_layout.addWidget(self.download_pdf_btn)
+        left_layout.addLayout(bottom_layout)
 
         left_layout.addStretch()
 
@@ -605,6 +626,22 @@ H_friction = {friction_loss} m (摩擦损失)
         except Exception as e:
             QMessageBox.critical(self, "计算错误", f"计算过程中发生错误: {str(e)}")
 
+    def clear_inputs(self):
+        """清空所有输入"""
+        self.atm_pressure_combo.setCurrentIndex(0)
+        self.vapor_pressure_combo.setCurrentIndex(0)
+        self.static_head_combo.setCurrentIndex(0)
+        self.friction_loss_combo.setCurrentIndex(0)
+        self.density_combo.setCurrentIndex(0)
+        self.npshr_combo.setCurrentIndex(0)
+        self.atm_pressure_input.clear()
+        self.vapor_pressure_input.clear()
+        self.static_head_input.clear()
+        self.friction_loss_input.clear()
+        self.density_input.clear()
+        self.npshr_input.clear()
+        self.result_text.clear()
+
     def _get_history_data(self):
         """提供历史记录数据"""
         atm_pressure = float(self.atm_pressure_input.text() or 0)
@@ -670,7 +707,7 @@ H_friction = {friction_loss} m (摩擦损失)
             except Exception as e:
                 QMessageBox.critical(self, "错误", f"保存失败：{e}")
 
-    def generate_pdf_report(self):
+    def download_pdf_report(self):
         """生成PDF报告"""
         content = self.result_text.toPlainText()
         if not content.strip():

@@ -315,9 +315,10 @@ class CorrosionDataQuery(QWidget):
         result_vbox.addWidget(self.result_text)
         right_layout.addWidget(result_group)
 
-        # 底部按钮行（右侧）：清空（灰）→ Stretch → 下载TXT（绿）→ 下载PDF（红）
+        # 底部按钮行（右侧）：清空（灰）→ Stretch → 下载TXT（蓝）→ 下载PDF（红）
         bottom_layout = QHBoxLayout()
-
+        
+        # 清空按钮
         self.clear_btn = QPushButton("清空")
         self.clear_btn.clicked.connect(self.clear_inputs)
         self.clear_btn.setMinimumHeight(50)
@@ -334,44 +335,46 @@ class CorrosionDataQuery(QWidget):
             QPushButton:hover {
                 background-color: #7f8c8d;
             } """)
-        bottom_layout.addWidget(self.clear_btn)
-
-        bottom_layout.addStretch()
-
+        
+        # 下载TXT按钮
         self.download_txt_btn = QPushButton("下载计算书(TXT)")
         self.download_txt_btn.clicked.connect(self.download_txt_report)
         self.download_txt_btn.setMinimumHeight(50)
         self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_txt_btn.setStyleSheet(
-            "QPushButton { "
-            "background-color: #27ae60; "
-            "color: white; "
-            "font-weight: bold; "
-            "border: none; "
-            "border-radius: 6px; "
-            "padding: 8px; "
-            "}"
-            "QPushButton:hover:!checked { background-color: #219653; }"
-        )
-        bottom_layout.addWidget(self.download_txt_btn)
-
+        self.download_txt_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            } """)
+        
+        # 下载PDF按钮
         self.download_pdf_btn = QPushButton("下载计算书(PDF)")
-        self.download_pdf_btn.clicked.connect(self.generate_pdf_report)
+        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
         self.download_pdf_btn.setMinimumHeight(50)
         self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_pdf_btn.setStyleSheet(
-            "QPushButton { "
-            "background-color: #e74c3c; "
-            "color: white; "
-            "font-weight: bold; "
-            "border: none; "
-            "border-radius: 6px; "
-            "padding: 8px; "
-            "}"
-            "QPushButton:hover:!checked { background-color: #c0392b; }"
-        )
+        self.download_pdf_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e74c3c;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #c0392b;
+            } """)
+        
+        bottom_layout.addWidget(self.clear_btn)
+        bottom_layout.addWidget(self.download_txt_btn)
         bottom_layout.addWidget(self.download_pdf_btn)
-
         right_layout.addLayout(bottom_layout)
 
         # ========= 按比例添加到主布局 =========
@@ -840,7 +843,7 @@ class CorrosionDataQuery(QWidget):
         except Exception as e:
             QMessageBox.warning(self, "导出失败", f"TXT报告导出失败: {str(e)}")
 
-    def generate_pdf_report(self):
+    def download_pdf_report(self):
         """使用fpdf生成PDF格式报告"""
         try:
             file_path, _ = QFileDialog.getSaveFileName(

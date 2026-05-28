@@ -323,8 +323,6 @@ class SteamPropertyCalculator(QWidget):
         bottom_layout.addWidget(self.download_txt_btn)
         bottom_layout.addWidget(self.download_pdf_btn)
         left_layout.addLayout(bottom_layout)
-        
-        # 6. 在底部添加拉伸因子
         left_layout.addStretch()
         
         # ==================== 右侧：结果显示区域 ====================

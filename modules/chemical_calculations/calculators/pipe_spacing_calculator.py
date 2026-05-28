@@ -5,7 +5,7 @@
 """
 
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, 
+    QSizePolicy, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, 
     QLineEdit, QGroupBox, QFormLayout, QPushButton, 
     QGridLayout, QFrame, QMessageBox, QCheckBox
 )
@@ -80,8 +80,88 @@ class 管道间距(QWidget):
         
         main_layout.addLayout(content_layout)
         
-        # 底部按钮区域
-        self.setup_button_section(main_layout)
+        # 计算按钮
+        self.calculate_btn = QPushButton("计算")
+        self.calculate_btn.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+        self.calculate_btn.clicked.connect(self.calculate_spacing)
+        self.calculate_btn.setMinimumHeight(50)
+        self.calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.calculate_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                min-height: 50px; padding: 0px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #219955;
+            } """)
+        main_layout.addWidget(self.calculate_btn)
+        
+        # 底部按钮
+        bottom_layout = QHBoxLayout()
+        
+        # 清空按钮
+        self.clear_btn = QPushButton("清空")
+        self.clear_btn.clicked.connect(self.clear_inputs)
+        self.clear_btn.setMinimumHeight(50)
+        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.clear_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #95a5a6;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #7f8c8d;
+            } """)
+        
+        # 下载TXT按钮
+        self.download_txt_btn = QPushButton("下载计算书(TXT)")
+        self.download_txt_btn.clicked.connect(self.download_txt_report)
+        self.download_txt_btn.setMinimumHeight(50)
+        self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_txt_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            } """)
+        
+        # 下载PDF按钮
+        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
+        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
+        self.download_pdf_btn.setMinimumHeight(50)
+        self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_pdf_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e74c3c;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #c0392b;
+            } """)
+        
+        bottom_layout.addWidget(self.clear_btn)
+        bottom_layout.addStretch()
+        bottom_layout.addWidget(self.download_txt_btn)
+        bottom_layout.addWidget(self.download_pdf_btn)
+        main_layout.addLayout(bottom_layout)
         
     def create_input_section(self):
         """创建输入参数区域"""
@@ -288,72 +368,48 @@ class 管道间距(QWidget):
         
         return widget
     
-    def setup_button_section(self, layout):
-        """设置按钮区域"""
-        button_layout = QHBoxLayout()
-        button_layout.setSpacing(10)
-        
-        # 计算按钮
-        self.calc_btn = QPushButton("计算")
-        self.calc_btn.setFixedHeight(40)
-        self.calc_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        self.calc_btn.clicked.connect(self.calculate_spacing)
-        
-        # 重置按钮
-        reset_btn = QPushButton("重置")
-        reset_btn.setFixedHeight(40)
-        reset_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #95a5a6;
-                color: white;
-                border: none;
-                border-radius: 5px;
-                font-weight: bold;
-                font-size: 14px;
-            }
-            QPushButton:hover:!checked {
-                background-color: #7f8c8d;
-            }
-        """)
-        reset_btn.clicked.connect(self.reset_inputs)
-        
-        # 导出按钮
-        export_btn = QPushButton("导出结果")
-        export_btn.setFixedHeight(40)
-        export_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border: none;
-                border-radius: 5px;
-                font-weight: bold;
-                font-size: 14px;
-            }
-            QPushButton:hover:!checked {
-                background-color: #2980b9;
-            }
-        """)
-        export_btn.clicked.connect(self.export_results)
-        
-        button_layout.addStretch()
-        button_layout.addWidget(reset_btn)
-        button_layout.addWidget(self.calc_btn)
-        button_layout.addWidget(export_btn)
-        button_layout.addStretch()
-        
-        layout.addLayout(button_layout)
-    
+    def clear_inputs(self):
+        """清空所有输入参数"""
+        for widget in self.findChildren((QLineEdit, QComboBox)):
+            if isinstance(widget, QLineEdit):
+                widget.clear()
+            elif isinstance(widget, QComboBox):
+                widget.setCurrentIndex(0)
+
+    def download_txt_report(self):
+        """下载TXT格式计算书"""
+        from PySide6.QtWidgets import QFileDialog
+        fname, _ = QFileDialog.getSaveFileName(self, "保存TXT计算书", "", "Text Files (*.txt)")
+        if fname:
+            with open(fname, 'w', encoding='utf-8') as f:
+                f.write(self.result_text.toPlainText())
+
+    def download_pdf_report(self):
+        """下载PDF格式计算书"""
+        content = self.result_text.toPlainText()
+        if not content.strip():
+            return
+        from PySide6.QtWidgets import QFileDialog
+        fname, _ = QFileDialog.getSaveFileName(self, "保存PDF计算书", "", "PDF Files (*.pdf)")
+        if fname:
+            try:
+                from reportlab.lib.pagesizes import A4
+                from reportlab.pdfgen import canvas
+                c = canvas.Canvas(fname, pagesize=A4)
+                c.setFont("Helvetica", 10)
+                y = 800
+                for line in content.split('\n'):
+                    c.drawString(50, y, line)
+                    y -= 14
+                    if y < 50:
+                        c.showPage()
+                        c.setFont("Helvetica", 10)
+                        y = 800
+                c.save()
+            except ImportError:
+                with open(fname, 'w', encoding='utf-8') as f:
+                    f.write(content)
+
     def load_flange_data(self):
         """加载法兰标准数据（简化版，实际应使用完整数据库）"""
         # HG/T20592-2009 PN系列法兰外径数据（单位：mm）

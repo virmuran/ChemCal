@@ -361,13 +361,14 @@ class RefrigerationCycleCalculator(QWidget):
         left_layout.addWidget(calculate_btn)
 
         # ========== 底部按钮行 ==========
-        btn_layout = QHBoxLayout()
-        btn_layout.setSpacing(10)
-
-        btn_clear = QPushButton("清空")
-        btn_clear.setMinimumHeight(50)
-        btn_clear.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        btn_clear.setStyleSheet("""
+        bottom_layout = QHBoxLayout()
+        
+        # 清空按钮
+        self.clear_btn = QPushButton("清空")
+        self.clear_btn.clicked.connect(self.clear_inputs)
+        self.clear_btn.setMinimumHeight(50)
+        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.clear_btn.setStyleSheet("""
             QPushButton {
                 background-color: #95a5a6;
                 color: white;
@@ -379,32 +380,48 @@ class RefrigerationCycleCalculator(QWidget):
             QPushButton:hover {
                 background-color: #7f8c8d;
             } """)
-        btn_clear.clicked.connect(self.clear_inputs)
-        btn_layout.addWidget(btn_clear)
-
-        btn_layout.addStretch()
-
-        btn_txt = QPushButton("下载计算书(TXT)")
-        btn_txt.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        btn_txt.setStyleSheet(
-            "QPushButton { background-color: #27ae60; color: white; font-weight: bold; "
-            "border: none; border-radius: 6px; padding: 8px; }"
-            "QPushButton:hover:!checked { background-color: #c0ebd7; }"
-        )
-        btn_txt.clicked.connect(self.download_txt_report)
-        btn_layout.addWidget(btn_txt)
-
-        btn_pdf = QPushButton("下载计算书(PDF)")
-        btn_pdf.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        btn_pdf.setStyleSheet(
-            "QPushButton { background-color: #e74c3c; color: white; font-weight: bold; "
-            "border: none; border-radius: 6px; padding: 8px; }"
-            "QPushButton:hover:!checked { background-color: #c0ebd7; }"
-        )
-        btn_pdf.clicked.connect(self.generate_pdf_report)
-        btn_layout.addWidget(btn_pdf)
-
-        left_layout.addLayout(btn_layout)
+        
+        # 下载TXT按钮
+        self.download_txt_btn = QPushButton("下载计算书(TXT)")
+        self.download_txt_btn.clicked.connect(self.download_txt_report)
+        self.download_txt_btn.setMinimumHeight(50)
+        self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_txt_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            } """)
+        
+        # 下载PDF按钮
+        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
+        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
+        self.download_pdf_btn.setMinimumHeight(50)
+        self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_pdf_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e74c3c;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #c0392b;
+            } """)
+        
+        bottom_layout.addWidget(self.clear_btn)
+        bottom_layout.addStretch()
+        bottom_layout.addWidget(self.download_txt_btn)
+        bottom_layout.addWidget(self.download_pdf_btn)
+        left_layout.addLayout(bottom_layout)
         left_layout.addStretch()  # 将内容顶到顶部，剩余空间在底部
 
         # ========== 右侧结果区 ==========
@@ -995,7 +1012,7 @@ class RefrigerationCycleCalculator(QWidget):
             except Exception as e:
                 QMessageBox.critical(self, "错误", f"保存失败：{e}")
 
-    def generate_pdf_report(self):
+    def download_pdf_report(self):
         """生成PDF报告 - 统一接口方法
         
         使用fpdf库生成PDF，字体使用C:/Windows/Fonts/msyh.ttc

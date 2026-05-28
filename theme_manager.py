@@ -186,6 +186,7 @@ class ThemeManager(QObject):
         QListWidget#calcNavList::item:selected {
             background-color: #3498db; color: white; font-weight: bold;
             border-left: 4px solid #2980b9; border-bottom: 1px solid #2980b9;
+            outline: none;
         }
         QListWidget#calcNavList::item:hover:!selected {
             background-color: #e9ecef; color: #212529;
@@ -462,6 +463,7 @@ class ThemeManager(QObject):
             font-weight: bold;
             border-left: 4px solid #2980b9;
             border-bottom: 1px solid #2980b9;
+            outline: none;
         }
         QListWidget#calcNavList::item:hover:!selected {
             background-color: #3a3a3a;
@@ -745,6 +747,7 @@ class ThemeManager(QObject):
         QListWidget#calcNavList::item:selected {
             background-color: #3182ce; color: white; font-weight: bold;
             border-left: 4px solid #2c5282; border-bottom: 1px solid #2c5282;
+            outline: none;
         }
         QListWidget#calcNavList::item:hover:!selected {
             background-color: #d8e8f8; color: #1a365d;
