@@ -220,7 +220,7 @@ class WetAirCalculator(QWidget):
                 font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #a59695;
+                background-color: #7f8c8d;
             } """)
 
         # 下载TXT按钮（绿色）
@@ -230,15 +230,15 @@ class WetAirCalculator(QWidget):
         self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.download_txt_btn.setStyleSheet("""
             QPushButton {
-                background-color: #27ae60;
+                background-color: #3498db;
                 color: white;
                 border: none;
                 border-radius: 6px;
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover:!checked {
-                background-color: #c0ebd7;
+            QPushButton:hover {
+                background-color: #2980b9;
             } """)
 
         # 下载PDF按钮（红色）
@@ -255,8 +255,8 @@ class WetAirCalculator(QWidget):
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover:!checked {
-                background-color: #c0ebd7;
+            QPushButton:hover {
+                background-color: #c0392b;
             } """)
 
         btn_row.addWidget(self.clear_btn)

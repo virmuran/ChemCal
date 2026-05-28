@@ -518,7 +518,7 @@ class VLEActivityCoefficientCalculator(QWidget):
                 font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #a59695;
+                background-color: #7f8c8d;
             } """)
         clear_btn.clicked.connect(self.clear_inputs)
         download_layout.addWidget(clear_btn)

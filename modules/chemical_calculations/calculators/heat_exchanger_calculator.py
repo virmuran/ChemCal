@@ -286,7 +286,7 @@ class 换热器计算(QWidget):
                 font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #a59695;
+                background-color: #7f8c8d;
             } """)
         download_layout.addWidget(clear_btn)
         

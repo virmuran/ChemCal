@@ -300,7 +300,7 @@ class CompressibleFlowPressureDrop(QWidget):
                 font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #a59695;
+                background-color: #7f8c8d;
             } """)
         b_clr.clicked.connect(self.clear_inputs)
         b_txt = QPushButton("下载计算书(TXT)")

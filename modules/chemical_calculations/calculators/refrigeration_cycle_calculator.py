@@ -377,7 +377,7 @@ class RefrigerationCycleCalculator(QWidget):
                 font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #a59695;
+                background-color: #7f8c8d;
             } """)
         btn_clear.clicked.connect(self.clear_inputs)
         btn_layout.addWidget(btn_clear)

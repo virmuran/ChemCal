@@ -567,7 +567,7 @@ class HazardousChemicalsQuery(QWidget):
                 font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #a59695;
+                background-color: #7f8c8d;
             } """)
         button_layout.addWidget(self.clear_btn)
 

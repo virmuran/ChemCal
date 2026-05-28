@@ -241,7 +241,7 @@ class SteamPropertyCalculator(QWidget):
         self.other_known_group.hide()
         self.other_input_group.hide()
 
-        # 5. 计算按钮（绿色样式）
+        # 5. 计算按钮
         self.calculate_btn = QPushButton("查询")
         self.calculate_btn.setFont(QFont("Arial", 12, QFont.Weight.Bold))
         self.calculate_btn.clicked.connect(self.calculate)
@@ -264,7 +264,7 @@ class SteamPropertyCalculator(QWidget):
         # 5. 底部按钮行：清空→Stretch→下载TXT→下载PDF
         bottom_layout = QHBoxLayout()
         
-        # 清空按钮（灰色）
+        # 清空按钮
         self.clear_btn = QPushButton("清空")
         self.clear_btn.clicked.connect(self.clear_inputs)
         self.clear_btn.setMinimumHeight(50)
@@ -279,28 +279,28 @@ class SteamPropertyCalculator(QWidget):
                 font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #a59695;
+                background-color: #7f8c8d;
             } """)
         
-        # 下载TXT按钮（绿色）
+        # 下载TXT按钮
         self.download_txt_btn = QPushButton("下载计算书(TXT)")
         self.download_txt_btn.clicked.connect(self.download_txt_report)
         self.download_txt_btn.setMinimumHeight(50)
         self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.download_txt_btn.setStyleSheet("""
             QPushButton {
-                background-color: #27ae60;
+                background-color: #3498db;
                 color: white;
                 border: none;
                 border-radius: 6px;
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover:!checked {
-                background-color: #c0ebd7;
+            QPushButton:hover {
+                background-color: #2980b9;
             } """)
         
-        # 下载PDF按钮（红色）
+        # 下载PDF按钮
         self.download_pdf_btn = QPushButton("下载计算书(PDF)")
         self.download_pdf_btn.clicked.connect(self.download_pdf_report)
         self.download_pdf_btn.setMinimumHeight(50)
@@ -314,8 +314,8 @@ class SteamPropertyCalculator(QWidget):
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover:!checked {
-                background-color: #c0ebd7;
+            QPushButton:hover {
+                background-color: #c0392b;
             } """)
         
         bottom_layout.addWidget(self.clear_btn)
