@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont, QDoubleValidator
+from PySide6.QtSvgWidgets import QSvgWidget
 import math
 import re
 import os
@@ -449,20 +450,34 @@ class 换热器面积(QWidget):
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
         
+        # 换热器示意图 (SVG 动态绘制)
+        self.svg_widget = QSvgWidget()
+        self.svg_widget.setMinimumHeight(220)
+        self.svg_widget.setMaximumHeight(280)
+        self.svg_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.svg_widget.setStyleSheet("""
+            QSvgWidget {
+                border: 1px solid #666;
+                border-radius: 6px;
+                background-color: white;
+            }
+        """)
+        right_layout.addWidget(self.svg_widget)
+        
         # 结果显示
         self.result_group = QGroupBox("计算结果")
         result_layout = QVBoxLayout(self.result_group)
         
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(500)
+        self.result_text.setMinimumHeight(300)
         self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet("""
             QTextEdit {
                 border: 1px solid #666;
                 border-radius: 6px;
                 padding: 8px;
-                /* bg via theme */min-height: 500px;
+                /* bg via theme */min-height: 300px;
             }
         """)
         result_layout.addWidget(self.result_text)
@@ -480,7 +495,231 @@ class 换热器面积(QWidget):
         self.mode_button_group.buttonClicked.connect(self.on_mode_button_clicked)
         # 初始状态 - 直接计算模式
         self.on_mode_changed("直接计算")
-    
+
+    # ───────────────── SVG 示意图 ─────────────────
+    def _text(self, x, y, text, size=9, color="#333", bold=False, center=True):
+        """SVG 文本（白字无描边）"""
+        extra = 'font-weight="bold"' if bold else ''
+        anchor = 'text-anchor="middle"' if center else ''
+        return f'<text x="{x}" y="{y}" {anchor} font-size="{size}" fill="{color}" {extra}>{text}</text>'
+
+    def _draw_flow_port(self, parts, x, y_base, y_dir, label, temp_text, color, arrow_id):
+        """流体进出口：箭头 + 标签 + 温度"""
+        arrow_len = abs(y_dir)
+        sign = 1 if y_dir > 0 else -1
+        arrow = f'<line x1="{x}" y1="{y_base}" x2="{x}" y2="{y_base+y_dir}" stroke="{color}" stroke-width="2.5" marker-end="url(#{arrow_id})"/>'
+        parts.append(arrow)
+        if y_dir < 0:  # 向上
+            parts.append(self._text(x, y_base+y_dir-6, label, size=10, color=color, bold=True))
+            parts.append(self._text(x, y_base+y_dir+8, temp_text, size=10, color="#555"))
+        else:  # 向下
+            parts.append(self._text(x, y_base+y_dir+16, label, size=10, color=color, bold=True))
+            parts.append(self._text(x, y_base+y_dir+30, temp_text, size=10, color="#555"))
+
+    # ===== 五种换热器外形绘制 =====
+
+    def _draw_body_tube(self, parts, x, y, w, h):
+        """管壳式：水平圆筒 + 封头 + 管束 + 折流板"""
+        parts.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="#e8edf2" stroke="#4a6fa5" stroke-width="2" rx="6"/>')
+        parts.append(f'<ellipse cx="{x}" cy="{y+h/2}" rx="10" ry="{h/2}" fill="#dce4ec" stroke="#4a6fa5" stroke-width="2"/>')
+        parts.append(f'<ellipse cx="{x+w}" cy="{y+h/2}" rx="10" ry="{h/2}" fill="#dce4ec" stroke="#4a6fa5" stroke-width="2"/>')
+        for ty in [y+18, y+34, y+50, y+66, y+82]:
+            parts.append(f'<line x1="{x-6}" y1="{ty}" x2="{x+w+6}" y2="{ty}" stroke="#7f8c8d" stroke-width="1.5" stroke-dasharray="4,3"/>')
+        for bx in [x+50, x+110, x+170]:
+            parts.append(f'<line x1="{bx}" y1="{y+4}" x2="{bx}" y2="{y+h-4}" stroke="#4a6fa5" stroke-width="1.5"/>')
+
+    def _draw_body_plate(self, parts, x, y, w, h):
+        """板式：矩形框 + 竖线表示板片 + 交替箭头"""
+        parts.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="#e8edf2" stroke="#4a6fa5" stroke-width="2" rx="4"/>')
+        for px in range(6):
+            px_val = x + 30 + px * 35
+            parts.append(f'<line x1="{px_val}" y1="{y+4}" x2="{px_val}" y2="{y+h-4}" stroke="#4a6fa5" stroke-width="1" opacity="0.5"/>')
+        # 板间流道标注
+        for ci, label in [(x+47, "热"), (x+82, "冷"), (x+117, "热"), (x+152, "冷"), (x+187, "热")]:
+            parts.append(self._text(ci, y+h/2+3, label, size=8, color="#fff"))
+
+    def _draw_body_spiral(self, parts, cx, cy, r):
+        """螺旋板式：从中心螺旋向外"""
+        for i in range(8):
+            a = i * 0.8
+            rr = 10 + i * 12
+            ex = cx + int(rr * 0.5)
+            if rr < r - 5:
+                parts.append(f'<circle cx="{cx}" cy="{cy}" r="{rr}" fill="none" stroke="#4a6fa5" stroke-width="1.5" opacity="0.6"/>')
+        parts.append(f'<circle cx="{cx}" cy="{cy}" r="{4}" fill="#4a6fa5"/>')
+
+    def _draw_body_doublepipe(self, parts, x, y, w, h):
+        """套管式：内外两层圆管"""
+        parts.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="#e8edf2" stroke="#4a6fa5" stroke-width="2" rx="14" ry="14"/>')
+        inner_h = h * 0.4
+        inner_y = y + (h - inner_h) / 2
+        parts.append(f'<rect x="{x+5}" y="{inner_y}" width="{w-10}" height="{inner_h}" fill="#dce4ec" stroke="#4a6fa5" stroke-width="1.5" rx="8"/>')
+
+    def _draw_body_tank(self, parts, x, y, w, h):
+        """容积式：圆筒罐 + 内部盘管"""
+        parts.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="#e8edf2" stroke="#4a6fa5" stroke-width="2" rx="8"/>')
+        # 盘管（螺旋）
+        for ci in range(4):
+            cy_val = y + h * 0.3 + ci * h * 0.18
+            parts.append(f'<ellipse cx="{x+w/2}" cy="{cy_val}" rx="{w*0.35}" ry="{h*0.07}" fill="none" stroke="#e74c3c" stroke-width="1.5"/>')
+
+    def _generate_heat_exchanger_svg(self, mode="直接计算", exchanger_type="", **kwargs):
+        """根据换热器类型和计算模式生成 SVG 示意图"""
+        w, h = 360, 260
+        parts = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="{w}" height="{h}">',
+                 f'<rect x="0" y="0" width="{w}" height="{h}" fill="#fafbfc" rx="6"/>']
+
+        body_x, body_y, body_w, body_h = 60, 72, 240, 100
+        hot_in = kwargs.get('hot_in', '?')
+        hot_out = kwargs.get('hot_out', '?')
+        cold_in = kwargs.get('cold_in', '?')
+        cold_out = kwargs.get('cold_out', '?')
+
+        # ── 按类型画外形 ──
+        if exchanger_type == "板式换热器":
+            self._draw_body_plate(parts, body_x, body_y, body_w, body_h)
+            hx_label = "板式换热器"
+            # 板式流道：热侧上下，冷侧另一侧上下
+            self._draw_flow_port(parts, body_x+40, body_y, -30, "热侧入口", f"{hot_in}°C", "#e74c3c", "arrowRed")
+            self._draw_flow_port(parts, body_x+40, body_y+body_h, 30, "热侧出口", f"{hot_out}°C", "#e74c3c", "arrowRed_down")
+            self._draw_flow_port(parts, body_x+body_w-40, body_y, -30, "冷侧出口", f"{cold_out}°C", "#3498db", "arrowBlue_up")
+            self._draw_flow_port(parts, body_x+body_w-40, body_y+body_h, 30, "冷侧入口", f"{cold_in}°C", "#3498db", "arrowBlue")
+
+        elif exchanger_type == "螺旋板式换热器":
+            cx, cy, r = body_x+body_w/2, body_y+body_h/2, body_h/2-5
+            self._draw_body_spiral(parts, int(cx), int(cy), int(r))
+            hx_label = "螺旋板式换热器"
+            # 螺旋：两个进出口
+            self._draw_flow_port(parts, body_x+50, body_y, -30, "热侧入口", f"{hot_in}°C", "#e74c3c", "arrowRed")
+            self._draw_flow_port(parts, body_x+50, body_y+body_h, 30, "热侧出口", f"{hot_out}°C", "#e74c3c", "arrowRed_down")
+            self._draw_flow_port(parts, body_x+body_w-50, body_y, -30, "冷侧出口", f"{cold_out}°C", "#3498db", "arrowBlue_up")
+            self._draw_flow_port(parts, body_x+body_w-50, body_y+body_h, 30, "冷侧入口", f"{cold_in}°C", "#3498db", "arrowBlue")
+
+        elif exchanger_type == "套管式换热器":
+            self._draw_body_doublepipe(parts, body_x, body_y, body_w, body_h)
+            hx_label = "套管式换热器"
+            # 内管/环隙
+            self._draw_flow_port(parts, body_x+50, body_y, -30, "内管入口", f"{hot_in}°C", "#e74c3c", "arrowRed")
+            self._draw_flow_port(parts, body_x+50, body_y+body_h, 30, "内管出口", f"{hot_out}°C", "#e74c3c", "arrowRed_down")
+            self._draw_flow_port(parts, body_x+body_w-50, body_y, -30, "环隙出口", f"{cold_out}°C", "#3498db", "arrowBlue_up")
+            self._draw_flow_port(parts, body_x+body_w-50, body_y+body_h, 30, "环隙入口", f"{cold_in}°C", "#3498db", "arrowBlue")
+
+        elif exchanger_type == "容积式加热器":
+            self._draw_body_tank(parts, body_x, body_y, body_w, body_h)
+            hx_label = "容积式加热器"
+            # 盘管入口/出口 + 罐体进出口
+            self._draw_flow_port(parts, body_x+50, body_y, -30, "蒸汽入口", f"{hot_in}°C", "#e74c3c", "arrowRed")
+            self._draw_flow_port(parts, body_x+50, body_y+body_h, 30, "凝液出口", f"{hot_out}°C", "#e74c3c", "arrowRed_down")
+            self._draw_flow_port(parts, body_x+body_w-50, body_y, -30, "出水口", f"{cold_out}°C", "#3498db", "arrowBlue_up")
+            self._draw_flow_port(parts, body_x+body_w-50, body_y+body_h, 30, "进水口", f"{cold_in}°C", "#3498db", "arrowBlue")
+
+        else:  # 管壳式（默认）
+            self._draw_body_tube(parts, body_x, body_y, body_w, body_h)
+            hx_label = "管壳式换热器"
+            self._draw_flow_port(parts, body_x+35, body_y, -30, "壳程入口", f"{hot_in}°C", "#e74c3c", "arrowRed")
+            self._draw_flow_port(parts, body_x+35, body_y+body_h, 30, "壳程出口", f"{hot_out}°C", "#e74c3c", "arrowRed_down")
+            self._draw_flow_port(parts, body_x+body_w-35, body_y, -30, "管程出口", f"{cold_out}°C", "#3498db", "arrowBlue_up")
+            self._draw_flow_port(parts, body_x+body_w-35, body_y+body_h, 30, "管程入口", f"{cold_in}°C", "#3498db", "arrowBlue")
+
+        # ── 底部信息栏 ──
+        heat_load = kwargs.get('heat_load')
+        area = kwargs.get('area')
+        info_y = h - 14
+        if heat_load is not None:
+            parts.append(self._text(body_x, info_y, f"热负荷: {heat_load} kW", size=10, color="#444", center=False))
+        if area is not None:
+            parts.append(self._text(body_x+body_w-30, info_y, f"面积: {area} m²", size=10, color="#444", center=False))
+
+        # ── 顶部标签：类型 + 模式 ──
+        mode_names = {"直接计算": "直接换热量计算", "流体参数": "流体参数法",
+                      "蒸汽加热": "蒸汽加热", "未知侧设计": "未知侧设计",
+                      "智能选型": "智能选型"}
+        title = hx_label
+        if mode in mode_names and mode != "智能选型":
+            title += f" — {mode_names[mode]}"
+        parts.append(self._text(body_x+body_w/2, 12, title, size=10, color="#4a6fa5", bold=True))
+
+        # ── 箭头定义 ──
+        parts.append('''<defs>
+            <marker id="arrowRed" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#e74c3c"/></marker>
+            <marker id="arrowRed_down" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#e74c3c"/></marker>
+            <marker id="arrowBlue" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#3498db"/></marker>
+            <marker id="arrowBlue_up" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#3498db"/></marker>
+        </defs>''')
+
+        parts.append('</svg>')
+        return ''.join(parts)
+
+    def _update_svg_diagram(self):
+        """根据当前计算模式 + 换热器类型 + 输入参数更新 SVG 示意图"""
+        try:
+            mode = self.get_current_mode()
+            kwargs = {'mode': mode}
+
+            # 换热器类型
+            ex_type = self.get_widget_value("exchanger_type", "")
+            if ex_type and not ex_type.startswith("-"):
+                kwargs['exchanger_type'] = ex_type
+
+            # 通用参数
+            heat_load = self.get_widget_value("heat_load")
+            K = self.get_widget_value("k_value", 500)
+
+            if mode == "直接计算":
+                kwargs['hot_in'] = self.get_widget_value("hot_in_temp")
+                kwargs['hot_out'] = self.get_widget_value("hot_out_temp")
+                kwargs['cold_in'] = self.get_widget_value("cold_in_temp")
+                kwargs['cold_out'] = self.get_widget_value("cold_out_temp")
+            elif mode == "流体参数":
+                kwargs['hot_in'] = self.get_widget_value("hot_in_temp")
+                kwargs['hot_out'] = self.get_widget_value("hot_out_temp")
+                kwargs['cold_in'] = self.get_widget_value("cold_in_temp")
+                kwargs['cold_out'] = self.get_widget_value("cold_out_temp")
+                W_hot = self.get_widget_value("hot_flow")
+                W_cold = self.get_widget_value("cold_flow")
+                if W_hot: kwargs['shell_media'] = f"{W_hot} kg/h"
+                if W_cold: kwargs['tube_media'] = f"{W_cold} kg/h"
+            elif mode == "蒸汽加热":
+                kwargs['hot_in'] = self.get_widget_value("steam_temp")
+                kwargs['hot_out'] = self.get_widget_value("steam_out_temp")
+                kwargs['cold_in'] = self.get_widget_value("material_in_temp")
+                kwargs['cold_out'] = self.get_widget_value("material_out_temp")
+                heat_load = self.get_widget_value("steam_heat_load")
+            elif mode == "未知侧设计":
+                kwargs['hot_in'] = self.get_widget_value("known_in_temp")
+                kwargs['hot_out'] = self.get_widget_value("known_out_temp")
+                kwargs['cold_in'] = self.get_widget_value("unknown_in_temp")
+                kwargs['cold_out'] = self.get_widget_value("unknown_out_temp")
+            elif mode == "智能选型":
+                kwargs['hot_in'] = self.get_widget_value("selection_hot_in")
+                kwargs['hot_out'] = self.get_widget_value("selection_hot_out")
+                kwargs['cold_in'] = self.get_widget_value("selection_cold_in")
+                kwargs['cold_out'] = self.get_widget_value("selection_cold_out")
+
+            kwargs['heat_load'] = heat_load
+
+            # 估算面积
+            try:
+                T_hot_in = kwargs.get('hot_in')
+                T_hot_out = kwargs.get('hot_out')
+                T_cold_in = kwargs.get('cold_in')
+                T_cold_out = kwargs.get('cold_out')
+                if all(v is not None for v in [T_hot_in, T_hot_out, T_cold_in, T_cold_out, heat_load, K]):
+                    delta_hot = abs(float(T_hot_in) - float(T_hot_out))
+                    delta_cold = abs(float(T_cold_out) - float(T_cold_in))
+                    if delta_hot > 0 and delta_cold > 0 and delta_hot != delta_cold:
+                        import math
+                        lmtd = (delta_hot - delta_cold) / math.log(delta_hot / delta_cold)
+                        area = (float(heat_load) * 1000) / (float(K) * lmtd)
+                        kwargs['area'] = round(area, 1)
+            except Exception:
+                pass
+
+            svg = self._generate_heat_exchanger_svg(**kwargs)
+            self.svg_widget.load(svg.encode('utf-8'))
+        except Exception:
+            pass
+
     def on_mode_button_clicked(self, button):
         """处理计算模式按钮点击"""
         mode_text = button.text()
@@ -1005,7 +1244,10 @@ class 换热器面积(QWidget):
             # 更新K值输入框
             if "k_value" in self.input_widgets:
                 self.input_widgets["k_value"].setText(f"{recommended:.0f}")
-    
+
+            # 刷新 SVG 示意图
+            self._update_svg_diagram()
+
     def get_widget_value(self, key, default=None):
         """获取控件值"""
         if key in self.input_widgets:
@@ -1082,7 +1324,10 @@ class 换热器面积(QWidget):
                 self.perform_intelligent_selection()
             else:
                 QMessageBox.warning(self, "计算错误", "请选择计算模式")
-                
+            
+            # 更新 SVG 示意图
+            self._update_svg_diagram()
+
         except ValueError as e:
             QMessageBox.critical(self, "输入错误", f"参数输入格式错误: {str(e)}")
         except ZeroDivisionError:
