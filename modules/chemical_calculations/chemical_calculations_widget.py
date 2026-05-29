@@ -134,7 +134,6 @@ class ChemicalCalculationsWidget(QWidget):
             ("篮式过滤器", "篮式过滤器", "basket_filter_design_calculator", True),
             # ===== 五、安全 =====
             ("安全阀计算", "SafetyValveCalculator", "safety_valve_calculator", True),
-            ("泄压面积计算", "ReliefAreaCalculator", "relief_area_calculator", True),
             ("消火栓计算", "消火栓计算", "fire_hydrant_calculator", True),
             # ===== 六、制冷 =====
             ("制冷循环计算", "RefrigerationCycleCalculator", "refrigeration_cycle_calculator", True),
@@ -338,7 +337,6 @@ class ChemicalCalculationsWidget(QWidget):
         "flange_size_calculator": "其他",
         "safety_valve_calculator": "安全/消防",
         "long_distance_steam_pipe_calculator": "管道",
-        "relief_area_calculator": "安全/消防",
         "fan_power_calculator": "流体设备",
         "steam_property_calculator": "热工/制冷",
         "pure_substance_properties": "热力学",
