@@ -65,6 +65,8 @@ class 管道壁厚(QWidget):
         self.material_database = {}
         self.setup_material_database()  # 先调用这个
         self.setup_ui()  # 然后调用 setup_ui
+        # 默认选 20# 碳钢，许用应力自动填入
+        self.material_combo.setCurrentIndex(10)  # "20# (20°C) - GB/T699"
         self._update_svg_diagram()
 
         # 禁止未展开时鼠标滚轮切换下拉菜单
@@ -103,31 +105,13 @@ class 管道壁厚(QWidget):
         
         # 1. 首先添加说明文本
         description = QLabel(
-            "根据ASME B31.3等标准计算管道壁厚，支持MPa(g)表压单位，包含详细的焊接接头系数和材料数据库。"
+            "依据 ASME B31.3 工艺管道规范计算管道壁厚。输入设计压力、温度、材质后，自动匹配标准管表(Sch)推荐壁厚。"
         )
         description.setWordWrap(True)
         description.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
-        # 2. 计算标准选择
-        standard_group = QGroupBox("计算标准")
-        standard_layout = QHBoxLayout(standard_group)
-        
-        self.standard_combo = QComboBox()
-        self.standard_combo.setStyleSheet(COMBOBOX_STYLE)
-        self.standard_combo.addItems([
-            "ASME B31.3 - 工艺管道",
-            "GB/T 20801 - 压力管道规范",
-            "GB 50316 - 工业金属管道设计规范",
-            "SH/T 3059 - 石油化工管道设计"
-        ])
-        self.standard_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        standard_layout.addWidget(self.standard_combo)
-        standard_layout.addStretch()
-        
-        left_layout.addWidget(standard_group)
-        
-        # 3. 输入参数组 - 使用GridLayout实现整齐的布局
+        # 2. 输入参数组 - 使用GridLayout实现整齐的布局
         input_group = QGroupBox("输入参数")
         
         # 使用GridLayout确保整齐排列
@@ -205,9 +189,8 @@ class 管道壁厚(QWidget):
         
         diameter_unit_layout = QHBoxLayout()
         self.diameter_input = QLineEdit()
-        self.diameter_input.setPlaceholderText("例如: 114.3")
+        self.diameter_input.setPlaceholderText("选择管径自动填入")
         self.diameter_input.setValidator(QDoubleValidator(1.0, 2000.0, 2))
-        self.diameter_input.setText("108")
         self.diameter_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         diameter_unit_layout.addWidget(self.diameter_input)
         
@@ -330,7 +313,7 @@ class 管道壁厚(QWidget):
         self.corrosion_input = QLineEdit()
         self.corrosion_input.setPlaceholderText("例如: 0.05")
         self.corrosion_input.setValidator(QDoubleValidator(0.0, 10.0, 2))
-        self.corrosion_input.setText("0.05")
+        self.corrosion_input.setText("1.50")
         self.corrosion_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         corrosion_unit_layout.addWidget(self.corrosion_input)
         
@@ -537,34 +520,35 @@ class 管道壁厚(QWidget):
     
     def setup_diameter_options(self):
         """设置管道外径选项"""
+        # ASME B36.10 / GB/T 17395 标准外径
         diameter_options = [
-            "- 请选择管道外径 -",  # 添加空值选项
-            "10.0 mm - DN6 [1/8\"]",
-            "13.5 mm - DN8 [1/4\"]", 
-            "17.2 mm - DN10 [3/8\"]",
+            "- 请选择管道外径 -",
+            "10.3 mm - DN6 [1/8\"]",
+            "13.7 mm - DN8 [1/4\"]",
+            "17.1 mm - DN10 [3/8\"]",
             "21.3 mm - DN15 [1/2\"]",
-            "26.9 mm - DN20 [3/4\"]",
-            "33.7 mm - DN25 [1.00\"]",
-            "42.4 mm - DN32 [1.25\"]",
-            "48.3 mm - DN40 [1.50\"]",
-            "60.3 mm - DN50 [2.00\"]",
-            "76.1 mm - DN65 [2.50\"]",
-            "88.9 mm - DN80 [3.00\"]",
-            "101.6 mm - DN90 [3.50\"]",
-            "108.0 mm - DN100 [4.00\"]",
-            "114.3 mm - DN100 [4.00\"]",
-            "139.7 mm - DN125 [5.00\"]",
-            "165.1 mm - DN150 [6.00\"]",
-            "219.1 mm - DN200 [8.00\"]",
-            "273.0 mm - DN250 [10.00\"]", 
-            "323.9 mm - DN300 [12.00\"]"
+            "26.7 mm - DN20 [3/4\"]",
+            "33.4 mm - DN25 [1\"]",
+            "42.2 mm - DN32 [1.25\"]",
+            "48.3 mm - DN40 [1.5\"]",
+            "60.3 mm - DN50 [2\"]",
+            "73.0 mm - DN65 [2.5\"]",
+            "88.9 mm - DN80 [3\"]",
+            "114.3 mm - DN100 [4\"]",
+            "141.3 mm - DN125 [5\"]",
+            "168.3 mm - DN150 [6\"]",
+            "219.1 mm - DN200 [8\"]",
+            "273.0 mm - DN250 [10\"]",
+            "323.9 mm - DN300 [12\"]",
+            "355.6 mm - DN350 [14\"]",
+            "406.4 mm - DN400 [16\"]",
+            "457.2 mm - DN450 [18\"]",
+            "508.0 mm - DN500 [20\"]",
+            "610.0 mm - DN600 [24\"]",
         ]
         self.diameter_combo.addItems(diameter_options)
-        # 设置默认值为DN100
-        for i in range(self.diameter_combo.count()):
-            if "108.0 mm" in self.diameter_combo.itemText(i):
-                self.diameter_combo.setCurrentIndex(i)
-                break
+        # 默认显示"请选择"提示
+        self.diameter_combo.setCurrentIndex(0)
         
     def setup_weld_factor_options(self):
         """设置焊接接头系数选项"""
@@ -748,72 +732,85 @@ class 管道壁厚(QWidget):
         return f'<text x="{x}" y="{y}" {a} font-size="{size}" fill="{color}" {e}>{text}</text>'
 
     def _generate_pipe_svg(self, **kw):
+        """管道壁厚截面：双同心圆 + 管壁标注 + Sch 推荐"""
         w, h = 360, 260
         p = [
             f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="{w}" height="{h}">',
             f'<rect x="0" y="0" width="{w}" height="{h}" fill="#fafbfc" rx="6"/>'
         ]
-        cx, cy, pw, ph = w/2, h/2-10, 260, 60
-        py = cy - 30
-        d = kw.get("diameter", "?")
-        f_val = kw.get("flow", "?")
-        v = kw.get("velocity", "?")
-        # 管道外壁
-        p.append(f'<rect x="{cx-pw/2}" y="{py}" width="{pw}" height="{ph}" fill="#e8edf2" stroke="#4a6fa5" stroke-width="2" rx="6"/>')
-        # 管道内径
-        p.append(f'<rect x="{cx-pw/2+15}" y="{py+10}" width="{pw-30}" height="{ph-20}" fill="#dce4ec" stroke="#7f8c8d" stroke-width="1" rx="3"/>')
-        # 流向箭头
-        p.append(f'<line x1="{cx-90}" y1="{cy}" x2="{cx+90}" y2="{cy}" stroke="#3498db" stroke-width="2.5" marker-end="url(#arrow)"/>')
-        p.append(self._text(cx, cy-10, f"{v} m/s" if v != "?" else "? m/s", size=10, color="#3498db", bold=True))
-        # 直径标注
-        p.append(self._text(cx, py+ph+35, f"DN {d} mm" if d != "?" else "DN ?", size=10, color="#555"))
+        cx, cy = w/2, h/2 - 5
+        od = kw.get("outer_diameter", "?")
+        tn = kw.get("thickness", "?")
+        sch = kw.get("sch_name", "")
+        dp = kw.get("design_pressure", "")
+
+        r_outer = 70
+        # 壁厚比例：thickness/OD 映射到视觉厚度
+        try:
+            ratio = float(tn) / float(od) if od != "?" and tn != "?" else 0.06
+        except:
+            ratio = 0.06
+        r_inner = r_outer * (1 - ratio * 3)  # 放大3倍便于观察
+        r_inner = max(r_inner, 30)
+
+        # 外圆（管壁外缘）
+        p.append(f'<circle cx="{cx}" cy="{cy}" r="{r_outer}" fill="#e8edf2" stroke="#4a6fa5" stroke-width="3"/>')
+        # 内圆（通径）
+        p.append(f'<circle cx="{cx}" cy="{cy}" r="{r_inner}" fill="#dce4ec" stroke="#7f8c8d" stroke-width="1.5"/>')
+        # 壁厚标注（右侧）
+        arrow_rx = cx + r_outer + 10
+        p.append(f'<line x1="{arrow_rx}" y1="{cy+r_inner}" x2="{arrow_rx}" y2="{cy+r_outer}" stroke="#e74c3c" stroke-width="2"/>')
+        tn_label = f"t={tn}mm" if tn != "?" else "t=? mm"
+        p.append(self._text(arrow_rx+10, cy+(r_inner+r_outer)/2, tn_label, size=10, color="#e74c3c", bold=True, center=False))
+
+        # 外径标注
+        dia_y = cy + r_outer + 30
+        od_label = f"φ{od}mm" if od != "?" else "φ? mm"
+        p.append(f'<line x1="{cx-r_outer}" y1="{dia_y}" x2="{cx+r_outer}" y2="{dia_y}" stroke="#7f8c8d" stroke-width="1" marker-start="url(#dimL)" marker-end="url(#dimR)"/>')
+        p.append(self._text(cx, dia_y+16, od_label, size=10, color="#555"))
+
+        # 顶部 Sch 标签
+        title = f"管道壁厚 — {sch}" if sch else "管道壁厚"
+        p.append(self._text(cx, 12, title, size=10, color="#4a6fa5", bold=True))
+
         # 底部信息
         info_y = h - 14
-        if f_val != "?":
-            p.append(self._text(40, info_y, f"流量: {f_val}", size=10, color="#444", center=False))
-        p.append(self._text(cx, 12, "管道截面示意", size=10, color="#4a6fa5", bold=True))
-        p.append('<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#3498db"/></marker></defs></svg>')
+        if dp:
+            p.append(self._text(10, info_y, f"设计压力: {dp} MPa", size=10, color="#444", center=False))
+        if od != "?" and tn != "?":
+            try:
+                ratio_pct = round(float(tn) / float(od) * 100, 1)
+                p.append(self._text(w-60, info_y, f"t/D={ratio_pct}%", size=10, color="#444", center=False))
+            except: pass
+
+        p.append('<defs>'
+                 '<marker id="dimL" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M8,0 L0,4 L8,8 Z" fill="#7f8c8d"/></marker>'
+                 '<marker id="dimR" markerWidth="8" markerHeight="8" refX="0" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#7f8c8d"/></marker>'
+                 '</defs></svg>')
         return "".join(p)
 
     def _update_svg_diagram(self):
         try:
             kw = {}
-            # 通用的输入框扫描 — 用 hasattr 不会因属性不存在而崩溃
-            widget_attrs = ['flow_input', 'velocity_input', 'diameter_input', 
-                          'head_input', 'pressure_input', 'flow_rate_input']
-            for attr in widget_attrs:
-                if hasattr(self, attr):
-                    try:
-                        val = getattr(self, attr).text().strip()
-                        if val:
-                            name = attr.replace('_input', '')
-                            kw[name] = val
-                    except:
-                        pass
-            # 下拉框
-            if hasattr(self, 'diameter_combo'):
-                try:
-                    t = self.diameter_combo.currentText()
-                    if t and not t.startswith('-'):
-                        kw['diameter'] = t.split('mm')[0].strip()
-                except:
-                    pass
-            if hasattr(self, 'fluid_combo'):
-                try:
-                    t = self.fluid_combo.currentText()
-                    if t and not t.startswith('-'):
-                        kw['fluid'] = t
-                except:
-                    pass
+            if hasattr(self, '_last_outer_diameter') and self._last_outer_diameter:
+                kw['outer_diameter'] = self._last_outer_diameter
+            else:
+                try: kw['outer_diameter'] = float(self.diameter_input.text())
+                except: pass
+            if hasattr(self, '_last_thickness') and self._last_thickness:
+                kw['thickness'] = round(self._last_thickness, 1)
+            if hasattr(self, '_last_design_pressure') and self._last_design_pressure:
+                kw['design_pressure'] = round(self._last_design_pressure, 2)
+            if hasattr(self, '_last_sch_name') and self._last_sch_name:
+                kw['sch_name'] = self._last_sch_name
             s = self._generate_pipe_svg(**kw)
             self.svg_widget.load(s.encode("utf-8"))
-        except Exception:
-            pass
+        except: pass
     def calculate(self):
         """计算管道壁厚"""
         try:
             # 获取输入值
-            standard = self.standard_combo.currentText()
+            standard = "ASME B31.3 - 工艺管道"
             design_pressure = float(self.pressure_input.text())  # MPa
             design_temp = float(self.temp_input.text())  # °C
             outer_diameter = float(self.diameter_input.text())  # mm
@@ -848,8 +845,18 @@ class 管道壁厚(QWidget):
             # 计算最小要求壁厚
             minimum_required_thickness = theoretical_thickness + corrosion_allowance
             
-            # 选择标准管壁厚
-            standard_thickness = self.select_standard_thickness(design_thickness)
+            # 选择标准管壁厚 — 通过管表匹配 Sch
+            lookup = self._lookup_pipe_schedule(outer_diameter, design_thickness)
+            if lookup:
+                sch_name, standard_thickness, sch_margin, matched_dn, matched_od = lookup
+            else:
+                # 外径不在管表中，用通用圆整
+                standard_thicknesses = [2.0,2.3,2.6,2.9,3.2,3.6,4.0,4.5,5.0,5.6,6.3,7.1,8.0,8.8,10.0,11.0,12.5,14.2,16.0,17.5,20.0]
+                standard_thickness = min((t for t in standard_thicknesses if t >= design_thickness), default=standard_thicknesses[-1])
+                sch_name = "—"
+                sch_margin = round(standard_thickness - design_thickness, 2)
+                matched_dn = "?"
+                matched_od = outer_diameter
             
             # 计算实际应力
             actual_stress = design_pressure * (outer_diameter - 2 * standard_thickness) / \
@@ -870,7 +877,8 @@ class 管道壁厚(QWidget):
                 allowable_stress, weld_factor, y_factor, 
                 thinning_allowance, corrosion_allowance, total_additional,
                 theoretical_thickness, minimum_required_thickness, design_thickness,
-                standard_thickness, actual_stress, safety_factor, weight_increase
+                standard_thickness, actual_stress, safety_factor, weight_increase,
+                sch_name, sch_margin, matched_dn, matched_od
             )
             
             self.result_text.setText(result)
@@ -878,6 +886,7 @@ class 管道壁厚(QWidget):
             self._last_outer_diameter = outer_diameter
             self._last_thickness = standard_thickness
             self._last_design_pressure = design_pressure
+            self._last_sch_name = sch_name
             self._update_svg_diagram()
             
         except ValueError as e:
@@ -887,25 +896,56 @@ class 管道壁厚(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "计算错误", f"计算过程中发生错误: {str(e)}")
     
-    def select_standard_thickness(self, required_thickness):
-        """选择标准壁厚"""
-        # 标准壁厚系列 (mm) - 根据常用管道规格
-        standard_thicknesses = [
-            2.0, 2.3, 2.6, 2.9, 3.2, 3.6, 4.0, 4.5, 5.0, 5.6, 6.3, 
-            7.1, 8.0, 8.8, 10.0, 11.0, 12.5, 14.2, 16.0, 17.5, 20.0,
-            22.2, 25.0, 28.0, 30.0, 32.0, 36.0, 40.0, 45.0, 50.0
-        ]
-        
-        for thickness in standard_thicknesses:
-            if thickness >= required_thickness:
-                return thickness
-        
-        # 如果需要的壁厚超过最大值，返回最大值
-        return standard_thicknesses[-1]
+    # ── 标准管道壁厚表 (ASME B36.10/B36.19) ──
+    # { (DN, 外径mm): [ (Sch, 壁厚mm), ... ] } 按壁厚从小到大排列
+    PIPE_SCHEDULES = {
+        (6, 10.3):    [("Sch40",1.73),("Sch80",2.41),("Sch160",3.15)],
+        (8, 13.7):    [("Sch40",2.24),("Sch80",3.02),("Sch160",3.68)],
+        (10, 17.1):   [("Sch40",2.31),("Sch80",3.20),("Sch160",4.01)],
+        (15, 21.3):   [("Sch5S",1.65),("Sch10S",2.11),("Sch40",2.77),("Sch80",3.73),("Sch160",4.78)],
+        (20, 26.7):   [("Sch5S",1.65),("Sch10S",2.11),("Sch40",2.87),("Sch80",3.91),("Sch160",5.56)],
+        (25, 33.4):   [("Sch5S",1.65),("Sch40",3.38),("Sch80",4.55),("Sch160",6.35)],
+        (32, 42.2):   [("Sch5S",1.65),("Sch40",3.56),("Sch80",4.85),("Sch160",6.35)],
+        (40, 48.3):   [("Sch5S",1.65),("Sch40",3.68),("Sch80",5.08),("Sch160",7.14)],
+        (50, 60.3):   [("Sch5S",1.65),("Sch10S",2.77),("Sch40",3.91),("Sch80",5.54),("Sch160",8.74)],
+        (65, 73.0):   [("Sch5S",2.11),("Sch40",5.16),("Sch80",7.01),("Sch160",9.53)],
+        (80, 88.9):   [("Sch5S",2.11),("Sch10S",3.05),("Sch40",5.49),("Sch80",7.62),("Sch160",11.13)],
+        (100,114.3):  [("Sch5S",2.11),("Sch10S",3.05),("Sch40",6.02),("Sch80",8.56),("Sch160",13.49)],
+        (125,141.3):  [("Sch5S",2.77),("Sch10S",3.40),("Sch40",6.55),("Sch80",9.53),("Sch160",15.88)],
+        (150,168.3):  [("Sch5S",2.77),("Sch10S",3.40),("Sch40",7.11),("Sch80",10.97),("Sch160",18.26)],
+        (200,219.1):  [("Sch5S",2.77),("Sch10S",3.76),("Sch40",8.18),("Sch80",12.70),("Sch160",23.01)],
+        (250,273.0):  [("Sch5S",3.40),("Sch10S",4.19),("Sch40",9.27),("Sch80",15.09),("Sch160",28.58)],
+        (300,323.9):  [("Sch5S",3.96),("Sch10S",4.57),("Sch40",10.31),("Sch80",17.48),("Sch160",33.32)],
+        (350,355.6):  [("Sch10",6.35),("Sch40",11.13),("Sch80",19.05),("Sch160",35.71)],
+        (400,406.4):  [("Sch10",6.35),("Sch40",12.70),("Sch80",21.44),("Sch160",40.49)],
+        (450,457.2):  [("Sch10",6.35),("Sch40",14.27),("Sch80",23.83),("Sch160",45.24)],
+        (500,508.0):  [("Sch10",6.35),("Sch40",15.09),("Sch80",26.19),("Sch160",50.01)],
+        (600,610.0):  [("Sch10",6.35),("Sch40",17.48),("Sch80",30.96),("Sch160",59.54)],
+    }
+
+    def _lookup_pipe_schedule(self, outer_diameter_mm, required_thickness):
+        """根据外径匹配最近DN，查找满足壁厚要求的标准Sch
+        返回: (Sch名称, 标准壁厚mm, 裕度mm) 或 None"""
+        best_dn = None
+        best_dist = 9999
+        for (dn, od), schedules in self.PIPE_SCHEDULES.items():
+            dist = abs(od - outer_diameter_mm)
+            if dist < best_dist:
+                best_dist = dist
+                best_dn = (dn, od, schedules)
+        if best_dn is None or best_dist > 10:
+            return None
+        dn, od, schedules = best_dn
+        for sch_name, wall_thk in schedules:
+            if wall_thk >= required_thickness:
+                margin = wall_thk - required_thickness
+                return (sch_name, wall_thk, round(margin, 2), dn, od)
+        # 超过最大壁厚
+        last_sch, last_thk = schedules[-1]
+        return (last_sch, last_thk, round(last_thk - required_thickness, 2), dn, od)
 
     def clear_inputs(self):
         """清空所有输入"""
-        self.standard_combo.setCurrentIndex(0)
         self.material_combo.setCurrentIndex(0)
         self.diameter_combo.setCurrentIndex(0)
         self.weld_combo.setCurrentIndex(0)
@@ -924,7 +964,7 @@ class 管道壁厚(QWidget):
 
     def _get_history_data(self):
         """提供历史记录数据"""
-        standard = self.standard_combo.currentText()
+        standard = "ASME B31.3 - 工艺管道"
         design_pressure = float(self.pressure_input.text() or 0)
         design_temp = float(self.temp_input.text() or 0)
         outer_diameter = float(self.diameter_input.text() or 0)
@@ -977,8 +1017,10 @@ class 管道壁厚(QWidget):
                       allowable_stress, weld_factor, y_factor,
                       thinning_allowance, corrosion_allowance, total_additional,
                       theoretical_thickness, minimum_required_thickness, design_thickness,
-                      standard_thickness, actual_stress, safety_factor, weight_increase):
-        """格式化计算结果"""
+                      standard_thickness, actual_stress, safety_factor, weight_increase,
+                      sch_name="?", sch_margin=0.0, matched_dn="?", matched_od=0.0):
+        """格式化计算结果 — 包含管道等级推荐"""
+        pipe_spec = f"DN{matched_dn} (φ{matched_od}×{standard_thickness}mm)  {sch_name}"
         return f"""═══════════
  输入参数
 ══════════
@@ -995,38 +1037,40 @@ class 管道壁厚(QWidget):
     总附加量 C: {total_additional:.2f} mm
 
 ══════════
-计算结果
+壁厚计算
 ══════════
 
-    壁厚计算:
     • 理论计算壁厚 t₀: {theoretical_thickness:.2f} mm
     • 最小要求壁厚 t_min: {minimum_required_thickness:.2f} mm
     • 设计计算壁厚 t_d: {design_thickness:.2f} mm
-    • 选用标准壁厚 t_n: {standard_thickness} mm
+    • 管表匹配Sch: {sch_name}
+    • 推荐取用壁厚 t_n: {standard_thickness} mm
+    • 推荐管道规格: {pipe_spec}
+    • 壁厚裕度: {sch_margin:.2f} mm
 
-    强度校核:
+══════════
+强度校核
+══════════
+
     • 实际计算应力: {actual_stress:.1f} MPa
     • 安全系数: {safety_factor:.2f}
     • 强度状态: {'安全 (安全系数≥1.0)' if safety_factor >= 1.0 else '需重新设计 (安全系数<1.0)'}
 
-    经济性分析:
+══════════
+经济性分析
+══════════
+
     • 重量增加: {weight_increase:.1f} %
     • 壁厚余量: {standard_thickness - design_thickness:.2f} mm
-
-    管道等级推荐:
-    • Sch 10S: ~{standard_thickness * 0.6:.1f} mm
-    • Sch 40S: ~{standard_thickness * 0.8:.1f} mm  
-    • Sch 80S: ~{standard_thickness:.1f} mm
-    • Sch 160: ~{standard_thickness * 1.4:.1f} mm
 
 ══════════
 计算说明
 ══════════
 
     • 采用标准壁厚计算公式: t = P×D / (2×S×E + 2×P×Y) + C
+    • 管表壁厚基于 ASME B36.10/B36.19 标准 Sch 系列
     • Y系数根据材料类型和设计温度确定
-    • 减薄量C₁考虑制造公差和工艺减薄
-    • 腐蚀裕量C₂根据介质腐蚀特性确定
+    • 腐蚀裕量C₂建议取值: 碳钢 1.5~3mm, 不锈钢 0~1mm
     • 建议安全系数不小于1.0，重要管道建议1.5以上
     • 计算结果仅供参考，实际应用需经专业工程师审核"""
     
