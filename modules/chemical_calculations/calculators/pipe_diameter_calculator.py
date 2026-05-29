@@ -51,6 +51,7 @@ class 管径计算(QWidget):
         self.setup_fluid_ranges()
         self.setup_fluid_options()
         self.setup_mode_dependencies()
+        self._update_svg_diagram()
 
         # 禁止未展开时鼠标滚轮切换下拉菜单
         self._wheel_blocker = ComboBoxWheelBlocker(self)
@@ -660,6 +661,7 @@ class 管径计算(QWidget):
         self.svg_widget.setMinimumHeight(220)
         self.svg_widget.setMaximumHeight(280)
         self.svg_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.svg_widget.renderer().setAspectRatioMode(Qt.KeepAspectRatio)
         right_layout.addWidget(self.svg_widget)
         
         # 结果显示
@@ -1100,54 +1102,75 @@ class 管径计算(QWidget):
         return f'<text x="{x}" y="{y}" {anchor} font-size="{size}" fill="{color}" {extra}>{text}</text>'
 
     def _generate_pipe_svg(self, diameter=None, flow=None, velocity=None, pressure=None, fluid=""):
+        """管道截面示意图：正方形画布确保正圆"""
         w, h = 360, 260
         parts = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="{w}" height="{h}">',
                  f'<rect x="0" y="0" width="{w}" height="{h}" fill="#fafbfc" rx="6"/>']
 
-        # 管道截面（正视图）
-        cx, cy, r_outer = w/2, h/2 - 10, 65
-        pipe_y = cy - 55
-        # 外管壁
-        parts.append(f'<rect x="{cx-r_outer}" y="{pipe_y}" width="{r_outer*2}" height="110" fill="#e8edf2" stroke="#4a6fa5" stroke-width="2" rx="6"/>')
-        # 内径（通径）
-        r_inner = r_outer * 0.8
-        inner_x = cx - r_inner
-        parts.append(f'<rect x="{inner_x}" y="{pipe_y+10}" width="{r_inner*2}" height="90" fill="#dce4ec" stroke="#7f8c8d" stroke-width="1.5" rx="3"/>')
+        cx, cy = w/2, h/2 - 5
+        r_outer = 70
+        r_inner = r_outer * 0.78
 
-        # 流向箭头
-        arrow_y = cy
-        parts.append(f'<line x1="{cx-80}" y1="{arrow_y}" x2="{cx+80}" y2="{arrow_y}" stroke="#3498db" stroke-width="2.5" marker-end="url(#arrowBlue)"/>')
-        parts.append(self._text(cx, arrow_y-10, f"{velocity} m/s" if velocity else "? m/s", size=10, color="#3498db", bold=True))
+        # 外圆（管壁）
+        parts.append(f'<circle cx="{cx}" cy="{cy}" r="{r_outer}" fill="#e8edf2" stroke="#4a6fa5" stroke-width="3"/>')
+        # 内圆（通径）
+        parts.append(f'<circle cx="{cx}" cy="{cy}" r="{r_inner}" fill="#dce4ec" stroke="#7f8c8d" stroke-width="1.5"/>')
+
+        # 流向箭头（横穿管道）
+        arr_l = cx - r_outer - 25
+        arr_r = cx + r_outer + 25
+        parts.append(f'<line x1="{arr_l}" y1="{cy}" x2="{arr_r}" y2="{cy}" stroke="#3498db" stroke-width="3" '
+                     f'marker-start="url(#arrowIn)" marker-end="url(#arrowOut)"/>')
+        v_text = f"{velocity} m/s" if velocity else "? m/s"
+        parts.append(self._text(cx, cy-18, v_text, size=11, color="#3498db", bold=True))
 
         # 直径标注
-        parts.append(f'<line x1="{inner_x}" y1="{pipe_y+110+10}" x2="{inner_x+r_inner*2}" y2="{pipe_y+110+10}" stroke="#7f8c8d" stroke-width="1" marker-start="url(#arrowDimL)" marker-end="url(#arrowDimR)"/>')
-        parts.append(self._text(cx, pipe_y+128, f"DN {diameter} mm" if diameter else "DN ?", size=10, color="#555"))
+        dia_y = cy + r_outer + 30
+        d = f"{float(diameter):.1f}" if diameter else "?"
+        d_text = f"φ{d}mm"
+        parts.append(f'<line x1="{cx-r_outer}" y1="{dia_y}" x2="{cx+r_outer}" y2="{dia_y}" '
+                     f'stroke="#7f8c8d" stroke-width="1" marker-start="url(#arrowL)" marker-end="url(#arrowR)"/>')
+        parts.append(self._text(cx, dia_y+16, d_text, size=10, color="#555"))
 
         # 底部信息
         info_y = h - 14
-        if flow: parts.append(self._text(40, info_y, f"流量: {flow}", size=10, color="#444", center=False))
-        if pressure: parts.append(self._text(w-40, info_y, f"压力: {pressure} MPa", size=10, color="#444", center=False))
-        if fluid: parts.append(self._text(cx, 12, f"介质: {fluid}", size=10, color="#4a6fa5", bold=True))
+        if flow:
+            parts.append(self._text(40, info_y, f"流量: {flow}", size=10, color="#444", center=False))
+        if pressure:
+            parts.append(self._text(w-40, info_y, f"压力: {pressure} MPa", size=10, color="#444", center=False))
+        if fluid:
+            parts.append(self._text(cx, 12, f"介质: {fluid}", size=10, color="#4a6fa5", bold=True))
+        else:
+            parts.append(self._text(cx, 12, "管道截面示意", size=10, color="#4a6fa5", bold=True))
 
         parts.append("""<defs>
-            <marker id="arrowBlue" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#3498db"/></marker>
-            <marker id="arrowDimL" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M8,0 L0,4 L8,8 Z" fill="#7f8c8d"/></marker>
-            <marker id="arrowDimR" markerWidth="8" markerHeight="8" refX="0" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#7f8c8d"/></marker>
+            <marker id="arrowOut" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#3498db"/></marker>
+            <marker id="arrowIn" markerWidth="8" markerHeight="8" refX="0" refY="4" orient="auto"><path d="M8,0 L0,4 L8,8 Z" fill="#3498db"/></marker>
+            <marker id="arrowL" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M8,0 L0,4 L8,8 Z" fill="#7f8c8d"/></marker>
+            <marker id="arrowR" markerWidth="8" markerHeight="8" refX="0" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#7f8c8d"/></marker>
         </defs>""")
         parts.append("</svg>")
         return "".join(parts)
 
     def _update_svg_diagram(self):
         try:
-            fluid = self.fluid_combo.currentText() if not self.fluid_combo.currentText().startswith("-") else ""
-            kwargs = {"fluid": fluid}
-            for key in ["flow_input", "velocity_input", "pressure_input"]:
-                if hasattr(self, key):
-                    try: kwargs[key.replace("_input","")] = getattr(self, key).text()
+            kwargs = {}
+            # 优先用计算后存储的值
+            if hasattr(self, '_last_fluid') and self._last_fluid:
+                kwargs['fluid'] = self._last_fluid
+            else:
+                fluid = self.fluid_combo.currentText()
+                if fluid and not fluid.startswith("-"):
+                    kwargs['fluid'] = fluid
+            for key, attr in [('diameter', '_last_diameter'), ('flow', '_last_flow'),
+                              ('velocity', '_last_velocity'), ('pressure', '_last_pressure')]:
+                if hasattr(self, attr) and getattr(self, attr):
+                    kwargs[key] = str(getattr(self, attr))
+                elif hasattr(self, key + '_input'):
+                    try:
+                        val = getattr(self, key + '_input').text().strip()
+                        if val: kwargs[key] = val
                     except: pass
-            if hasattr(self, "diameter_input"):
-                try: kwargs["diameter"] = self.diameter_input.text()
-                except: pass
             svg = self._generate_pipe_svg(**kwargs)
             self.svg_widget.load(svg.encode("utf-8"))
         except: pass
@@ -1212,7 +1235,15 @@ class 管径计算(QWidget):
                 flow_rate = self.calculate_flow_from_diameter(diameter_mm, velocity, density, fluid, condition)
                 self.show_flow_result(fluid, condition, diameter_mm, velocity, 
                                     flow_rate, density, pressure, mode)
-                
+
+            # 存储计算结果供 SVG 使用
+            self._last_diameter = diameter_mm
+            self._last_flow = flow_rate
+            self._last_velocity = velocity
+            self._last_pressure = pressure
+            self._last_fluid = fluid
+            self._update_svg_diagram()
+
         except ValueError as e:
             QMessageBox.critical(self, "输入错误", f"参数格式错误: {str(e)}")
         except ZeroDivisionError:

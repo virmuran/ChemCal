@@ -164,6 +164,7 @@ class 压降计算(QWidget):
         self.local_resistance_coeff = 0.0
         self.setup_ui()
         self.setup_mode_dependencies()
+        self._update_svg_diagram()
 
         # 禁止未展开时鼠标滚轮切换下拉菜单
         self._wheel_blocker = ComboBoxWheelBlocker(self)
@@ -592,6 +593,12 @@ class 压降计算(QWidget):
         right_widget.setMinimumWidth(300)  # 设置最小宽度而不是固定宽度
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
+
+        self.svg_widget = QSvgWidget()
+        self.svg_widget.setMinimumHeight(220)
+        self.svg_widget.setMaximumHeight(280)
+        self.svg_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        right_layout.addWidget(self.svg_widget)
         
         # 结果显示
         self.result_group = QGroupBox("计算结果")

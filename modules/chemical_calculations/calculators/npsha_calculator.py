@@ -4,6 +4,8 @@ from PySide6.QtWidgets import (
     QScrollArea, QSizePolicy, QFileDialog,
 )
 from PySide6.QtGui import QFont, QDoubleValidator
+from PySide6.QtSvgWidgets import QSvgWidget
+from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtCore import Qt
 import os
 from modules.combo_box_utils import ComboBoxWheelBlocker
@@ -53,6 +55,7 @@ class NPSHaCalculator(QWidget):
         else:
             self.init_data_manager()
         self.setup_ui()
+        self._update_svg_diagram()
 
         # 禁止未展开时鼠标滚轮切换下拉菜单
         self._wheel_blocker = ComboBoxWheelBlocker(self)
@@ -378,6 +381,12 @@ class NPSHaCalculator(QWidget):
         right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
+
+        self.svg_widget = QSvgWidget()
+        self.svg_widget.setMinimumHeight(220)
+        self.svg_widget.setMaximumHeight(280)
+        self.svg_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        right_layout.addWidget(self.svg_widget)
         
         # 结果显示
         self.result_group = QGroupBox("计算结果")

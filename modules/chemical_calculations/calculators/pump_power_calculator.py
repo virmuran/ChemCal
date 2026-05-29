@@ -8,6 +8,8 @@ from PySide6.QtWidgets import (
     QScrollArea, QFileDialog, QSizePolicy,
 )
 from PySide6.QtGui import QFont, QDoubleValidator
+from PySide6.QtSvgWidgets import QSvgWidget
+from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtCore import Qt
 import os
 import re
@@ -93,6 +95,7 @@ class CentrifugalPumpCalculator(QWidget):
         self._last_result = ""
         self._last_params = {}
         self.setup_ui()
+        self._update_svg_diagram()
 
         # 禁止未展开时鼠标滚轮切换下拉菜单
         self._wheel_blocker = ComboBoxWheelBlocker(self)
@@ -408,6 +411,12 @@ class CentrifugalPumpCalculator(QWidget):
         right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
+
+        self.svg_widget = QSvgWidget()
+        self.svg_widget.setMinimumHeight(220)
+        self.svg_widget.setMaximumHeight(280)
+        self.svg_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        right_layout.addWidget(self.svg_widget)
         
         # 结果显示组
         result_group = QGroupBox("计算结果")
@@ -558,17 +567,37 @@ class CentrifugalPumpCalculator(QWidget):
     def _update_svg_diagram(self):
         try:
             kw = {}
-            if hasattr(self, "diameter_combo"):
-                t = self.diameter_combo.currentText()
-                kw["diameter"] = t.split("mm")[0].strip() if "mm" in t else t
-            for attr in ["flow_input", "velocity_input"]:
+            # 通用的输入框扫描 — 用 hasattr 不会因属性不存在而崩溃
+            widget_attrs = ['flow_input', 'velocity_input', 'diameter_input', 
+                          'head_input', 'pressure_input', 'flow_rate_input']
+            for attr in widget_attrs:
                 if hasattr(self, attr):
-                    kw[attr.replace("_input", "")] = getattr(self, attr).text()
+                    try:
+                        val = getattr(self, attr).text().strip()
+                        if val:
+                            name = attr.replace('_input', '')
+                            kw[name] = val
+                    except:
+                        pass
+            # 下拉框
+            if hasattr(self, 'diameter_combo'):
+                try:
+                    t = self.diameter_combo.currentText()
+                    if t and not t.startswith('-'):
+                        kw['diameter'] = t.split('mm')[0].strip()
+                except:
+                    pass
+            if hasattr(self, 'fluid_combo'):
+                try:
+                    t = self.fluid_combo.currentText()
+                    if t and not t.startswith('-'):
+                        kw['fluid'] = t
+                except:
+                    pass
             s = self._generate_pipe_svg(**kw)
             self.svg_widget.load(s.encode("utf-8"))
-        except:
+        except Exception:
             pass
-
     def calculate(self):
         """计算离心泵功率"""
         try:
