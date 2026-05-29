@@ -387,6 +387,7 @@ class NPSHaCalculator(QWidget):
         self.svg_widget.setMaximumHeight(280)
         self.svg_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         right_layout.addWidget(self.svg_widget)
+        self.svg_widget.renderer().setAspectRatioMode(Qt.KeepAspectRatio)
         
         # 结果显示
         self.result_group = QGroupBox("计算结果")
@@ -627,6 +628,11 @@ H_friction = {friction_loss} m (摩擦损失)
 • 对于高温液体，饱和蒸汽压对NPSHa影响显著"""
             
             self.result_text.setText(result)
+
+            self._last_npsha = round(npsha, 2)
+            self._last_atm_pressure = atm_pressure
+            self._last_density = density
+            self._update_svg_diagram()
             
         except ValueError as e:
             QMessageBox.critical(self, "计算错误", f"参数输入格式错误: {str(e)}")
@@ -634,6 +640,51 @@ H_friction = {friction_loss} m (摩擦损失)
             QMessageBox.critical(self, "计算错误", "密度不能为零")
         except Exception as e:
             QMessageBox.critical(self, "计算错误", f"计算过程中发生错误: {str(e)}")
+
+    # ───────────────── 管道 SVG 示意图 ─────────────────
+    def _text(self, x, y, text, size=9, color="#333", bold=False, center=True):
+        e = 'font-weight="bold"' if bold else ""
+        a = 'text-anchor="middle"' if center else ""
+        return f'<text x="{x}" y="{y}" {a} font-size="{size}" fill="{color}" {e}>{text}</text>'
+
+    def _generate_pipe_svg(self, **kw):
+        w, h = 360, 260
+        p = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="{w}" height="{h}">',
+             f'<rect x="0" y="0" width="{w}" height="{h}" fill="#fafbfc" rx="6"/>']
+        cx, cy, pw, ph = w/2, h/2-10, 260, 60
+        py = cy - 30
+        d = kw.get("diameter", "?")
+        f_val = kw.get("flow", "")
+        v = kw.get("velocity", "")
+        p.append(f'<rect x="{cx-pw/2}" y="{py}" width="{pw}" height="{ph}" fill="#e8edf2" stroke="#4a6fa5" stroke-width="2" rx="6"/>')
+        p.append(f'<rect x="{cx-pw/2+15}" y="{py+10}" width="{pw-30}" height="{ph-20}" fill="#dce4ec" stroke="#7f8c8d" stroke-width="1" rx="3"/>')
+        p.append(f'<line x1="{cx-90}" y1="{cy}" x2="{cx+90}" y2="{cy}" stroke="#3498db" stroke-width="2.5" marker-end="url(#arrow)"/>')
+        v_text = f"{v} m/s" if v else "? m/s"
+        p.append(self._text(cx, cy-10, v_text, size=10, color="#3498db", bold=True))
+        d_text = f"DN {d} mm" if d and d != "?" else "DN ?"
+        p.append(self._text(cx, py+ph+35, d_text, size=10, color="#555"))
+        info_y = h - 14
+        if f_val:
+            p.append(self._text(40, info_y, f"流量: {f_val}", size=10, color="#444", center=False))
+        p.append(self._text(cx, 12, "管路示意", size=10, color="#4a6fa5", bold=True))
+        p.append('<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#3498db"/></marker></defs></svg>')
+        return "".join(p)
+
+    def _update_svg_diagram(self):
+        try:
+            kw = {}
+            if hasattr(self, "diameter_combo"):
+                t = self.diameter_combo.currentText()
+                kw["diameter"] = t.split("mm")[0].strip() if "mm" in t else t
+            for attr in ["flow_input", "velocity_input", "flow_rate_input"]:
+                if hasattr(self, attr):
+                    try:
+                        val = getattr(self, attr).text().strip()
+                        if val: kw[attr.replace("_input", "").replace("_rate", "")] = val
+                    except: pass
+            s = self._generate_pipe_svg(**kw)
+            self.svg_widget.load(s.encode("utf-8"))
+        except: pass
 
     def clear_inputs(self):
         """清空所有输入"""

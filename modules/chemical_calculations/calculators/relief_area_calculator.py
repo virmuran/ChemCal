@@ -451,6 +451,7 @@ class ReliefAreaCalculator(QWidget):
         self.svg_widget.setMaximumHeight(280)
         self.svg_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         right_layout.addWidget(self.svg_widget)
+        self.svg_widget.renderer().setAspectRatioMode(Qt.KeepAspectRatio)
 
         result_group = QGroupBox("计算结果")
         result_vbox = QVBoxLayout(result_group)
@@ -512,8 +513,8 @@ class ReliefAreaCalculator(QWidget):
 
     # ──────────────────── 计算 ───────────────────────────
     def _text(self, x, y, text, size=9, color="#333", bold=False, center=True):
-        e = "font-weight:bold" if bold else ""
-        a = "text-anchor:middle" if center else ""
+        e = 'font-weight="bold"' if bold else ""
+        a = 'text-anchor="middle"' if center else ""
         return f'<text x="{x}" y="{y}" {a} font-size="{size}" fill="{color}" {e}>{text}</text>'
 
     def _generate_pipe_svg(self, **kw):
@@ -547,7 +548,10 @@ class ReliefAreaCalculator(QWidget):
     def _update_svg_diagram(self):
         try:
             kw = {}
-            # 通用的输入框扫描 — 用 hasattr 不会因属性不存在而崩溃
+            # 优先使用计算后的存储值
+            if hasattr(self, '_last_params') and self._last_params:
+                kw.update({k: v for k, v in self._last_params.items() if v is not None})
+            # 否则扫描输入框
             widget_attrs = ['flow_input', 'velocity_input', 'diameter_input', 
                           'head_input', 'pressure_input', 'flow_rate_input']
             for attr in widget_attrs:

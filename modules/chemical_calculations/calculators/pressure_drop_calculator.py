@@ -599,6 +599,7 @@ class 压降计算(QWidget):
         self.svg_widget.setMaximumHeight(280)
         self.svg_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         right_layout.addWidget(self.svg_widget)
+        self.svg_widget.renderer().setAspectRatioMode(Qt.KeepAspectRatio)
         
         # 结果显示
         self.result_group = QGroupBox("计算结果")
@@ -996,6 +997,57 @@ class 压降计算(QWidget):
         if dialog.exec():
             self.local_resistance_coeff = dialog.get_total_resistance()
     
+    # ───────────────── 管道 SVG 示意图 ─────────────────
+    def _text(self, x, y, text, size=9, color="#333", bold=False, center=True):
+        e = 'font-weight="bold"' if bold else ""
+        a = 'text-anchor="middle"' if center else ""
+        return f'<text x="{x}" y="{y}" {a} font-size="{size}" fill="{color}" {e}>{text}</text>'
+
+    def _generate_pipe_svg(self, **kw):
+        w, h = 360, 260
+        p = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="{w}" height="{h}">',
+             f'<rect x="0" y="0" width="{w}" height="{h}" fill="#fafbfc" rx="6"/>']
+        cx, cy, pw, ph = w/2, h/2-10, 260, 60
+        py = cy - 30
+        d = kw.get("diameter", "?")
+        v = kw.get("velocity", "")
+        p_drop = kw.get("pressure_drop", "")
+        ff = kw.get("friction_factor", "")
+        p.append(f'<rect x="{cx-pw/2}" y="{py}" width="{pw}" height="{ph}" fill="#e8edf2" stroke="#4a6fa5" stroke-width="2" rx="6"/>')
+        p.append(f'<rect x="{cx-pw/2+15}" y="{py+10}" width="{pw-30}" height="{ph-20}" fill="#dce4ec" stroke="#7f8c8d" stroke-width="1" rx="3"/>')
+        p.append(f'<line x1="{cx-90}" y1="{cy}" x2="{cx+90}" y2="{cy}" stroke="#3498db" stroke-width="2.5" marker-end="url(#arrow)"/>')
+        v_text = f"v={v} m/s" if v else "v=? m/s"
+        p.append(self._text(cx, cy-10, v_text, size=10, color="#3498db", bold=True))
+        d_text = f"DN{d}mm" if d and d != "?" else "DN?"
+        p.append(self._text(cx, py+ph+35, d_text, size=10, color="#555"))
+        info_y = h - 14
+        if p_drop:
+            p.append(self._text(40, info_y, f"压降: {p_drop} kPa", size=10, color="#444", center=False))
+        if ff:
+            p.append(self._text(w-40, info_y, f"f: {ff}", size=10, color="#444", center=False))
+        p.append(self._text(cx, 12, "管路压降示意", size=10, color="#4a6fa5", bold=True))
+        p.append('<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#3498db"/></marker></defs></svg>')
+        return "".join(p)
+
+    def _update_svg_diagram(self):
+        try:
+            kw = {}
+            # 优先用计算后的存储值
+            if hasattr(self, '_last_diameter') and self._last_diameter:
+                kw['diameter'] = self._last_diameter
+            else:
+                try: kw['diameter'] = self.diameter_combo.currentText().split("mm")[0].strip()
+                except: pass
+            if hasattr(self, '_last_velocity') and self._last_velocity is not None:
+                kw['velocity'] = round(self._last_velocity, 2)
+            if hasattr(self, '_last_pressure_drop') and self._last_pressure_drop is not None:
+                kw['pressure_drop'] = round(self._last_pressure_drop, 2)
+            if hasattr(self, '_last_friction_factor') and self._last_friction_factor is not None:
+                kw['friction_factor'] = round(self._last_friction_factor, 4)
+            s = self._generate_pipe_svg(**kw)
+            self.svg_widget.load(s.encode("utf-8"))
+        except: pass
+
     def calculate_pressure_drop(self):
         """计算管道压降"""
         try:
@@ -1166,6 +1218,12 @@ class 压降计算(QWidget):
                 )
             
             self.result_text.setText(result)
+
+            self._last_diameter = int(diameter * 1000)
+            self._last_velocity = velocity
+            self._last_pressure_drop = total_pressure_drop / 1000  # Pa -> kPa
+            self._last_friction_factor = friction_factor
+            self._update_svg_diagram()
             
         except ValueError as e:
             QMessageBox.critical(self, "计算错误", f"参数输入格式错误: {str(e)}")

@@ -450,6 +450,7 @@ class 管道壁厚(QWidget):
         self.svg_widget.setMaximumHeight(280)
         self.svg_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         right_layout.addWidget(self.svg_widget)
+        self.svg_widget.renderer().setAspectRatioMode(Qt.KeepAspectRatio)
         
         # 结果显示
         self.result_group = QGroupBox("计算结果")
@@ -742,8 +743,8 @@ class 管道壁厚(QWidget):
             pass
     
     def _text(self, x, y, text, size=9, color="#333", bold=False, center=True):
-        e = "font-weight:bold" if bold else ""
-        a = "text-anchor:middle" if center else ""
+        e = 'font-weight="bold"' if bold else ""
+        a = 'text-anchor="middle"' if center else ""
         return f'<text x="{x}" y="{y}" {a} font-size="{size}" fill="{color}" {e}>{text}</text>'
 
     def _generate_pipe_svg(self, **kw):
@@ -873,6 +874,11 @@ class 管道壁厚(QWidget):
             )
             
             self.result_text.setText(result)
+
+            self._last_outer_diameter = outer_diameter
+            self._last_thickness = standard_thickness
+            self._last_design_pressure = design_pressure
+            self._update_svg_diagram()
             
         except ValueError as e:
             QMessageBox.critical(self, "计算错误", f"参数输入格式错误: {str(e)}")
