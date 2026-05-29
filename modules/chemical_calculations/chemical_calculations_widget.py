@@ -49,6 +49,7 @@ class ChemicalCalculationsWidget(QWidget):
         self.nav_list = QListWidget()
         self.nav_list.setFixedWidth(220)
         self.nav_list.setObjectName("calcNavList")  # 样式由主题 QSS 提供
+        self.nav_list.setAttribute(Qt.WidgetAttribute.WA_MacShowFocusRect, False)
         
         # 创建右侧内容区域
         self.content_stack = QStackedWidget()
