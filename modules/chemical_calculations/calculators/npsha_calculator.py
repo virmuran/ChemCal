@@ -119,30 +119,32 @@ class NPSHaCalculator(QWidget):
         # 输入框和下拉菜单的固定宽度        
         row = 0
         
-        # 大气压力
-        atm_pressure_label = QLabel("大气压力 (kPa):")
-        atm_pressure_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        atm_pressure_label.setStyleSheet(label_style)
-        input_layout.addWidget(atm_pressure_label, row, 0)
+        # 液面压力（敞口容器为大气压，密闭容器为操作压力）
+        surface_pressure_label = QLabel("液面压力 (kPaA):")
+        surface_pressure_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        surface_pressure_label.setStyleSheet(label_style)
+        input_layout.addWidget(surface_pressure_label, row, 0)
         
-        self.atm_pressure_input = QLineEdit()
-        self.atm_pressure_input.setPlaceholderText("例如: 101.3 (标准大气压)")
-        self.atm_pressure_input.setValidator(QDoubleValidator(80.0, 110.0, 6))
-        self.atm_pressure_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        input_layout.addWidget(self.atm_pressure_input, row, 1)
+        self.surface_pressure_input = QLineEdit()
+        self.surface_pressure_input.setPlaceholderText("敞口容器: 101.3 (标准大气压)")
+        self.surface_pressure_input.setValidator(QDoubleValidator(0.1, 22000.0, 6))
+        self.surface_pressure_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        input_layout.addWidget(self.surface_pressure_input, row, 1)
         
-        self.atm_pressure_combo = QComboBox()
-        self.atm_pressure_combo.setStyleSheet(COMBOBOX_STYLE)
-        self.atm_pressure_combo.addItems([
-            "101.3 kPa - 标准大气压",
-            "98.1 kPa - 海拔300米",
-            "95.0 kPa - 海拔500米", 
-            "89.9 kPa - 海拔1000米",
-            "自定义大气压力"
+        self.surface_pressure_combo = QComboBox()
+        self.surface_pressure_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.surface_pressure_combo.addItems([
+            "请选择液面压力",
+            "101.3 kPaA - 敞口容器(标准大气压)",
+            "98.1 kPaA - 海拔300米",
+            "95.0 kPaA - 海拔500米",
+            "89.9 kPaA - 海拔1000米",
+            "200 kPaA - 低压容器",
+            "500 kPaA - 中压容器"
         ])
-        self.atm_pressure_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.atm_pressure_combo.currentTextChanged.connect(self.on_atm_pressure_changed)
-        input_layout.addWidget(self.atm_pressure_combo, row, 2)
+        self.surface_pressure_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.surface_pressure_combo.currentTextChanged.connect(self.on_surface_pressure_changed)
+        input_layout.addWidget(self.surface_pressure_combo, row, 2)
         
         row += 1
         
@@ -161,6 +163,7 @@ class NPSHaCalculator(QWidget):
         self.vapor_pressure_combo = QComboBox()
         self.vapor_pressure_combo.setStyleSheet(COMBOBOX_STYLE)
         self.vapor_pressure_combo.addItems([
+            "请选择蒸汽压",
             "0.61 kPa - 水在0°C",
             "1.23 kPa - 水在10°C",
             "2.34 kPa - 水在20°C",
@@ -171,8 +174,7 @@ class NPSHaCalculator(QWidget):
             "31.19 kPa - 水在70°C",
             "47.39 kPa - 水在80°C",
             "70.14 kPa - 水在90°C",
-            "101.33 kPa - 水在100°C",
-            "自定义蒸汽压"
+            "101.33 kPa - 水在100°C"
         ])
         self.vapor_pressure_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.vapor_pressure_combo.currentTextChanged.connect(self.on_vapor_pressure_changed)
@@ -195,6 +197,7 @@ class NPSHaCalculator(QWidget):
         self.static_head_combo = QComboBox()
         self.static_head_combo.setStyleSheet(COMBOBOX_STYLE)
         self.static_head_combo.addItems([
+            "请选择吸入方式",
             "正压头 - 灌注吸入",
             "负压头 - 抽吸吸入",
             "零压头 - 水平吸入"
@@ -220,11 +223,11 @@ class NPSHaCalculator(QWidget):
         self.friction_loss_combo = QComboBox()
         self.friction_loss_combo.setStyleSheet(COMBOBOX_STYLE)
         self.friction_loss_combo.addItems([
+            "请选择管路类型",
             "0.5-1.0 m - 短直管路",
             "1.0-2.0 m - 中等管路",
             "2.0-3.0 m - 长管路",
-            "3.0-5.0 m - 复杂管路",
-            "自定义管路损失"
+            "3.0-5.0 m - 复杂管路"
         ])
         self.friction_loss_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.friction_loss_combo.currentTextChanged.connect(self.on_friction_loss_changed)
@@ -247,6 +250,7 @@ class NPSHaCalculator(QWidget):
         self.density_combo = QComboBox()
         self.density_combo.setStyleSheet(COMBOBOX_STYLE)
         self.density_combo.addItems([
+            "请选择流体",
             "1000 kg/m³ - 水(20°C)",
             "998 kg/m³ - 水(25°C)",
             "983 kg/m³ - 水(60°C)",
@@ -255,8 +259,7 @@ class NPSHaCalculator(QWidget):
             "1261 kg/m³ - 甘油",
             "1025 kg/m³ - 海水",
             "680 kg/m³ - 汽油(轻质)",
-            "850 kg/m³ - 柴油",
-            "自定义密度"
+            "850 kg/m³ - 柴油"
         ])
         self.density_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.density_combo.currentTextChanged.connect(self.on_density_changed)
@@ -279,6 +282,7 @@ class NPSHaCalculator(QWidget):
         self.npshr_combo = QComboBox()
         self.npshr_combo.setStyleSheet(COMBOBOX_STYLE)
         self.npshr_combo.addItems([
+            "请选择NPSHr",
             "1.0-2.0 m - 低NPSHr泵",
             "2.0-4.0 m - 标准泵",
             "4.0-6.0 m - 高NPSHr泵",
@@ -288,6 +292,41 @@ class NPSHaCalculator(QWidget):
         self.npshr_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.npshr_combo.currentTextChanged.connect(self.on_npshr_changed)
         input_layout.addWidget(self.npshr_combo, row, 2)
+        
+        row += 1
+        
+        # 安全裕量（泵型选择）
+        safety_label = QLabel("安全裕量 (m):")
+        safety_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        safety_label.setStyleSheet(label_style)
+        input_layout.addWidget(safety_label, row, 0)
+        
+        self.safety_margin_input = QLineEdit()
+        self.safety_margin_input.setPlaceholderText("选择泵型自动填充")
+        self.safety_margin_input.setValidator(QDoubleValidator(0.0, 5.0, 6))
+        self.safety_margin_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        input_layout.addWidget(self.safety_margin_input, row, 1)
+        
+        self.safety_margin_combo = QComboBox()
+        self.safety_margin_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.safety_margin_combo.addItems([
+            "请选择泵型获取推荐安全裕量",
+            "0.6-1.0 m - 一般离心泵",
+            "2.1 m - 锅炉给水泵/给水循环泵/卧式冷凝器热冷凝液泵",
+            "2.1 m - 减压塔釜液泵",
+            "0.3 m - 立式和卧式表面冷凝器热冷凝液泵",
+            "0.6 m - 常温常压冷却水泵",
+            "0.6 m - 吸入压力<70kPa(表)的泵",
+            "0.6 m - 多级泵和双吸叶轮泵",
+            "0.6 m - 自动启动泵",
+            "2.1 m - 吸收塔釜液泵/CO2汽提塔等(15.5~205°C)",
+            "0.6 m - 将容器架高提高NPSHa的泵",
+            "0.3-1.2 m - 输送平衡液体/蒸汽分压下液体的泵",
+            "0.6 m - 输送非平衡液体的泵"
+        ])
+        self.safety_margin_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.safety_margin_combo.currentTextChanged.connect(self.on_safety_margin_changed)
+        input_layout.addWidget(self.safety_margin_combo, row, 2)
         
         left_layout.addWidget(input_group)
         
@@ -414,44 +453,44 @@ class NPSHaCalculator(QWidget):
         main_layout.addWidget(scroll_left, 2)  # 左侧占2/3
         main_layout.addWidget(right_widget, 1)  # 右侧占1/3
     
-    def on_atm_pressure_changed(self, text):
-        """处理大气压力选择变化"""
-        if "自定义" in text:
-            self.atm_pressure_input.setReadOnly(False)
-            self.atm_pressure_input.setPlaceholderText("输入自定义大气压力")
-            self.atm_pressure_input.clear()
-        else:
-            self.atm_pressure_input.setReadOnly(True)
-            try:
-                # 从文本中提取数字
-                import re
-                match = re.search(r'(\d+\.?\d*)', text)
-                if match:
-                    pressure_value = float(match.group(1))
-                    self.atm_pressure_input.setText(f"{pressure_value:.1f}")
-            except:
-                pass
+    def on_surface_pressure_changed(self, text):
+        """处理液面压力选择变化"""
+        if "请选择" in text:
+            self.surface_pressure_input.setReadOnly(False)
+            self.surface_pressure_input.setPlaceholderText("敞口容器: 101.3 (标准大气压)")
+            self.surface_pressure_input.clear()
+            return
+        self.surface_pressure_input.setReadOnly(True)
+        try:
+            import re
+            match = re.search(r'(\d+\.?\d*)', text)
+            if match:
+                self.surface_pressure_input.setText(f"{float(match.group(1)):.1f}")
+        except:
+            pass
     
     def on_vapor_pressure_changed(self, text):
         """处理蒸汽压选择变化"""
-        if "自定义" in text:
+        if "请选择" in text:
             self.vapor_pressure_input.setReadOnly(False)
-            self.vapor_pressure_input.setPlaceholderText("输入自定义蒸汽压")
+            self.vapor_pressure_input.setPlaceholderText("例如: 2.34 (水在20°C)")
             self.vapor_pressure_input.clear()
-        else:
-            self.vapor_pressure_input.setReadOnly(True)
-            try:
-                # 从文本中提取数字
-                import re
-                match = re.search(r'(\d+\.?\d*)', text)
-                if match:
-                    vapor_value = float(match.group(1))
-                    self.vapor_pressure_input.setText(f"{vapor_value:.2f}")
-            except:
-                pass
+            return
+        self.vapor_pressure_input.setReadOnly(True)
+        try:
+            import re
+            match = re.search(r'(\d+\.?\d*)', text)
+            if match:
+                self.vapor_pressure_input.setText(f"{float(match.group(1)):.2f}")
+        except:
+            pass
     
     def on_static_head_changed(self, text):
         """处理静压头选择变化"""
+        if "请选择" in text:
+            self.static_head_input.setPlaceholderText("正值为灌注，负值为抽吸")
+            self.static_head_input.clear()
+            return
         if "正压头" in text:
             self.static_head_input.setPlaceholderText("正值为灌注")
         elif "负压头" in text:
@@ -461,176 +500,228 @@ class NPSHaCalculator(QWidget):
     
     def on_friction_loss_changed(self, text):
         """处理管路损失选择变化"""
-        if "自定义" in text:
+        if "请选择" in text:
             self.friction_loss_input.setReadOnly(False)
-            self.friction_loss_input.setPlaceholderText("输入自定义管路损失")
+            self.friction_loss_input.setPlaceholderText("例如: 1.5")
             self.friction_loss_input.clear()
-        else:
-            self.friction_loss_input.setReadOnly(True)
-            try:
-                # 从文本中提取数字范围
-                import re
-                match = re.search(r'(\d+\.?\d*)-(\d+\.?\d*)', text)
-                if match:
-                    min_val = float(match.group(1))
-                    max_val = float(match.group(2))
-                    avg_val = (min_val + max_val) / 2
-                    self.friction_loss_input.setText(f"{avg_val:.1f}")
-            except:
-                pass
+            return
+        self.friction_loss_input.setReadOnly(True)
+        try:
+            import re
+            match = re.search(r'(\d+\.?\d*)-(\d+\.?\d*)', text)
+            if match:
+                min_val = float(match.group(1))
+                max_val = float(match.group(2))
+                self.friction_loss_input.setText(f"{(min_val + max_val) / 2:.1f}")
+        except:
+            pass
     
     def on_density_changed(self, text):
         """处理密度选择变化"""
-        if "自定义" in text:
+        if "请选择" in text:
             self.density_input.setReadOnly(False)
-            self.density_input.setPlaceholderText("输入自定义密度")
+            self.density_input.setPlaceholderText("例如: 1000 (水)")
             self.density_input.clear()
-        else:
-            self.density_input.setReadOnly(True)
-            try:
-                # 从文本中提取数字
-                import re
-                match = re.search(r'(\d+\.?\d*)', text)
-                if match:
-                    density_value = float(match.group(1))
-                    self.density_input.setText(f"{density_value:.0f}")
-            except:
-                pass
+            return
+        self.density_input.setReadOnly(True)
+        try:
+            import re
+            match = re.search(r'(\d+\.?\d*)', text)
+            if match:
+                self.density_input.setText(f"{float(match.group(1)):.0f}")
+        except:
+            pass
     
     def on_npshr_changed(self, text):
         """处理NPSHr选择变化"""
+        if "请选择" in text:
+            self.npshr_input.clear()
+            self.npshr_input.setPlaceholderText("可选，来自泵性能曲线")
+            return
         if "未知" in text:
             self.npshr_input.clear()
             self.npshr_input.setPlaceholderText("不输入NPSHr")
         else:
             try:
-                # 从文本中提取数字范围
                 import re
                 match = re.search(r'(\d+\.?\d*)-(\d+\.?\d*)', text)
                 if match:
                     min_val = float(match.group(1))
                     max_val = float(match.group(2))
-                    avg_val = (min_val + max_val) / 2
-                    self.npshr_input.setText(f"{avg_val:.1f}")
+                    self.npshr_input.setText(f"{(min_val + max_val) / 2:.1f}")
             except:
                 pass
+    
+    def on_safety_margin_changed(self, text):
+        """处理安全裕量选择变化"""
+        if "请选择" in text:
+            self.safety_margin_input.clear()
+            self.safety_margin_input.setPlaceholderText("选择泵型自动填充")
+            return
+        self.safety_margin_input.setReadOnly(True)
+        try:
+            import re
+            match_range = re.search(r'(\d+\.?\d*)-(\d+\.?\d*)', text)
+            if match_range:
+                min_v = float(match_range.group(1))
+                max_v = float(match_range.group(2))
+                self.safety_margin_input.setText(f"{(min_v + max_v) / 2:.1f}")
+            else:
+                match = re.search(r'(\d+\.?\d*)', text)
+                if match:
+                    self.safety_margin_input.setText(f"{float(match.group(1)):.1f}")
+        except:
+            pass
     
     def calculate_npsha(self):
         """计算NPSHa"""
         try:
             # 获取输入值
-            atm_pressure = float(self.atm_pressure_input.text() or 0)
+            surface_pressure = float(self.surface_pressure_input.text() or 0)
             vapor_pressure = float(self.vapor_pressure_input.text() or 0)
             static_head = float(self.static_head_input.text() or 0)
             friction_loss = float(self.friction_loss_input.text() or 0)
             density = float(self.density_input.text() or 0)
             npshr = self.npshr_input.text()
             npshr_value = float(npshr) if npshr else None
+            safety_margin_text = self.safety_margin_input.text()
+            safety_margin = float(safety_margin_text) if safety_margin_text else None
             
             # 验证输入
-            if atm_pressure <= 0 or vapor_pressure < 0 or friction_loss < 0 or density <= 0:
-                QMessageBox.warning(self, "输入错误", "请填写有效的参数（大气压和密度必须大于0）")
+            if surface_pressure <= 0 or vapor_pressure < 0 or friction_loss < 0 or density <= 0:
+                QMessageBox.warning(self, "输入错误", "请填写有效的参数（液面压力和密度必须大于0）")
                 return
             
-            # 计算NPSHa
-            # NPSHa = (大气压头 + 静压头) - 蒸汽压头 - 损失压头
-            # 压头 = 压力 / (密度 * 重力加速度)
-            g = 9.81  # m/s²
+            # ── NPSHa 公式 ──
+            # NPSHa = (P_surface - P_vapor) / (ρ·g) + H_static - H_friction
+            g = 9.81
             
-            atm_head = (atm_pressure * 1000) / (density * g)  # 转换为Pa后计算压头
+            surface_head = (surface_pressure * 1000) / (density * g)
             vapor_head = (vapor_pressure * 1000) / (density * g)
             
-            npsha = atm_head + static_head - vapor_head - friction_loss
+            npsha = surface_head - vapor_head + static_head - friction_loss
             
-            # 显示结果 - 使用格式化的输出
-            result = f"""═══════════════════════════════════════════════════
+            # ── 结果展示 ──
+            result = f"""═══════════════════════════════════════
                          输入参数
-═══════════════════════════════════════════════════
+═══════════════════════════════════════
 
-• 大气压力: {atm_pressure} kPa
+• 液面压力: {surface_pressure} kPaA
 • 液体饱和蒸汽压: {vapor_pressure} kPa
-• 吸入液面高度: {static_head} m
-• 吸入管路损失: {friction_loss} m
-• 液体密度: {density} kg/m³
+• 流体密度: {density} kg/m³
+• 泵安装高度: {static_head} m
+• 泵入口管路损失: {friction_loss} m
+• 安全裕量: {f"{safety_margin} m" if safety_margin else "未指定"}
 {f"• 泵必需汽蚀余量 NPSHr: {npshr_value} m" if npshr_value else "• 泵必需汽蚀余量 NPSHr: 未指定"}
 
-═══════════════════════════════════════════════════
+═══════════════════════════════════════
                         计算结果
-═══════════════════════════════════════════════════
+═══════════════════════════════════════
 
 中间计算:
-• 大气压头: {atm_head:.3f} m
-• 蒸汽压头: {vapor_head:.3f} m
+• 液面压力头: {surface_head:.3f} m
+• 蒸汽压头:   {vapor_head:.3f} m
 
 最终结果:
-• 可用汽蚀余量 NPSHa = {npsha:.3f} m
-
-汽蚀余量分析:"""
+• 可用汽蚀余量 NPSHa = {npsha:.3f} m"""
             
             if npshr_value:
-                safety_margin = npsha - npshr_value
+                raw_margin = npsha - npshr_value
                 result += f"""
 • 泵必需汽蚀余量 NPSHr: {npshr_value} m
-• 安全余量: {safety_margin:.3f} m
+• NPSHa - NPSHr = {raw_margin:.3f} m"""
 
-安全评估:"""
-                
-                if safety_margin >= 1.0:
-                    result += "\n 优秀 - 汽蚀余量非常充足，泵运行安全"
-                elif safety_margin >= 0.5:
-                    result += "\n 良好 - 汽蚀余量充足，泵运行安全"
-                elif safety_margin >= 0.3:
-                    result += "\n️ 注意 - 汽蚀余量基本满足，建议监控"
-                elif safety_margin >= 0:
-                    result += "\n️ 警告 - 汽蚀余量刚好满足，风险较高"
-                else:
-                    result += "\n 危险 - 汽蚀余量不足，可能发生汽蚀"
+                if safety_margin:
+                    effective_margin = raw_margin - safety_margin
+                    result += f"""
+• 指定安全裕量: {safety_margin} m
+• 扣除裕量后余量: {effective_margin:.3f} m
+
+═══════════════════════════════════════
+                      安全评估
+═══════════════════════════════════════
+"""
+                    if effective_margin >= 0.5:
+                        result += " 优秀 - 汽蚀余量非常充足，满足设计要求"
+                    elif effective_margin >= 0:
+                        result += " 合格 - 汽蚀余量满足基本要求"
+                    elif effective_margin >= -0.3:
+                        result += " 偏紧 - 余量偏小，建议增大安装高度或减小管路损失"
+                    else:
+                        result += " 不足 - 汽蚀余量不足，可能发生汽蚀！需改进设计"
                     
-                result += f"\n• NPSHa/NPSHr 比值: {npsha/npshr_value:.2f}"
+                    result += f"""
+• NPSHa / (NPSHr + 裕量) = {npsha/(npshr_value + safety_margin):.2f}"""
+                else:
+                    result += f"""
+
+═══════════════════════════════════════
+                      安全评估
+═══════════════════════════════════════
+"""
+                    if raw_margin >= 1.0:
+                        result += " 优秀 - 汽蚀余量非常充足，泵运行安全"
+                    elif raw_margin >= 0.5:
+                        result += " 良好 - 汽蚀余量充足，泵运行安全"
+                    elif raw_margin >= 0.3:
+                        result += " 注意 - 汽蚀余量基本满足，建议监控"
+                    elif raw_margin >= 0:
+                        result += " 警告 - 汽蚀余量刚好满足，风险较高"
+                    else:
+                        result += " 危险 - 汽蚀余量不足，可能发生汽蚀"
+                    
+                    result += f"\n• NPSHa / NPSHr = {npsha/npshr_value:.2f}"
             else:
                 result += """
 注意: 未输入NPSHr值，无法进行安全性评估。
-请参考泵的性能曲线获取NPSHr值。
+请参考泵的性能曲线获取NPSHr值。"""
 
+                if safety_margin:
+                    result += f"""
+参考信息（基于安全裕量 {safety_margin} m）:
+• NPSHa 可用于克服 NPSHr + 安全裕量"""
+
+                result += """
 一般要求:
-• NPSHa ≥ NPSHr + 0.5 m (最小安全余量)
-• NPSHa ≥ NPSHr + 1.0 m (推荐安全余量)
-• 对于易汽化液体，建议更大的安全余量"""
+• NPSHa ≥ NPSHr + 安全裕量
+• 敞口容器推荐裕量 0.6~1.0 m
+• 锅炉给水泵/釜液泵推荐裕量 2.1 m"""
 
             result += f"""
 
-═══════════════════════════════════════════════════
+═══════════════════════════════════════
                         计算公式
-═══════════════════════════════════════════════════
+═══════════════════════════════════════
 
-NPSHa = (P_atm / (ρ·g)) + H_static - (P_vapor / (ρ·g)) - H_friction
+NPSHa = (P_s - P_v) / (ρ·g) + H_inst - H_f
 
 其中:
-P_atm = {atm_pressure} kPa (大气压力)
-P_vapor = {vapor_pressure} kPa (饱和蒸汽压)
-ρ = {density} kg/m³ (液体密度)
-g = 9.81 m/s² (重力加速度)
-H_static = {static_head} m (静压头)
-H_friction = {friction_loss} m (摩擦损失)
+P_s    = {surface_pressure} kPaA (液面绝对压力)
+P_v    = {vapor_pressure} kPa (饱和蒸汽压)
+ρ      = {density} kg/m³ (液体密度)
+g      = 9.81 m/s² (重力加速度)
+H_inst = {static_head} m (泵安装高度)
+H_f    = {friction_loss} m (吸入管路损失)
 
 详细计算:
-({atm_pressure}×1000 / ({density}×9.81)) + {static_head} - ({vapor_pressure}×1000 / ({density}×9.81)) - {friction_loss}
-= {atm_head:.3f} + {static_head} - {vapor_head:.3f} - {friction_loss}
+({surface_pressure}×1000/({density}×9.81)) - ({vapor_pressure}×1000/({density}×9.81)) + {static_head} - {friction_loss}
+= {surface_head:.3f} - {vapor_head:.3f} + {static_head} - {friction_loss}
 = {npsha:.3f} m
 
-═══════════════════════════════════════════════════
+═══════════════════════════════════════
                         应用说明
-═══════════════════════════════════════════════════
+═══════════════════════════════════════
 
-• NPSHa必须大于NPSHr才能避免汽蚀
+• NPSHa ≥ NPSHr + 安全裕量 才能避免汽蚀
 • 汽蚀会导致泵性能下降、振动和损坏
 • 计算结果仅供参考，实际应用请考虑安全系数
-• 对于高温液体，饱和蒸汽压对NPSHa影响显著"""
+• 高温液体饱和蒸汽压较高，对NPSHa影响显著
+• 密闭容器液面压力可能远大于大气压"""
             
             self.result_text.setText(result)
 
             self._last_npsha = round(npsha, 2)
-            self._last_atm_pressure = atm_pressure
+            self._last_surface_pressure = surface_pressure
             self._last_density = density
             self._update_svg_diagram()
             
@@ -641,102 +732,198 @@ H_friction = {friction_loss} m (摩擦损失)
         except Exception as e:
             QMessageBox.critical(self, "计算错误", f"计算过程中发生错误: {str(e)}")
 
-    # ───────────────── 管道 SVG 示意图 ─────────────────
+    # ───────────────── 泵吸入安装 SVG 示意图 ─────────────────
     def _text(self, x, y, text, size=9, color="#333", bold=False, center=True):
         e = 'font-weight="bold"' if bold else ""
         a = 'text-anchor="middle"' if center else ""
         return f'<text x="{x}" y="{y}" {a} font-size="{size}" fill="{color}" {e}>{text}</text>'
 
-    def _generate_pipe_svg(self, **kw):
-        w, h = 360, 260
+    def _generate_pump_suction_svg(self, **kw):
+        """生成泵吸入安装示意图：容器 → 管路 → 泵"""
+        w, h = 380, 280
         p = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="{w}" height="{h}">',
              f'<rect x="0" y="0" width="{w}" height="{h}" fill="#fafbfc" rx="6"/>']
-        cx, cy, pw, ph = w/2, h/2-10, 260, 60
-        py = cy - 30
-        d = kw.get("diameter", "?")
-        f_val = kw.get("flow", "")
-        v = kw.get("velocity", "")
-        p.append(f'<rect x="{cx-pw/2}" y="{py}" width="{pw}" height="{ph}" fill="#e8edf2" stroke="#4a6fa5" stroke-width="2" rx="6"/>')
-        p.append(f'<rect x="{cx-pw/2+15}" y="{py+10}" width="{pw-30}" height="{ph-20}" fill="#dce4ec" stroke="#7f8c8d" stroke-width="1" rx="3"/>')
-        p.append(f'<line x1="{cx-90}" y1="{cy}" x2="{cx+90}" y2="{cy}" stroke="#3498db" stroke-width="2.5" marker-end="url(#arrow)"/>')
-        v_text = f"{v} m/s" if v else "? m/s"
-        p.append(self._text(cx, cy-10, v_text, size=10, color="#3498db", bold=True))
-        d_text = f"DN {d} mm" if d and d != "?" else "DN ?"
-        p.append(self._text(cx, py+ph+35, d_text, size=10, color="#555"))
-        info_y = h - 14
-        if f_val:
-            p.append(self._text(40, info_y, f"流量: {f_val}", size=10, color="#444", center=False))
-        p.append(self._text(cx, 12, "管路示意", size=10, color="#4a6fa5", bold=True))
-        p.append('<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#3498db"/></marker></defs></svg>')
+
+        # ── 容器（左侧） ──
+        tank_x, tank_y, tank_w, tank_h = 40, 35, 85, 115
+        p.append(f'<rect x="{tank_x}" y="{tank_y}" width="{tank_w}" height="{tank_h}" '
+                 f'fill="#e8edf2" stroke="#4a6fa5" stroke-width="2" rx="3"/>')
+        # 容器内液位（下部蓝色填充）
+        liquid_h = 88
+        liquid_y = tank_y + tank_h - liquid_h
+        p.append(f'<rect x="{tank_x+2}" y="{liquid_y}" width="{tank_w-4}" height="{liquid_h-2}" '
+                 f'fill="#a8d8ea" rx="1"/>')
+        # 液面虚线
+        p.append(f'<line x1="{tank_x}" y1="{liquid_y}" x2="{tank_x+tank_w}" y2="{liquid_y}" '
+                 f'stroke="#3498db" stroke-width="1.5" stroke-dasharray="5,3"/>')
+        # 容器标签
+        p.append(self._text(tank_x + tank_w/2, tank_y - 12, "供液容器", size=9, color="#4a6fa5", bold=True))
+        # 液面压力标签
+        ps_val = kw.get("surface_pressure", "")
+        ps_text = f"P_s={ps_val}" if ps_val else "P_s"
+        p.append(self._text(tank_x + tank_w/2, liquid_y - 10, ps_text, size=9, color="#3498db", bold=True))
+
+        # ── 管路 ──
+        pipe_top = tank_y + tank_h  # 容器底出口
+        pipe_color = "#7f8c8d"
+        pipe_w = 5
+        # 竖管: 容器底 → 向下
+        mid_x = tank_x + tank_w/2
+        elbow_y = pipe_top + 45
+        p.append(f'<line x1="{mid_x}" y1="{pipe_top}" x2="{mid_x}" y2="{elbow_y}" '
+                 f'stroke="{pipe_color}" stroke-width="{pipe_w}"/>')
+        # 横管: 容器底 → 泵侧
+        pump_x = 280
+        p.append(f'<line x1="{mid_x}" y1="{elbow_y}" x2="{pump_x}" y2="{elbow_y}" '
+                 f'stroke="{pipe_color}" stroke-width="{pipe_w}"/>')
+        # 竖管: 弯头 → 泵入口
+        pump_inlet_y = 210
+        p.append(f'<line x1="{pump_x}" y1="{elbow_y}" x2="{pump_x}" y2="{pump_inlet_y}" '
+                 f'stroke="{pipe_color}" stroke-width="{pipe_w}"/>')
+
+        # 管路损失标注
+        hf_val = kw.get("friction_loss", "")
+        hf_text = f"h_f={hf_val}m" if hf_val else "h_f"
+        p.append(self._text(mid_x + (pump_x - mid_x)/2, elbow_y - 8, hf_text, size=9, color="#e74c3c", bold=True))
+
+        # ── 泵 ──
+        pump_r = 20
+        pump_cy = pump_inlet_y + pump_r + 5
+        p.append(f'<circle cx="{pump_x}" cy="{pump_cy}" r="{pump_r}" '
+                 f'fill="#ef5350" stroke="#c0392b" stroke-width="2"/>')
+        p.append(self._text(pump_x, pump_cy, "泵", size=10, color="white", bold=True))
+        # 排出管
+        discharge_y = pump_cy + pump_r
+        p.append(f'<line x1="{pump_x}" y1="{discharge_y}" x2="{pump_x}" y2="{h-15}" '
+                 f'stroke="{pipe_color}" stroke-width="{pipe_w}" marker-end="url(#arrow_out)"/>')
+
+        # ── 安装高度标注（液面到泵中心线） ──
+        hst_x = tank_x + tank_w + 16
+        hst_y1 = liquid_y
+        hst_y2 = pump_cy
+        p.append(f'<line x1="{hst_x}" y1="{hst_y1}" x2="{hst_x}" y2="{hst_y2}" '
+                 f'stroke="#e67e22" stroke-width="1" stroke-dasharray="5,3"/>')
+        p.append(f'<line x1="{hst_x-5}" y1="{hst_y1}" x2="{hst_x+5}" y2="{hst_y1}" '
+                 f'stroke="#e67e22" stroke-width="1.5"/>')
+        p.append(f'<line x1="{hst_x-5}" y1="{hst_y2}" x2="{hst_x+5}" y2="{hst_y2}" '
+                 f'stroke="#e67e22" stroke-width="1.5"/>')
+        # 泵安装高度箭头
+        p.append(f'<polygon points="{hst_x+2},{hst_y1+6} {hst_x-2},{hst_y1+6} {hst_x},{hst_y1}" '
+                 f'fill="#e67e22"/>')
+        p.append(f'<polygon points="{hst_x+2},{hst_y2-6} {hst_x-2},{hst_y2-6} {hst_x},{hst_y2}" '
+                 f'fill="#e67e22"/>')
+
+        hst_val = kw.get("static_head", "")
+        hst_text = f"H_inst={hst_val}m" if hst_val else "H_inst"
+        hst_mid = (hst_y1 + hst_y2) / 2
+        p.append(self._text(hst_x + 18, hst_mid, hst_text, size=10, color="#e67e22", bold=True, center=False))
+
+        # ── 图例和标题 ──
+        p.append(self._text(w/2, 12, "NPSHa 泵吸入安装示意图", size=10, color="#4a6fa5", bold=True))
+
+        # 底部结果
+        npsha_val = kw.get("npsha", "")
+        if npsha_val:
+            p.append(self._text(10, h-10, f"NPSHa = {npsha_val} m", size=10, color="#27ae60", bold=True, center=False))
+
+        # 图例
+        p.append(self._text(w - 80, h - 10, "h_f: 管路损失", size=8, color="#e74c3c", center=False))
+
+        p.append('<defs>'
+                 '<marker id="arrow_out" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto">'
+                 '<path d="M0,0 L8,4 L0,8 Z" fill="#7f8c8d"/>'
+                 '</marker>'
+                 '</defs></svg>')
         return "".join(p)
 
     def _update_svg_diagram(self):
         try:
             kw = {}
-            if hasattr(self, "diameter_combo"):
-                t = self.diameter_combo.currentText()
-                kw["diameter"] = t.split("mm")[0].strip() if "mm" in t else t
-            for attr in ["flow_input", "velocity_input", "flow_rate_input"]:
-                if hasattr(self, attr):
-                    try:
-                        val = getattr(self, attr).text().strip()
-                        if val: kw[attr.replace("_input", "").replace("_rate", "")] = val
-                    except: pass
-            s = self._generate_pipe_svg(**kw)
+            # 读取当前输入值用于SVG标注
+            try:
+                val = self.surface_pressure_input.text().strip()
+                if val:
+                    kw["surface_pressure"] = val
+            except:
+                pass
+            try:
+                val = self.static_head_input.text().strip()
+                if val:
+                    kw["static_head"] = val
+            except:
+                pass
+            try:
+                val = self.friction_loss_input.text().strip()
+                if val:
+                    kw["friction_loss"] = val
+            except:
+                pass
+            if hasattr(self, "_last_npsha"):
+                kw["npsha"] = str(self._last_npsha)
+            s = self._generate_pump_suction_svg(**kw)
             self.svg_widget.load(s.encode("utf-8"))
-        except: pass
+        except:
+            pass
 
     def clear_inputs(self):
         """清空所有输入"""
-        self.atm_pressure_combo.setCurrentIndex(0)
+        self.surface_pressure_combo.setCurrentIndex(0)
         self.vapor_pressure_combo.setCurrentIndex(0)
         self.static_head_combo.setCurrentIndex(0)
         self.friction_loss_combo.setCurrentIndex(0)
         self.density_combo.setCurrentIndex(0)
         self.npshr_combo.setCurrentIndex(0)
-        self.atm_pressure_input.clear()
+        self.safety_margin_combo.setCurrentIndex(0)
+        self.surface_pressure_input.clear()
         self.vapor_pressure_input.clear()
         self.static_head_input.clear()
         self.friction_loss_input.clear()
         self.density_input.clear()
         self.npshr_input.clear()
+        self.safety_margin_input.clear()
         self.result_text.clear()
 
     def _get_history_data(self):
         """提供历史记录数据"""
-        atm_pressure = float(self.atm_pressure_input.text() or 0)
+        surface_pressure = float(self.surface_pressure_input.text() or 0)
         vapor_pressure = float(self.vapor_pressure_input.text() or 0)
         static_head = float(self.static_head_input.text() or 0)
         friction_loss = float(self.friction_loss_input.text() or 0)
         density = float(self.density_input.text() or 0)
         npshr_text = self.npshr_input.text()
         npshr_value = float(npshr_text) if npshr_text else None
+        safety_margin_text = self.safety_margin_input.text()
+        safety_margin = float(safety_margin_text) if safety_margin_text else None
 
         inputs = {
-            "大气压力_kPa": atm_pressure,
+            "液面压力_kPaA": surface_pressure,
             "饱和蒸汽压_kPa": vapor_pressure,
-            "静压头_m": static_head,
-            "摩擦损失_m": friction_loss,
+            "泵安装高度_m": static_head,
+            "管路损失_m": friction_loss,
             "液体密度_kg_m3": density
         }
         if npshr_value is not None:
             inputs["NPSHr_m"] = npshr_value
+        if safety_margin is not None:
+            inputs["安全裕量_m"] = safety_margin
 
         outputs = {}
         try:
             g = 9.81
-            atm_head = (atm_pressure * 1000) / (density * g)
+            surface_head = (surface_pressure * 1000) / (density * g)
             vapor_head = (vapor_pressure * 1000) / (density * g)
-            npsha = atm_head + static_head - vapor_head - friction_loss
+            npsha = surface_head - vapor_head + static_head - friction_loss
             outputs = {
-                "大气压头_m": round(atm_head, 3),
+                "液面压力头_m": round(surface_head, 3),
                 "蒸汽压头_m": round(vapor_head, 3),
                 "NPSHa_m": round(npsha, 3)
             }
             if npshr_value is not None:
-                safety_margin = npsha - npshr_value
-                outputs["安全余量_m"] = round(safety_margin, 3)
+                raw_margin = npsha - npshr_value
+                outputs["NPSHa减NPSHr_m"] = round(raw_margin, 3)
                 outputs["NPSHa_NPSHr"] = round(npsha / npshr_value, 2) if npshr_value > 0 else 0
+                if safety_margin is not None:
+                    outputs["扣除裕量后余量_m"] = round(raw_margin - safety_margin, 3)
         except Exception as e:
             outputs["计算错误"] = str(e)
 
