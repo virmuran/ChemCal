@@ -356,7 +356,7 @@ A: 结果仅供参考，实际工程须由专业工程师审核确认。<br><br>
 {hw}<br>
 
 <b>ChemCal 信息：</b><br>
-- 版本：v1.3.20260523<br>
+- 版本：v1.3.20260530<br>
 - 数据目录：{os.path.dirname(data_file)}<br>
 - 已加载模块：{loaded}/{total}<br>
 - 运行时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}<br><br>
@@ -427,7 +427,7 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.<br><br>
 
     def _show_about(self):
         text = """<h2>ChemCal - 化工工程师个人生产力工具</h2>
-<h3>v1.3.20260525</h3><br>
+<h3>v1.3.20260530</h3><br>
 Copyright 2025-2026 ChemCal Team | virmuran@163.com<br><br>
 
 <b>核心功能：</b><br>
@@ -441,7 +441,7 @@ Copyright 2025-2026 ChemCal Team | virmuran@163.com<br><br>
 - 代码 MIT 开源：https://github.com/virmuran/ChemCal<br><br>
 
 <b>更新日志：</b><br>
-<b>v1.3</b> - 新增"未知侧设计"换热器模式；防闪退保护层 crash_shield；看门狗自动重启；修复 QListWidget 内存违例；UI 全面规范化；主题系统全面优化（暗色/蓝色主题适配）；修复 QLabel 颜色不随主题变化；修复表格样式不随主题变化<br>
+<b>v1.3</b> - 安全阀模式驱动重构(6种计算类型/已知未知泄放量/Kd阀型分类)；NPSHa增强(液面压力/12种泵型安全裕量/泵吸入SVG)；新增"未知侧设计"换热器模式；防闪退保护层 crash_shield；看门狗自动重启；修复 QListWidget 内存违例；UI 全面规范化；主题系统全面优化（暗色/蓝色主题适配）；修复 QLabel 颜色不随主题变化；修复表格样式不随主题变化<br>
 <b>v1.2</b> - 新增查询类计算器（溶解度/闪点/腐蚀）；历史记录系统上线；精度升级（IAPWS-IF97 蒸汽物性）<br>
 <b>v1.1</b> - 帮助菜单、水蒸气性质模块、真实日志系统<br>
 <b>v1.0</b> - 初始版本发布<br><br>

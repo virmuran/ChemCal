@@ -1,5 +1,5 @@
 # ChemCal/modules/__init__.py
-__version__ = "v1.0.20260131"
+__version__ = "v1.3.20260530"
 __author__ = "ChemCal Team"
 
 import os
