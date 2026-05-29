@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
+from PySide6.QtSvgWidgets import QSvgWidget
 import math
 import re
 from datetime import datetime
@@ -653,6 +654,13 @@ class 管径计算(QWidget):
         right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
+
+        # 管道截面示意图
+        self.svg_widget = QSvgWidget()
+        self.svg_widget.setMinimumHeight(220)
+        self.svg_widget.setMaximumHeight(280)
+        self.svg_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        right_layout.addWidget(self.svg_widget)
         
         # 结果显示
         self.result_group = QGroupBox("计算结果")
@@ -1085,6 +1093,65 @@ class 管径计算(QWidget):
         self.temp_input.clear()
         self.result_text.clear()
     
+    # ───────────────── SVG 管路示意图 ─────────────────
+    def _text(self, x, y, text, size=9, color="#333", bold=False, center=True):
+        extra = 'font-weight="bold"' if bold else ''
+        anchor = 'text-anchor="middle"' if center else ''
+        return f'<text x="{x}" y="{y}" {anchor} font-size="{size}" fill="{color}" {extra}>{text}</text>'
+
+    def _generate_pipe_svg(self, diameter=None, flow=None, velocity=None, pressure=None, fluid=""):
+        w, h = 360, 260
+        parts = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="{w}" height="{h}">',
+                 f'<rect x="0" y="0" width="{w}" height="{h}" fill="#fafbfc" rx="6"/>']
+
+        # 管道截面（正视图）
+        cx, cy, r_outer = w/2, h/2 - 10, 65
+        pipe_y = cy - 55
+        # 外管壁
+        parts.append(f'<rect x="{cx-r_outer}" y="{pipe_y}" width="{r_outer*2}" height="110" fill="#e8edf2" stroke="#4a6fa5" stroke-width="2" rx="6"/>')
+        # 内径（通径）
+        r_inner = r_outer * 0.8
+        inner_x = cx - r_inner
+        parts.append(f'<rect x="{inner_x}" y="{pipe_y+10}" width="{r_inner*2}" height="90" fill="#dce4ec" stroke="#7f8c8d" stroke-width="1.5" rx="3"/>')
+
+        # 流向箭头
+        arrow_y = cy
+        parts.append(f'<line x1="{cx-80}" y1="{arrow_y}" x2="{cx+80}" y2="{arrow_y}" stroke="#3498db" stroke-width="2.5" marker-end="url(#arrowBlue)"/>')
+        parts.append(self._text(cx, arrow_y-10, f"{velocity} m/s" if velocity else "? m/s", size=10, color="#3498db", bold=True))
+
+        # 直径标注
+        parts.append(f'<line x1="{inner_x}" y1="{pipe_y+110+10}" x2="{inner_x+r_inner*2}" y2="{pipe_y+110+10}" stroke="#7f8c8d" stroke-width="1" marker-start="url(#arrowDimL)" marker-end="url(#arrowDimR)"/>')
+        parts.append(self._text(cx, pipe_y+128, f"DN {diameter} mm" if diameter else "DN ?", size=10, color="#555"))
+
+        # 底部信息
+        info_y = h - 14
+        if flow: parts.append(self._text(40, info_y, f"流量: {flow}", size=10, color="#444", center=False))
+        if pressure: parts.append(self._text(w-40, info_y, f"压力: {pressure} MPa", size=10, color="#444", center=False))
+        if fluid: parts.append(self._text(cx, 12, f"介质: {fluid}", size=10, color="#4a6fa5", bold=True))
+
+        parts.append("""<defs>
+            <marker id="arrowBlue" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#3498db"/></marker>
+            <marker id="arrowDimL" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M8,0 L0,4 L8,8 Z" fill="#7f8c8d"/></marker>
+            <marker id="arrowDimR" markerWidth="8" markerHeight="8" refX="0" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#7f8c8d"/></marker>
+        </defs>""")
+        parts.append("</svg>")
+        return "".join(parts)
+
+    def _update_svg_diagram(self):
+        try:
+            fluid = self.fluid_combo.currentText() if not self.fluid_combo.currentText().startswith("-") else ""
+            kwargs = {"fluid": fluid}
+            for key in ["flow_input", "velocity_input", "pressure_input"]:
+                if hasattr(self, key):
+                    try: kwargs[key.replace("_input","")] = getattr(self, key).text()
+                    except: pass
+            if hasattr(self, "diameter_input"):
+                try: kwargs["diameter"] = self.diameter_input.text()
+                except: pass
+            svg = self._generate_pipe_svg(**kwargs)
+            self.svg_widget.load(svg.encode("utf-8"))
+        except: pass
+
     def calculate(self):
         """执行计算"""
         try:

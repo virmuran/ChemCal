@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
+from PySide6.QtSvgWidgets import QSvgWidget
 import math
 import re
 from datetime import datetime

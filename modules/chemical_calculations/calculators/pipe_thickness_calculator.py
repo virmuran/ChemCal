@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
+from PySide6.QtSvgWidgets import QSvgWidget
 import math
 import re
 from datetime import datetime
@@ -733,6 +734,53 @@ class 管道壁厚(QWidget):
         except:
             pass
     
+    def _text(self, x, y, text, size=9, color="#333", bold=False, center=True):
+        e = "font-weight:bold" if bold else ""
+        a = "text-anchor:middle" if center else ""
+        return f'<text x="{x}" y="{y}" {a} font-size="{size}" fill="{color}" {e}>{text}</text>'
+
+    def _generate_pipe_svg(self, **kw):
+        w, h = 360, 260
+        p = [
+            f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="{w}" height="{h}">',
+            f'<rect x="0" y="0" width="{w}" height="{h}" fill="#fafbfc" rx="6"/>'
+        ]
+        cx, cy, pw, ph = w/2, h/2-10, 260, 60
+        py = cy - 30
+        d = kw.get("diameter", "?")
+        f_val = kw.get("flow", "?")
+        v = kw.get("velocity", "?")
+        # 管道外壁
+        p.append(f'<rect x="{cx-pw/2}" y="{py}" width="{pw}" height="{ph}" fill="#e8edf2" stroke="#4a6fa5" stroke-width="2" rx="6"/>')
+        # 管道内径
+        p.append(f'<rect x="{cx-pw/2+15}" y="{py+10}" width="{pw-30}" height="{ph-20}" fill="#dce4ec" stroke="#7f8c8d" stroke-width="1" rx="3"/>')
+        # 流向箭头
+        p.append(f'<line x1="{cx-90}" y1="{cy}" x2="{cx+90}" y2="{cy}" stroke="#3498db" stroke-width="2.5" marker-end="url(#arrow)"/>')
+        p.append(self._text(cx, cy-10, f"{v} m/s" if v != "?" else "? m/s", size=10, color="#3498db", bold=True))
+        # 直径标注
+        p.append(self._text(cx, py+ph+35, f"DN {d} mm" if d != "?" else "DN ?", size=10, color="#555"))
+        # 底部信息
+        info_y = h - 14
+        if f_val != "?":
+            p.append(self._text(40, info_y, f"流量: {f_val}", size=10, color="#444", center=False))
+        p.append(self._text(cx, 12, "管道截面示意", size=10, color="#4a6fa5", bold=True))
+        p.append('<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#3498db"/></marker></defs></svg>')
+        return "".join(p)
+
+    def _update_svg_diagram(self):
+        try:
+            kw = {}
+            if hasattr(self, "diameter_combo"):
+                t = self.diameter_combo.currentText()
+                kw["diameter"] = t.split("mm")[0].strip() if "mm" in t else t
+            for attr in ["flow_input", "velocity_input"]:
+                if hasattr(self, attr):
+                    kw[attr.replace("_input", "")] = getattr(self, attr).text()
+            s = self._generate_pipe_svg(**kw)
+            self.svg_widget.load(s.encode("utf-8"))
+        except:
+            pass
+
     def calculate(self):
         """计算管道壁厚"""
         try:

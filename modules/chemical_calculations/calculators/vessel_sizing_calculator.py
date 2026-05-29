@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont, QDoubleValidator
+from PySide6.QtSvgWidgets import QSvgWidget
 import math
 import re
 from datetime import datetime
@@ -218,6 +219,9 @@ class 设备尺寸计算(QWidget):
         self.setup_ui()
         self.setup_defaults()
 
+        # 初始化 SVG 示意图
+        self._update_svg_diagram()
+
         # 禁止未展开时鼠标滚轮切换下拉菜单
         self._wheel_blocker = ComboBoxWheelBlocker(self)
         for combo in self.findChildren(QComboBox):
@@ -315,6 +319,16 @@ class 设备尺寸计算(QWidget):
 
         row = 0
 
+        # 罐体方向
+        grid.addWidget(self._create_label("罐体方向:"), row, 0)
+        self.vessel_orientation = QComboBox()
+        self.vessel_orientation.setStyleSheet(COMBOBOX_STYLE)
+        self.vessel_orientation.addItems(["立式", "卧式"])
+        self.vessel_orientation.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.vessel_orientation.currentTextChanged.connect(self._on_orientation_changed)
+        grid.addWidget(self.vessel_orientation, row, 1)
+        row += 1
+
         # 填充系数
         grid.addWidget(self._create_label("填充系数 φ:"), row, 0)
         self.fill_factor_input = QLineEdit()
@@ -339,7 +353,7 @@ class 设备尺寸计算(QWidget):
         self.hd_combo = QComboBox()
         self.hd_combo.setStyleSheet(COMBOBOX_STYLE)
         self.hd_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.hd_combo.addItems(["1:1", "1.5:1", "2:1", "3:1", "自定义"])
+        self.hd_combo.addItems(["1.0", "1.5", "2.0", "2.5", "3.0", "4.0"])
         self.hd_combo.currentTextChanged.connect(self.on_hd_combo_changed)
         grid.addWidget(self.hd_combo, row, 2)
         row += 1
@@ -400,8 +414,7 @@ class 设备尺寸计算(QWidget):
         row += 1
 
         # 顶部参数输入（深度或角度）
-        self.top_param_label = QLabel("深度/角度:")
-        self.top_param_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.top_param_label = self._create_label("深度/角度:")
         grid.addWidget(self.top_param_label, row, 0)
         self.top_param_input = QLineEdit()
         self.top_param_input.setPlaceholderText("输入深度或角度")
@@ -430,7 +443,7 @@ class 设备尺寸计算(QWidget):
         row += 1
 
         # 底部参数输入
-        self.bottom_param_label = QLabel("深度/角度:")
+        self.bottom_param_label = self._create_label("深度/角度:")
         grid.addWidget(self.bottom_param_label, row, 0)
         self.bottom_param_input = QLineEdit()
         self.bottom_param_input.setPlaceholderText("输入深度或角度")
@@ -453,7 +466,12 @@ class 设备尺寸计算(QWidget):
         self.density_combo = QComboBox()
         self.density_combo.setStyleSheet(COMBOBOX_STYLE)
         self.density_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.density_combo.addItems(["碳钢 7850", "不锈钢 7930", "铝 2700", "自定义"])
+        self.density_combo.addItems([
+            "碳钢 Q235 7850", "不锈钢 304 7930", "不锈钢 316L 7980",
+            "双相钢 2205 7800", "铸铁 7200", "铝 2700",
+            "铜 8960", "钛 4510", "镍基合金 C276 8890",
+            "玻璃钢 1800", "搪玻璃 2300", "聚丙烯 PP 900", "PTFE 2200"
+        ])
         self.density_combo.currentTextChanged.connect(self.on_density_combo_changed)
         grid.addWidget(self.density_combo, row, 2)
         row += 1
@@ -576,6 +594,13 @@ class 设备尺寸计算(QWidget):
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
 
+        # 罐体示意图 (SVG)
+        self.svg_widget = QSvgWidget()
+        self.svg_widget.setMinimumHeight(220)
+        self.svg_widget.setMaximumHeight(280)
+        self.svg_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        right_layout.addWidget(self.svg_widget)
+
         self.result_group = QGroupBox("计算结果")
         result_layout = QVBoxLayout(self.result_group)
 
@@ -640,17 +665,12 @@ class 设备尺寸计算(QWidget):
             self.cyl_height_hint.setVisible(True)
 
     def on_hd_combo_changed(self, text):
-        if text == "自定义":
-            self.hd_ratio_input.setReadOnly(False)
-            self.hd_ratio_input.clear()
-        else:
-            self.hd_ratio_input.setReadOnly(True)
-            ratio = text.replace(":", "").strip()
-            try:
-                val = float(ratio)
-                self.hd_ratio_input.setText(f"{val:.2f}")
-            except:
-                pass
+        """高径比下拉选择"""
+        try:
+            val = float(text)
+            self.hd_ratio_input.setText(f"{val:.1f}")
+        except:
+            pass
 
     def on_top_type_changed(self, text):
         self.update_head_ui('top', text)
@@ -675,6 +695,12 @@ class 设备尺寸计算(QWidget):
             param_input.setEnabled(False)
             param_label.setText("无参数")
             param_unit.setText("")
+        elif head_type == "锥形封头":
+            # 锥形封头用角度, 单位切换为 °，输入框依据勾选状态
+            auto_check.setEnabled(True)
+            param_input.setEnabled(not auto_check.isChecked())
+            param_label.setText("锥角 (°):")
+            param_unit.setText("°")
         else:
             auto_check.setEnabled(True)
             # 如果勾选自动比例，则禁用输入；否则启用
@@ -693,6 +719,10 @@ class 设备尺寸计算(QWidget):
             else:
                 param_label.setText("深度/角度:")
 
+    def _on_orientation_changed(self, text):
+        """罐体方向改变时刷新 SVG"""
+        self._update_svg_diagram()
+
     def on_top_auto_changed(self, state):
         enabled = not (state == Qt.Checked)
         self.top_param_input.setEnabled(enabled)
@@ -710,13 +740,11 @@ class 设备尺寸计算(QWidget):
             self.bottom_param_unit.setText("mm")
 
     def on_density_combo_changed(self, text):
-        if "碳钢" in text:
-            self.density_input.setText("7850")
-        elif "不锈钢" in text:
-            self.density_input.setText("7930")
-        elif "铝" in text:
-            self.density_input.setText("2700")
-        # 自定义保持原值
+        """从"材质 密度"格式提取密度值"""
+        import re
+        m = re.search(r'(\d+)$', text)
+        if m:
+            self.density_input.setText(m.group(1))
 
     def select_accessories(self):
         dialog = AccessoriesDialog(self)
@@ -736,6 +764,153 @@ class 设备尺寸计算(QWidget):
                 widget.clear()
             elif isinstance(widget, QComboBox):
                 widget.setCurrentIndex(0)
+
+    # ───────────────── SVG 罐体示意图 ─────────────────
+    def _text(self, x, y, text, size=9, color="#333", bold=False, center=True):
+        extra = 'font-weight="bold"' if bold else ''
+        anchor = 'text-anchor="middle"' if center else ''
+        return f'<text x="{x}" y="{y}" {anchor} font-size="{size}" fill="{color}" {extra}>{text}</text>'
+
+    def _generate_vessel_svg(self, mode="反向计算", diameter=None, height=None, volume=None,
+                              top_type="椭圆封头", bottom_type="椭圆封头",
+                              top_depth=None, bottom_depth=None, fill_ratio=0.85,
+                              orientation="立式"):
+        """生成立式/卧式罐体 SVG 示意图"""
+        w, h = 360, 260
+        parts = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="{w}" height="{h}">',
+                 f'<rect x="0" y="0" width="{w}" height="{h}" fill="#fafbfc" rx="6"/>']
+
+        is_horizontal = (orientation == "卧式")
+
+        if is_horizontal:
+            # ── 卧式罐体：水平圆筒 + 左右封头 ──
+            vx, vy, vw, vh = 75, 70, 190, 90
+            head_d = vh / 4
+            # 左封头
+            if top_type in ["椭圆封头", "锥形封头"]:
+                parts.append(f'<ellipse cx="{vx}" cy="{vy+vh/2}" rx="{head_d}" ry="{vh/2}" '
+                             f'fill="#e8edf2" stroke="#4a6fa5" stroke-width="2"/>')
+            # 筒体
+            parts.append(f'<rect x="{vx}" y="{vy}" width="{vw}" height="{vh}" '
+                         f'fill="#e8edf2" stroke="#4a6fa5" stroke-width="2"/>')
+            # 右封头
+            if bottom_type in ["椭圆封头", "锥形封头"]:
+                parts.append(f'<ellipse cx="{vx+vw}" cy="{vy+vh/2}" rx="{head_d}" ry="{vh/2}" '
+                             f'fill="#e8edf2" stroke="#4a6fa5" stroke-width="2"/>')
+            # 液位线（水平）
+            if fill_ratio and 0 < fill_ratio < 1:
+                liquid_y = vy + vh * (1 - fill_ratio)
+                parts.append(f'<rect x="{vx+2}" y="{liquid_y}" width="{vw-4}" height="{vy+vh-liquid_y}" '
+                             f'fill="#3498db" opacity="0.2"/>')
+                parts.append(f'<line x1="{vx}" y1="{liquid_y}" x2="{vx+vw}" y2="{liquid_y}" '
+                             f'stroke="#3498db" stroke-width="1.5" stroke-dasharray="6,3"/>')
+                parts.append(self._text(vx+vw/2, liquid_y-4, f"{fill_ratio*100:.0f}%", size=9, color="#3498db"))
+            # 直径标注（右侧）
+            dia_text = f"φ{diameter}mm" if diameter else "φ? mm"
+            parts.append(f'<line x1="{vx+vw+20}" y1="{vy}" x2="{vx+vw+20}" y2="{vy+vh}" stroke="#7f8c8d" stroke-width="1" marker-start="url(#arrowU)" marker-end="url(#arrowD)"/>')
+            parts.append(self._text(vx+vw+35, vy+vh/2+4, dia_text, size=10, color="#555", center=False))
+            # 长度标注
+            h_text = f"H {height} mm" if height else "H ? mm"
+            parts.append(f'<line x1="{vx}" y1="{vy+vh+20}" x2="{vx+vw}" y2="{vy+vh+20}" stroke="#7f8c8d" stroke-width="1" marker-start="url(#arrowL)" marker-end="url(#arrowR)"/>')
+            parts.append(self._text(vx+vw/2, vy+vh+35, h_text, size=10, color="#555"))
+
+        else:
+            # ── 立式罐体 ──
+            vx, vy, vw, vh = 120, 52, 120, 140
+            head_d = vw / 4
+            # 上封头
+            top_y = vy
+            if top_type == "椭圆封头":
+                parts.append(f'<ellipse cx="{vx+vw/2}" cy="{top_y}" rx="{vw/2}" ry="{head_d}" '
+                             f'fill="#e8edf2" stroke="#4a6fa5" stroke-width="2"/>')
+            elif top_type == "锥形封头":
+                parts.append(f'<polygon points="{vx},{top_y} {vx+vw},{top_y} {vx+vw/2},{top_y-head_d}" '
+                             f'fill="#e8edf2" stroke="#4a6fa5" stroke-width="2"/>')
+            else:
+                parts.append(f'<line x1="{vx}" y1="{top_y}" x2="{vx+vw}" y2="{top_y}" '
+                             f'stroke="#4a6fa5" stroke-width="2"/>')
+            # 圆柱筒体
+            parts.append(f'<rect x="{vx}" y="{top_y}" width="{vw}" height="{vh}" '
+                         f'fill="#e8edf2" stroke="#4a6fa5" stroke-width="2"/>')
+            # 下封头
+            bot_y = top_y + vh
+            if bottom_type == "椭圆封头":
+                parts.append(f'<ellipse cx="{vx+vw/2}" cy="{bot_y}" rx="{vw/2}" ry="{head_d}" '
+                             f'fill="#e8edf2" stroke="#4a6fa5" stroke-width="2"/>')
+            elif bottom_type == "锥形封头":
+                parts.append(f'<polygon points="{vx},{bot_y} {vx+vw},{bot_y} {vx+vw/2},{bot_y+head_d}" '
+                             f'fill="#e8edf2" stroke="#4a6fa5" stroke-width="2"/>')
+            # 液位线
+            if fill_ratio and 0 < fill_ratio < 1:
+                liquid_y = bot_y - vh * fill_ratio
+                parts.append(f'<rect x="{vx+2}" y="{liquid_y}" width="{vw-4}" height="{bot_y-liquid_y}" '
+                             f'fill="#3498db" opacity="0.2" rx="2"/>')
+                parts.append(f'<line x1="{vx}" y1="{liquid_y}" x2="{vx+vw}" y2="{liquid_y}" '
+                             f'stroke="#3498db" stroke-width="1.5" stroke-dasharray="6,3"/>')
+                parts.append(self._text(vx+vw/2, liquid_y-4, f"{fill_ratio*100:.0f}%", size=9, color="#3498db"))
+            # 直径标注
+            dia_text = f"φ{diameter}mm" if diameter else "φ? mm"
+            parts.append(f'<line x1="{vx}" y1="{bot_y+head_d+10}" x2="{vx+vw}" y2="{bot_y+head_d+10}" '
+                         f'stroke="#7f8c8d" stroke-width="1" marker-start="url(#arrowL)" marker-end="url(#arrowR)"/>')
+            parts.append(self._text(vx+vw/2, bot_y+head_d+24, dia_text, size=10, color="#555"))
+            # 高度标注（右侧）
+            h_text = f"H {height} mm" if height else "H ? mm"
+            parts.append(f'<line x1="{vx+vw+25}" y1="{top_y}" x2="{vx+vw+25}" y2="{bot_y}" '
+                         f'stroke="#7f8c8d" stroke-width="1" marker-start="url(#arrowU)" marker-end="url(#arrowD)"/>')
+            parts.append(self._text(vx+vw+40, (top_y+bot_y)/2+5, h_text, size=10, color="#555", center=False))
+
+        # 底部信息 — 容积固定在左下角，避免与直径标注重叠
+        vol_text = f"V={volume} m³" if volume is not None else "V=? m³"
+        parts.append(self._text(10, h-14, vol_text, size=10, color="#444", center=False))
+        mode_label = "反向计算" if mode == "反向计算" else "正向计算"
+        ori_label = "卧式" if is_horizontal else "立式"
+        parts.append(self._text(180, 12, f"{ori_label}储罐 — {mode_label}", size=10, color="#4a6fa5", bold=True))
+
+        # 箭头定义
+        parts.append('''<defs>
+            <marker id="arrowL" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M8,0 L0,4 L8,8 Z" fill="#7f8c8d"/></marker>
+            <marker id="arrowR" markerWidth="8" markerHeight="8" refX="0" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#7f8c8d"/></marker>
+            <marker id="arrowU" markerWidth="8" markerHeight="8" refX="4" refY="8" orient="auto"><path d="M0,8 L4,0 L8,8 Z" fill="#7f8c8d"/></marker>
+            <marker id="arrowD" markerWidth="8" markerHeight="8" refX="4" refY="0" orient="auto"><path d="M0,0 L4,8 L8,0 Z" fill="#7f8c8d"/></marker>
+        </defs>''')
+        parts.append('</svg>')
+        return ''.join(parts)
+
+    def _update_svg_diagram(self):
+        try:
+            mode = self.mode_button_group.checkedButton().text() if self.mode_button_group.checkedButton() else "反向计算"
+            kwargs = {'mode': mode}
+            # 优先使用计算后的值（反向计算模式时输入框可能隐藏）
+            if hasattr(self, '_last_diameter') and self._last_diameter:
+                kwargs['diameter'] = int(self._last_diameter)
+            else:
+                try: kwargs['diameter'] = float(self.diameter_input.text())
+                except: pass
+            if hasattr(self, '_last_height') and self._last_height:
+                kwargs['height'] = int(self._last_height)
+            else:
+                try: kwargs['height'] = float(self.cyl_height_input.text())
+                except: pass
+            if hasattr(self, '_last_volume') and self._last_volume:
+                kwargs['volume'] = round(self._last_volume, 2)
+            else:
+                try: kwargs['volume'] = float(self.target_vol_input.text())
+                except: pass
+            # 封头类型
+            for key, attr in [('top_type', 'top_type_combo'), ('bottom_type', 'bottom_type_combo')]:
+                try: kwargs[key] = getattr(self, attr).currentText()
+                except: pass
+            for key, attr in [('top_depth', 'top_param_input'), ('bottom_depth', 'bottom_param_input')]:
+                try: kwargs[key] = float(getattr(self, attr).text())
+                except: pass
+            try: kwargs['fill_ratio'] = float(self.fill_factor_input.text())
+            except: pass
+            try: kwargs['orientation'] = self.vessel_orientation.currentText()
+            except: pass
+            svg = self._generate_vessel_svg(**kwargs)
+            self.svg_widget.load(svg.encode('utf-8'))
+        except Exception:
+            pass
 
     # 计算核心 ----------------------------------------------------
     def calculate(self):
@@ -813,6 +988,14 @@ class 设备尺寸计算(QWidget):
                 alarms=alarms
             )
             self.result_text.setText(result)
+
+            # 保存计算结果供 SVG 示意图使用
+            self._last_diameter = D * 1000  # m → mm
+            self._last_height = H_cyl * 1000  # m → mm
+            self._last_volume = work_vol
+
+            # 更新 SVG 罐体示意图
+            self._update_svg_diagram()
 
         except ValueError as e:
             QMessageBox.warning(self, "输入错误", f"请填写有效的数字: {e}")
