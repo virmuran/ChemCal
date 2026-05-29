@@ -8,8 +8,6 @@ from PySide6.QtWidgets import (
     QScrollArea, QFileDialog, QSizePolicy,
 )
 from PySide6.QtGui import QFont, QDoubleValidator
-from PySide6.QtSvgWidgets import QSvgWidget
-from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtCore import Qt
 import os
 import re
@@ -94,8 +92,8 @@ class CentrifugalPumpCalculator(QWidget):
             self.init_data_manager()
         self._last_result = ""
         self._last_params = {}
+        self._pump_type = None
         self.setup_ui()
-        self._update_svg_diagram()
 
         # 禁止未展开时鼠标滚轮切换下拉菜单
         self._wheel_blocker = ComboBoxWheelBlocker(self)
@@ -110,6 +108,38 @@ class CentrifugalPumpCalculator(QWidget):
         except Exception as e:
             print(f"数据管理器初始化失败: {e}")
             self.data_manager = None
+    
+    # ── 泵型效率数据库 ──
+    PUMP_EFFICIENCY = {
+        "IS 单级单吸":  {"Q<50m3h":0.55, "Q50-150":0.70, "Q150-300":0.78, "Q>300":0.84},
+        "S/SH 双吸":   {"Q<200m3h":0.65, "Q200-800":0.75, "Q800-2000":0.82, "Q>2000":0.87},
+        "D/DG 多级":   {"Q<50m3h":0.50, "Q50-150":0.63, "Q150-300":0.72, "Q>300":0.78},
+        "IH 化工流程": {"Q<50m3h":0.50, "Q50-150":0.62, "Q150-300":0.70, "Q>300":0.76},
+        "AY 油泵":     {"Q<50m3h":0.48, "Q50-150":0.60, "Q150-300":0.68, "Q>300":0.75},
+    }
+
+    def _mk_label(self, text):
+        """统一右对齐加粗标签"""
+        lbl = QLabel(text)
+        lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        lbl.setStyleSheet("font-weight: bold; padding-right: 10px;")
+        lbl.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        return lbl
+
+    def _on_pump_type_changed(self, text):
+        """泵型变化→自动估算泵效率"""
+        for key, table in self.PUMP_EFFICIENCY.items():
+            if text.startswith(key):
+                self._pump_type = key
+                return
+        self._pump_type = None
+
+    def _on_drive_changed(self, text):
+        """传动方式变化→更新传动效率"""
+        import re
+        m = re.search(r"η=([\d.]+)", text)
+        if m:
+            self.drive_eff_label.setText(f"ηd={m.group(1)}")
     
     def setup_ui(self):
         """设置UI布局"""
@@ -132,13 +162,74 @@ class CentrifugalPumpCalculator(QWidget):
 
         # 顶部说明文字
         description = QLabel(
-            "计算离心泵的轴功率、电机功率和效率，考虑流量、扬程、介质密度和泵效率。"
+            "依据 GB/T 5656 离心泵技术条件，计算轴功率、电机功率和配套功率。"
+            "含泵型效率数据库，支持直联/皮带/齿轮传动选型。"
         )
         description.setWordWrap(True)
         description.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
-        # 输入参数组
+        # ===== 泵型选择 =====
+        pump_group = QGroupBox("泵型与传动")
+        pump_layout = QGridLayout(pump_group)
+        pump_layout.setVerticalSpacing(8)
+        pump_layout.setHorizontalSpacing(10)
+        pump_layout.setColumnStretch(0, 4)
+        pump_layout.setColumnStretch(1, 8)
+        pump_layout.setColumnStretch(2, 5)
+
+        prow = 0
+        # 泵类型
+        pump_layout.addWidget(self._mk_label("泵类型:"), prow, 0)
+        self.pump_type_combo = QComboBox()
+        self.pump_type_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.pump_type_combo.addItems([
+            "- 请选择泵类型 -",
+            "IS 单级单吸离心泵 (清水/化工)",
+            "S/SH 单级双吸离心泵 (大流量)",
+            "D/DG 多级离心泵 (高扬程)",
+            "IH 化工流程泵 (耐腐蚀)",
+            "AY 离心油泵 (石油化工)",
+        ])
+        self.pump_type_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.pump_type_combo.currentTextChanged.connect(self._on_pump_type_changed)
+        pump_layout.addWidget(self.pump_type_combo, prow, 1)
+        pump_layout.addWidget(QLabel(""), prow, 2)
+        prow += 1
+
+        # 传动方式
+        pump_layout.addWidget(self._mk_label("传动方式:"), prow, 0)
+        self.drive_combo = QComboBox()
+        self.drive_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.drive_combo.addItems([
+            "- 请选择传动方式 -",
+            "直联传动 (η=1.00)",
+            "皮带传动 (η=0.95)",
+            "齿轮传动 (η=0.98)",
+            "液力偶合器 (η=0.97)",
+        ])
+        self.drive_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.drive_combo.currentTextChanged.connect(self._on_drive_changed)
+        pump_layout.addWidget(self.drive_combo, prow, 1)
+        self.drive_eff_label = QLabel("ηd=1.00")
+        self.drive_eff_label.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        pump_layout.addWidget(self.drive_eff_label, prow, 2)
+        prow += 1
+
+        # 转速
+        pump_layout.addWidget(self._mk_label("转速 N (r/min):"), prow, 0)
+        self.speed_input = QLineEdit("2900")
+        self.speed_input.setPlaceholderText("如: 2900")
+        self.speed_input.setValidator(QDoubleValidator(500.0, 30000.0, 0))
+        self.speed_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        pump_layout.addWidget(self.speed_input, prow, 1)
+        self.speed_hint = QLabel("2P=2900, 4P=1450")
+        self.speed_hint.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        pump_layout.addWidget(self.speed_hint, prow, 2)
+
+        left_layout.addWidget(pump_group)
+
+        # ===== 输入参数组 =====
         input_group = QGroupBox("输入参数")
         
         # GridLayout三列布局
@@ -167,6 +258,7 @@ class CentrifugalPumpCalculator(QWidget):
         self.flow_combo = QComboBox()
         self.flow_combo.setStyleSheet(COMBOBOX_STYLE)
         self.flow_combo.addItems([
+            "- 请选择流量范围 -",
             "小流量: 0.1-10 m³/h",
             "中等流量: 10-100 m³/h",
             "大流量: 100-1000 m³/h",
@@ -195,6 +287,7 @@ class CentrifugalPumpCalculator(QWidget):
         self.head_combo = QComboBox()
         self.head_combo.setStyleSheet(COMBOBOX_STYLE)
         self.head_combo.addItems([
+            "- 请选择扬程范围 -",
             "低扬程: 1-20 m",
             "中等扬程: 20-80 m",
             "高扬程: 80-200 m",
@@ -223,6 +316,7 @@ class CentrifugalPumpCalculator(QWidget):
         self.density_combo = QComboBox()
         self.density_combo.setStyleSheet(COMBOBOX_STYLE)
         self.density_combo.addItems([
+            "- 请选择介质密度 -",
             "1000 - 水 (20°C)",
             "998 - 水 (25°C)",
             "983 - 水 (60°C)",
@@ -255,6 +349,7 @@ class CentrifugalPumpCalculator(QWidget):
         self.efficiency_combo = QComboBox()
         self.efficiency_combo.setStyleSheet(COMBOBOX_STYLE)
         self.efficiency_combo.addItems([
+            "- 请选择泵效率范围 -",
             "50-60% - 小型泵",
             "60-70% - 标准泵",
             "70-80% - 高效泵",
@@ -283,6 +378,7 @@ class CentrifugalPumpCalculator(QWidget):
         self.motor_efficiency_combo = QComboBox()
         self.motor_efficiency_combo.setStyleSheet(COMBOBOX_STYLE)
         self.motor_efficiency_combo.addItems([
+            "- 请选择电机效率范围 -",
             "85-88% - 小型电机",
             "88-92% - 标准电机",
             "92-95% - 高效电机",
@@ -296,29 +392,32 @@ class CentrifugalPumpCalculator(QWidget):
         row += 1
 
         # 安全系数
-        safety_label = QLabel("安全系数:")
+        safety_label = QLabel("安全系数 K:")
         safety_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         safety_label.setStyleSheet("font-weight: bold; padding-right: 10px;")
         safety_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(safety_label, row, 0)
 
+        self.safety_input = QLineEdit("1.1")
+        self.safety_input.setPlaceholderText("例如: 1.1")
+        self.safety_input.setValidator(QDoubleValidator(1.0, 3.0, 2))
+        self.safety_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        input_layout.addWidget(self.safety_input, row, 1)
+
         self.safety_combo = QComboBox()
         self.safety_combo.setStyleSheet(COMBOBOX_STYLE)
         self.safety_combo.addItems([
-            "1.0 (无安全系数)",
-            "1.05 (轻微)",
-            "1.1 (标准)",
-            "1.15 (保守)",
+            "- 请选择安全系数 -",
+            "1.0 (无余量)",
+            "1.05 (轻微余量)",
+            "1.1 (标准选型)",
+            "1.15 (保守设计)",
             "1.2 (高安全)",
-            "1.25 (超高安全)"
+            "1.25 (超高安全)",
         ])
         self.safety_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        input_layout.addWidget(self.safety_combo, row, 1)
-
-        self.safety_hint = QLabel("默认选用标准安全系数")
-        self.safety_hint.setStyleSheet("font-style: italic; padding-left: 10px;")
-        self.safety_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        input_layout.addWidget(self.safety_hint, row, 2)
+        self.safety_combo.currentTextChanged.connect(self.on_safety_combo_changed)
+        input_layout.addWidget(self.safety_combo, row, 2)
         
         left_layout.addWidget(input_group)
         
@@ -412,13 +511,6 @@ class CentrifugalPumpCalculator(QWidget):
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
 
-        self.svg_widget = QSvgWidget()
-        self.svg_widget.setMinimumHeight(220)
-        self.svg_widget.setMaximumHeight(280)
-        self.svg_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        right_layout.addWidget(self.svg_widget)
-        self.svg_widget.renderer().setAspectRatioMode(Qt.KeepAspectRatio)
-        
         # 结果显示组
         result_group = QGroupBox("计算结果")
         result_layout = QVBoxLayout(result_group)
@@ -515,202 +607,169 @@ class CentrifugalPumpCalculator(QWidget):
                 self.motor_efficiency_input.setText(f"{avg_val:.1f}")
     
     def get_safety_factor(self):
-        """获取安全系数"""
-        text = self.safety_combo.currentText()
-        if "1.0" in text:
-            return 1.0
-        elif "1.05" in text:
-            return 1.05
-        elif "1.1" in text:
-            return 1.1
-        elif "1.15" in text:
-            return 1.15
-        elif "1.2" in text:
-            return 1.2
-        elif "1.25" in text:
-            return 1.25
-        else:
-            return 1.1
-    
-    def _text(self, x, y, text, size=9, color="#333", bold=False, center=True):
-        e = 'font-weight="bold"' if bold else ""
-        a = 'text-anchor="middle"' if center else ""
-        return f'<text x="{x}" y="{y}" {a} font-size="{size}" fill="{color}" {e}>{text}</text>'
-
-    def _generate_pipe_svg(self, **kw):
-        w, h = 360, 260
-        p = [
-            f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="{w}" height="{h}">',
-            f'<rect x="0" y="0" width="{w}" height="{h}" fill="#fafbfc" rx="6"/>'
-        ]
-        cx, cy, pw, ph = w/2, h/2-10, 260, 60
-        py = cy - 30
-        d = kw.get("diameter", "?")
-        f_val = kw.get("flow", "?")
-        v = kw.get("velocity", "?")
-        # 管道外壁
-        p.append(f'<rect x="{cx-pw/2}" y="{py}" width="{pw}" height="{ph}" fill="#e8edf2" stroke="#4a6fa5" stroke-width="2" rx="6"/>')
-        # 管道内径
-        p.append(f'<rect x="{cx-pw/2+15}" y="{py+10}" width="{pw-30}" height="{ph-20}" fill="#dce4ec" stroke="#7f8c8d" stroke-width="1" rx="3"/>')
-        # 流向箭头
-        p.append(f'<line x1="{cx-90}" y1="{cy}" x2="{cx+90}" y2="{cy}" stroke="#3498db" stroke-width="2.5" marker-end="url(#arrow)"/>')
-        p.append(self._text(cx, cy-10, f"{v} m/s" if v != "?" else "? m/s", size=10, color="#3498db", bold=True))
-        # 直径标注
-        p.append(self._text(cx, py+ph+35, f"DN {d} mm" if d != "?" else "DN ?", size=10, color="#555"))
-        # 底部信息
-        info_y = h - 14
-        if f_val != "?":
-            p.append(self._text(40, info_y, f"流量: {f_val}", size=10, color="#444", center=False))
-        p.append(self._text(cx, 12, "管道截面示意", size=10, color="#4a6fa5", bold=True))
-        p.append('<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#3498db"/></marker></defs></svg>')
-        return "".join(p)
-
-    def _update_svg_diagram(self):
+        """获取安全系数：优先读输入框"""
         try:
-            kw = {}
-            # 优先使用计算后的存储值
-            if hasattr(self, '_last_params') and self._last_params:
-                kw.update({k: v for k, v in self._last_params.items() if v is not None})
-            # 否则扫描输入框 — 用 hasattr 不会因属性不存在而崩溃
-            widget_attrs = ['flow_input', 'velocity_input', 'diameter_input', 
-                          'head_input', 'pressure_input', 'flow_rate_input']
-            for attr in widget_attrs:
-                if hasattr(self, attr):
-                    try:
-                        val = getattr(self, attr).text().strip()
-                        if val:
-                            name = attr.replace('_input', '')
-                            kw[name] = val
-                    except:
-                        pass
-            # 下拉框
-            if hasattr(self, 'diameter_combo'):
-                try:
-                    t = self.diameter_combo.currentText()
-                    if t and not t.startswith('-'):
-                        kw['diameter'] = t.split('mm')[0].strip()
-                except:
-                    pass
-            if hasattr(self, 'fluid_combo'):
-                try:
-                    t = self.fluid_combo.currentText()
-                    if t and not t.startswith('-'):
-                        kw['fluid'] = t
-                except:
-                    pass
-            s = self._generate_pipe_svg(**kw)
-            self.svg_widget.load(s.encode("utf-8"))
-        except Exception:
+            val = float(self.safety_input.text())
+            if 1.0 <= val <= 3.0:
+                return val
+        except:
             pass
+        return 1.1
+
+    def on_safety_combo_changed(self, text):
+        """安全系数下拉选择"""
+        import re
+        m = re.search(r'([\d.]+)', text)
+        if m and not text.startswith("-"):
+            self.safety_input.setText(m.group(1))
+    def _estimate_pump_efficiency(self, pump_type, flow_rate):
+        """根据泵型和流量估算泵效率"""
+        if pump_type not in self.PUMP_EFFICIENCY:
+            return None
+        table = self.PUMP_EFFICIENCY[pump_type]
+        if flow_rate <= 50:
+            return table["Q<50m3h"]
+        elif flow_rate <= 150:
+            return table["Q50-150"]
+        elif flow_rate <= 300:
+            return table["Q150-300"]
+        else:
+            return table["Q>300"]
+
+    def _get_drive_efficiency(self):
+        """从传动方式下拉框提取效率值"""
+        import re
+        t = self.drive_combo.currentText()
+        m = re.search(r"η=([\d.]+)", t)
+        return float(m.group(1)) if m else 1.0
+
+    MOTOR_EFF_TABLE = {  # 电机效率估算 (GB 18613 3级能效)
+        0.75: 0.75, 1.1: 0.78, 1.5: 0.80, 2.2: 0.82, 3.0: 0.84,
+        4.0: 0.85, 5.5: 0.87, 7.5: 0.88, 11: 0.89, 15: 0.90,
+        18.5: 0.91, 22: 0.91, 30: 0.92, 37: 0.92, 45: 0.93,
+        55: 0.93, 75: 0.94, 90: 0.94, 110: 0.94, 132: 0.95,
+        160: 0.95, 200: 0.95, 250: 0.95, 315: 0.95,
+    }
+
+    STANDARD_MOTORS = [0.75, 1.1, 1.5, 2.2, 3.0, 4.0, 5.5, 7.5, 11, 15, 18.5, 22,
+                       30, 37, 45, 55, 75, 90, 110, 132, 160, 200, 250, 315, 355, 400]
+
     def calculate(self):
-        """计算离心泵功率"""
+        """离心泵功率选型计算"""
         try:
-            # 获取输入值
             flow_rate = float(self.flow_input.text() or 0)
             head = float(self.head_input.text() or 0)
             density = float(self.density_input.text() or 0)
-            efficiency = float(self.efficiency_input.text() or 0)
-            motor_efficiency = float(self.motor_efficiency_input.text() or 0)
+            speed = float(self.speed_input.text() or 2900)
+
+            # 泵效率：优先自动估算，否则用输入值
+            pump_eff_auto = self._estimate_pump_efficiency(self._pump_type, flow_rate)
+            if pump_eff_auto and not self.efficiency_input.text().strip():
+                efficiency = pump_eff_auto * 100  # 转为百分比
+                self.efficiency_input.setText(f"{efficiency:.0f}")
+            else:
+                efficiency = float(self.efficiency_input.text() or 0)
+
             safety_factor = self.get_safety_factor()
-            
-            # 验证输入
-            if not all([flow_rate, head, density, efficiency, motor_efficiency]):
-                QMessageBox.warning(self, "输入错误", "请填写所有参数")
+            drive_eff = self._get_drive_efficiency()
+
+            if not all([flow_rate, head, density, efficiency]):
+                QMessageBox.warning(self, "输入错误", "请填写流量、扬程、密度和泵效率")
                 return
-            
-            # 计算有效功率
-            effective_power = (flow_rate / 3600) * density * 9.81 * head / 1000
-            
-            # 计算轴功率
-            shaft_power = effective_power / (efficiency / 100)
-            
-            # 计算电机功率
-            motor_power = shaft_power / (motor_efficiency / 100) * safety_factor
-            
-            # 计算总效率
-            total_efficiency = (efficiency / 100) * (motor_efficiency / 100) * 100
-            
-            # 推荐电机规格
-            standard_motors = [0.75, 1.1, 1.5, 2.2, 3.0, 4.0, 5.5, 7.5, 11, 15, 18.5, 22, 
-                              30, 37, 45, 55, 75, 90, 110, 132, 160, 200, 250, 315, 355, 400]
-            candidates = [m for m in standard_motors if m >= motor_power]
-            recommended_motor = min(candidates) if candidates else standard_motors[-1]
-            
-            # 格式化结果
+
+            # === 计算 ===
+            # 1. 有效功率 Pe = ρgQH / 3600000 (kW)
+            pe = (flow_rate / 3600) * density * 9.81 * head / 1000
+
+            # 2. 轴功率 P = Pe / η_pump
+            p_shaft = pe / (efficiency / 100)
+
+            # 3. 电机功率 P_m = P_shaft / η_drive * K_safety（先不计电机效率）
+            p_motor_raw = p_shaft / drive_eff * safety_factor
+
+            # 4. 匹配电机功率
+            matched = min((m for m in self.STANDARD_MOTORS if m >= p_motor_raw),
+                         default=self.STANDARD_MOTORS[-1])
+
+            # 5. 电机效率（按匹配功率查表）
+            m_eff = 0.90  # default
+            for kw, eff in sorted(self.MOTOR_EFF_TABLE.items()):
+                if kw >= matched:
+                    m_eff = eff
+                    break
+
+            # 6. 实际输入功率 = 轴功率 / η_drive / η_motor × K
+            p_input = p_shaft / drive_eff / m_eff * safety_factor
+
+            # 极数判定
+            match_poles = 2 if speed >= 2500 else (4 if speed >= 1200 else 6)
+            # === 输出 ===
+            pump_type_name = self.pump_type_combo.currentText().split(" (")[0] if self._pump_type else "—"
             result = f"""═══════════════════════════════════════════════════
                         输入参数
 ═══════════════════════════════════════════════════
 
-运行参数:
-• 流量: {flow_rate} m³/h
-• 扬程: {head} m
-• 介质密度: {density} kg/m³
-• 泵效率: {efficiency} %
-• 电机效率: {motor_efficiency} %
-• 安全系数: {safety_factor}
+工况参数:
+• 泵类型: {pump_type_name}
+• 流量 Q: {flow_rate} m³/h
+• 扬程 H: {head} m
+• 转速 N: {speed:.0f} r/min
+• 介质密度 ρ: {density} kg/m³
+
+效率参数:
+• 泵效率 η_pump: {efficiency:.1f} %{'  (自动估算)' if pump_eff_auto and efficiency == pump_eff_auto*100 else ''}
+• 传动效率 η_drive: {drive_eff:.2f}
+• 电机效率 η_motor: {m_eff*100:.0f} %  (基于{matched} kW级)
+• 安全系数 K: {safety_factor}
 
 ═══════════════════════════════════════════════════
                        计算结果
 ═══════════════════════════════════════════════════
 
 功率计算:
-• 有效功率: {effective_power:.2f} kW
-• 轴功率: {shaft_power:.2f} kW
-• 电机功率: {motor_power:.2f} kW
-
-效率分析:
-• 总效率: {total_efficiency:.1f} %
+• 有效功率 Pe: {pe:.2f} kW
+• 轴功率 P: {p_shaft:.2f} kW
+• 电机输入功率 P_in: {p_input:.2f} kW
 
 设备选型:
-• 推荐电机功率: {recommended_motor} kW
-
-安全评估:
-• 功率余量: {(recommended_motor - motor_power) / motor_power * 100:.1f}%
+• 配套电机功率: {matched} kW
+• 功率裕度: {((matched - p_input) / p_input * 100):.1f}%
 
 ═══════════════════════════════════════════════════
                        计算公式
 ═══════════════════════════════════════════════════
 
-P_有效 = (Q × ρ × g × H) / 3600000
-P_轴 = P_有效 / η_泵
-P_电机 = P_轴 / η_电机 × K_安全
+Pe = ρ·g·Q·H / 3600000
+   = {density}×9.81×{flow_rate}×{head} / 3600000
+   = {pe:.2f} kW
 
-其中:
-Q = {flow_rate} m³/h (流量)
-ρ = {density} kg/m³ (密度)
-g = 9.81 m/s² (重力加速度)
-H = {head} m (扬程)
-η_泵 = {efficiency/100:.3f} (泵效率)
-η_电机 = {motor_efficiency/100:.3f} (电机效率)
-K_安全 = {safety_factor} (安全系数)
+P_轴 = Pe / η_pump = {pe:.2f} / {efficiency/100:.3f} = {p_shaft:.2f} kW
 
-详细计算:
-P_有效 = ({flow_rate} × {density} × 9.81 × {head}) / 3600000 = {effective_power:.2f} kW
-P_轴 = {effective_power:.2f} / {efficiency/100:.3f} = {shaft_power:.2f} kW
-P_电机 = {shaft_power:.2f} / {motor_efficiency/100:.3f} × {safety_factor} = {motor_power:.2f} kW
+P_电机 = P_轴 / (η_drive × η_motor) × K
+       = {p_shaft:.2f} / ({drive_eff:.2f} × {m_eff:.2f}) × {safety_factor}
+       = {p_input:.2f} kW
+
+选型电机: ≥ {p_input:.2f} kW → {matched} kW
 
 ═══════════════════════════════════════════════════
-                       应用说明
+                       应用建议
 ═══════════════════════════════════════════════════
 
-• 实际选型应选择比计算功率大的标准电机
-• 考虑启动电流和过载能力
-• 对于重载启动，建议选择更大的安全系数
-• 计算结果仅供参考，实际应用请考虑具体工况"""
-            
+• 泵类型: {pump_type_name}
+• 传动方式: {self.drive_combo.currentText().split(' (')[0]}
+• 推荐电机: Y{match_poles}-{matched} kW  (防护等级IP54以上)
+• 实际选型应结合管路特性曲线和泵性能曲线复核
+• 对于重载启动工况，建议加大一档电机"""
+
             self.result_text.setPlainText(result)
             self._last_result = result
             self._last_params = {
-                "flow": flow_rate,
-                "head": head,
-                "density": density,
-                "efficiency": efficiency,
-                "motor_efficiency": motor_efficiency,
-                "safety_factor": safety_factor,
+                "flow": flow_rate, "head": head, "density": density,
+                "shaft_power": round(p_shaft, 2), "motor_power": round(p_input, 2),
+                "matched_power": matched, "efficiency": efficiency,
+                "pump_type": pump_type_name,
             }
-            
-            # 保存历史记录
-            
+
         except ValueError as e:
             QMessageBox.critical(self, "计算错误", f"参数输入格式错误: {str(e)}")
         except ZeroDivisionError:
