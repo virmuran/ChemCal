@@ -12,6 +12,12 @@ import os
 import importlib.util
 from datetime import datetime
 from modules.combo_box_utils import ComboBoxWheelBlocker
+import sys
+from pathlib import Path
+
+# DOCX 报告导出
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+from utils.docx_utils import ReportExporter
 
 # IAPWS-IF97 工业标准蒸汽物性（动态导入，避免 relative import 失败）
 try:
@@ -106,7 +112,6 @@ COMBOBOX_STYLE = """
         padding: 3px 8px;
     }
 """
-
 
 class SteamPropertyCalculator(QWidget):
     """水蒸气性质查询计算器 - 统一UI规范版本"""
@@ -283,11 +288,11 @@ class SteamPropertyCalculator(QWidget):
             } """)
         
         # 下载TXT按钮
-        self.download_txt_btn = QPushButton("下载计算书(TXT)")
-        self.download_txt_btn.clicked.connect(self.download_txt_report)
-        self.download_txt_btn.setMinimumHeight(50)
-        self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_txt_btn.setStyleSheet("""
+        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
+        self.download_docx_btn.clicked.connect(self.download_docx_report)
+        self.download_docx_btn.setMinimumHeight(50)
+        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_docx_btn.setStyleSheet("""
             QPushButton {
                 background-color: #3498db;
                 color: white;
@@ -320,7 +325,7 @@ class SteamPropertyCalculator(QWidget):
         
         bottom_layout.addWidget(self.clear_btn)
         bottom_layout.addStretch()
-        bottom_layout.addWidget(self.download_txt_btn)
+        bottom_layout.addWidget(self.download_docx_btn)
         bottom_layout.addWidget(self.download_pdf_btn)
         left_layout.addLayout(bottom_layout)
         left_layout.addStretch()
@@ -1194,103 +1199,14 @@ class SteamPropertyCalculator(QWidget):
             state_icon, state, state_desc
         )
 
-
-
 # ==================== 报告生成函数 ====================
 
-    def download_txt_report(self):
-        """下载TXT格式计算书"""
-        try:
-            result_text = self.result_text.toPlainText()
-
-            if not result_text or "计算结果" not in result_text:
-                QMessageBox.warning(self, "生成失败", "请先进行计算再生成计算书")
-                return
-
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            default_name = f"水蒸气性质计算书_{timestamp}.txt"
-            file_path, _ = QFileDialog.getSaveFileName(
-                self, "保存计算书", default_name, "Text Files (*.txt)"
-            )
-
-            if file_path:
-                with open(file_path, "w", encoding="utf-8") as f:
-                    f.write(result_text)
-                QMessageBox.information(self, "下载成功", f"计算书已保存到:\n{file_path}")
-
-        except Exception as e:
-            QMessageBox.critical(self, "下载失败", f"保存计算书时发生错误: {str(e)}")
-    
+    def download_docx_report(self):
+        """生成DOCX格式计算书"""
+        ReportExporter.export_docx(self, "SteamPropertyCalculator")
     def download_pdf_report(self):
-        """下载PDF格式计算书"""
-        try:
-            result_text = self.result_text.toPlainText()
-            
-            if not result_text or "计算结果" not in result_text:
-                QMessageBox.warning(self, "生成失败", "请先进行计算再生成计算书")
-                return
-            
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            default_name = f"水蒸气性质计算书_{timestamp}.pdf"
-            file_path, _ = QFileDialog.getSaveFileName(
-                self, "保存PDF计算书", default_name, "PDF Files (*.pdf)"
-            )
-            
-            if not file_path:
-                return
-            
-            # 尝试导入fpdf
-            try:
-                from fpdf import FPDF
-                
-                class PDF(FPDF):
-                    def header(self):
-                        self.set_font("Helvetica", "B", 16)
-                        self.cell(0, 10, "水蒸气性质查询计算书", 0, 1, "C")
-                        self.ln(5)
-                    
-                    def footer(self):
-                        self.set_y(-15)
-                        self.set_font("Helvetica", "I", 8)
-                        self.cell(0, 10, f"Page {self.page_no()}", 0, 0, "C")
-                
-                pdf = PDF()
-                pdf.add_page()
-                
-                # 添加中文字体支持
-                try:
-                    pdf.add_font("Microsoft", "", "C:/Windows/Fonts/msyh.ttc", uni=True)
-                    pdf.set_font("Microsoft", "", 10)
-                except Exception:
-                    pdf.set_font("Helvetica", "", 10)
-                
-                # 处理内容
-                processed_content = result_text.replace("═", "=").replace("─", "-")
-                processed_content = processed_content.replace("m3", "m3").replace("kg/m3", "kg/m3")
-                processed_content = processed_content.replace("kJ/(kg.K)", "kJ/(kg.K)")
-                processed_content = processed_content.replace("C", "C")
-                
-                for line in processed_content.split("\n"):
-                    if line.strip():
-                        self._pdf_add_line(pdf, line)
-                    else:
-                        pdf.ln(3)
-                
-                pdf.output(file_path)
-                QMessageBox.information(self, "生成成功", f"PDF计算书已保存到:\n{file_path}")
-                return True
-                
-            except ImportError:
-                QMessageBox.warning(
-                    self, "功能不可用",
-                    "PDF生成功能需要安装fpdf库\n\n请运行: pip install fpdf"
-                )
-                return False
-                
-        except Exception as e:
-            QMessageBox.critical(self, "生成失败", f"生成PDF时发生错误: {str(e)}")
-            return False
-    
+        """生成PDF格式计算书"""
+        ReportExporter.export_pdf(self, "SteamPropertyCalculator")
     def _pdf_add_line(self, pdf, line):
         """PDF添加单行文本"""
         try:
@@ -1307,7 +1223,6 @@ class SteamPropertyCalculator(QWidget):
             pdf.multi_cell(0, 5, line_text)
         except Exception:
             pass
-
 
 # ==================== 测试代码 ====================
 if __name__ == "__main__":

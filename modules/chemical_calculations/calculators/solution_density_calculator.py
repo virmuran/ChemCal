@@ -14,6 +14,12 @@ import math
 import importlib.util
 import os
 from modules.combo_box_utils import ComboBoxWheelBlocker
+import sys
+from pathlib import Path
+
+# DOCX 报告导出
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+from utils.docx_utils import ReportExporter
 
 # ─────────────────── IAPWS-IF97 动态加载 ───────────────────
 _IAPWS_MODULE = None
@@ -44,7 +50,6 @@ def _load_iapws():
 
 _load_iapws()
 
-
 # ─────────────────────────── 密度计算核心函数 ───────────────────────────
 
 def rho_water(T: float) -> float:
@@ -74,7 +79,6 @@ def rho_water(T: float) -> float:
     den = 1.0 + 16.87985e-3 * T
     return num / den
 
-
 def rho_citric_acid(w: float, T: float = 20.0) -> float:
     """
     柠檬酸（C6H8O7）水溶液密度
@@ -91,7 +95,6 @@ def rho_citric_acid(w: float, T: float = 20.0) -> float:
     correction = rho_water(T) - rho_water(20.0)
     return rho_20 + correction
 
-
 def rho_glucose(w: float, T: float = 20.0) -> float:
     """
     葡萄糖（C6H12O6）水溶液密度
@@ -104,7 +107,6 @@ def rho_glucose(w: float, T: float = 20.0) -> float:
     rho_20 = 999.8 + 3.840 * c + 0.01429 * c**2
     correction = rho_water(T) - rho_water(20.0)
     return rho_20 + correction
-
 
 def rho_sucrose(w: float, T: float = 20.0) -> float:
     """
@@ -119,7 +121,6 @@ def rho_sucrose(w: float, T: float = 20.0) -> float:
     correction = rho_water(T) - rho_water(20.0)
     return rho_20 + correction
 
-
 def rho_naoh(w: float, T: float = 20.0) -> float:
     """
     NaOH 水溶液密度
@@ -133,7 +134,6 @@ def rho_naoh(w: float, T: float = 20.0) -> float:
     correction = rho_water(T) - rho_water(20.0)
     return rho_20 + correction
 
-
 def rho_hcl(w: float, T: float = 20.0) -> float:
     """
     盐酸（HCl）水溶液密度
@@ -145,7 +145,6 @@ def rho_hcl(w: float, T: float = 20.0) -> float:
     rho_20 = 999.8 + 4.733 * c - 0.01477 * c**2
     correction = rho_water(T) - rho_water(20.0)
     return rho_20 + correction
-
 
 def rho_h2so4(w: float, T: float = 20.0) -> float:
     """
@@ -161,7 +160,6 @@ def rho_h2so4(w: float, T: float = 20.0) -> float:
     correction = rho_water(T) - rho_water(20.0)
     return rho_20 + correction
 
-
 def rho_nacl(w: float, T: float = 20.0) -> float:
     """
     NaCl 水溶液密度
@@ -174,7 +172,6 @@ def rho_nacl(w: float, T: float = 20.0) -> float:
     rho_20 = 999.8 + 6.781 * c - 0.05874 * c**2
     correction = rho_water(T) - rho_water(20.0)
     return rho_20 + correction
-
 
 # ─────────────────────────── 物料配置表 ───────────────────────────
 
@@ -260,7 +257,6 @@ SUBSTANCE_CONFIG = {
         "accuracy": "±2 kg/m³",
     },
 }
-
 
 # ─────────────────────────── UI 主类 ───────────────────────────
 
@@ -415,11 +411,11 @@ class SolutionDensityCalculator(QWidget):
             } """)
         
         # 下载TXT按钮
-        self.download_txt_btn = QPushButton("下载计算书(TXT)")
-        self.download_txt_btn.clicked.connect(self.download_txt_report)
-        self.download_txt_btn.setMinimumHeight(50)
-        self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_txt_btn.setStyleSheet("""
+        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
+        self.download_docx_btn.clicked.connect(self.download_docx_report)
+        self.download_docx_btn.setMinimumHeight(50)
+        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_docx_btn.setStyleSheet("""
             QPushButton {
                 background-color: #3498db;
                 color: white;
@@ -451,7 +447,7 @@ class SolutionDensityCalculator(QWidget):
             } """)
         
         bottom_layout.addWidget(self.clear_btn)
-        bottom_layout.addWidget(self.download_txt_btn)
+        bottom_layout.addWidget(self.download_docx_btn)
         bottom_layout.addWidget(self.download_pdf_btn)
         right_layout.addLayout(bottom_layout)
         main_layout.addWidget(right_widget, 1)
@@ -847,42 +843,12 @@ class SolutionDensityCalculator(QWidget):
             }
         }
 
-    def download_txt_report(self):
-        """下载TXT报告"""
-        from PySide6.QtWidgets import QFileDialog
-        content = self.result_text.toPlainText()
-        if not content:
-            return
-        file_path, _ = QFileDialog.getSaveFileName(
-            self, "保存TXT报告", "溶液密度计算报告.txt", "Text Files (*.txt)")
-        if file_path:
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(content)
-
+    def download_docx_report(self):
+        """生成DOCX格式计算书"""
+        ReportExporter.export_docx(self, "SolutionDensityCalculator")
     def download_pdf_report(self):
-        """下载PDF报告"""
-        from PySide6.QtWidgets import QFileDialog
-        from fpdf import FPDF
-        content = self.result_text.toPlainText()
-        if not content:
-            return
-        file_path, _ = QFileDialog.getSaveFileName(
-            self, "保存PDF报告", "溶液密度计算报告.pdf", "PDF Files (*.pdf)")
-        if file_path:
-            pdf = FPDF()
-            pdf.add_page()
-            try:
-                pdf.add_font("msyh", "", "C:/Windows/Fonts/msyh.ttc", uni=True)
-                pdf.set_font("msyh", size=12)
-            except Exception:
-                pdf.set_font("Helvetica", size=12)
-            for line in content.split("\n"):
-                pdf.cell(0, 8, line, new_x="LMARGIN", new_y="NEXT")
-            pdf.output(file_path)
-
-
-# ── 独立运行测试 ──────────────────────────────────────────────
-
+        """生成PDF格式计算书"""
+        ReportExporter.export_pdf(self, "SolutionDensityCalculator")
 if __name__ == "__main__":
     import sys
     from PySide6.QtWidgets import QApplication

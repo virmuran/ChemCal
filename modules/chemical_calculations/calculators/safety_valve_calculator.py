@@ -10,7 +10,12 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QDoubleValidator, QFont
 from PySide6.QtSvgWidgets import QSvgWidget
 from modules.combo_box_utils import ComboBoxWheelBlocker
+import sys
+from pathlib import Path
 
+# DOCX 报告导出
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+from utils.docx_utils import ReportExporter
 
 COMBOBOX_STYLE = """
     QComboBox {
@@ -58,7 +63,6 @@ STANDARD_VALVES = [
     ("DN150", 102, 8171),
     ("DN200", 145, 16513),
 ]
-
 
 class SafetyValveCalculator(QWidget):
     """安全阀泄放面积计算 — 模式驱动版"""
@@ -348,8 +352,8 @@ class SafetyValveCalculator(QWidget):
         self.clear_btn.setMinimumHeight(50)
         self.clear_btn.setStyleSheet("QPushButton{background-color:#95a5a6;color:white;border:none;border-radius:6px;padding:8px;font-weight:bold;}QPushButton:hover{background-color:#7f8c8d;}")
 
-        self.dl_txt_btn = QPushButton("下载计算书(TXT)")
-        self.dl_txt_btn.clicked.connect(self.download_txt_report)
+        self.dl_txt_btn = QPushButton("下载计算书(DOCX)")
+        self.dl_txt_btn.clicked.connect(self.download_docx_report)
         self.dl_txt_btn.setMinimumHeight(50)
         self.dl_txt_btn.setStyleSheet("QPushButton{background-color:#3498db;color:white;border:none;border-radius:6px;padding:8px;font-weight:bold;}QPushButton:hover{background-color:#2980b9;}")
 
@@ -828,61 +832,12 @@ class SafetyValveCalculator(QWidget):
         except: pass
 
     # ═══════════════════════════ 报告 ═══════════════════════════
-    def download_txt_report(self):
-        content = self.result_text.toPlainText()
-        if not content.strip():
-            QMessageBox.warning(self, "提示", "请先计算，再下载报告。")
-            return
-        path, _ = QFileDialog.getSaveFileName(self, "保存TXT报告", "安全阀计算报告.txt", "文本文件 (*.txt)")
-        if path:
-            try:
-                with open(path, "w", encoding="utf-8") as f:
-                    f.write(content)
-                QMessageBox.information(self, "成功", f"报告已保存：\n{path}")
-            except Exception as e:
-                QMessageBox.critical(self, "错误", f"保存失败：{e}")
-
+    def download_docx_report(self):
+        """生成DOCX格式计算书"""
+        ReportExporter.export_docx(self, "SafetyValveCalculator")
     def download_pdf_report(self):
-        content = self.result_text.toPlainText()
-        if not content.strip():
-            QMessageBox.warning(self, "提示", "请先计算，再下载PDF。")
-            return
-        path, _ = QFileDialog.getSaveFileName(self, "保存PDF报告", "安全阀计算报告.pdf", "PDF文件 (*.pdf)")
-        if not path:
-            return
-        try:
-            from reportlab.lib.pagesizes import A4
-            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-            from reportlab.lib.units import mm
-            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-            from reportlab.lib.enums import TA_LEFT
-            from reportlab.pdfbase import pdfmetrics
-            from reportlab.pdfbase.ttfonts import TTFont
-
-            font_paths = ["C:/Windows/Fonts/simhei.ttf", "C:/Windows/Fonts/msyh.ttc", "C:/Windows/Fonts/simsun.ttc"]
-            font_name = "Helvetica"
-            for fp in font_paths:
-                if os.path.exists(fp):
-                    try:
-                        pdfmetrics.registerFont(TTFont("CF", fp))
-                        font_name = "CF"
-                        break
-                    except: continue
-
-            doc = SimpleDocTemplate(path, pagesize=A4, leftMargin=20*mm, rightMargin=20*mm, topMargin=20*mm, bottomMargin=20*mm)
-            st = ParagraphStyle("Body", fontName=font_name, fontSize=10, leading=16, alignment=TA_LEFT)
-            story = []
-            for line in content.split("\n"):
-                safe = line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-                story.append(Paragraph(safe if safe.strip() else "&nbsp;", st))
-            doc.build(story)
-            QMessageBox.information(self, "成功", f"PDF已保存：\n{path}")
-        except ImportError:
-            QMessageBox.critical(self, "错误", "缺少 reportlab 库，请运行：pip install reportlab")
-        except Exception as e:
-            QMessageBox.critical(self, "错误", f"PDF生成失败：{e}")
-
-
+        """生成PDF格式计算书"""
+        ReportExporter.export_pdf(self, "SafetyValveCalculator")
 if __name__ == "__main__":
     import sys
     from PySide6.QtWidgets import QApplication

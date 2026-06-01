@@ -10,7 +10,12 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, Signal, QThread
 from PySide6.QtGui import QFont, QDoubleValidator
 from modules.combo_box_utils import ComboBoxWheelBlocker
+import sys
+from pathlib import Path
 
+# DOCX 报告导出
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+from utils.docx_utils import ReportExporter
 
 COMBOBOX_STYLE = """
     QComboBox {
@@ -46,7 +51,6 @@ GROUP_STYLE = """
         padding: 0 8px 0 8px;
     }
 """
-
 
 class SolubilityWorker(QThread):
     """溶解度查询工作线程"""
@@ -201,7 +205,6 @@ class SolubilityWorker(QThread):
                 "notes": "两性氢氧化物，溶于强碱"
             },
         }
-
 
 class SolidSolubilityCalculator(QWidget):
     """固体溶解度查询计算器（统一 UI 规范版）"""
@@ -396,11 +399,11 @@ class SolidSolubilityCalculator(QWidget):
             } """)
         
         # 下载TXT按钮
-        self.download_txt_btn = QPushButton("下载计算书(TXT)")
-        self.download_txt_btn.clicked.connect(self.download_txt_report)
-        self.download_txt_btn.setMinimumHeight(50)
-        self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_txt_btn.setStyleSheet("""
+        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
+        self.download_docx_btn.clicked.connect(self.download_docx_report)
+        self.download_docx_btn.setMinimumHeight(50)
+        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_docx_btn.setStyleSheet("""
             QPushButton {
                 background-color: #3498db;
                 color: white;
@@ -432,7 +435,7 @@ class SolidSolubilityCalculator(QWidget):
             } """)
         
         bottom_layout.addWidget(self.clear_btn)
-        bottom_layout.addWidget(self.download_txt_btn)
+        bottom_layout.addWidget(self.download_docx_btn)
         bottom_layout.addWidget(self.download_pdf_btn)
         right_layout.addLayout(bottom_layout)
 
@@ -619,78 +622,12 @@ class SolidSolubilityCalculator(QWidget):
     def generate_report(self):
         return self.result_text.toPlainText()
 
-    def download_txt_report(self):
-        content = self.result_text.toPlainText()
-        if not content.strip():
-            QMessageBox.warning(self, "提示", "请先查询，再下载报告。")
-            return
-        path, _ = QFileDialog.getSaveFileName(
-            self, "保存TXT报告", "溶解度查询报告.txt", "文本文件 (*.txt)")
-        if path:
-            try:
-                with open(path, "w", encoding="utf-8") as f:
-                    f.write(content)
-                QMessageBox.information(self, "成功", f"报告已保存到：\n{path}")
-            except Exception as e:
-                QMessageBox.critical(self, "错误", f"保存失败：{e}")
-
+    def download_docx_report(self):
+        """生成DOCX格式计算书"""
+        ReportExporter.export_docx(self, "固液溶解度")
     def download_pdf_report(self):
-        content = self.result_text.toPlainText()
-        if not content.strip():
-            QMessageBox.warning(self, "提示", "请先查询，再下载PDF。")
-            return
-        path, _ = QFileDialog.getSaveFileName(
-            self, "保存PDF报告", "溶解度查询报告.pdf", "PDF文件 (*.pdf)")
-        if not path:
-            return
-        try:
-            from reportlab.lib.pagesizes import A4
-            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-            from reportlab.lib.units import mm
-            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-            from reportlab.lib.enums import TA_LEFT
-            from reportlab.pdfbase import pdfmetrics
-            from reportlab.pdfbase.ttfonts import TTFont
-
-            font_paths = [
-                "C:/Windows/Fonts/simhei.ttf",
-                "C:/Windows/Fonts/msyh.ttc",
-                "C:/Windows/Fonts/simsun.ttc",
-            ]
-            font_name = "Helvetica"
-            for fp in font_paths:
-                if os.path.exists(fp):
-                    try:
-                        pdfmetrics.registerFont(TTFont("CF", fp))
-                        font_name = "CF"
-                        break
-                    except Exception:
-                        continue
-
-            doc = SimpleDocTemplate(
-                path, pagesize=A4,
-                leftMargin=20 * mm, rightMargin=20 * mm,
-                topMargin=20 * mm, bottomMargin=20 * mm)
-            styles = getSampleStyleSheet()
-            st = ParagraphStyle(
-                "Body", fontName=font_name, fontSize=10,
-                leading=16, alignment=TA_LEFT)
-            story = []
-            for line in content.split("\n"):
-                safe = line.replace("&", "&amp;").replace(
-                    "<", "&lt;").replace(">", "&gt;")
-                story.append(
-                    Paragraph(safe if safe.strip() else "&nbsp;", st))
-                story.append(Spacer(1, 1))
-            doc.build(story)
-            QMessageBox.information(self, "成功", f"PDF已保存到：\n{path}")
-        except ImportError:
-            QMessageBox.critical(
-                self, "错误", "缺少 reportlab 库，请运行：pip install reportlab")
-        except Exception as e:
-            QMessageBox.critical(self, "错误", f"PDF生成失败：{e}")
-
-
+        """生成PDF格式计算书"""
+        ReportExporter.export_pdf(self, "固液溶解度")
 if __name__ == "__main__":
     import sys
     from PySide6.QtWidgets import QApplication

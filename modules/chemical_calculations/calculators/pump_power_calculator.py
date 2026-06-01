@@ -12,6 +12,12 @@ from PySide6.QtCore import Qt
 import os
 import re
 from modules.combo_box_utils import ComboBoxWheelBlocker
+import sys
+from pathlib import Path
+
+# DOCX 报告导出
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+from utils.docx_utils import ReportExporter
 
 # 统一滚动条样式
 SCROLLBAR_STYLE = """
@@ -77,7 +83,6 @@ COMBOBOX_STYLE = """
         padding: 3px 8px;
     }
 """
-
 
 class CentrifugalPumpCalculator(QWidget):
     """离心泵功率计算器"""
@@ -463,11 +468,11 @@ class CentrifugalPumpCalculator(QWidget):
             } """)
         
         # 下载TXT按钮
-        self.download_txt_btn = QPushButton("下载计算书(TXT)")
-        self.download_txt_btn.clicked.connect(self.download_txt_report)
-        self.download_txt_btn.setMinimumHeight(50)
-        self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_txt_btn.setStyleSheet("""
+        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
+        self.download_docx_btn.clicked.connect(self.download_docx_report)
+        self.download_docx_btn.setMinimumHeight(50)
+        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_docx_btn.setStyleSheet("""
             QPushButton {
                 background-color: #3498db;
                 color: white;
@@ -500,7 +505,7 @@ class CentrifugalPumpCalculator(QWidget):
         
         bottom_layout.addWidget(self.clear_btn)
         bottom_layout.addStretch()
-        bottom_layout.addWidget(self.download_txt_btn)
+        bottom_layout.addWidget(self.download_docx_btn)
         bottom_layout.addWidget(self.download_pdf_btn)
         left_layout.addLayout(bottom_layout)
         left_layout.addStretch()
@@ -829,52 +834,9 @@ P_电机 = P_轴 / (η_drive × η_motor) × K
         """生成报告"""
         return self.result_text.toPlainText()
     
-    def download_txt_report(self):
-        """下载TXT报告"""
-        content = self.result_text.toPlainText()
-        if not content.strip():
-            QMessageBox.warning(self, "提示", "请先计算，再下载报告。")
-            return
-        path, _ = QFileDialog.getSaveFileName(
-            self, "保存TXT报告", "离心泵功率计算报告.txt", "文本文件 (*.txt)"
-        )
-        if path:
-            try:
-                with open(path, "w", encoding="utf-8") as f:
-                    f.write(content)
-                QMessageBox.information(self, "成功", f"报告已保存：\n{path}")
-            except Exception as e:
-                QMessageBox.critical(self, "错误", f"保存失败：{e}")
-    
+    def download_docx_report(self):
+        """生成DOCX格式计算书"""
+        ReportExporter.export_docx(self, "CentrifugalPumpCalculator")
     def download_pdf_report(self):
-        """生成PDF报告"""
-        content = self.result_text.toPlainText()
-        if not content.strip():
-            QMessageBox.warning(self, "提示", "请先计算，再下载PDF。")
-            return
-        path, _ = QFileDialog.getSaveFileName(
-            self, "保存PDF报告", "离心泵功率计算报告.pdf", "PDF文件 (*.pdf)"
-        )
-        if not path:
-            return
-        try:
-            from fpdf import FPDF
-            
-            pdf = FPDF()
-            pdf.add_page()
-            pdf.add_font('msyh', '', 'C:/Windows/Fonts/msyh.ttc', uni=True)
-            pdf.set_font('msyh', '', 10)
-            
-            for line in content.split('\n'):
-                if line.strip():
-                    pdf.cell(0, 8, line.encode('latin1', 'replace').decode('latin1'))
-                    pdf.ln()
-                else:
-                    pdf.ln(4)
-            
-            pdf.output(path)
-            QMessageBox.information(self, "成功", f"PDF已保存：\n{path}")
-        except ImportError:
-            QMessageBox.critical(self, "错误", "缺少fpdf，请运行：pip install fpdf")
-        except Exception as e:
-            QMessageBox.critical(self, "错误", f"PDF生成失败：{e}")
+        """生成PDF格式计算书"""
+        ReportExporter.export_pdf(self, "CentrifugalPumpCalculator")

@@ -9,6 +9,12 @@ from PySide6.QtGui import QFont, QDoubleValidator
 import math
 from fpdf import FPDF
 from modules.combo_box_utils import ComboBoxWheelBlocker
+import sys
+from pathlib import Path
+
+# DOCX 报告导出
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+from utils.docx_utils import ReportExporter
 
 # QGroupBox统一样式
 GROUP_STYLE = """
@@ -338,11 +344,11 @@ class PureSubstanceProperties(QWidget):
             } """)
         
         # 下载TXT按钮
-        self.download_txt_btn = QPushButton("下载计算书(TXT)")
-        self.download_txt_btn.clicked.connect(self.download_txt_report)
-        self.download_txt_btn.setMinimumHeight(50)
-        self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_txt_btn.setStyleSheet("""
+        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
+        self.download_docx_btn.clicked.connect(self.download_docx_report)
+        self.download_docx_btn.setMinimumHeight(50)
+        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_docx_btn.setStyleSheet("""
             QPushButton {
                 background-color: #3498db;
                 color: white;
@@ -374,7 +380,7 @@ class PureSubstanceProperties(QWidget):
             } """)
         
         bottom_layout.addWidget(self.clear_btn)
-        bottom_layout.addWidget(self.download_txt_btn)
+        bottom_layout.addWidget(self.download_docx_btn)
         bottom_layout.addWidget(self.download_pdf_btn)
         right_layout.addLayout(bottom_layout)
         
@@ -504,65 +510,12 @@ class PureSubstanceProperties(QWidget):
         
         return report
     
-    def download_txt_report(self):
-        """下载TXT格式报告"""
-        file_path, _ = QFileDialog.getSaveFileName(
-            self, "保存TXT报告", "", "Text Files (*.txt)"
-        )
-        
-        if file_path:
-            try:
-                report = self.generate_report()
-                result_text = self.result_text.toPlainText()
-                
-                with open(file_path, 'w', encoding='utf-8') as f:
-                    f.write(f"{report['title']}\n")
-                    f.write("=" * 50 + "\n\n")
-                    f.write(f"物质: {report['substance']}\n")
-                    f.write(f"温度: {report['temperature']} °C\n")
-                    f.write(f"压力: {report['pressure']} kPa\n\n")
-                    f.write(result_text)
-                
-                QMessageBox.information(self, "下载成功", f"TXT报告已保存到:\n{file_path}")
-            except Exception as e:
-                QMessageBox.warning(self, "下载失败", f"保存TXT报告时发生错误:\n{str(e)}")
-    
+    def download_docx_report(self):
+        """生成DOCX格式计算书"""
+        ReportExporter.export_docx(self, "PureSubstanceProperties")
     def download_pdf_report(self):
-        """生成PDF格式报告"""
-        file_path, _ = QFileDialog.getSaveFileName(
-            self, "保存PDF报告", "", "PDF Files (*.pdf)"
-        )
-        
-        if file_path:
-            try:
-                report = self.generate_report()
-                pdf = FPDF()
-                pdf.add_page()
-                
-                # 使用微软雅黑字体
-                pdf.add_font('MicrosoftYaHei', '', 'C:/Windows/Fonts/msyh.ttc', uni=True)
-                pdf.set_font('MicrosoftYaHei', '', 12)
-                
-                # 标题
-                pdf.cell(200, 10, text=report['title'], ln=True, align='C')
-                pdf.ln(10)
-                
-                # 基本信息
-                pdf.cell(200, 10, text=f"物质: {report['substance']}", ln=True)
-                pdf.cell(200, 10, text=f"温度: {report['temperature']} °C", ln=True)
-                pdf.cell(200, 10, text=f"压力: {report['pressure']} kPa", ln=True)
-                pdf.ln(5)
-                
-                # 查询结果
-                pdf.cell(200, 10, text="查询结果:", ln=True)
-                result_text = self.result_text.toPlainText()
-                pdf.multi_cell(0, 10, text=result_text)
-                
-                pdf.output(file_path)
-                QMessageBox.information(self, "生成成功", f"PDF报告已保存到:\n{file_path}")
-            except Exception as e:
-                QMessageBox.warning(self, "生成失败", f"生成PDF报告时发生错误:\n{str(e)}")
-    
+        """生成PDF格式计算书"""
+        ReportExporter.export_pdf(self, "PureSubstanceProperties")
     def on_category_changed(self, category):
         """类别改变事件"""
         substances = {

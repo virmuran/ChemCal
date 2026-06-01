@@ -9,6 +9,12 @@ from fpdf import FPDF
 import os
 import datetime
 from modules.combo_box_utils import ComboBoxWheelBlocker
+import sys
+from pathlib import Path
+
+# DOCX 报告导出
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+from utils.docx_utils import ReportExporter
 
 # 统一GroupBox样式
 COMBOBOX_STYLE = """
@@ -30,7 +36,6 @@ COMBOBOX_STYLE = """
         padding: 3px 8px;
     }
 """
-
 
 class CorrosionDataQuery(QWidget):
     """腐蚀数据查询计算器"""
@@ -337,11 +342,11 @@ class CorrosionDataQuery(QWidget):
             } """)
         
         # 下载TXT按钮
-        self.download_txt_btn = QPushButton("下载计算书(TXT)")
-        self.download_txt_btn.clicked.connect(self.download_txt_report)
-        self.download_txt_btn.setMinimumHeight(50)
-        self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_txt_btn.setStyleSheet("""
+        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
+        self.download_docx_btn.clicked.connect(self.download_docx_report)
+        self.download_docx_btn.setMinimumHeight(50)
+        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_docx_btn.setStyleSheet("""
             QPushButton {
                 background-color: #3498db;
                 color: white;
@@ -373,7 +378,7 @@ class CorrosionDataQuery(QWidget):
             } """)
         
         bottom_layout.addWidget(self.clear_btn)
-        bottom_layout.addWidget(self.download_txt_btn)
+        bottom_layout.addWidget(self.download_docx_btn)
         bottom_layout.addWidget(self.download_pdf_btn)
         right_layout.addLayout(bottom_layout)
 
@@ -823,113 +828,12 @@ class CorrosionDataQuery(QWidget):
 
         return "\n".join(report_lines)
 
-    def download_txt_report(self):
-        """下载TXT格式报告"""
-        try:
-            file_path, _ = QFileDialog.getSaveFileName(
-                self, "保存TXT报告", "", "Text Files (*.txt)"
-            )
-
-            if file_path:
-                report_content = self.generate_report()
-
-                with open(file_path, "w", encoding="utf-8") as f:
-                    f.write(report_content)
-
-                QMessageBox.information(
-                    self, "导出成功",
-                    f"TXT报告已成功导出至:\n{file_path}"
-                )
-        except Exception as e:
-            QMessageBox.warning(self, "导出失败", f"TXT报告导出失败: {str(e)}")
-
+    def download_docx_report(self):
+        """生成DOCX格式计算书"""
+        ReportExporter.export_docx(self, "CorrosionDataQuery")
     def download_pdf_report(self):
-        """使用fpdf生成PDF格式报告"""
-        try:
-            file_path, _ = QFileDialog.getSaveFileName(
-                self, "保存PDF报告", "", "PDF Files (*.pdf)"
-            )
-
-            if file_path:
-                project = self.get_project_info()
-                history = self._get_history_data()
-
-                # 创建PDF文档
-                pdf = FPDF()
-                pdf.add_page()
-
-                # 设置中文字体
-                font_path = "C:/Windows/Fonts/msyh.ttc"
-                pdf.add_font("msyh", "", font_path, uni=True)
-                pdf.set_font("msyh", "", 11)
-
-                # 标题
-                pdf.set_font("msyh", "", 18)
-                pdf.cell(0, 15, "腐蚀数据查询报告", ln=True, align="C")
-                pdf.ln(5)
-
-                # 基本信息
-                pdf.set_font("msyh", "", 11)
-                pdf.cell(0, 8, f"生成时间：{project['timestamp']}", ln=True)
-                pdf.cell(0, 8, f"计算类型：{project['calculation_type']}", ln=True)
-                pdf.ln(5)
-
-                # 分隔线
-                pdf.set_draw_color(180, 180, 180)
-                pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-                pdf.ln(5)
-
-                # 查询条件部分
-                pdf.set_font("msyh", "", 14)
-                pdf.cell(0, 10, "【查询条件】", ln=True)
-                pdf.set_font("msyh", "", 11)
-                for k, v in history["inputs"].items():
-                    pdf.cell(0, 7, f"  {k}: {v}", ln=True)
-                pdf.ln(5)
-
-                # 查询结果部分
-                pdf.set_font("msyh", "", 14)
-                pdf.cell(0, 10, "【查询结果】", ln=True)
-                pdf.set_font("msyh", "", 11)
-                for k, v in history["outputs"].items():
-                    display_v = str(v)[:80] + ("..." if len(str(v)) > 80 else "")
-                    pdf.cell(0, 7, f"  {k}: {display_v}", ln=True)
-                pdf.ln(5)
-
-                # 详细信息（从右侧面板取纯文本）
-                detail_text = self.result_text.toPlainText().strip()
-                if detail_text:
-                    pdf.set_font("msyh", "", 14)
-                    pdf.cell(0, 10, "【详细信息】", ln=True)
-                    pdf.set_font("msyh", "", 10)
-                    # 分行写入，处理超长文本
-                    for line in detail_text.split("\n"):
-                        if line.strip():
-                            # PDF单行最大宽度约180mm，截断并换行
-                            while len(line) > 60:
-                                pdf.multi_cell(0, 6, line[:60])
-                                line = line[60:]
-                            if line:
-                                pdf.multi_cell(0, 6, line)
-
-                # 页脚
-                pdf.ln(10)
-                pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-                pdf.ln(3)
-                pdf.set_font("msyh", "", 9)
-                pdf.cell(0, 8, "ChemCal 化工计算工具 - 腐蚀数据查询模块", ln=True, align="C")
-
-                # 保存文件
-                pdf.output(file_path)
-
-                QMessageBox.information(
-                    self, "导出成功",
-                    f"PDF报告已成功导出至:\n{file_path}"
-                )
-        except Exception as e:
-            QMessageBox.warning(self, "导出失败", f"PDF报告导出失败: {str(e)}")
-
-
+        """生成PDF格式计算书"""
+        ReportExporter.export_pdf(self, "CorrosionDataQuery")
 if __name__ == "__main__":
     # 测试代码
     import sys

@@ -13,6 +13,12 @@ from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QFont, QDoubleValidator, QIntValidator
 import math
 from modules.combo_box_utils import ComboBoxWheelBlocker
+import sys
+from pathlib import Path
+
+# DOCX 报告导出
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+from utils.docx_utils import ReportExporter
 
 COMBOBOX_STYLE = """
     QComboBox {
@@ -122,11 +128,11 @@ class 管道间距(QWidget):
             } """)
         
         # 下载TXT按钮
-        self.download_txt_btn = QPushButton("下载计算书(TXT)")
-        self.download_txt_btn.clicked.connect(self.download_txt_report)
-        self.download_txt_btn.setMinimumHeight(50)
-        self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_txt_btn.setStyleSheet("""
+        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
+        self.download_docx_btn.clicked.connect(self.download_docx_report)
+        self.download_docx_btn.setMinimumHeight(50)
+        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_docx_btn.setStyleSheet("""
             QPushButton {
                 background-color: #3498db;
                 color: white;
@@ -159,7 +165,7 @@ class 管道间距(QWidget):
         
         bottom_layout.addWidget(self.clear_btn)
         bottom_layout.addStretch()
-        bottom_layout.addWidget(self.download_txt_btn)
+        bottom_layout.addWidget(self.download_docx_btn)
         bottom_layout.addWidget(self.download_pdf_btn)
         main_layout.addLayout(bottom_layout)
         
@@ -376,40 +382,12 @@ class 管道间距(QWidget):
             elif isinstance(widget, QComboBox):
                 widget.setCurrentIndex(0)
 
-    def download_txt_report(self):
-        """下载TXT格式计算书"""
-        from PySide6.QtWidgets import QFileDialog
-        fname, _ = QFileDialog.getSaveFileName(self, "保存TXT计算书", "", "Text Files (*.txt)")
-        if fname:
-            with open(fname, 'w', encoding='utf-8') as f:
-                f.write(self.result_text.toPlainText())
-
+    def download_docx_report(self):
+        """生成DOCX格式计算书"""
+        ReportExporter.export_docx(self, "管道间距")
     def download_pdf_report(self):
-        """下载PDF格式计算书"""
-        content = self.result_text.toPlainText()
-        if not content.strip():
-            return
-        from PySide6.QtWidgets import QFileDialog
-        fname, _ = QFileDialog.getSaveFileName(self, "保存PDF计算书", "", "PDF Files (*.pdf)")
-        if fname:
-            try:
-                from reportlab.lib.pagesizes import A4
-                from reportlab.pdfgen import canvas
-                c = canvas.Canvas(fname, pagesize=A4)
-                c.setFont("Helvetica", 10)
-                y = 800
-                for line in content.split('\n'):
-                    c.drawString(50, y, line)
-                    y -= 14
-                    if y < 50:
-                        c.showPage()
-                        c.setFont("Helvetica", 10)
-                        y = 800
-                c.save()
-            except ImportError:
-                with open(fname, 'w', encoding='utf-8') as f:
-                    f.write(content)
-
+        """生成PDF格式计算书"""
+        ReportExporter.export_pdf(self, "管道间距")
     def load_flange_data(self):
         """加载法兰标准数据（简化版，实际应使用完整数据库）"""
         # HG/T20592-2009 PN系列法兰外径数据（单位：mm）

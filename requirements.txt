@@ -8,8 +8,14 @@ PySide6>=6.5.0
 numpy>=1.24.0
 scipy>=1.10.0
 
-# PDF 生成（计算书导出）
+# PDF 生成（计算书导出，reportlab 为旧方案，逐步废弃）
 reportlab>=4.0.0
+
+# DOCX 报告生成（新方案，替换 TXT 导出）
+python-docx>=0.8.11
+
+# DOCX → PDF 转换（需要 Microsoft Word，可选）
+pywin32>=305
 
 # 系统监控（帮助 > 系统信息）
 psutil>=5.9.0

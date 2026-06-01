@@ -9,7 +9,12 @@ import math
 import re
 from datetime import datetime
 from modules.combo_box_utils import ComboBoxWheelBlocker
+import sys
+from pathlib import Path
 
+# DOCX 报告导出
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+from utils.docx_utils import ReportExporter
 
 COMBOBOX_STYLE = """
     QComboBox {
@@ -44,7 +49,6 @@ GROUP_STYLE = """
         padding: 0 8px 0 8px;
     }
 """
-
 
 class ProjectInfoDialog(QDialog):
     """工程信息对话框 - 与压降计算模块保持一致"""
@@ -133,7 +137,6 @@ class ProjectInfoDialog(QDialog):
             'subproject_name': self.subproject_input.text().strip(),
             'report_number': self.report_number_input.text().strip()
         }
-
 
 class 管道跨距(QWidget):
     """管道跨距计算（按照压降计算模块UI风格重新设计）"""
@@ -398,11 +401,11 @@ class 管道跨距(QWidget):
             } """)
         
         # 下载TXT按钮
-        self.download_txt_btn = QPushButton("下载计算书(TXT)")
-        self.download_txt_btn.clicked.connect(self.download_txt_report)
-        self.download_txt_btn.setMinimumHeight(50)
-        self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_txt_btn.setStyleSheet("""
+        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
+        self.download_docx_btn.clicked.connect(self.download_docx_report)
+        self.download_docx_btn.setMinimumHeight(50)
+        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_docx_btn.setStyleSheet("""
             QPushButton {
                 background-color: #3498db;
                 color: white;
@@ -435,7 +438,7 @@ class 管道跨距(QWidget):
         
         bottom_layout.addWidget(self.clear_btn)
         bottom_layout.addStretch()
-        bottom_layout.addWidget(self.download_txt_btn)
+        bottom_layout.addWidget(self.download_docx_btn)
         bottom_layout.addWidget(self.download_pdf_btn)
         left_layout.addLayout(bottom_layout)
         
@@ -1136,164 +1139,12 @@ class 管道跨距(QWidget):
             print(f"生成计算书失败: {e}")
             return None
 
-    def download_txt_report(self):
-        """下载TXT格式计算书"""
-        try:
-            import os
-            
-            # 直接调用 generate_report，它内部会进行检查
-            report_content = self.generate_report()
-            if report_content is None:  # 如果返回None，说明检查失败或用户取消
-                return
-                
-            # 选择保存路径
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            default_name = f"管道跨距计算书_{timestamp}.txt"
-            file_path, _ = QFileDialog.getSaveFileName(
-                self, "保存计算书", default_name, "Text Files (*.txt)"
-            )
-            
-            if file_path:
-                with open(file_path, 'w', encoding='utf-8') as f:
-                    f.write(report_content)
-                QMessageBox.information(self, "下载成功", f"计算书已保存到:\n{file_path}")
-                
-        except Exception as e:
-            QMessageBox.critical(self, "下载失败", f"保存计算书时发生错误: {str(e)}")
-
+    def download_docx_report(self):
+        """生成DOCX格式计算书"""
+        ReportExporter.export_docx(self, "管道跨距")
     def download_pdf_report(self):
         """生成PDF格式计算书"""
-        try:
-            # 直接调用 generate_report，它内部会进行检查
-            report_content = self.generate_report()
-            if report_content is None:  # 如果返回None，说明检查失败或用户取消
-                return False
-                
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            default_name = f"管道跨距计算书_{timestamp}.pdf"
-            file_path, _ = QFileDialog.getSaveFileName(
-                self, "保存PDF计算书", default_name, "PDF Files (*.pdf)"
-            )
-            
-            if not file_path:
-                return False
-                
-            # 尝试导入reportlab
-            try:
-                from reportlab.lib.pagesizes import A4
-                from reportlab.pdfgen import canvas
-                from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-                from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-                from reportlab.lib.units import inch
-                from reportlab.pdfbase import pdfmetrics
-                from reportlab.pdfbase.ttfonts import TTFont
-                import os
-                
-                # 注册中文字体
-                try:
-                    # 尝试注册常见的中文字体
-                    font_paths = [
-                        # Windows 字体路径
-                        "C:/Windows/Fonts/simhei.ttf",  # 黑体
-                        "C:/Windows/Fonts/simsun.ttc",  # 宋体
-                        "C:/Windows/Fonts/msyh.ttc",    # 微软雅黑
-                        # macOS 字体路径
-                        "/Library/Fonts/Arial Unicode.ttf",
-                        "/System/Library/Fonts/Arial.ttf",
-                        # Linux 字体路径
-                        "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
-                        "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
-                    ]
-                    
-                    chinese_font_registered = False
-                    for font_path in font_paths:
-                        if os.path.exists(font_path):
-                            try:
-                                if "simhei" in font_path.lower():
-                                    pdfmetrics.registerFont(TTFont('ChineseFont', font_path))
-                                    chinese_font_registered = True
-                                    break
-                                elif "simsun" in font_path.lower():
-                                    pdfmetrics.registerFont(TTFont('ChineseFont', font_path))
-                                    chinese_font_registered = True
-                                    break
-                                elif "msyh" in font_path.lower() or "microsoftyahei" in font_path.lower():
-                                    pdfmetrics.registerFont(TTFont('ChineseFont', font_path))
-                                    chinese_font_registered = True
-                                    break
-                                elif "arial unicode" in font_path.lower():
-                                    pdfmetrics.registerFont(TTFont('ChineseFont', font_path))
-                                    chinese_font_registered = True
-                                    break
-                            except:
-                                continue
-                    
-                    if not chinese_font_registered:
-                        # 如果没有找到系统字体，尝试使用 ReportLab 的默认字体（可能不支持中文）
-                        pdfmetrics.registerFont(TTFont('ChineseFont', 'Helvetica'))
-                except:
-                    # 字体注册失败，使用默认字体
-                    pass
-                
-                # 创建PDF文档
-                doc = SimpleDocTemplate(file_path, pagesize=A4)
-                styles = getSampleStyleSheet()
-                
-                # 创建支持中文的样式
-                chinese_style_normal = ParagraphStyle(
-                    'ChineseNormal',
-                    parent=styles['Normal'],
-                    fontName='ChineseFont',
-                    fontSize=10,
-                    leading=14,
-                )
-                
-                chinese_style_heading = ParagraphStyle(
-                    'ChineseHeading',
-                    parent=styles['Heading1'],
-                    fontName='ChineseFont',
-                    fontSize=16,
-                    leading=20,
-                    spaceAfter=12,
-                )
-                
-                story = []
-                
-                # 添加标题
-                title = Paragraph("工程计算书 - 管道跨距计算", chinese_style_heading)
-                story.append(title)
-                story.append(Spacer(1, 0.2*inch))
-                
-                # 处理报告内容，替换特殊字符和表情
-                processed_content = self.process_content_for_pdf(report_content)
-                
-                # 添加内容
-                for line in processed_content.split('\n'):
-                    if line.strip():
-                        # 处理特殊字符和空格
-                        line = line.replace(' ', '&nbsp;')
-                        line = line.replace('═', '=').replace('─', '-')
-                        para = Paragraph(line, chinese_style_normal)
-                        story.append(para)
-                        story.append(Spacer(1, 0.05*inch))
-                
-                # 生成PDF
-                doc.build(story)
-                QMessageBox.information(self, "生成成功", f"PDF计算书已保存到:\n{file_path}")
-                return True
-                
-            except ImportError:
-                QMessageBox.warning(
-                    self, 
-                    "功能不可用", 
-                    "PDF生成功能需要安装reportlab库\n\n请运行: pip install reportlab"
-                )
-                return False
-                
-        except Exception as e:
-            QMessageBox.critical(self, "生成失败", f"生成PDF时发生错误: {str(e)}")
-            return False
-
+        ReportExporter.export_pdf(self, "管道跨距")
     def process_content_for_pdf(self, content):
         """处理内容，使其适合PDF显示"""
         # 清理bullet符号
@@ -1304,7 +1155,6 @@ class 管道跨距(QWidget):
         content = content.replace("kg/m³", "kg/m3")
         
         return content
-
 
 if __name__ == "__main__":
     # 测试代码

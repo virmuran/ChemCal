@@ -9,7 +9,12 @@ from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtCore import Qt
 import os
 from modules.combo_box_utils import ComboBoxWheelBlocker
+import sys
+from pathlib import Path
 
+# DOCX 报告导出
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+from utils.docx_utils import ReportExporter
 
 COMBOBOX_STYLE = """
     QComboBox {
@@ -372,11 +377,11 @@ class NPSHaCalculator(QWidget):
             } """)
         
         # 下载TXT按钮
-        self.download_txt_btn = QPushButton("下载计算书(TXT)")
-        self.download_txt_btn.clicked.connect(self.download_txt_report)
-        self.download_txt_btn.setMinimumHeight(50)
-        self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_txt_btn.setStyleSheet("""
+        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
+        self.download_docx_btn.clicked.connect(self.download_docx_report)
+        self.download_docx_btn.setMinimumHeight(50)
+        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_docx_btn.setStyleSheet("""
             QPushButton {
                 background-color: #3498db;
                 color: white;
@@ -409,7 +414,7 @@ class NPSHaCalculator(QWidget):
         
         bottom_layout.addWidget(self.clear_btn)
         bottom_layout.addStretch()
-        bottom_layout.addWidget(self.download_txt_btn)
+        bottom_layout.addWidget(self.download_docx_btn)
         bottom_layout.addWidget(self.download_pdf_btn)
         left_layout.addLayout(bottom_layout)
 
@@ -937,69 +942,9 @@ H_f    = {friction_loss} m (吸入管路损失)
         """生成报告"""
         return self.result_text.toPlainText()
 
-    def download_txt_report(self):
-        """下载TXT报告"""
-        content = self.result_text.toPlainText()
-        if not content.strip():
-            QMessageBox.warning(self, "提示", "请先计算，再下载报告。")
-            return
-        path, _ = QFileDialog.getSaveFileName(
-            self, "保存TXT报告", "NPSHa计算报告.txt", "文本文件 (*.txt)"
-        )
-        if path:
-            try:
-                with open(path, "w", encoding="utf-8") as f:
-                    f.write(content)
-                QMessageBox.information(self, "成功", f"报告已保存：\n{path}")
-            except Exception as e:
-                QMessageBox.critical(self, "错误", f"保存失败：{e}")
-
+    def download_docx_report(self):
+        """生成DOCX格式计算书"""
+        ReportExporter.export_docx(self, "NPSHaCalculator")
     def download_pdf_report(self):
-        """生成PDF报告"""
-        content = self.result_text.toPlainText()
-        if not content.strip():
-            QMessageBox.warning(self, "提示", "请先计算，再下载PDF。")
-            return
-        path, _ = QFileDialog.getSaveFileName(
-            self, "保存PDF报告", "NPSHa计算报告.pdf", "PDF文件 (*.pdf)"
-        )
-        if not path:
-            return
-        try:
-            from reportlab.lib.pagesizes import A4
-            from reportlab.pdfgen import canvas
-            from reportlab.pdfbase import pdfmetrics
-            from reportlab.pdfbase.ttfonts import TTFont
-            font_paths = [
-                r"C:\Windows\Fonts\simhei.ttf",
-                r"C:\Windows\Fonts\msyh.ttc",
-                r"C:\Windows\Fonts\simsun.ttc",
-            ]
-            font_name = "SimHei"
-            for fp in font_paths:
-                if os.path.exists(fp):
-                    pdfmetrics.registerFont(TTFont(font_name, fp))
-                    break
-            c = canvas.Canvas(path, pagesize=A4)
-            width, height = A4
-            c.setFont(font_name, 11)
-            y = height - 50
-            for line in content.split("\n"):
-                if y < 50:
-                    c.showPage()
-                    c.setFont(font_name, 11)
-                    y = height - 50
-                c.drawString(40, y, line)
-                y -= 18
-            c.save()
-            QMessageBox.information(self, "成功", f"PDF已保存：\n{path}")
-        except ImportError:
-            txt_path = path.replace(".pdf", ".txt")
-            with open(txt_path, "w", encoding="utf-8") as f:
-                f.write(content)
-            QMessageBox.information(
-                self, "提示",
-                f"未安装reportlab，已保存为TXT格式：\n{txt_path}\n\n可通过 pip install reportlab 安装PDF支持。"
-            )
-        except Exception as e:
-            QMessageBox.critical(self, "错误", f"PDF生成失败：{e}")
+        """生成PDF格式计算书"""
+        ReportExporter.export_pdf(self, "NPSHaCalculator")

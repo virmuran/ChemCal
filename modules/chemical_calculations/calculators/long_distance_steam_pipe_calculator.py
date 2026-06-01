@@ -7,6 +7,12 @@ import math
 import os
 import importlib.util
 from modules.combo_box_utils import ComboBoxWheelBlocker
+import sys
+from pathlib import Path
+
+# DOCX 报告导出
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+from utils.docx_utils import ReportExporter
 
 # IAPWS-IF97 工业标准蒸汽物性（动态导入，避免 relative import 失败）
 try:
@@ -159,7 +165,6 @@ COMBOBOX_STYLE = """
         padding: 3px 8px;
     }
 """
-
 
 class LongDistanceSteamPipeCalculator(QWidget):
     """长输蒸汽管道温降计算器"""
@@ -452,11 +457,11 @@ class LongDistanceSteamPipeCalculator(QWidget):
             } """)
 
         # 下载TXT按钮
-        self.download_txt_btn = QPushButton("下载计算书(TXT)")
-        self.download_txt_btn.clicked.connect(self.download_txt_report)
-        self.download_txt_btn.setMinimumHeight(50)
-        self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_txt_btn.setStyleSheet("""
+        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
+        self.download_docx_btn.clicked.connect(self.download_docx_report)
+        self.download_docx_btn.setMinimumHeight(50)
+        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_docx_btn.setStyleSheet("""
             QPushButton {
                 background-color: #3498db;
                 color: white;
@@ -489,7 +494,7 @@ class LongDistanceSteamPipeCalculator(QWidget):
 
         bottom_layout.addWidget(self.clear_btn)
         bottom_layout.addStretch()
-        bottom_layout.addWidget(self.download_txt_btn)
+        bottom_layout.addWidget(self.download_docx_btn)
         bottom_layout.addWidget(self.download_pdf_btn)
 
         scroll_layout.addLayout(bottom_layout)
@@ -711,47 +716,12 @@ class LongDistanceSteamPipeCalculator(QWidget):
         except Exception as e:
             return f"生成报告失败: {str(e)}"
 
-    def download_txt_report(self):
-        """下载TXT报告"""
-        report = self.generate_report()
-        file_path, _ = QFileDialog.getSaveFileName(
-            self, "保存TXT报告", "长输蒸汽管道温降计算报告.txt", "Text Files (*.txt)"
-        )
-        if file_path:
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(report)
-
+    def download_docx_report(self):
+        """生成DOCX格式计算书"""
+        ReportExporter.export_docx(self, "LongDistanceSteamPipeCalculator")
     def download_pdf_report(self):
-        """生成并下载PDF报告"""
-        try:
-            from fpdf import FPDF
-
-            report = self.generate_report()
-            file_path, _ = QFileDialog.getSaveFileName(
-                self, "保存PDF报告", "长输蒸汽管道温降计算报告.pdf", "PDF Files (*.pdf)"
-            )
-            if not file_path:
-                return
-
-            pdf = FPDF()
-            pdf.add_page()
-
-            # 注册中文字体
-            font_path = "C:/Windows/Fonts/msyh.ttc"
-            pdf.add_font("msyh", "", font_path, uni=True)
-            pdf.set_font("msyh", size=10)
-
-            # 写入报告内容
-            for line in report.split("\n"):
-                pdf.cell(0, 8, line, new_x="LMARGIN", new_y="NEXT")
-
-            pdf.output(file_path)
-
-        except ImportError:
-            print("错误: 未安装 fpdf 库，请运行 pip install fpdf2")
-        except Exception as e:
-            print(f"生成PDF报告失败: {str(e)}")
-
+        """生成PDF格式计算书"""
+        ReportExporter.export_pdf(self, "LongDistanceSteamPipeCalculator")
     def calculate_steam_pipe_loss(self, steam_type, mass_flow, inlet_temp, inlet_pressure,
                                  pipe_length, pipe_diameter, roughness,
                                  insulation_thickness, insulation_conductivity, ambient_temp):
@@ -882,7 +852,6 @@ class LongDistanceSteamPipeCalculator(QWidget):
         text += f"  雷诺数：{results['reynolds']:.0f}\n\n"
         text += f"  流动状态：{results['flow_regime']}\n"
         self.result_text.setPlainText(text)
-
 
 if __name__ == "__main__":
     # 测试代码

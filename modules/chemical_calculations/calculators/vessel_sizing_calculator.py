@@ -14,6 +14,12 @@ import math
 import re
 from datetime import datetime
 from modules.combo_box_utils import ComboBoxWheelBlocker
+import sys
+from pathlib import Path
+
+# DOCX 报告导出
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+from utils.docx_utils import ReportExporter
 
 # 附件选择对话框 -------------------------------------------------
 COMBOBOX_STYLE = """
@@ -183,7 +189,6 @@ class AccessoriesDialog(QDialog):
     def get_accessory_data(self):
         return self.accessory_data
 
-
 # 主计算类 -------------------------------------------------------
 GROUP_STYLE = """
 QGroupBox {
@@ -199,7 +204,6 @@ QGroupBox::title {
     padding: 0 8px 0 8px;
 }
 """
-
 
 class 设备尺寸计算(QWidget):
     """设备直径和高度计算模块，支持多种容器形式和反向计算"""
@@ -546,11 +550,11 @@ class 设备尺寸计算(QWidget):
             } """)
         
         # 下载TXT按钮
-        self.download_txt_btn = QPushButton("下载计算书(TXT)")
-        self.download_txt_btn.clicked.connect(self.download_txt_report)
-        self.download_txt_btn.setMinimumHeight(50)
-        self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_txt_btn.setStyleSheet("""
+        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
+        self.download_docx_btn.clicked.connect(self.download_docx_report)
+        self.download_docx_btn.setMinimumHeight(50)
+        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_docx_btn.setStyleSheet("""
             QPushButton {
                 background-color: #3498db;
                 color: white;
@@ -583,7 +587,7 @@ class 设备尺寸计算(QWidget):
         
         bottom_layout.addWidget(self.clear_btn)
         bottom_layout.addStretch()
-        bottom_layout.addWidget(self.download_txt_btn)
+        bottom_layout.addWidget(self.download_docx_btn)
         bottom_layout.addWidget(self.download_pdf_btn)
         left_layout.addLayout(bottom_layout)
         left_layout.addStretch()
@@ -1511,86 +1515,12 @@ class 设备尺寸计算(QWidget):
 """
         return header + result_text + footer
 
-    def download_txt_report(self):
-        try:
-            content = self.generate_report()
-            if not content:
-                return
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            default_name = f"设备尺寸计算书_{timestamp}.txt"
-            path, _ = QFileDialog.getSaveFileName(self, "保存计算书", default_name, "Text Files (*.txt)")
-            if path:
-                with open(path, 'w', encoding='utf-8') as f:
-                    f.write(content)
-                QMessageBox.information(self, "成功", f"计算书已保存至:\n{path}")
-        except Exception as e:
-            QMessageBox.critical(self, "错误", f"保存失败: {e}")
-
+    def download_docx_report(self):
+        """生成DOCX格式计算书"""
+        ReportExporter.export_docx(self, "容器尺寸")
     def download_pdf_report(self):
-        try:
-            content = self.generate_report()
-            if not content:
-                return False
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            default_name = f"设备尺寸计算书_{timestamp}.pdf"
-            path, _ = QFileDialog.getSaveFileName(self, "保存PDF", default_name, "PDF Files (*.pdf)")
-            if not path:
-                return False
-
-            try:
-                from reportlab.lib.pagesizes import A4
-                from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-                from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-                from reportlab.lib.units import inch
-                from reportlab.pdfbase import pdfmetrics
-                from reportlab.pdfbase.ttfonts import TTFont
-                import os
-
-                font_registered = False
-                font_paths = [
-                    "C:/Windows/Fonts/simhei.ttf",
-                    "C:/Windows/Fonts/msyh.ttc",
-                    "/System/Library/Fonts/Arial.ttf",
-                ]
-                for fp in font_paths:
-                    if os.path.exists(fp):
-                        try:
-                            pdfmetrics.registerFont(TTFont('ChineseFont', fp))
-                            font_registered = True
-                            break
-                        except:
-                            continue
-                if not font_registered:
-                    pdfmetrics.registerFont(TTFont('ChineseFont', 'Helvetica'))
-
-                doc = SimpleDocTemplate(path, pagesize=A4)
-                styles = getSampleStyleSheet()
-                chinese_style = ParagraphStyle(
-                    'ChineseStyle',
-                    parent=styles['Normal'],
-                    fontName='ChineseFont',
-                    fontSize=10,
-                    leading=14,
-                )
-                story = []
-                for line in content.split('\n'):
-                    if line.strip():
-                        line = line.replace('═', '=').replace('─', '-')
-                        line = line.replace(' ', '&nbsp;')
-                        p = Paragraph(line, chinese_style)
-                        story.append(p)
-                        story.append(Spacer(1, 0.05*inch))
-                doc.build(story)
-                QMessageBox.information(self, "成功", f"PDF已保存至:\n{path}")
-                return True
-            except ImportError:
-                QMessageBox.warning(self, "功能缺失", "请安装reportlab: pip install reportlab")
-                return False
-        except Exception as e:
-            QMessageBox.critical(self, "错误", f"生成PDF失败: {e}")
-            return False
-
-
+        """生成PDF格式计算书"""
+        ReportExporter.export_pdf(self, "容器尺寸")
 if __name__ == "__main__":
     import sys
     from PySide6.QtWidgets import QApplication

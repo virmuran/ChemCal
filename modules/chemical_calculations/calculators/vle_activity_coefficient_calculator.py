@@ -7,6 +7,12 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
 import math
 from modules.combo_box_utils import ComboBoxWheelBlocker
+import sys
+from pathlib import Path
+
+# DOCX 报告导出
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+from utils.docx_utils import ReportExporter
 
 # ---------------------------------------------------------------------------
 #  物质数据库（Antoine + UNIQUAC r/q + 分子量）
@@ -76,7 +82,6 @@ BINARY_PARAMS_DB = {
     },
 }
 
-
 def _get_binary_params(comp_i, comp_j, model):
     """查找预设二元参数，正反均可匹配"""
     key1 = (comp_i, comp_j)
@@ -99,7 +104,6 @@ def _get_binary_params(comp_i, comp_j, model):
                 else: swapped[k] = v
             return swapped
     return None
-
 
 # ---------------------------------------------------------------------------
 #  纯 Python Rachford-Rice 求解器
@@ -139,7 +143,6 @@ def solve_rachford_rice(z, K, tol=1e-10, max_iter=200):
         V = V_new
     return V
 
-
 # ---------------------------------------------------------------------------
 #  活度系数计算函数（纯 Python）
 # ---------------------------------------------------------------------------
@@ -163,7 +166,6 @@ def wilson_ln_gamma(x, T, lambda_mat, n):
         ln_gamma[i] = 1.0 - math.log(sum_xj_Lij) - sum_xk_Lki_over_sum
     return ln_gamma
 
-
 def nrtl_ln_gamma(x, T, tau_mat, G_mat, alpha_mat, n):
     """NRTL 方程，返回 ln γ 列表。"""
     ln_gamma = [0.0] * n
@@ -184,7 +186,6 @@ def nrtl_ln_gamma(x, T, tau_mat, G_mat, alpha_mat, n):
             sum_xj_Gij_over_denom += x[j] * G_mat[i][j] / denom_j * (tau_mat[i][j] - sum_xk_Gkj_taukj / denom_j)
         ln_gamma[i] = sum_xj_Gij_over_denom + sum_xj_Gji_tauji / sum_xj_Gji if sum_xj_Gji > 0 else 0.0
     return ln_gamma
-
 
 def uniquac_ln_gamma(x, T, r_list, q_list, tau_mat, n):
     """UNIQUAC 方程，返回 ln γ 列表。"""
@@ -227,7 +228,6 @@ def uniquac_ln_gamma(x, T, r_list, q_list, tau_mat, n):
 
     return [ln_gamma_C[i] + ln_gamma_R[i] for i in range(n)]
 
-
 # ---------------------------------------------------------------------------
 #  QGroupBox 统一样式
 # ---------------------------------------------------------------------------
@@ -264,7 +264,6 @@ COMBOBOX_STYLE = """
         padding: 3px 8px;
     }
 """
-
 
 class VLEActivityCoefficientCalculator(QWidget):
     """气液平衡（活度系数法）计算器 - 统一UI风格版"""
@@ -527,11 +526,11 @@ class VLEActivityCoefficientCalculator(QWidget):
             } """)
         
         # 下载TXT按钮
-        self.download_txt_btn = QPushButton("下载计算书(TXT)")
-        self.download_txt_btn.clicked.connect(self.download_txt_report)
-        self.download_txt_btn.setMinimumHeight(50)
-        self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_txt_btn.setStyleSheet("""
+        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
+        self.download_docx_btn.clicked.connect(self.download_docx_report)
+        self.download_docx_btn.setMinimumHeight(50)
+        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_docx_btn.setStyleSheet("""
             QPushButton {
                 background-color: #3498db;
                 color: white;
@@ -564,7 +563,7 @@ class VLEActivityCoefficientCalculator(QWidget):
         
         bottom_layout.addWidget(self.clear_btn)
         bottom_layout.addStretch()
-        bottom_layout.addWidget(self.download_txt_btn)
+        bottom_layout.addWidget(self.download_docx_btn)
         bottom_layout.addWidget(self.download_pdf_btn)
         left_layout.addLayout(bottom_layout)
 
@@ -1104,59 +1103,12 @@ class VLEActivityCoefficientCalculator(QWidget):
         lines.append(self.result_text.toPlainText())
         return "\n".join(lines)
 
-    def download_txt_report(self):
-        """下载TXT计算书"""
-        try:
-            from PySide6.QtWidgets import QFileDialog
-            content = self.generate_report()
-            if not content or content == "尚未进行计算。":
-                QMessageBox.warning(self, "提示", "请先进行计算后再下载。")
-                return
-            file_path, _ = QFileDialog.getSaveFileName(
-                self, "保存计算书", "VLE活度系数计算书.txt", "Text Files (*.txt)"
-            )
-            if file_path:
-                from datetime import datetime
-                header = f"ChemCal - 气液平衡计算（活度系数法）\n生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n{'='*50}\n\n"
-                with open(file_path, "w", encoding="utf-8") as f:
-                    f.write(header + content)
-                QMessageBox.information(self, "成功", f"计算书已保存至:\n{file_path}")
-        except Exception as e:
-            QMessageBox.critical(self, "错误", f"保存失败: {str(e)}")
-
+    def download_docx_report(self):
+        """生成DOCX格式计算书"""
+        ReportExporter.export_docx(self, "VLEActivityCoefficientCalculator")
     def download_pdf_report(self):
-        """下载PDF计算书"""
-        try:
-            from PySide6.QtWidgets import QFileDialog
-            content = self.generate_report()
-            if not content or content == "尚未进行计算。":
-                QMessageBox.warning(self, "提示", "请先进行计算后再下载。")
-                return
-            file_path, _ = QFileDialog.getSaveFileName(
-                self, "保存PDF计算书", "VLE活度系数计算书.pdf", "PDF Files (*.pdf)"
-            )
-            if file_path:
-                from fpdf import FPDF
-                pdf = FPDF()
-                pdf.add_page()
-                # 尝试使用中文字体
-                try:
-                    font_path = "C:/Windows/Fonts/msyh.ttc"
-                    pdf.add_font("msyh", "", font_path, uni=True)
-                    pdf.set_font("msyh", size=10)
-                except Exception:
-                    pdf.set_font("Helvetica", size=10)
-
-                for line in content.split("\n"):
-                    pdf.cell(0, 6, line, ln=True)
-                pdf.output(file_path)
-                QMessageBox.information(self, "成功", f"PDF计算书已保存至:\n{file_path}")
-        except ImportError:
-            QMessageBox.critical(self, "错误", "需要安装 fpdf 库: pip install fpdf")
-        except Exception as e:
-            QMessageBox.critical(self, "错误", f"PDF生成失败: {str(e)}")
-
-
+        """生成PDF格式计算书"""
+        ReportExporter.export_pdf(self, "VLEActivityCoefficientCalculator")
 if __name__ == "__main__":
     import sys
     from PySide6.QtWidgets import QApplication

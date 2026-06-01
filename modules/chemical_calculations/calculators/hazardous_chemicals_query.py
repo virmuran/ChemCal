@@ -16,6 +16,12 @@ import json
 import re
 import os
 from modules.combo_box_utils import ComboBoxWheelBlocker
+import sys
+from pathlib import Path
+
+# DOCX 报告导出
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+from utils.docx_utils import ReportExporter
 
 # QGroupBox统一样式
 
@@ -67,7 +73,6 @@ COMBOBOX_STYLE = """
         padding: 3px 8px;
     }
 """
-
 
 class ChemicalDetailDialog(QDialog):
     """化学品详细信息对话框"""
@@ -367,7 +372,6 @@ class ChemicalDetailDialog(QDialog):
         widget.setWidget(content)
         return widget
 
-
 class HazardousChemicalsQuery(QWidget):
     """危险化学品查询系统 - Tab式查询计算器"""
     calculation_type = "hazardous_chemicals_query"
@@ -571,11 +575,11 @@ class HazardousChemicalsQuery(QWidget):
             } """)
         
         # 下载TXT按钮
-        self.download_txt_btn = QPushButton("下载计算书(TXT)")
-        self.download_txt_btn.clicked.connect(self.download_txt_report)
-        self.download_txt_btn.setMinimumHeight(50)
-        self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_txt_btn.setStyleSheet("""
+        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
+        self.download_docx_btn.clicked.connect(self.download_docx_report)
+        self.download_docx_btn.setMinimumHeight(50)
+        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_docx_btn.setStyleSheet("""
             QPushButton {
                 background-color: #3498db;
                 color: white;
@@ -587,7 +591,7 @@ class HazardousChemicalsQuery(QWidget):
             QPushButton:hover {
                 background-color: #2980b9;
             } """)
-        self.download_txt_btn.setEnabled(False)
+        self.download_docx_btn.setEnabled(False)
         
         # 下载PDF按钮
         self.download_pdf_btn = QPushButton("下载计算书(PDF)")
@@ -609,7 +613,7 @@ class HazardousChemicalsQuery(QWidget):
         self.download_pdf_btn.setEnabled(False)
         
         bottom_layout.addWidget(self.clear_btn)
-        bottom_layout.addWidget(self.download_txt_btn)
+        bottom_layout.addWidget(self.download_docx_btn)
         bottom_layout.addWidget(self.download_pdf_btn)
         right_layout.addLayout(bottom_layout)
 
@@ -885,7 +889,7 @@ class HazardousChemicalsQuery(QWidget):
         if chemical:
             self.current_chemical = chemical
             self.detail_btn.setEnabled(True)
-            self.download_txt_btn.setEnabled(True)
+            self.download_docx_btn.setEnabled(True)
             self.download_pdf_btn.setEnabled(True)
             self.update_detail_display(chemical)
 
@@ -944,7 +948,7 @@ class HazardousChemicalsQuery(QWidget):
         self.detail_text.clear()
         self.current_chemical = None
         self.detail_btn.setEnabled(False)
-        self.download_txt_btn.setEnabled(False)
+        self.download_docx_btn.setEnabled(False)
         self.download_pdf_btn.setEnabled(False)
 
     def _get_history_data(self):
@@ -1051,107 +1055,12 @@ GHS象形图: {chem.get('ghs_symbols', '未知')}
 """
         return report
 
-    def download_txt_report(self):
-        """下载TXT报告"""
-        from PySide6.QtWidgets import QFileDialog
-
-        if not hasattr(self, 'current_chemical') or not self.current_chemical:
-            QMessageBox.warning(self, "提示", "请先选择一种化学品进行查询")
-            return
-
-        chem = self.current_chemical
-        default_filename = f"化学品安全技术说明书_{chem.get('name', '未知')}.txt"
-
-        file_path, _ = QFileDialog.getSaveFileName(
-            self,
-            "保存TXT报告",
-            default_filename,
-            "Text Files (*.txt);;All Files (*)"
-        )
-
-        if file_path:
-            try:
-                report = self.generate_report()
-                with open(file_path, 'w', encoding='utf-8') as f:
-                    f.write(report)
-                QMessageBox.information(self, "成功", f"报告已保存到:\n{file_path}")
-            except Exception as e:
-                QMessageBox.critical(self, "错误", f"保存文件时出错:\n{str(e)}")
-
+    def download_docx_report(self):
+        """生成DOCX格式计算书"""
+        ReportExporter.export_docx(self, "危险化学品查询")
     def download_pdf_report(self):
-        """生成PDF报告"""
-        from PySide6.QtWidgets import QFileDialog
-
-        if not hasattr(self, 'current_chemical') or not self.current_chemical:
-            QMessageBox.warning(self, "提示", "请先选择一种化学品进行查询")
-            return
-
-        chem = self.current_chemical
-        default_filename = f"化学品安全技术说明书_{chem.get('name', '未知')}.pdf"
-
-        file_path, _ = QFileDialog.getSaveFileName(
-            self,
-            "保存PDF报告",
-            default_filename,
-            "PDF Files (*.pdf);;All Files (*)"
-        )
-
-        if file_path:
-            try:
-                from fpdf import FPDF
-
-                pdf = FPDF()
-                pdf.add_page()
-                pdf.add_font('msyh', '', 'C:/Windows/Fonts/msyh.ttc', uni=True)
-                pdf.set_font('msyh', '', 10)
-
-                # 标题
-                pdf.set_font('msyh', '', 16)
-                pdf.cell(0, 15, f"危险化学品安全技术说明书 - {chem.get('name', '未知')}", ln=True, align='C')
-                pdf.ln(10)
-
-                # 基本信息
-                pdf.set_font('msyh', '', 12)
-                pdf.cell(0, 8, "基本信息", ln=True)
-                pdf.set_font('msyh', '', 10)
-                pdf.cell(60, 6, f"CAS号: {chem.get('cas', '未知')}", ln=True)
-                pdf.cell(60, 6, f"分子式: {chem.get('formula', '未知')}", ln=True)
-                pdf.cell(60, 6, f"分子量: {chem.get('molecular_weight', '未知')}", ln=True)
-                pdf.cell(60, 6, f"危险性类别: {chem.get('hazard_class', '未知')}", ln=True)
-                pdf.ln(5)
-
-                # 危险性说明
-                pdf.set_font('msyh', '', 12)
-                pdf.cell(0, 8, "危险性说明", ln=True)
-                pdf.set_font('msyh', '', 10)
-                hazard_text = chem.get('hazard_statements', '无').replace(';', '\n')
-                pdf.multi_cell(0, 6, hazard_text)
-                pdf.ln(5)
-
-                # 防范说明
-                pdf.set_font('msyh', '', 12)
-                pdf.cell(0, 8, "防范说明", ln=True)
-                pdf.set_font('msyh', '', 10)
-                precaution_text = chem.get('precautionary_statements', '无').replace(';', '\n')
-                pdf.multi_cell(0, 6, precaution_text)
-                pdf.ln(5)
-
-                # 急救措施
-                pdf.set_font('msyh', '', 12)
-                pdf.cell(0, 8, "急救措施", ln=True)
-                pdf.set_font('msyh', '', 10)
-                first_aid_text = chem.get('first_aid', '无').replace(';', '\n')
-                pdf.multi_cell(0, 6, first_aid_text)
-
-                pdf.output(file_path)
-                QMessageBox.information(self, "成功", f"PDF报告已保存到:\n{file_path}")
-
-            except ImportError:
-                QMessageBox.critical(self, "错误", "请先安装fpdf库:\npip install fpdf")
-            except Exception as e:
-                QMessageBox.critical(self, "错误", f"生成PDF时出错:\n{str(e)}")
-
-
+        """生成PDF格式计算书"""
+        ReportExporter.export_pdf(self, "危险化学品查询")
 if __name__ == "__main__":
     # 测试代码
     import sys

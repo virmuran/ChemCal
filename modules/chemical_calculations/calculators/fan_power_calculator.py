@@ -10,7 +10,12 @@ from PySide6.QtGui import QFont, QDoubleValidator
 import math
 from datetime import datetime
 from modules.combo_box_utils import ComboBoxWheelBlocker
+import sys
+from pathlib import Path
 
+# DOCX 报告导出
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+from utils.docx_utils import ReportExporter
 
 # 标准 QGroupBox 样式
 COMBOBOX_STYLE = """
@@ -32,7 +37,6 @@ COMBOBOX_STYLE = """
         padding: 3px 8px;
     }
 """
-
 
 class FanPowerCalculator(QWidget):
     """风机功率计算器（统一UI风格版）"""
@@ -265,11 +269,11 @@ class FanPowerCalculator(QWidget):
             } """)
         
         # 下载TXT按钮
-        self.download_txt_btn = QPushButton("下载计算书(TXT)")
-        self.download_txt_btn.clicked.connect(self.download_txt_report)
-        self.download_txt_btn.setMinimumHeight(50)
-        self.download_txt_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_txt_btn.setStyleSheet("""
+        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
+        self.download_docx_btn.clicked.connect(self.download_docx_report)
+        self.download_docx_btn.setMinimumHeight(50)
+        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_docx_btn.setStyleSheet("""
             QPushButton {
                 background-color: #3498db;
                 color: white;
@@ -302,7 +306,7 @@ class FanPowerCalculator(QWidget):
         
         bottom_layout.addWidget(self.clear_btn)
         bottom_layout.addStretch()
-        bottom_layout.addWidget(self.download_txt_btn)
+        bottom_layout.addWidget(self.download_docx_btn)
         bottom_layout.addWidget(self.download_pdf_btn)
         left_layout.addLayout(bottom_layout)
         left_layout.addStretch()
@@ -686,82 +690,12 @@ class FanPowerCalculator(QWidget):
         )
         return report
 
-    def download_txt_report(self):
-        try:
-            report = self.generate_report()
-            if report is None:
-                return
-            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-            path, _ = QFileDialog.getSaveFileName(
-                self, "保存计算书", f"风机功率计算书_{ts}.txt", "Text Files (*.txt)")
-            if path:
-                with open(path, "w", encoding="utf-8") as f:
-                    f.write(report)
-                QMessageBox.information(self, "下载成功", f"计算书已保存到:\n{path}")
-        except Exception as e:
-            QMessageBox.critical(self, "下载失败", f"保存时发生错误: {str(e)}")
-
+    def download_docx_report(self):
+        """生成DOCX格式计算书"""
+        ReportExporter.export_docx(self, "FanPowerCalculator")
     def download_pdf_report(self):
-        try:
-            report = self.generate_report()
-            if report is None:
-                return False
-            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-            path, _ = QFileDialog.getSaveFileName(
-                self, "保存PDF计算书", f"风机功率计算书_{ts}.pdf", "PDF Files (*.pdf)")
-            if not path:
-                return False
-
-            try:
-                from reportlab.lib.pagesizes import A4
-                from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-                from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-                from reportlab.lib.units import inch
-                from reportlab.pdfbase import pdfmetrics
-                from reportlab.pdfbase.ttfonts import TTFont
-                import os
-
-                font_paths = [
-                    "C:/Windows/Fonts/simhei.ttf",
-                    "C:/Windows/Fonts/simsun.ttc",
-                    "C:/Windows/Fonts/msyh.ttc",
-                ]
-                for fp in font_paths:
-                    if os.path.exists(fp):
-                        try:
-                            pdfmetrics.registerFont(TTFont("ChineseFont", fp))
-                            break
-                        except Exception:
-                            continue
-
-                doc    = SimpleDocTemplate(path, pagesize=A4)
-                styles = getSampleStyleSheet()
-                s_norm = ParagraphStyle("CN", parent=styles["Normal"],
-                                        fontName="ChineseFont", fontSize=10, leading=14)
-                s_head = ParagraphStyle("CNH", parent=styles["Heading1"],
-                                        fontName="ChineseFont", fontSize=16, leading=20,
-                                        spaceAfter=12)
-                story  = [Paragraph("工程计算书 - 风机功率计算", s_head),
-                          Spacer(1, 0.2 * inch)]
-                for line in report.split("\n"):
-                    if line.strip():
-                        line = (line.replace(" ", "&nbsp;")
-                                    .replace("═", "=").replace("─", "-")
-                                    .replace("•", ""))
-                        story.append(Paragraph(line, s_norm))
-                        story.append(Spacer(1, 0.05 * inch))
-                doc.build(story)
-                QMessageBox.information(self, "生成成功", f"PDF计算书已保存到:\n{path}")
-                return True
-            except ImportError:
-                QMessageBox.warning(self, "功能不可用",
-                                    "PDF生成需要安装 reportlab\n\n请运行: pip install reportlab")
-                return False
-        except Exception as e:
-            QMessageBox.critical(self, "生成失败", f"生成PDF时发生错误: {str(e)}")
-            return False
-
-
+        """生成PDF格式计算书"""
+        ReportExporter.export_pdf(self, "FanPowerCalculator")
 if __name__ == "__main__":
     import sys
     from PySide6.QtWidgets import QApplication
