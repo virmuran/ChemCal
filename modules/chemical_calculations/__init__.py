@@ -5,4 +5,3 @@
 from .chemical_calculations_widget import ChemicalCalculationsWidget
 
 __all__ = ['ChemicalCalculationsWidget']
-__version__ = '1.34.0'

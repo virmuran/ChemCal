@@ -16,7 +16,7 @@
     <img src="https://img.shields.io/badge/python-3.8%2B-blue.svg" alt="Python">
   </a>
   <a href="https://github.com/virmuran/ChemCal">
-    <img src="https://img.shields.io/badge/version-1.3.20260530-green.svg" alt="Version">
+    <img src="https://img.shields.io/badge/version-1.3.20260601-green.svg" alt="Version">
   </a>
   <a href="https://github.com/virmuran/ChemCal">
     <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg" alt="Platform">
@@ -25,7 +25,7 @@
 
 ---
 
-**ChemCal** 是一款面向化工工程师的专业桌面应用，集成了 36 种工程计算器、单位换算、计算历史记录和可视化倒计时。基于 PySide6 构建，支持三套主题（亮色 / 暗色 / 蓝色），所有数据本地存储，不上传任何服务器。
+**ChemCal** 是一款面向化工工程师的专业桌面应用，集成了 37 种工程计算器、单位换算、计算历史记录和可视化倒计时。基于 PySide6 构建，支持三套主题（亮色 / 暗色 / 蓝色），所有数据本地存储，不上传任何服务器。
 
 ---
 
@@ -33,18 +33,18 @@
 
 ### 工程计算
 
-ChemCal 提供六大类共 36 个工程计算器，覆盖化工设计核心场景：
+ChemCal 提供六大类共 37 个工程计算器，覆盖化工设计核心场景：
 
 | 类别     | 计算器                                                                                                                                                                                   | 数量 |
 | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--: |
 | 物性查询 | 水蒸气性质（IAPWS-IF97）、湿空气计算、制冷剂物性、纯物质物性、溶液密度、固体溶解度、腐蚀查询、危险化学品、气体状态转换、EOS 状态方程、气体混合物 EOS、汽液平衡（活度系数）、混合液体闪点 |  13  |
-| 管道系统 | 管径计算、管道压降、管道壁厚、管道跨距、管道间距、管道补偿、压力管道定义、可压缩流体压降、离心泵功率、NPSHa 汽蚀余量、蒸汽管径流量、长输蒸汽管道温降                                     |  12  |
+| 管道系统 | 管径计算、管道压降、管道壁厚、管道跨距、管道间距、管道补偿、压力管道定义、可压缩流体压降、离心泵功率、NPSHa 汽蚀余量、蒸汽管径流量、长输蒸汽管道温降、循环水用水量                         |  13  |
 | 换热设备 | 换热器计算、换热器面积（含"未知侧设计"模式）、风机功率、保温厚度                                                                                                                         |  4  |
 | 容器设备 | 设备尺寸计算、罐体重量、篮式过滤器设计                                                                                                                                                   |  3  |
 | 安全消防 | 安全阀计算（模式驱动/6种工况/Kd分类）、消火栓                                                                                                                                            |  2  |
 | 制冷热工 | 制冷循环（工业级精度）                                                                                                                                                                   |  1  |
 
-每个计算器均支持 **TXT/PDF 计算书导出**，方便存档和审查。
+每个计算器均支持 **DOCX/PDF 计算书导出**，方便存档和审查。导出逻辑由 `utils/docx_utils.py` 中的 `ReportExporter` 统一管理。
 
 ### 单位换算
 
@@ -99,6 +99,7 @@ PySide6 >= 6.5
 NumPy
 SciPy
 ReportLab
+python-docx >= 0.8.11
 Loguru
 psutil
 ```
@@ -120,12 +121,20 @@ ChemCal/
 ├── ChemCal.ico                   # 应用图标（多分辨率）
 ├── ChemCal.png                   # Logo
 │
+├── utils/                      # 公共工具模块
+│   ├── __init__.py
+│   └── docx_utils.py            # DOCX 报告生成（ReportExporter）
+│
+├── scripts/                    # 迁移/维护脚本
+│   └── migrate_reports.py       # 批量迁移导出方法
+│
 ├── modules/
 │   ├── chemical_calculations/
-│   │   ├── calculators/        # 36 个计算器实现
+│   │   ├── calculators/        # 37 个计算器实现
 │   │   │   ├── steam_property_calculator.py
 │   │   │   ├── pressure_drop_calculator.py
 │   │   │   ├── heat_exchanger_area_calculator.py
+│   │   │   ├── cooling_water_calculator.py  # 循环水用水量
 │   │   │   └── ...
 │   │   ├── steam_iapws.py      # IAPWS-IF97 水蒸气物性
 │   │   ├── refrigerant_eos.py  # 制冷剂 PR 状态方程
@@ -173,6 +182,14 @@ ChemCal/
 ### 安全阀泄放面积计算
 
 模式驱动架构，6 种计算类型（饱和/过热水蒸汽、气体、空气、火灾已知/未知润湿面积）。支持已知/未知泄放量双模态，Kd 流量系数按阀型分类（全启式 0.65 / 带调节圈微启 0.45 / 不带调节圈微启 0.30）。火灾工况自动估算润湿面积（卧式/立式/球罐）。
+
+### 循环水用水量计算
+
+9 种设备模式一键切换：发酵罐（7种发酵类型+产热率预设）、结晶罐、化学反应釜、脱色罐、换热器、冷凝器、蒸馏釜/蒸发器、气体冷却器、直接输入。冷却水类型预设（循环水/冷冻水/深冷水），自动计算循环水量并推荐管径（DN25~500）。
+
+### DOCX 报告导出
+
+v1.3 将全局报告导出从 TXT 升级为 DOCX，提取 `utils/docx_utils.py` 公共模块（ReportExporter），批量迁移 34 个计算器，净减少 ~3200 行重复代码。新计算器只需 4 行调用即可实现 DOCX/PDF 双格式导出。
 
 ---
 

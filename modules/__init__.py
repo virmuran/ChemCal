@@ -1,5 +1,4 @@
 # ChemCal/modules/__init__.py
-__version__ = "v1.3.20260530"
 __author__ = "ChemCal Team"
 
 import os
@@ -136,7 +135,6 @@ if _added_paths:
 
 # 导出常用函数和类
 __all__ = [
-    '__version__',
     '__author__',
     'init_database',
     'get_data_manager',
@@ -147,7 +145,7 @@ __all__ = [
 
 # 如果直接运行此文件，执行测试
 if __name__ == "__main__":
-    print(f"ChemCal 模块包 v{__version__}")
+    print("ChemCal 模块包")
     print(f"作者: {__author__}")
     
     print("\n检查模块依赖...")
