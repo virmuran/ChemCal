@@ -2,36 +2,48 @@
 # ChemCal 项目专用 .gitignore 文件
 # ================================
 
-# Python 字节码和缓存文件
+# ── Python 字节码和缓存 ──
 __pycache__/
 *.py[cod]
 *$py.class
 
-# PyInstaller 构建输出
+# ── PyInstaller 构建输出 ──
 build/
 dist/
 *.spec
 
-# 虚拟环境（强烈建议所有协作者都在独立的虚拟环境中工作）
+# ── 打包脚本（本地使用，不上传）──
+build.bat
+
+# ── 虚拟环境 ──
 venv/
 .venv/
 env/
 ENV/
+.conda/
 
-# IDE 和编辑器配置
+# ── IDE 和编辑器配置 ──
 .vscode/
 .idea/
 *.swp
 *.swo
+*.sublime-workspace
 
-# 系统文件
+# ── 系统文件 ──
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# 项目特定的可执行文件和打包文件
-ChemCal.exe
+# ── 可执行文件和打包产物 ──
 *.exe
+*.msi
 
-# 用户数据文件（本地存储的用户数据，不上传）
+# ── 用户运行时数据 ──
+.ChemCal/
 ChemCal_data.json
+*.log
+
+# ── 测试和临时文件 ──
+*.tmp
+*.bak
+*.orig

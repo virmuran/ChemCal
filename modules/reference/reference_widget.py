@@ -2,6 +2,7 @@
 """参考资料库 — 左侧树形分类导航 + 右侧内容展示 + 全局搜索"""
 
 import os
+import sys
 import json
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTreeWidget, QTreeWidgetItem,
@@ -14,13 +15,20 @@ from PySide6.QtGui import QFont, QColor, QBrush
 
 # ── 加载参考数据 ──────────────────────────────────────────────
 def _load_reference_data():
-    """从 JSON 文件加载参考数据库"""
-    json_path = os.path.join(
+    """从 JSON 文件加载参考数据库（兼容 PyInstaller 打包路径）"""
+    # 优先使用 PyInstaller 打包后的路径
+    base = getattr(sys, "_MEIPASS", os.path.abspath("."))
+    json_path = os.path.join(base, "data", "reference_db.json")
+    if os.path.exists(json_path):
+        with open(json_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    # 开发环境回退：从当前文件向上推到项目根目录
+    fallback = os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
         "data", "reference_db.json"
     )
-    if os.path.exists(json_path):
-        with open(json_path, "r", encoding="utf-8") as f:
+    if os.path.exists(fallback):
+        with open(fallback, "r", encoding="utf-8") as f:
             return json.load(f)
     return []
 

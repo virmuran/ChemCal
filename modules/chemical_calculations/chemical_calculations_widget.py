@@ -9,6 +9,18 @@ import os
 import importlib.util
 from modules.history_db import HistoryDB
 
+# 日志记录器（延迟初始化，避免循环导入）
+_logger = None
+def _get_logger():
+    global _logger
+    if _logger is None:
+        try:
+            from loguru import logger as _l
+            _logger = _l
+        except ImportError:
+            _logger = None
+    return _logger
+
 class ChemicalCalculationsWidget(QWidget):
     """工程计算模块 - 左侧导航布局"""
     
@@ -148,7 +160,11 @@ class ChemicalCalculationsWidget(QWidget):
                 self.add_page(title, widget)
                 success_count += 1
             except Exception as e:
-                print(f"FAIL: {title} 页面创建失败: {e}")
+                err_msg = f"FAIL: {title} 页面创建失败: {e}"
+                print(err_msg)
+                _log = _get_logger()
+                if _log:
+                    _log.error("计算器页面创建失败: {} | {}", title, e)
                 # 创建错误页面
                 error_widget = self.create_error_widget(title, str(e))
                 self.add_page(f"{title} (错误)", error_widget)
@@ -160,10 +176,18 @@ class ChemicalCalculationsWidget(QWidget):
     def create_calculator_widget(self, calculator_name, module_name, supports_data_manager, display_name=None):
         """动态创建计算器部件"""
         try:
-            # 获取当前文件所在目录
+            # 获取当前文件所在目录（兼容 PyInstaller 打包）
             current_dir = os.path.dirname(os.path.abspath(__file__))
-            # 构建计算器模块的完整路径
             calculator_path = os.path.join(current_dir, "calculators", f"{module_name}.py")
+
+            # PyInstaller 打包后 __file__ 可能不指向 _MEIPASS，回退查找
+            if not os.path.exists(calculator_path):
+                _meipass = getattr(sys, '_MEIPASS', None)
+                if _meipass:
+                    calculator_path = os.path.join(
+                        _meipass, "modules", "chemical_calculations",
+                        "calculators", f"{module_name}.py"
+                    )
 
             # 检查文件是否存在
             if not os.path.exists(calculator_path):
@@ -196,7 +220,13 @@ class ChemicalCalculationsWidget(QWidget):
             return widget
 
         except Exception as e:
-            print(f"创建 {calculator_name} 失败: {e}")
+            import traceback as _tb
+            err_msg = f"创建 {calculator_name} 失败: {e}"
+            print(err_msg)
+            _tb.print_exc()
+            _log = _get_logger()
+            if _log:
+                _log.error("计算器加载失败: {} | 路径: {} | 错误: {} | 详情:\n{}", calculator_name, calculator_path if 'calculator_path' in dir() else "未知", e, _tb.format_exc())
             # 返回占位符部件
             return self.create_placeholder_widget(calculator_name)
 
