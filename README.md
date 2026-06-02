@@ -2,7 +2,7 @@
   <img src="ChemCal.ico" alt="ChemCal Logo" width="128" />
 </p>
 
-<h1 align="center">ChemCal</h1>
+<h1 align="center">ChemCal · 化算</h1>
 
 <p align="center">
   <strong>化工工程师的桌面生产力工具</strong>
@@ -13,19 +13,19 @@
     <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License">
   </a>
   <a href="https://www.python.org/downloads/">
-    <img src="https://img.shields.io/badge/python-3.8%2B-blue.svg" alt="Python">
+    <img src="https://img.shields.io/badge/python-3.13-blue.svg" alt="Python">
   </a>
   <a href="https://github.com/virmuran/ChemCal">
-    <img src="https://img.shields.io/badge/version-1.3.20260601-green.svg" alt="Version">
+    <img src="https://img.shields.io/badge/version-1.4.20260602-green.svg" alt="Version">
   </a>
   <a href="https://github.com/virmuran/ChemCal">
-    <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg" alt="Platform">
+    <img src="https://img.shields.io/badge/platform-Windows-lightgrey.svg" alt="Platform">
   </a>
 </p>
 
 ---
 
-**ChemCal** 是一款面向化工工程师的专业桌面应用，集成了 37 种工程计算器、单位换算、计算历史记录和可视化倒计时。基于 PySide6 构建，支持三套主题（亮色 / 暗色 / 蓝色），所有数据本地存储，不上传任何服务器。
+**ChemCal（化算）** 是一款面向化工工程师的专业桌面应用，集成了 38 种工程计算器、参考资料库、单位换算、计算历史记录和可视化倒计时。基于 Python 3.13 + PySide6 构建，支持三套主题（亮色 / 暗色 / 蓝色），所有数据本地存储，不上传任何服务器。
 
 ---
 
@@ -33,7 +33,7 @@
 
 ### 工程计算
 
-ChemCal 提供六大类共 37 个工程计算器，覆盖化工设计核心场景：
+ChemCal 提供六大类共 38 个工程计算器，覆盖化工设计核心场景：
 
 | 类别     | 计算器                                                                                                                                                                                   | 数量 |
 | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--: |
@@ -45,6 +45,24 @@ ChemCal 提供六大类共 37 个工程计算器，覆盖化工设计核心场�
 | 制冷热工 | 制冷循环（工业级精度）                                                                                                                                                                   |  1  |
 
 每个计算器均支持 **DOCX/PDF 计算书导出**，方便存档和审查。导出逻辑由 `utils/docx_utils.py` 中的 `ReportExporter` 统一管理。
+
+### 参考资料库
+
+内置化工设计常用规范数据，分门别类，全文搜索，告别翻书查表：
+
+| 分类 | 内容 | 条目数 |
+| ---- | ---- | :----: |
+| 设备布置 | 储罐间距、塔容器间距、操作通道、平台梯子、防火间距 | 5 |
+| 管道设计 | 推荐流速、管径选型、支吊架间距、壁厚公式、管道材料 | 5 |
+| 安全规范 | 安全阀整定压力、泄放量公式、防爆区域、安全色标志 | 4 |
+| 计算依据 | 换热器/泵/压降/循环水公式及参数来源 | 4 |
+| 物性数据 | 液体物性、汽化潜热、结晶热、污垢热阻 | 4 |
+| 材料规范 | 法兰标准、垫片选型、阀门选型、密封材料 | 4 |
+
+- **全文搜索**：输入关键词即时匹配分类名、标题、内容、来源
+- **表格展示**：规范数据以表格呈现，交替行色，来源标注
+- **公式展示**：计算公式自动排版，变量定义加粗高亮
+- **数据存储**：JSON 格式（`data/reference_db.json`），方便扩展和导入
 
 ### 单位换算
 
@@ -75,7 +93,7 @@ ChemCal 提供六大类共 37 个工程计算器，覆盖化工设计核心场�
 
 ### 环境要求
 
-- Python 3.8+
+- Python 3.13+
 - pip（包管理器）
 
 ### 安装
@@ -121,6 +139,9 @@ ChemCal/
 ├── ChemCal.ico                   # 应用图标（多分辨率）
 ├── ChemCal.png                   # Logo
 │
+├── data/                       # 数据文件
+│   └── reference_db.json         # 参考资料库数据
+│
 ├── utils/                      # 公共工具模块
 │   ├── __init__.py
 │   └── docx_utils.py            # DOCX 报告生成（ReportExporter）
@@ -130,15 +151,19 @@ ChemCal/
 │
 ├── modules/
 │   ├── chemical_calculations/
-│   │   ├── calculators/        # 37 个计算器实现
+│   │   ├── calculators/        # 38 个计算器实现
 │   │   │   ├── steam_property_calculator.py
 │   │   │   ├── pressure_drop_calculator.py
 │   │   │   ├── heat_exchanger_area_calculator.py
-│   │   │   ├── cooling_water_calculator.py  # 循环水用水量
+│   │   │   ├── cooling_water_calculator.py  # 循环水用水量（含多效蒸发器/结晶罐）
 │   │   │   └── ...
 │   │   ├── steam_iapws.py      # IAPWS-IF97 水蒸气物性
 │   │   ├── refrigerant_eos.py  # 制冷剂 PR 状态方程
 │   │   └── chemical_calculations_widget.py
+│   │
+│   ├── reference/              # 参考资料库
+│   │   ├── __init__.py
+│   │   └── reference_widget.py # 树形导航 + 搜索 + 表格/公式展示
 │   │
 │   ├── converter/              # 单位换算器（14 类）
 │   │   ├── converters.py
@@ -153,6 +178,12 @@ ChemCal/
 ---
 
 ## 特色亮点
+
+### 参考资料库
+
+化工设计中的规范数据（设备间距、流速范围、安全阀整定压力、物性数据等）往往散落在多本规范手册中，查找费时。ChemCal 将这些数据电子化、结构化，支持全文搜索，一键定位。每条数据均标注来源（GB/HG/TSG/API 标准），方便溯源。
+
+后续计划：导入 GB 国家标准全文、MSDS 化学品安全技术说明书。
 
 ### 防闪退保护
 
@@ -185,11 +216,45 @@ ChemCal/
 
 ### 循环水用水量计算
 
-9 种设备模式一键切换：发酵罐（7种发酵类型+产热率预设）、结晶罐、化学反应釜、脱色罐、换热器、冷凝器、蒸馏釜/蒸发器、气体冷却器、直接输入。冷却水类型预设（循环水/冷冻水/深冷水），自动计算循环水量并推荐管径（DN25~500）。
+10 种设备模式一键切换：发酵罐（7种发酵类型+产热率预设）、结晶罐（分项计算：结晶放热+显热降温+搅拌热）、化学反应釜、脱色罐、换热器、冷凝器、蒸馏釜/蒸发器、多效蒸发器（1~5效系数+汽化潜热自动匹配）、气体冷却器、直接输入。冷却水类型预设（循环水/冷冻水/深冷水），自动计算循环水量并推荐管径（DN25~500）。
 
 ### DOCX 报告导出
 
 v1.3 将全局报告导出从 TXT 升级为 DOCX，提取 `utils/docx_utils.py` 公共模块（ReportExporter），批量迁移 34 个计算器，净减少 ~3200 行重复代码。新计算器只需 4 行调用即可实现 DOCX/PDF 双格式导出。
+
+---
+
+## 更新日志
+
+### v1.4 (2026-06-02)
+
+- 新增「参考资料库」标签页：6 大类 26 条规范数据，树形导航 + 全文搜索 + 表格/公式展示
+- 循环水计算器增强：新增多效蒸发器模式（1~5效系数，效数自动匹配末效汽化潜热）
+- 结晶罐增强：从单一热负荷改为分项计算（结晶放热+显热降温+搅拌热），溶液量拆分为罐有效体积×物料密度
+- 新增物料密度预设（9种）、结晶热预设（10种）、溶液比热容预设（9种）
+- SVG 参数化示意图箭头优化，解决文字与箭头重叠问题
+
+### v1.3 (2026-06-01)
+
+- 全局报告导出升级（TXT → DOCX，提取 ReportExporter 公共模块）
+- 新增循环水用水量计算器（9种设备模式）
+- 安全阀模式驱动重构（6种计算类型 / Kd阀型分类 / 火灾工况）
+- NPSHa增强（液面压力 / 12种泵型安全裕量 / 泵吸入SVG）
+- 新增"未知侧设计"换热器模式
+- 防闪退保护层 + 看门狗自动重启
+- UI 全面规范化 + 主题系统全面优化
+
+### v1.2
+
+- 新增查询类计算器；历史记录系统上线；IAPWS-IF97 蒸汽物性精度升级
+
+### v1.1
+
+- 帮助菜单、水蒸气性质模块、日志系统
+
+### v1.0
+
+- 初始版本发布
 
 ---
 
@@ -213,7 +278,7 @@ v1.3 将全局报告导出从 TXT 升级为 DOCX，提取 `utils/docx_utils.py` 
 
 - 代码规范：中文注释 + Python 类型注解
 - 计算器开发：参考 `modules/chemical_calculations/calculators/` 中的现有实现
-- UI 规范：遵循 ChemCal UI 标准（QGridLayout 三列、按比例伸缩）
+- 参考数据：参考 `data/reference_db.json` 中的数据格式，追加新条目即可
 
 ---
 
