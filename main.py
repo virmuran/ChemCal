@@ -48,6 +48,7 @@ class ChemCal(QMainWindow):
         ("modules.chemical_calculations", "ChemicalCalculationsWidget", "工程计算"),
         ("modules.history_viewer", "HistoryViewer", "计算历史"),
         ("modules.converter.converter_widget", "ConverterWidget", "换算器"),
+        ("modules.reference.reference_widget", "ReferenceWidget", "资料库"),
         ("modules.countdowns", "CountdownsWidget", "倒计时"),
     ]
 

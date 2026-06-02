@@ -104,6 +104,49 @@ class CoolingWaterCalculator(QWidget):
         "导热油":             2.10,
     }
 
+    # ── 结晶热预设 (kJ/kg结晶) ──
+    CRYSTAL_HEAT_PRESETS = {
+        "请选择结晶物质":       0,
+        "赖氨酸盐酸盐":         80,
+        "柠檬酸":               60,
+        "氯化钠":               70,
+        "硫酸铵":               55,
+        "蔗糖":                 20,
+        "葡萄糖":               25,
+        "谷氨酸钠(味精)":       75,
+        "尿素":                 45,
+        "碳酸氢铵":             35,
+        "磷酸二氢钙":           50,
+    }
+
+    # ── 溶液比热容预设 (kJ/(kg·°C)) ──
+    SOLUTION_CP_PRESETS = {
+        "请选择溶液类型":       0,
+        "水":                   4.18,
+        "饱和食盐水":           3.30,
+        "20%氯化钙盐水":        3.05,
+        "30%氯化钙盐水":        2.72,
+        "50%硫酸铵溶液":        2.90,
+        "60%蔗糖溶液":          2.50,
+        "30%柠檬酸溶液":        3.50,
+        "20%赖氨酸溶液":        3.80,
+        "有机溶剂(通用)":       2.00,
+    }
+
+    # ── 物料密度预设 (kg/m³) ──
+    DENSITY_PRESETS = {
+        "请选择物料密度":       0,
+        "水":                   1000,
+        "饱和食盐水":           1200,
+        "20%氯化钙盐水":        1180,
+        "30%氯化钙盐水":        1280,
+        "50%硫酸铵溶液":        1240,
+        "60%蔗糖溶液":          1290,
+        "30%柠檬酸溶液":        1160,
+        "20%赖氨酸溶液":        1080,
+        "有机溶剂(通用)":       900,
+    }
+
     # ── 推荐流速 ──
     PIPE_VELOCITY = {
         "DN25以下": 1.0,
@@ -355,6 +398,64 @@ class CoolingWaterCalculator(QWidget):
         glg.addWidget(self.evap_water_input, lr, 1)
         glg.addWidget(self._hint_evap_water, lr, 2); lr += 1
 
+        # ---- 结晶罐专用参数 ----
+        self._lbl_crystal_amount = lbl("结晶量(kg/h):")
+        self.crystal_amount_input = QLineEdit("500")
+        self.crystal_amount_input.setValidator(QDoubleValidator(0.1, 1e6, 1))
+        self._hint_crystal_amount = hint("")
+        glg.addWidget(self._lbl_crystal_amount, lr, 0)
+        glg.addWidget(self.crystal_amount_input, lr, 1)
+        glg.addWidget(self._hint_crystal_amount, lr, 2); lr += 1
+
+        self._lbl_crystal_heat = lbl("结晶热(kJ/kg):")
+        self.crystal_heat_input = QLineEdit("80")
+        self.crystal_heat_input.setValidator(QDoubleValidator(1, 500, 1))
+        self.crystal_heat_combo = QComboBox()
+        self.crystal_heat_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.crystal_heat_combo.addItems(list(self.CRYSTAL_HEAT_PRESETS.keys()))
+        self.crystal_heat_combo.currentTextChanged.connect(self._on_crystal_heat_changed)
+        glg.addWidget(self._lbl_crystal_heat, lr, 0)
+        glg.addWidget(self.crystal_heat_input, lr, 1)
+        glg.addWidget(self.crystal_heat_combo, lr, 2); lr += 1
+
+        self._lbl_tank_volume = lbl("罐的有效体积(m³):")
+        self.tank_volume_input = QLineEdit("10")
+        self.tank_volume_input.setValidator(QDoubleValidator(0.1, 10000, 2))
+        self._hint_tank_volume = hint("")
+        glg.addWidget(self._lbl_tank_volume, lr, 0)
+        glg.addWidget(self.tank_volume_input, lr, 1)
+        glg.addWidget(self._hint_tank_volume, lr, 2); lr += 1
+
+        self._lbl_material_density = lbl("物料密度(kg/m³):")
+        self.material_density_input = QLineEdit("1080")
+        self.material_density_input.setValidator(QDoubleValidator(100, 3000, 0))
+        self.material_density_combo = QComboBox()
+        self.material_density_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.material_density_combo.addItems(list(self.DENSITY_PRESETS.keys()))
+        self.material_density_combo.currentTextChanged.connect(self._on_density_changed)
+        glg.addWidget(self._lbl_material_density, lr, 0)
+        glg.addWidget(self.material_density_input, lr, 1)
+        glg.addWidget(self.material_density_combo, lr, 2); lr += 1
+
+        self._lbl_solution_cp = lbl("溶液比热容(kJ/(kg·°C)):")
+        self.solution_cp_input = QLineEdit("3.80")
+        self.solution_cp_input.setValidator(QDoubleValidator(0.5, 10.0, 2))
+        self.solution_cp_combo = QComboBox()
+        self.solution_cp_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.solution_cp_combo.addItems(list(self.SOLUTION_CP_PRESETS.keys()))
+        self.solution_cp_combo.currentTextChanged.connect(self._on_solution_cp_changed)
+        glg.addWidget(self._lbl_solution_cp, lr, 0)
+        glg.addWidget(self.solution_cp_input, lr, 1)
+        glg.addWidget(self.solution_cp_combo, lr, 2); lr += 1
+
+        self._lbl_crystal_dt = lbl("温降(°C):")
+        self.crystal_dt_input = QLineEdit("15")
+        self.crystal_dt_input.setValidator(QDoubleValidator(0.1, 200, 1))
+        self._hint_crystal_dt = hint("溶解温度→结晶温度")
+        glg.addWidget(self._lbl_crystal_dt, lr, 0)
+        glg.addWidget(self.crystal_dt_input, lr, 1)
+        glg.addWidget(self._hint_crystal_dt, lr, 2); lr += 1
+
         ll.addWidget(self._group_load)
 
         # ── 冷却水参数组 ──
@@ -468,6 +569,12 @@ class CoolingWaterCalculator(QWidget):
             "evap_cp":      (self._lbl_evap_cp, self.evap_cp_input, self.evap_cp_combo),
             "evap_dt":      (self._lbl_evap_dt, self.evap_dt_input, self._hint_evap_dt),
             "evap_water":   (self._lbl_evap_water, self.evap_water_input, self._hint_evap_water),
+            "crystal_amount":  (self._lbl_crystal_amount, self.crystal_amount_input, self._hint_crystal_amount),
+            "crystal_heat":    (self._lbl_crystal_heat, self.crystal_heat_input, self.crystal_heat_combo),
+            "tank_volume":     (self._lbl_tank_volume, self.tank_volume_input, self._hint_tank_volume),
+            "material_density":(self._lbl_material_density, self.material_density_input, self.material_density_combo),
+            "solution_cp":     (self._lbl_solution_cp, self.solution_cp_input, self.solution_cp_combo),
+            "crystal_dt":      (self._lbl_crystal_dt, self.crystal_dt_input, self._hint_crystal_dt),
         }
         for trio in rows.values():
             for w in trio:
@@ -477,7 +584,7 @@ class CoolingWaterCalculator(QWidget):
         if mode == "发酵罐":
             visible = ["ferm_type", "heat_rate", "work_vol", "stir_power"]
         elif mode == "结晶罐":
-            visible = ["rxn_heat", "work_vol", "stir_power"]
+            visible = ["crystal_amount", "crystal_heat", "tank_volume", "material_density", "solution_cp", "crystal_dt", "stir_power"]
         elif mode == "化学反应釜":
             visible = ["rxn_heat", "work_vol", "stir_power"]
         elif mode == "脱色罐":
@@ -502,7 +609,7 @@ class CoolingWaterCalculator(QWidget):
         # ── 标签适配 ──
         label_map = {
             "发酵罐":       ("反应热(kW):", "+放热/-吸热"),
-            "结晶罐":       ("结晶热负荷(kW):", "含结晶放热+显热降温"),
+            "结晶罐":       ("", ""),  # 结晶罐使用专用行，无需适配其他标签
             "化学反应釜":   ("反应热(kW):", "+放热/-吸热"),
             "脱色罐":       ("散热+搅拌热(kW):", "保温散热+搅拌功率"),
             "换热器":       ("热负荷(kW):", ""),
@@ -606,6 +713,27 @@ class CoolingWaterCalculator(QWidget):
             if val > 0:
                 self.evap_cp_input.setText(str(val))
 
+    def _on_crystal_heat_changed(self, text):
+        """结晶热下拉变化 → 自动填入输入框"""
+        if text in self.CRYSTAL_HEAT_PRESETS:
+            val = self.CRYSTAL_HEAT_PRESETS[text]
+            if val > 0:
+                self.crystal_heat_input.setText(str(val))
+
+    def _on_solution_cp_changed(self, text):
+        """溶液比热容下拉变化 → 自动填入输入框"""
+        if text in self.SOLUTION_CP_PRESETS:
+            val = self.SOLUTION_CP_PRESETS[text]
+            if val > 0:
+                self.solution_cp_input.setText(str(val))
+
+    def _on_density_changed(self, text):
+        """物料密度下拉变化 → 自动填入输入框"""
+        if text in self.DENSITY_PRESETS:
+            val = self.DENSITY_PRESETS[text]
+            if val > 0:
+                self.material_density_input.setText(str(val))
+
     def _on_cw_preset_changed(self, text):
         if text in self.CW_PRESETS:
             tin, tout = self.CW_PRESETS[text]
@@ -674,17 +802,28 @@ class CoolingWaterCalculator(QWidget):
                     q_sources.append((f"搅拌热: {stir_power} kW × 70%", q_stir))
 
             elif mode == "结晶罐":
-                rxn_heat = float(self.rxn_heat_input.text() or 200)
-                work_vol = float(self.work_vol_input.text() or 10)
+                crystal_amount = float(self.crystal_amount_input.text() or 0)
+                crystal_heat = float(self.crystal_heat_input.text() or 0)
+                tank_volume = float(self.tank_volume_input.text() or 0)
+                material_density = float(self.material_density_input.text() or 0)
+                solution_cp = float(self.solution_cp_input.text() or 0)
+                crystal_dt = float(self.crystal_dt_input.text() or 0)
                 stir_power = float(self.stir_power_input.text() or 0)
-                q_rxn = abs(rxn_heat)
-                q_stir = stir_power * 0.7
-                q_total = q_rxn + q_stir
 
-                q_sources.append((f"结晶热负荷(含放热+降温显热): {rxn_heat} kW", q_rxn))
+                # 溶液质量 = 罐有效体积 × 物料密度
+                solution_amount = tank_volume * material_density  # kg
+                # 结晶放热 = 结晶量 × 结晶热 / 3600 → kW
+                q_crystal = crystal_amount * crystal_heat / 3600
+                # 显热降温 = 溶液量 × 比热容 × 温降 / 3600 → kW
+                q_sensible = solution_amount * solution_cp * crystal_dt / 3600
+                # 搅拌热
+                q_stir = stir_power * 0.7
+                q_total = q_crystal + q_sensible + q_stir
+
+                q_sources.append((f"结晶放热: {crystal_amount} kg/h × {crystal_heat} kJ/kg", q_crystal))
+                q_sources.append((f"显热降温: {tank_volume} m³ × {material_density} kg/m³ × {solution_cp} kJ/(kg·°C) × {crystal_dt}°C", q_sensible))
                 if stir_power > 0:
                     q_sources.append((f"搅拌热: {stir_power} kW × 70%", q_stir))
-                mode_labels["_note"] = "提示: 结晶热≈60~100 kJ/kg结晶, 显热降温≈m×Cp×ΔT"
 
             elif mode == "脱色罐":
                 heat_load = float(self.heat_load_input.text() or 15)
@@ -982,6 +1121,15 @@ class CoolingWaterCalculator(QWidget):
         self.evap_cp_input.setText("4.18")
         self.evap_dt_input.setText("5")
         self.evap_water_input.setText("1000")
+        self.crystal_amount_input.setText("500")
+        self.crystal_heat_combo.setCurrentIndex(0)
+        self.crystal_heat_input.setText("80")
+        self.tank_volume_input.setText("10")
+        self.material_density_combo.setCurrentIndex(0)
+        self.material_density_input.setText("1080")
+        self.solution_cp_combo.setCurrentIndex(0)
+        self.solution_cp_input.setText("3.80")
+        self.crystal_dt_input.setText("15")
         self.cw_preset_combo.setCurrentIndex(0)
         self.cw_tin_input.setText("32")
         self.cw_tout_input.setText("37")
@@ -1033,23 +1181,23 @@ class CoolingWaterCalculator(QWidget):
         # 冷却水进管（下方）
         cw_in_y = eq_y + eq_h + 30
         p.append(f'<line x1="{eq_x + eq_w/2}" y1="{eq_y + eq_h}" x2="{eq_x + eq_w/2}" y2="{cw_in_y}" '
-                 f'stroke="#3498db" stroke-width="6"/>')
+                 f'stroke="#3498db" stroke-width="4"/>')
         p.append(f'<line x1="{eq_x + eq_w/2 - 60}" y1="{cw_in_y}" x2="{eq_x + eq_w/2}" y2="{cw_in_y}" '
-                 f'stroke="#3498db" stroke-width="6" marker-end="url(#arrow_in)"/>')
-        p.append(self._text(eq_x + eq_w/2 - 30, cw_in_y + 18, "进水", size=9, color="#3498db", bold=True))
+                 f'stroke="#3498db" stroke-width="4" marker-end="url(#arrow_in)"/>')
+        p.append(self._text(eq_x + eq_w/2 - 30, cw_in_y + 16, "进水", size=9, color="#3498db", bold=True))
         tin_val = kw.get("tin", "")
         if tin_val:
-            p.append(self._text(eq_x + eq_w/2 - 30, cw_in_y + 32, f"{tin_val}°C", size=8, color="#3498db"))
+            p.append(self._text(eq_x + eq_w/2 - 30, cw_in_y + 30, f"{tin_val}°C", size=8, color="#3498db"))
 
         # 冷却水出管（上方）
         p.append(f'<line x1="{eq_x + eq_w/2}" y1="{eq_y}" x2="{eq_x + eq_w/2}" y2="{eq_y - 25}" '
-                 f'stroke="#e74c3c" stroke-width="6"/>')
+                 f'stroke="#e74c3c" stroke-width="4"/>')
         p.append(f'<line x1="{eq_x + eq_w/2}" y1="{eq_y - 25}" x2="{eq_x + eq_w/2 + 60}" y2="{eq_y - 25}" '
-                 f'stroke="#e74c3c" stroke-width="6" marker-end="url(#arrow_out)"/>')
+                 f'stroke="#e74c3c" stroke-width="4" marker-end="url(#arrow_out)"/>')
         p.append(self._text(eq_x + eq_w/2 + 30, eq_y - 35, "回水", size=9, color="#e74c3c", bold=True))
         tout_val = kw.get("tout", "")
         if tout_val:
-            p.append(self._text(eq_x + eq_w/2 + 30, eq_y - 22, f"{tout_val}°C", size=8, color="#e74c3c"))
+            p.append(self._text(eq_x + eq_w/2 + 30, eq_y - 21, f"{tout_val}°C", size=8, color="#e74c3c"))
 
         # 右侧流量标注
         flow_val = kw.get("flow", "")
@@ -1063,10 +1211,10 @@ class CoolingWaterCalculator(QWidget):
         p.append(self._text(w/2, 12, "循环冷却水示意", size=10, color="#4a6fa5", bold=True))
 
         p.append('<defs>'
-                 '<marker id="arrow_in" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto">'
-                 '<path d="M0,0 L8,4 L0,8 Z" fill="#3498db"/></marker>'
-                 '<marker id="arrow_out" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto">'
-                 '<path d="M0,0 L8,4 L0,8 Z" fill="#e74c3c"/></marker>'
+                 '<marker id="arrow_in" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto">'
+                 '<path d="M0,0 L6,3 L0,6 Z" fill="#3498db"/></marker>'
+                 '<marker id="arrow_out" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto">'
+                 '<path d="M0,0 L6,3 L0,6 Z" fill="#e74c3c"/></marker>'
                  '</defs></svg>')
         return "".join(p)
 
@@ -1091,22 +1239,22 @@ class CoolingWaterCalculator(QWidget):
         # 冷却液进管（下方，蓝色）
         cw_in_y = evap_y + evap_h + 30
         p.append(f'<line x1="{evap_x + evap_w/2}" y1="{evap_y + evap_h}" x2="{evap_x + evap_w/2}" y2="{cw_in_y}" '
-                 f'stroke="#3498db" stroke-width="6"/>')
+                 f'stroke="#3498db" stroke-width="4"/>')
         p.append(f'<line x1="{evap_x + evap_w/2 - 60}" y1="{cw_in_y}" x2="{evap_x + evap_w/2}" y2="{cw_in_y}" '
-                 f'stroke="#3498db" stroke-width="6" marker-end="url(#arrow_in_evap)"/>')
+                 f'stroke="#3498db" stroke-width="4" marker-end="url(#arrow_in_evap)"/>')
         p.append(self._text(evap_x + evap_w/2 - 30, cw_in_y + 16, "冷却液进", size=9, color="#3498db", bold=True))
 
         # 冷却液出管（右侧中部）
         out_x = evap_x + evap_w + 10
         out_y = evap_y + 30
         p.append(f'<line x1="{evap_x + evap_w}" y1="{out_y}" x2="{out_x + 50}" y2="{out_y}" '
-                 f'stroke="#e74c3c" stroke-width="6" marker-end="url(#arrow_out_evap)"/>')
+                 f'stroke="#e74c3c" stroke-width="4" marker-end="url(#arrow_out_evap)"/>')
         p.append(self._text(out_x + 25, out_y - 12, "冷却液出", size=9, color="#e74c3c", bold=True))
 
         # 蒸发水入口（左侧中部）
         feed_y = evap_y + evap_h - 30
         p.append(f'<line x1="{evap_x - 50}" y1="{feed_y}" x2="{evap_x}" y2="{feed_y}" '
-                 f'stroke="#27ae60" stroke-width="4" marker-end="url(#arrow_feed)"/>')
+                 f'stroke="#27ae60" stroke-width="3" marker-end="url(#arrow_feed)"/>')
         p.append(self._text(evap_x - 25, feed_y - 12, "蒸发水", size=8, color="#27ae60", bold=True))
 
         # 右侧结果标注
@@ -1123,12 +1271,12 @@ class CoolingWaterCalculator(QWidget):
         p.append(self._text(w/2, 12, "多效蒸发器循环水示意", size=10, color="#4a6fa5", bold=True))
 
         p.append('<defs>'
-                 '<marker id="arrow_in_evap" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto">'
-                 '<path d="M0,0 L8,4 L0,8 Z" fill="#3498db"/></marker>'
-                 '<marker id="arrow_out_evap" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto">'
-                 '<path d="M0,0 L8,4 L0,8 Z" fill="#e74c3c"/></marker>'
-                 '<marker id="arrow_feed" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto">'
-                 '<path d="M0,0 L8,4 L0,8 Z" fill="#27ae60"/></marker>'
+                 '<marker id="arrow_in_evap" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto">'
+                 '<path d="M0,0 L6,3 L0,6 Z" fill="#3498db"/></marker>'
+                 '<marker id="arrow_out_evap" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto">'
+                 '<path d="M0,0 L6,3 L0,6 Z" fill="#e74c3c"/></marker>'
+                 '<marker id="arrow_feed" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto">'
+                 '<path d="M0,0 L6,3 L0,6 Z" fill="#27ae60"/></marker>'
                  '</defs></svg>')
         return "".join(p)
 
