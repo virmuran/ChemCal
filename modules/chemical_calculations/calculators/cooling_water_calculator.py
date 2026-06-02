@@ -1,5 +1,6 @@
 import os
 import math
+import random
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
     QLabel, QLineEdit, QPushButton, QComboBox,
@@ -32,7 +33,8 @@ COMBOBOX_STYLE = """
 class CoolingWaterCalculator(QWidget):
     """循环冷却水用水量计算 — 模式驱动版
 
-    5种热负荷来源模式 + 直接输入模式，统一计算循环水量、推荐管径。
+    9种热负荷来源模式 + 多效蒸发器模式 + 直接输入模式，统一计算循环水量、推荐管径。
+    多效蒸发器独立计算路径：t/t = 系数×λ/(Cp×ΔT)。
     """
 
     # ── 发酵类型 → 产热率范围 (kJ/L·h) ──
@@ -63,6 +65,43 @@ class CoolingWaterCalculator(QWidget):
         "循环冷却水(进32°C,出40°C,ΔT=8)":  (32, 40),
         "冷冻水(进7°C,出12°C,ΔT=5)":       (7, 12),
         "深冷水(进-5°C,出0°C,ΔT=5)":       (-5, 0),
+    }
+
+    # ── 多效蒸发器效数 → (系数范围, 末效温度°C, 末效汽化潜热kJ/kg) ──
+    # 效数越多→末效真空度越高→蒸发温度越低→汽化潜热越大
+    EVAP_EFFECTS = {
+        "请选择效数":   (0, 0, 0, 0),
+        "一效蒸发器":   (1.10, 1.20, 100, 2260),
+        "二效蒸发器":   (0.45, 0.55,  80, 2308),
+        "三效蒸发器":   (0.30, 0.38,  60, 2358),
+        "四效蒸发器":   (0.22, 0.28,  50, 2382),
+        "五效蒸发器":   (0.18, 0.24,  40, 2407),
+    }
+
+    # ── 二次蒸汽汽化潜热预设 (kJ/kg) ──
+    # 二次蒸汽 = 蒸发器中物料蒸发产生的蒸汽
+    LATENT_HEAT_PRESETS = {
+        "请选择汽化潜热":     0,
+        "水(100°C, 常压)":   2260,
+        "水(80°C)":           2308,
+        "水(60°C)":           2358,
+        "水(50°C)":           2382,
+        "水(40°C)":           2407,
+        "乙醇(78°C)":         846,
+        "甲醇(65°C)":         1100,
+        "苯(80°C)":           394,
+        "甲苯(111°C)":        363,
+        "醋酸(118°C)":        405,
+    }
+
+    # ── 冷却液比热容预设 (kJ/(kg·°C)) ──
+    COOLANT_CP_PRESETS = {
+        "请选择冷却液":       0,
+        "水":                 4.18,
+        "20%氯化钙盐水":      3.05,
+        "30%氯化钙盐水":      2.72,
+        "50%乙二醇水溶液":    3.40,
+        "导热油":             2.10,
     }
 
     # ── 推荐流速 ──
@@ -103,7 +142,7 @@ class CoolingWaterCalculator(QWidget):
         ll = QVBoxLayout(lw)
         ll.setSpacing(10)
 
-        desc = QLabel("计算各种设备的循环冷却水用水量，支持发酵罐/结晶罐/反应釜/脱色罐/换热器/冷凝器/蒸馏釜/气体冷却/直接热负荷 9 种模式，自动推荐管径。")
+        desc = QLabel("计算各种设备的循环冷却水用水量，支持发酵罐/结晶罐/反应釜/脱色罐/换热器/冷凝器/蒸馏釜/多效蒸发器/气体冷却/直接热负荷 10 种模式，自动推荐管径。")
         desc.setWordWrap(True)
         desc.setStyleSheet("font-size:12px;padding:5px;")
         ll.addWidget(desc)
@@ -136,6 +175,7 @@ class CoolingWaterCalculator(QWidget):
             "换热器",
             "冷凝器",
             "蒸馏釜/蒸发器",
+            "多效蒸发器",
             "气体冷却器",
             "直接输入热负荷"
         ])
@@ -164,70 +204,70 @@ class CoolingWaterCalculator(QWidget):
         glg.addWidget(self.ferm_type_combo, lr, 1)
         glg.addWidget(self._hint_ferm_type, lr, 2); lr += 1
 
-        self._lbl_heat_rate = lbl("产热率:")
+        self._lbl_heat_rate = lbl("产热率(kJ/(L·h)):")
         self.heat_rate_input = QLineEdit("15")
         self.heat_rate_input.setValidator(QDoubleValidator(0.1, 100, 1))
-        self._hint_heat_rate = hint("kJ/(L·h)")
+        self._hint_heat_rate = hint("选择发酵类型后自动填充")
         glg.addWidget(self._lbl_heat_rate, lr, 0)
         glg.addWidget(self.heat_rate_input, lr, 1)
         glg.addWidget(self._hint_heat_rate, lr, 2); lr += 1
 
-        self._lbl_vol = lbl("工作容积:")
+        self._lbl_vol = lbl("工作容积(m³):")
         self.work_vol_input = QLineEdit("100")
         self.work_vol_input.setValidator(QDoubleValidator(0.1, 10000, 2))
-        self._hint_vol = hint("m³")
+        self._hint_vol = hint("")
         glg.addWidget(self._lbl_vol, lr, 0)
         glg.addWidget(self.work_vol_input, lr, 1)
         glg.addWidget(self._hint_vol, lr, 2); lr += 1
 
-        self._lbl_stir = lbl("搅拌功率:")
+        self._lbl_stir = lbl("搅拌功率(kW):")
         self.stir_power_input = QLineEdit("55")
         self.stir_power_input.setValidator(QDoubleValidator(0, 10000, 1))
-        self._hint_stir = hint("kW, 可选")
+        self._hint_stir = hint("可选")
         glg.addWidget(self._lbl_stir, lr, 0)
         glg.addWidget(self.stir_power_input, lr, 1)
         glg.addWidget(self._hint_stir, lr, 2); lr += 1
 
         # ---- 反应釜参数 ----
-        self._lbl_rxn_heat = lbl("反应热:")
+        self._lbl_rxn_heat = lbl("反应热(kW):")
         self.rxn_heat_input = QLineEdit("200")
         self.rxn_heat_input.setValidator(QDoubleValidator(-10000, 100000, 1))
-        self._hint_rxn_heat = hint("kW, +放热/-吸热")
+        self._hint_rxn_heat = hint("+放热/-吸热")
         glg.addWidget(self._lbl_rxn_heat, lr, 0)
         glg.addWidget(self.rxn_heat_input, lr, 1)
         glg.addWidget(self._hint_rxn_heat, lr, 2); lr += 1
 
         # ---- 换热器/冷凝器 ----
-        self._lbl_heat_load = lbl("热负荷:")
+        self._lbl_heat_load = lbl("热负荷(kW):")
         self.heat_load_input = QLineEdit("500")
         self.heat_load_input.setValidator(QDoubleValidator(0.1, 100000, 1))
-        self._hint_heat_load = hint("kW")
+        self._hint_heat_load = hint("")
         glg.addWidget(self._lbl_heat_load, lr, 0)
         glg.addWidget(self.heat_load_input, lr, 1)
         glg.addWidget(self._hint_heat_load, lr, 2); lr += 1
 
         # ---- 冷凝器 ----
-        self._lbl_cond_rate = lbl("冷凝量:")
+        self._lbl_cond_rate = lbl("冷凝量(kg/h):")
         self.cond_rate_input = QLineEdit("2000")
         self.cond_rate_input.setValidator(QDoubleValidator(0.1, 1e6, 1))
-        self._hint_cond_rate = hint("kg/h")
+        self._hint_cond_rate = hint("")
         glg.addWidget(self._lbl_cond_rate, lr, 0)
         glg.addWidget(self.cond_rate_input, lr, 1)
         glg.addWidget(self._hint_cond_rate, lr, 2); lr += 1
 
-        self._lbl_latent = lbl("汽化潜热:")
+        self._lbl_latent = lbl("汽化潜热(kJ/kg):")
         self.latent_heat_input = QLineEdit("2260")
         self.latent_heat_input.setValidator(QDoubleValidator(100, 10000, 1))
-        self._hint_latent_c = hint("kJ/kg, 水=2260")
+        self._hint_latent_c = hint("水=2260")
         glg.addWidget(self._lbl_latent, lr, 0)
         glg.addWidget(self.latent_heat_input, lr, 1)
         glg.addWidget(self._hint_latent_c, lr, 2); lr += 1
 
         # ---- 气体冷却器 ----
-        self._lbl_gas_rate = lbl("气体流量:")
+        self._lbl_gas_rate = lbl("气体流量(kg/h):")
         self.gas_rate_input = QLineEdit("5000")
         self.gas_rate_input.setValidator(QDoubleValidator(0.1, 1e6, 1))
-        self._hint_gas_rate = hint("kg/h")
+        self._hint_gas_rate = hint("")
         glg.addWidget(self._lbl_gas_rate, lr, 0)
         glg.addWidget(self.gas_rate_input, lr, 1)
         glg.addWidget(self._hint_gas_rate, lr, 2); lr += 1
@@ -242,21 +282,78 @@ class CoolingWaterCalculator(QWidget):
         glg.addWidget(self.gas_cp_combo, lr, 1)
         glg.addWidget(self._hint_gas_cp, lr, 2); lr += 1
 
-        self._lbl_gas_tin = lbl("气体进口温度:")
+        self._lbl_gas_tin = lbl("气体进口温度(°C):")
         self.gas_tin_input = QLineEdit("120")
         self.gas_tin_input.setValidator(QDoubleValidator(-50, 2000, 1))
-        self._hint_gas_tin = hint("°C")
+        self._hint_gas_tin = hint("")
         glg.addWidget(self._lbl_gas_tin, lr, 0)
         glg.addWidget(self.gas_tin_input, lr, 1)
         glg.addWidget(self._hint_gas_tin, lr, 2); lr += 1
 
-        self._lbl_gas_tout = lbl("气体出口温度:")
+        self._lbl_gas_tout = lbl("气体出口温度(°C):")
         self.gas_tout_input = QLineEdit("40")
         self.gas_tout_input.setValidator(QDoubleValidator(-50, 2000, 1))
-        self._hint_gas_tout = hint("°C")
+        self._hint_gas_tout = hint("")
         glg.addWidget(self._lbl_gas_tout, lr, 0)
         glg.addWidget(self.gas_tout_input, lr, 1)
         glg.addWidget(self._hint_gas_tout, lr, 2); lr += 1
+
+        # ---- 多效蒸发器参数 ----
+        self._lbl_evap_effect = lbl("蒸发器效数:")
+        self.evap_effect_combo = QComboBox()
+        self.evap_effect_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.evap_effect_combo.addItems(list(self.EVAP_EFFECTS.keys()))
+        self.evap_effect_combo.currentTextChanged.connect(self._on_evap_effect_changed)
+        self._hint_evap_effect = hint("选择后自动填充系数")
+        glg.addWidget(self._lbl_evap_effect, lr, 0)
+        glg.addWidget(self.evap_effect_combo, lr, 1)
+        glg.addWidget(self._hint_evap_effect, lr, 2); lr += 1
+
+        self._lbl_evap_coeff = lbl("系数:")
+        self.evap_coeff_input = QLineEdit("1.15")
+        self.evap_coeff_input.setValidator(QDoubleValidator(0.1, 5.0, 2))
+        self._hint_evap_coeff = hint("效数选定后自动填充")
+        glg.addWidget(self._lbl_evap_coeff, lr, 0)
+        glg.addWidget(self.evap_coeff_input, lr, 1)
+        glg.addWidget(self._hint_evap_coeff, lr, 2); lr += 1
+
+        self._lbl_evap_latent = lbl("汽化潜热(kJ/kg):")
+        self.evap_latent_input = QLineEdit("2260")
+        self.evap_latent_input.setValidator(QDoubleValidator(50, 10000, 1))
+        self.evap_latent_combo = QComboBox()
+        self.evap_latent_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.evap_latent_combo.addItems(list(self.LATENT_HEAT_PRESETS.keys()))
+        self.evap_latent_combo.currentTextChanged.connect(self._on_evap_latent_changed)
+        glg.addWidget(self._lbl_evap_latent, lr, 0)
+        glg.addWidget(self.evap_latent_input, lr, 1)
+        glg.addWidget(self.evap_latent_combo, lr, 2); lr += 1
+
+        self._lbl_evap_cp = lbl("冷却液比热容(kJ/(kg·°C)):")
+        self.evap_cp_input = QLineEdit("4.18")
+        self.evap_cp_input.setValidator(QDoubleValidator(0.5, 10.0, 2))
+        self.evap_cp_combo = QComboBox()
+        self.evap_cp_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.evap_cp_combo.addItems(list(self.COOLANT_CP_PRESETS.keys()))
+        self.evap_cp_combo.currentTextChanged.connect(self._on_evap_cp_changed)
+        glg.addWidget(self._lbl_evap_cp, lr, 0)
+        glg.addWidget(self.evap_cp_input, lr, 1)
+        glg.addWidget(self.evap_cp_combo, lr, 2); lr += 1
+
+        self._lbl_evap_dt = lbl("冷却液温升(°C):")
+        self.evap_dt_input = QLineEdit("5")
+        self.evap_dt_input.setValidator(QDoubleValidator(0.1, 100, 1))
+        self._hint_evap_dt = hint("")
+        glg.addWidget(self._lbl_evap_dt, lr, 0)
+        glg.addWidget(self.evap_dt_input, lr, 1)
+        glg.addWidget(self._hint_evap_dt, lr, 2); lr += 1
+
+        self._lbl_evap_water = lbl("蒸发水量(kg/h):")
+        self.evap_water_input = QLineEdit("1000")
+        self.evap_water_input.setValidator(QDoubleValidator(0.1, 1e7, 1))
+        self._hint_evap_water = hint("")
+        glg.addWidget(self._lbl_evap_water, lr, 0)
+        glg.addWidget(self.evap_water_input, lr, 1)
+        glg.addWidget(self._hint_evap_water, lr, 2); lr += 1
 
         ll.addWidget(self._group_load)
 
@@ -279,21 +376,21 @@ class CoolingWaterCalculator(QWidget):
 
         self.cw_tin_input = QLineEdit("32")
         self.cw_tin_input.setValidator(QDoubleValidator(-10, 100, 1))
-        gcg.addWidget(lbl("进水温度:"), cr, 0)
+        gcg.addWidget(lbl("进水温度(°C):"), cr, 0)
         gcg.addWidget(self.cw_tin_input, cr, 1)
-        gcg.addWidget(hint("°C"), cr, 2); cr += 1
+        gcg.addWidget(hint(""), cr, 2); cr += 1
 
         self.cw_tout_input = QLineEdit("37")
         self.cw_tout_input.setValidator(QDoubleValidator(-10, 100, 1))
-        gcg.addWidget(lbl("回水温度:"), cr, 0)
+        gcg.addWidget(lbl("回水温度(°C):"), cr, 0)
         gcg.addWidget(self.cw_tout_input, cr, 1)
-        gcg.addWidget(hint("°C"), cr, 2); cr += 1
+        gcg.addWidget(hint(""), cr, 2); cr += 1
 
         self.safety_factor_input = QLineEdit("1.2")
         self.safety_factor_input.setValidator(QDoubleValidator(1.0, 3.0, 2))
         gcg.addWidget(lbl("安全系数:"), cr, 0)
         gcg.addWidget(self.safety_factor_input, cr, 1)
-        gcg.addWidget(hint("通常 1.1~1.3"), cr, 2); cr += 1
+        gcg.addWidget(hint("通常1.1~1.3"), cr, 2); cr += 1
 
         ll.addWidget(self._group_cw)
 
@@ -365,6 +462,12 @@ class CoolingWaterCalculator(QWidget):
             "gas_cp":     (self._lbl_gas_cp, self.gas_cp_combo, self._hint_gas_cp),
             "gas_tin":    (self._lbl_gas_tin, self.gas_tin_input, self._hint_gas_tin),
             "gas_tout":   (self._lbl_gas_tout, self.gas_tout_input, self._hint_gas_tout),
+            "evap_effect":  (self._lbl_evap_effect, self.evap_effect_combo, self._hint_evap_effect),
+            "evap_coeff":   (self._lbl_evap_coeff, self.evap_coeff_input, self._hint_evap_coeff),
+            "evap_latent":  (self._lbl_evap_latent, self.evap_latent_input, self.evap_latent_combo),
+            "evap_cp":      (self._lbl_evap_cp, self.evap_cp_input, self.evap_cp_combo),
+            "evap_dt":      (self._lbl_evap_dt, self.evap_dt_input, self._hint_evap_dt),
+            "evap_water":   (self._lbl_evap_water, self.evap_water_input, self._hint_evap_water),
         }
         for trio in rows.values():
             for w in trio:
@@ -385,6 +488,8 @@ class CoolingWaterCalculator(QWidget):
             visible = ["cond_rate", "latent"]
         elif mode == "蒸馏釜/蒸发器":
             visible = ["cond_rate", "latent"]
+        elif mode == "多效蒸发器":
+            visible = ["evap_effect", "evap_coeff", "evap_latent", "evap_cp", "evap_dt", "evap_water"]
         elif mode == "气体冷却器":
             visible = ["gas_rate", "gas_cp", "gas_tin", "gas_tout"]
         elif mode == "直接输入热负荷":
@@ -396,15 +501,16 @@ class CoolingWaterCalculator(QWidget):
 
         # ── 标签适配 ──
         label_map = {
-            "发酵罐":       ("反应热:", "kW, +放热/-吸热"),
-            "结晶罐":       ("结晶热负荷:", "kW, 含结晶放热+显热降温"),
-            "化学反应釜":   ("反应热:", "kW, +放热/-吸热"),
-            "脱色罐":       ("散热+搅拌热:", "kW, 保温散热+搅拌功率"),
-            "换热器":       ("热负荷:", "kW"),
-            "冷凝器":       ("冷凝量:", "kg/h"),
-            "蒸馏釜/蒸发器": ("蒸发量:", "kg/h"),
-            "气体冷却器":   ("气体流量:", "kg/h"),
-            "直接输入热负荷":("热负荷:", "kW"),
+            "发酵罐":       ("反应热(kW):", "+放热/-吸热"),
+            "结晶罐":       ("结晶热负荷(kW):", "含结晶放热+显热降温"),
+            "化学反应釜":   ("反应热(kW):", "+放热/-吸热"),
+            "脱色罐":       ("散热+搅拌热(kW):", "保温散热+搅拌功率"),
+            "换热器":       ("热负荷(kW):", ""),
+            "冷凝器":       ("冷凝量(kg/h):", ""),
+            "蒸馏釜/蒸发器": ("蒸发量(kg/h):", ""),
+            "多效蒸发器":   ("", ""),  # 多效蒸发器不需要适配其他标签
+            "气体冷却器":   ("气体流量(kg/h):", ""),
+            "直接输入热负荷":("热负荷(kW):", ""),
         }
         if mode in label_map:
             l_text, h_text = label_map[mode]
@@ -429,9 +535,14 @@ class CoolingWaterCalculator(QWidget):
                 "化学反应釜": "反应釜参数", "脱色罐": "脱色罐参数",
                 "换热器": "热负荷参数", "冷凝器": "冷凝器参数",
                 "蒸馏釜/蒸发器": "蒸馏釜/蒸发器参数",
+                "多效蒸发器": "多效蒸发器参数",
                 "气体冷却器": "气体冷却器参数", "直接输入热负荷": "热负荷参数",
             }
             self._group_load.setTitle(group_titles.get(mode, "热负荷参数"))
+
+        # ── 多效蒸发器模式：隐藏冷却水参数组（已自带温升和冷却液参数） ──
+        if hasattr(self, "_group_cw"):
+            self._group_cw.setVisible(mode != "多效蒸发器")
 
         self._on_ferm_type_changed(self.ferm_type_combo.currentText())
 
@@ -445,6 +556,55 @@ class CoolingWaterCalculator(QWidget):
     def _on_gas_cp_changed(self, text):
         if text in self.GAS_CP and text != "请选择气体":
             pass  # 只做参考显示，不自动填入（比热容是下拉选择不是输入框）
+
+    def _on_evap_effect_changed(self, text):
+        """效数下拉变化 → 自动填充系数（范围内随机取值）+ 末效汽化潜热"""
+        if text in self.EVAP_EFFECTS:
+            data = self.EVAP_EFFECTS[text]
+            lo, hi = data[0], data[1]
+            if lo > 0:
+                # 系数：范围内随机取值
+                val = round(random.uniform(lo, hi), 2)
+                self.evap_coeff_input.setText(f"{val}")
+                self.evap_coeff_input.setToolTip(f"系数范围: {lo}~{hi}")
+                # 汽化潜热：根据末效温度自动填充
+                last_temp = data[2]
+                last_latent = data[3]
+                self.evap_latent_input.setText(str(last_latent))
+                self.evap_latent_input.setToolTip(f"末效蒸发温度≈{last_temp}°C, λ≈{last_latent} kJ/kg")
+                # 同步下拉菜单到匹配项
+                self._sync_latent_combo(last_latent)
+            else:
+                self.evap_coeff_input.clear()
+                self.evap_coeff_input.setToolTip("")
+                self.evap_latent_input.clear()
+                self.evap_latent_input.setToolTip("")
+                self.evap_latent_combo.setCurrentIndex(0)
+
+    def _sync_latent_combo(self, latent_val):
+        """根据汽化潜热值同步下拉菜单选中项"""
+        for key, val in self.LATENT_HEAT_PRESETS.items():
+            if val == latent_val:
+                idx = self.evap_latent_combo.findText(key)
+                if idx >= 0:
+                    self.evap_latent_combo.blockSignals(True)
+                    self.evap_latent_combo.setCurrentIndex(idx)
+                    self.evap_latent_combo.blockSignals(False)
+                return
+
+    def _on_evap_latent_changed(self, text):
+        """汽化潜热下拉变化 → 自动填入输入框"""
+        if text in self.LATENT_HEAT_PRESETS:
+            val = self.LATENT_HEAT_PRESETS[text]
+            if val > 0:
+                self.evap_latent_input.setText(str(val))
+
+    def _on_evap_cp_changed(self, text):
+        """冷却液比热容下拉变化 → 自动填入输入框"""
+        if text in self.COOLANT_CP_PRESETS:
+            val = self.COOLANT_CP_PRESETS[text]
+            if val > 0:
+                self.evap_cp_input.setText(str(val))
 
     def _on_cw_preset_changed(self, text):
         if text in self.CW_PRESETS:
@@ -461,6 +621,11 @@ class CoolingWaterCalculator(QWidget):
             mode = self.mode_combo.currentText()
             if "请选择" in mode:
                 self._show_error("请先选择计算模式")
+                return
+
+            # ── 多效蒸发器：独立计算路径 ──
+            if mode == "多效蒸发器":
+                self._calculate_evaporator()
                 return
 
             cw_tin = float(self.cw_tin_input.text() or 32)
@@ -592,6 +757,81 @@ class CoolingWaterCalculator(QWidget):
         except Exception as e:
             self._show_error(f"计算错误：{e}")
 
+    def _calculate_evaporator(self):
+        """多效蒸发器循环水计算 — 独立路径
+
+        公式: 冷却水 t/t = 系数 × 二次蒸汽汽化潜热 / (冷却液比热容 × 温升)
+        总循环水量 = t/t × 蒸发水量
+        """
+        try:
+            effect_text = self.evap_effect_combo.currentText()
+            if "请选择" in effect_text:
+                self._show_error("请选择蒸发器效数")
+                return
+
+            coeff = float(self.evap_coeff_input.text() or 0)
+            if coeff <= 0:
+                self._show_error("请输入有效的效数系数")
+                return
+
+            # 系数范围校验
+            data = self.EVAP_EFFECTS.get(effect_text, (0, 0, 0, 0))
+            lo, hi = data[0], data[1]
+            if lo > 0 and (coeff < lo or coeff > hi):
+                self._show_error(f"系数 {coeff} 超出范围 [{lo}~{hi}]，请调整")
+                return
+
+            latent = float(self.evap_latent_input.text() or 0)
+            if latent <= 0:
+                self._show_error("请输入有效的汽化潜热")
+                return
+
+            cp_coolant = float(self.evap_cp_input.text() or 0)
+            if cp_coolant <= 0:
+                self._show_error("请输入有效的冷却液比热容")
+                return
+
+            dt = float(self.evap_dt_input.text() or 0)
+            if dt <= 0:
+                self._show_error("冷却液温升必须大于0")
+                return
+
+            evap_water = float(self.evap_water_input.text() or 0)
+            if evap_water <= 0:
+                self._show_error("请输入有效的蒸发水量")
+                return
+
+            # 核心计算
+            tt = coeff * latent / (cp_coolant * dt)           # t/t
+            total_cw = tt * evap_water                         # kg/h
+            total_cw_m3h = total_cw / 1000                    # m³/h (按水密度近似)
+
+            rec_dn = self._recommend_pipe(total_cw_m3h)
+
+            self._last_result = {
+                "mode": "多效蒸发器",
+                "effect": effect_text,
+                "coeff": coeff,
+                "coeff_range": (lo, hi),
+                "last_effect_temp": data[2] if lo > 0 else 0,
+                "latent": latent,
+                "cp_coolant": cp_coolant,
+                "dt": dt,
+                "evap_water": evap_water,
+                "tt": tt,
+                "total_cw": total_cw,
+                "total_cw_m3h": total_cw_m3h,
+                "rec_dn": rec_dn,
+            }
+
+            self._display_evaporator()
+            self._update_svg_diagram()
+
+        except ValueError as e:
+            self._show_error(f"输入错误：{e}")
+        except Exception as e:
+            self._show_error(f"计算错误：{e}")
+
     def _recommend_pipe(self, v_m3h):
         """根据流量推荐管径"""
         for dn in self.STANDARD_PIPES:
@@ -665,6 +905,57 @@ class CoolingWaterCalculator(QWidget):
         ]
         self.result_text.setPlainText("\n".join(lines))
 
+    def _display_evaporator(self):
+        """多效蒸发器专用结果展示"""
+        r = self._last_result
+        lo, hi = r["coeff_range"]
+        coeff_range_str = f"{lo}~{hi}" if lo > 0 else "—"
+        lines = [
+            "=" * 55,
+            "      多效蒸发器循环冷却水计算",
+            "=" * 55,
+            "",
+            f"【蒸发器类型】{r['effect']}",
+            "",
+            "【输入参数】",
+            f"  效数系数: {r['coeff']}" + (f"  (范围: {coeff_range_str})" if lo > 0 else ""),
+            f"  末效蒸发温度: ≈{r['last_effect_temp']}°C" if r.get('last_effect_temp', 0) > 0 else "",
+            f"  二次蒸汽汽化潜热: {r['latent']} kJ/kg",
+            f"  冷却液比热容: {r['cp_coolant']} kJ/(kg·°C)",
+            f"  冷却液温升: {r['dt']} °C",
+            f"  蒸发水量: {r['evap_water']} kg/h",
+            "",
+            "【计算结果】",
+            f"  ★ 冷却水倍率: {r['tt']:.2f} t/t",
+            f"    (即蒸发1吨水需 {r['tt']:.2f} 吨冷却液)",
+            f"  ★ 总循环液量: {r['total_cw']:.0f} kg/h",
+            f"                = {r['total_cw_m3h']:.2f} m³/h",
+            f"  ★ 推荐管径: {r['rec_dn']}",
+            "",
+            "【计算公式】",
+            "  t/t = 系数 × 汽化潜热 / (冷却液比热容 × 温升)",
+            f"      = {r['coeff']} × {r['latent']} / ({r['cp_coolant']} × {r['dt']})",
+            f"      = {r['tt']:.2f} t/t",
+            "",
+            "  总循环液量 = t/t × 蒸发水量",
+            f"            = {r['tt']:.2f} × {r['evap_water']}",
+            f"            = {r['total_cw']:.0f} kg/h",
+            "",
+            "【效数系数参考】",
+            "  一效: 1.10~1.20  二效: 0.45~0.55  三效: 0.30~0.38",
+            "  四效: 0.22~0.28  五效: 0.18~0.24",
+            "",
+            "【选型建议】",
+            f"  1. 循环液总管径 ≥ {r['rec_dn'].split()[0]}",
+            "  2. 冷却液不限于水，可使用盐水、乙二醇溶液等",
+            "  3. 多效蒸发器效数越多，单位蒸发水量所需冷却液越少",
+            "  4. 系数应根据实际工况调整，取值范围仅供初始估算",
+            "",
+            "  * 计算结果仅供参考，实际工程由专业工程师确认。",
+            "=" * 55,
+        ]
+        self.result_text.setPlainText("\n".join(lines))
+
     def _show_error(self, msg):
         self.result_text.setPlainText(f"错误：{msg}")
 
@@ -683,6 +974,14 @@ class CoolingWaterCalculator(QWidget):
         self.gas_cp_combo.setCurrentIndex(0)
         self.gas_tin_input.setText("120")
         self.gas_tout_input.setText("40")
+        self.evap_effect_combo.setCurrentIndex(0)
+        self.evap_coeff_input.setText("1.15")
+        self.evap_latent_combo.setCurrentIndex(0)
+        self.evap_latent_input.setText("2260")
+        self.evap_cp_combo.setCurrentIndex(0)
+        self.evap_cp_input.setText("4.18")
+        self.evap_dt_input.setText("5")
+        self.evap_water_input.setText("1000")
         self.cw_preset_combo.setCurrentIndex(0)
         self.cw_tin_input.setText("32")
         self.cw_tout_input.setText("37")
@@ -771,16 +1070,85 @@ class CoolingWaterCalculator(QWidget):
                  '</defs></svg>')
         return "".join(p)
 
+    def _generate_evap_svg(self, tt=0, flow=0, delta_t=0):
+        """多效蒸发器专用SVG示意图"""
+        w, h = 380, 280
+        p = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="{w}" height="{h}">',
+             f'<rect x="0" y="0" width="{w}" height="{h}" fill="#fafbfc" rx="6"/>']
+
+        # 蒸发器（左侧矩形，分上下两段表示效体和冷凝器）
+        evap_x, evap_y, evap_w, evap_h = 40, 50, 80, 120
+        p.append(f'<rect x="{evap_x}" y="{evap_y}" width="{evap_w}" height="{evap_h}" '
+                 f'fill="#e8edf2" stroke="#4a6fa5" stroke-width="2" rx="4"/>')
+        p.append(self._text(evap_x + evap_w/2, evap_y + evap_h/2 - 12, "多效", size=10, color="#4a6fa5", bold=True))
+        p.append(self._text(evap_x + evap_w/2, evap_y + evap_h/2 + 5, "蒸发器", size=10, color="#4a6fa5", bold=True))
+
+        # 二次蒸汽出口（顶部）
+        p.append(f'<line x1="{evap_x + evap_w/2}" y1="{evap_y}" x2="{evap_x + evap_w/2}" y2="{evap_y - 20}" '
+                 f'stroke="#e74c3c" stroke-width="4" stroke-dasharray="4,2"/>')
+        p.append(self._text(evap_x + evap_w/2, evap_y - 28, "二次蒸汽", size=8, color="#e74c3c", bold=True))
+
+        # 冷却液进管（下方，蓝色）
+        cw_in_y = evap_y + evap_h + 30
+        p.append(f'<line x1="{evap_x + evap_w/2}" y1="{evap_y + evap_h}" x2="{evap_x + evap_w/2}" y2="{cw_in_y}" '
+                 f'stroke="#3498db" stroke-width="6"/>')
+        p.append(f'<line x1="{evap_x + evap_w/2 - 60}" y1="{cw_in_y}" x2="{evap_x + evap_w/2}" y2="{cw_in_y}" '
+                 f'stroke="#3498db" stroke-width="6" marker-end="url(#arrow_in_evap)"/>')
+        p.append(self._text(evap_x + evap_w/2 - 30, cw_in_y + 16, "冷却液进", size=9, color="#3498db", bold=True))
+
+        # 冷却液出管（右侧中部）
+        out_x = evap_x + evap_w + 10
+        out_y = evap_y + 30
+        p.append(f'<line x1="{evap_x + evap_w}" y1="{out_y}" x2="{out_x + 50}" y2="{out_y}" '
+                 f'stroke="#e74c3c" stroke-width="6" marker-end="url(#arrow_out_evap)"/>')
+        p.append(self._text(out_x + 25, out_y - 12, "冷却液出", size=9, color="#e74c3c", bold=True))
+
+        # 蒸发水入口（左侧中部）
+        feed_y = evap_y + evap_h - 30
+        p.append(f'<line x1="{evap_x - 50}" y1="{feed_y}" x2="{evap_x}" y2="{feed_y}" '
+                 f'stroke="#27ae60" stroke-width="4" marker-end="url(#arrow_feed)"/>')
+        p.append(self._text(evap_x - 25, feed_y - 12, "蒸发水", size=8, color="#27ae60", bold=True))
+
+        # 右侧结果标注
+        if tt:
+            p.append(self._text(240, evap_y + 20, f"冷却水倍率:", size=10, color="#555", bold=True, center=False))
+            p.append(self._text(240, evap_y + 38, f"{tt:.2f} t/t", size=13, color="#27ae60", bold=True, center=False))
+        if flow:
+            p.append(self._text(240, evap_y + 60, f"循环液量:", size=10, color="#555", bold=True, center=False))
+            p.append(self._text(240, evap_y + 78, f"{flow:.2f} m³/h", size=11, color="#3498db", bold=True, center=False))
+        if delta_t:
+            p.append(self._text(240, evap_y + 100, f"ΔT={delta_t}°C", size=10, color="#e67e22", bold=True, center=False))
+
+        p.append(self._text(w/2, h - 12, "t/t = 系数×λ/(Cp×ΔT)", size=9, color="#888", bold=False))
+        p.append(self._text(w/2, 12, "多效蒸发器循环水示意", size=10, color="#4a6fa5", bold=True))
+
+        p.append('<defs>'
+                 '<marker id="arrow_in_evap" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto">'
+                 '<path d="M0,0 L8,4 L0,8 Z" fill="#3498db"/></marker>'
+                 '<marker id="arrow_out_evap" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto">'
+                 '<path d="M0,0 L8,4 L0,8 Z" fill="#e74c3c"/></marker>'
+                 '<marker id="arrow_feed" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto">'
+                 '<path d="M0,0 L8,4 L0,8 Z" fill="#27ae60"/></marker>'
+                 '</defs></svg>')
+        return "".join(p)
+
     def _update_svg_diagram(self):
         try:
             kw = {}
             if self._last_result:
-                kw["flow"] = f"{self._last_result.get('v_cw_m3h', 0):.2f}"
-                kw["tin"] = str(self._last_result.get("cw_tin", ""))
-                kw["tout"] = str(self._last_result.get("cw_tout", ""))
-                kw["delta_t"] = str(self._last_result.get("delta_t_cw", 0))
-            s = self._generate_cw_svg(**kw)
-            self.svg_widget.load(s.encode("utf-8"))
+                if self._last_result.get("mode") == "多效蒸发器":
+                    s = self._generate_evap_svg(
+                        tt=self._last_result.get("tt", 0),
+                        flow=self._last_result.get("total_cw_m3h", 0),
+                        delta_t=self._last_result.get("dt", 0),
+                    )
+                else:
+                    kw["flow"] = f"{self._last_result.get('v_cw_m3h', 0):.2f}"
+                    kw["tin"] = str(self._last_result.get("cw_tin", ""))
+                    kw["tout"] = str(self._last_result.get("cw_tout", ""))
+                    kw["delta_t"] = str(self._last_result.get("delta_t_cw", 0))
+                    s = self._generate_cw_svg(**kw)
+                self.svg_widget.load(s.encode("utf-8"))
         except:
             pass
 
