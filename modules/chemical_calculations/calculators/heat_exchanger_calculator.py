@@ -7,7 +7,6 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
 import math
-import random
 import re
 import os
 import sys
@@ -762,12 +761,12 @@ class 换热器计算(QWidget):
                 min_val = float(match.group(1))
                 max_val = float(match.group(2))
                 
-                # 生成范围内的随机数
-                random_k = random.uniform(min_val, max_val)
+                # 使用区间推荐值（中点），提供可重复的稳定结果
+                recommended_k = (min_val + max_val) / 2
                 
                 # 如果存在手动输入框，填充随机值
                 if "k_manual" in self.input_widgets:
-                    self.input_widgets["k_manual"].setText(f"{random_k:.1f}")
+                    self.input_widgets["k_manual"].setText(f"{recommended_k:.1f}")
         except Exception as e:
             print(f"解析传热系数范围失败: {e}")
     
@@ -875,8 +874,8 @@ class 换热器计算(QWidget):
         """模式0：求饱和蒸汽流量"""
         # 获取输入值
         steam_pressure = self.get_input_value("蒸汽压力g_mpa", 0.5)
-        cold_flow = self.get_input_value("冷流体w_kg/h", 10000)
-        cold_cp = self.get_input_value("冷流体cp_kj/(kg·k)", 4.19)
+        cold_flow = self.get_input_value("冷流体w_kg_h", 10000)
+        cold_cp = self.get_input_value("冷流体cp_kj_kgk", 4.19)
         cold_t1 = self.get_input_value("冷流体t1_℃", 20)
         cold_t2 = self.get_input_value("冷流体t2_℃", 60)
         
@@ -945,8 +944,8 @@ class 换热器计算(QWidget):
         """模式1：求冷流体流量（蒸汽加热）"""
         # 获取输入值
         steam_pressure = self.get_input_value("蒸汽压力g_mpa", 0.5)
-        steam_flow = self.get_input_value("蒸汽流量_kg/h", 1000)
-        cold_cp = self.get_input_value("冷流体cp_kj/(kg·k)", 4.19)
+        steam_flow = self.get_input_value("蒸汽流量_kg_h", 1000)
+        cold_cp = self.get_input_value("冷流体cp_kj_kgk", 4.19)
         cold_t1 = self.get_input_value("冷流体t1_℃", 20)
         cold_t2 = self.get_input_value("冷流体t2_℃", 60)
         
@@ -1014,9 +1013,9 @@ class 换热器计算(QWidget):
         """模式2：求冷流体出口温度t2（蒸汽加热）"""
         # 获取输入值
         steam_pressure = self.get_input_value("蒸汽压力g_mpa", 0.5)
-        steam_flow = self.get_input_value("蒸汽流量_kg/h", 1000)
-        cold_flow = self.get_input_value("冷流体w_kg/h", 10000)
-        cold_cp = self.get_input_value("冷流体cp_kj/(kg·k)", 4.19)
+        steam_flow = self.get_input_value("蒸汽流量_kg_h", 1000)
+        cold_flow = self.get_input_value("冷流体w_kg_h", 10000)
+        cold_cp = self.get_input_value("冷流体cp_kj_kgk", 4.19)
         cold_t1 = self.get_input_value("冷流体t1_℃", 20)
         
         # 获取蒸汽物性
@@ -1079,12 +1078,12 @@ class 换热器计算(QWidget):
     def calculate_mode_3(self):
         """模式3：求冷流体出口温度t2"""
         # 获取输入值
-        hot_flow = self.get_input_value("热流体w_kg/h", 5000)
-        hot_cp = self.get_input_value("热流体cp_kj/(kg·k)", 4.19)
+        hot_flow = self.get_input_value("热流体w_kg_h", 5000)
+        hot_cp = self.get_input_value("热流体cp_kj_kgk", 4.19)
         hot_t1 = self.get_input_value("热流体t1_℃", 90)
         hot_t2 = self.get_input_value("热流体t2_℃", 60)
-        cold_flow = self.get_input_value("冷流体w_kg/h", 10000)
-        cold_cp = self.get_input_value("冷流体cp_kj/(kg·k)", 4.19)
+        cold_flow = self.get_input_value("冷流体w_kg_h", 10000)
+        cold_cp = self.get_input_value("冷流体cp_kj_kgk", 4.19)
         cold_t1 = self.get_input_value("冷流体t1_℃", 20)
         
         # 验证输入
@@ -1146,11 +1145,11 @@ class 换热器计算(QWidget):
     def calculate_mode_4(self):
         """模式4：求热流体出口温度t2"""
         # 获取输入值
-        hot_flow = self.get_input_value("热流体w_kg/h", 5000)
-        hot_cp = self.get_input_value("热流体cp_kj/(kg·k)", 4.19)
+        hot_flow = self.get_input_value("热流体w_kg_h", 5000)
+        hot_cp = self.get_input_value("热流体cp_kj_kgk", 4.19)
         hot_t1 = self.get_input_value("热流体t1_℃", 90)
-        cold_flow = self.get_input_value("冷流体w_kg/h", 10000)
-        cold_cp = self.get_input_value("冷流体cp_kj/(kg·k)", 4.19)
+        cold_flow = self.get_input_value("冷流体w_kg_h", 10000)
+        cold_cp = self.get_input_value("冷流体cp_kj_kgk", 4.19)
         cold_t1 = self.get_input_value("冷流体t1_℃", 20)
         cold_t2 = self.get_input_value("冷流体t2_℃", 50)
         
@@ -1213,11 +1212,11 @@ class 换热器计算(QWidget):
     def calculate_mode_5(self):
         """模式5：求冷流体流量"""
         # 获取输入值
-        hot_flow = self.get_input_value("热流体w_kg/h", 5000)
-        hot_cp = self.get_input_value("热流体cp_kj/(kg·k)", 4.19)
+        hot_flow = self.get_input_value("热流体w_kg_h", 5000)
+        hot_cp = self.get_input_value("热流体cp_kj_kgk", 4.19)
         hot_t1 = self.get_input_value("热流体t1_℃", 90)
         hot_t2 = self.get_input_value("热流体t2_℃", 60)
-        cold_cp = self.get_input_value("冷流体cp_kj/(kg·k)", 4.19)
+        cold_cp = self.get_input_value("冷流体cp_kj_kgk", 4.19)
         cold_t1 = self.get_input_value("冷流体t1_℃", 20)
         cold_t2 = self.get_input_value("冷流体t2_℃", 50)
         
@@ -1283,11 +1282,11 @@ class 换热器计算(QWidget):
     def calculate_mode_6(self):
         """模式6：求热流体流量"""
         # 获取输入值
-        hot_cp = self.get_input_value("热流体cp_kj/(kg·k)", 4.19)
+        hot_cp = self.get_input_value("热流体cp_kj_kgk", 4.19)
         hot_t1 = self.get_input_value("热流体t1_℃", 90)
         hot_t2 = self.get_input_value("热流体t2_℃", 60)
-        cold_flow = self.get_input_value("冷流体w_kg/h", 10000)
-        cold_cp = self.get_input_value("冷流体cp_kj/(kg·k)", 4.19)
+        cold_flow = self.get_input_value("冷流体w_kg_h", 10000)
+        cold_cp = self.get_input_value("冷流体cp_kj_kgk", 4.19)
         cold_t1 = self.get_input_value("冷流体t1_℃", 20)
         cold_t2 = self.get_input_value("冷流体t2_℃", 50)
         
@@ -1370,52 +1369,52 @@ class 换热器计算(QWidget):
         # 根据模式收集不同的输入
         if mode == 0:
             inputs["蒸汽压力_MPa"] = self.get_input_value("蒸汽压力g_mpa", 0)
-            inputs["冷流体流量_kg_h"] = self.get_input_value("冷流体w_kg/h", 0)
-            inputs["冷流体cp"] = self.get_input_value("冷流体cp_kj/(kg·k)", 0)
+            inputs["冷流体流量_kg_h"] = self.get_input_value("冷流体w_kg_h", 0)
+            inputs["冷流体cp"] = self.get_input_value("冷流体cp_kj_kgk", 0)
             inputs["冷流体进口温度_C"] = self.get_input_value("冷流体t1_℃", 0)
             inputs["冷流体出口温度_C"] = self.get_input_value("冷流体t2_℃", 0)
         elif mode == 1:
             inputs["蒸汽压力_MPa"] = self.get_input_value("蒸汽压力g_mpa", 0)
-            inputs["冷流体cp"] = self.get_input_value("冷流体cp_kj/(kg·k)", 0)
+            inputs["蒸汽流量_kg_h"] = self.get_input_value("蒸汽流量_kg_h", 0)
+            inputs["冷流体cp"] = self.get_input_value("冷流体cp_kj_kgk", 0)
             inputs["冷流体进口温度_C"] = self.get_input_value("冷流体t1_℃", 0)
             inputs["冷流体出口温度_C"] = self.get_input_value("冷流体t2_℃", 0)
-            inputs["换热面积_m2"] = self.get_input_value("换热面积m2", 0)
         elif mode == 2:
             inputs["蒸汽压力_MPa"] = self.get_input_value("蒸汽压力g_mpa", 0)
-            inputs["冷流体流量_kg_h"] = self.get_input_value("冷流体w_kg/h", 0)
-            inputs["冷流体cp"] = self.get_input_value("冷流体cp_kj/(kg·k)", 0)
+            inputs["蒸汽流量_kg_h"] = self.get_input_value("蒸汽流量_kg_h", 0)
+            inputs["冷流体流量_kg_h"] = self.get_input_value("冷流体w_kg_h", 0)
+            inputs["冷流体cp"] = self.get_input_value("冷流体cp_kj_kgk", 0)
             inputs["冷流体进口温度_C"] = self.get_input_value("冷流体t1_℃", 0)
-            inputs["换热面积_m2"] = self.get_input_value("换热面积m2", 0)
         elif mode == 3:
-            inputs["热流体流量_kg_h"] = self.get_input_value("热流体w_kg/h", 0)
-            inputs["热流体cp"] = self.get_input_value("热流体cp_kj/(kg·k)", 0)
+            inputs["热流体流量_kg_h"] = self.get_input_value("热流体w_kg_h", 0)
+            inputs["热流体cp"] = self.get_input_value("热流体cp_kj_kgk", 0)
             inputs["热流体进口温度_C"] = self.get_input_value("热流体t1_℃", 0)
             inputs["热流体出口温度_C"] = self.get_input_value("热流体t2_℃", 0)
-            inputs["冷流体cp"] = self.get_input_value("冷流体cp_kj/(kg·k)", 0)
+            inputs["冷流体流量_kg_h"] = self.get_input_value("冷流体w_kg_h", 0)
+            inputs["冷流体cp"] = self.get_input_value("冷流体cp_kj_kgk", 0)
             inputs["冷流体进口温度_C"] = self.get_input_value("冷流体t1_℃", 0)
-            inputs["换热面积_m2"] = self.get_input_value("换热面积m2", 0)
         elif mode == 4:
-            inputs["热流体流量_kg_h"] = self.get_input_value("热流体w_kg/h", 0)
-            inputs["热流体cp"] = self.get_input_value("热流体cp_kj/(kg·k)", 0)
+            inputs["热流体流量_kg_h"] = self.get_input_value("热流体w_kg_h", 0)
+            inputs["热流体cp"] = self.get_input_value("热流体cp_kj_kgk", 0)
             inputs["热流体进口温度_C"] = self.get_input_value("热流体t1_℃", 0)
-            inputs["冷流体流量_kg_h"] = self.get_input_value("冷流体w_kg/h", 0)
-            inputs["冷流体cp"] = self.get_input_value("冷流体cp_kj/(kg·k)", 0)
+            inputs["冷流体流量_kg_h"] = self.get_input_value("冷流体w_kg_h", 0)
+            inputs["冷流体cp"] = self.get_input_value("冷流体cp_kj_kgk", 0)
             inputs["冷流体进口温度_C"] = self.get_input_value("冷流体t1_℃", 0)
-            inputs["换热面积_m2"] = self.get_input_value("换热面积m2", 0)
+            inputs["冷流体出口温度_C"] = self.get_input_value("冷流体t2_℃", 0)
         elif mode == 5:
-            inputs["热流体流量_kg_h"] = self.get_input_value("热流体w_kg/h", 0)
-            inputs["热流体cp"] = self.get_input_value("热流体cp_kj/(kg·k)", 0)
+            inputs["热流体流量_kg_h"] = self.get_input_value("热流体w_kg_h", 0)
+            inputs["热流体cp"] = self.get_input_value("热流体cp_kj_kgk", 0)
             inputs["热流体进口温度_C"] = self.get_input_value("热流体t1_℃", 0)
             inputs["热流体出口温度_C"] = self.get_input_value("热流体t2_℃", 0)
-            inputs["冷流体cp"] = self.get_input_value("冷流体cp_kj/(kg·k)", 0)
+            inputs["冷流体cp"] = self.get_input_value("冷流体cp_kj_kgk", 0)
             inputs["冷流体进口温度_C"] = self.get_input_value("冷流体t1_℃", 0)
             inputs["冷流体出口温度_C"] = self.get_input_value("冷流体t2_℃", 0)
         elif mode == 6:
-            inputs["热流体cp"] = self.get_input_value("热流体cp_kj/(kg·k)", 0)
+            inputs["热流体cp"] = self.get_input_value("热流体cp_kj_kgk", 0)
             inputs["热流体进口温度_C"] = self.get_input_value("热流体t1_℃", 0)
             inputs["热流体出口温度_C"] = self.get_input_value("热流体t2_℃", 0)
-            inputs["冷流体流量_kg_h"] = self.get_input_value("冷流体w_kg/h", 0)
-            inputs["冷流体cp"] = self.get_input_value("冷流体cp_kj/(kg·k)", 0)
+            inputs["冷流体流量_kg_h"] = self.get_input_value("冷流体w_kg_h", 0)
+            inputs["冷流体cp"] = self.get_input_value("冷流体cp_kj_kgk", 0)
             inputs["冷流体进口温度_C"] = self.get_input_value("冷流体t1_℃", 0)
             inputs["冷流体出口温度_C"] = self.get_input_value("冷流体t2_℃", 0)
 

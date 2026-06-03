@@ -136,6 +136,7 @@ class ChemicalCalculationsWidget(QWidget):
             ("蒸汽管径流量", "蒸汽管径流量", "steam_pipe_calculator", True),
             ("长输蒸汽管道温降计算", "LongDistanceSteamPipeCalculator", "long_distance_steam_pipe_calculator", True),
             ("循环水用水量计算", "CoolingWaterCalculator", "cooling_water_calculator", True),
+            ("蒸汽空消计算", "SteamSterilizationCalculator", "steam_sterilization_calculator", True),
             # ===== 三、换热设备 =====
             ("换热器计算", "换热器计算", "heat_exchanger_calculator", True),
             ("换热器面积", "换热器面积", "heat_exchanger_area_calculator", True),
@@ -369,6 +370,7 @@ class ChemicalCalculationsWidget(QWidget):
         "safety_valve_calculator": "安全/消防",
         "long_distance_steam_pipe_calculator": "管道",
         "cooling_water_calculator": "管道",
+        "steam_sterilization_calculator": "管道",
         "fan_power_calculator": "流体设备",
         "steam_property_calculator": "热工/制冷",
         "pure_substance_properties": "热力学",
