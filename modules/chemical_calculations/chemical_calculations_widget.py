@@ -151,6 +151,8 @@ class ChemicalCalculationsWidget(QWidget):
             ("消火栓计算", "消火栓计算", "fire_hydrant_calculator", True),
             # ===== 六、制冷 =====
             ("制冷循环计算", "RefrigerationCycleCalculator", "refrigeration_cycle_calculator", True),
+            # ===== 七、环保计算 =====
+            ("废水COD估算", "CODEstimator", "cod_estimator", True),
         ]
         
         # 添加所有页面
@@ -383,6 +385,7 @@ class ChemicalCalculationsWidget(QWidget):
         "solid_solubility_calculator": "热力学",
         "refrigerant_properties_calculator": "热工/制冷",
         "refrigeration_cycle_calculator": "热工/制冷",
+        "cod_estimator": "环保计算",
         "hazardous_chemicals_query": "安全/消防",
         "pump_power_calculator": "流体设备",
         "npsha_calculator": "流体设备",

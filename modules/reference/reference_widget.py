@@ -5,12 +5,14 @@ import os
 import sys
 import json
 from PySide6.QtWidgets import (
+    QApplication,
     QWidget, QVBoxLayout, QHBoxLayout, QTreeWidget, QTreeWidgetItem,
     QStackedWidget, QLabel, QLineEdit, QTableWidget, QTableWidgetItem,
     QTextEdit, QSplitter, QFrame, QAbstractItemView, QHeaderView,
+    QPushButton,
 )
 from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QFont, QColor, QBrush
+from PySide6.QtGui import QFont, QColor, QBrush, QClipboard
 
 
 # ── 加载参考数据 ──────────────────────────────────────────────
@@ -123,11 +125,34 @@ class ReferenceWidget(QWidget):
         right_layout.setContentsMargins(12, 0, 0, 0)
         right_layout.setSpacing(0)
 
-        # 内容标题
+        # 内容标题 + 复制按钮行
+        title_row = QHBoxLayout()
+        title_row.setSpacing(8)
         self.content_title = QLabel("选择左侧条目查看详情")
         self.content_title.setFont(QFont("Microsoft YaHei", 16, QFont.Weight.Bold))
         self.content_title.setWordWrap(True)
-        right_layout.addWidget(self.content_title)
+        title_row.addWidget(self.content_title, 1)
+
+        copy_btn = QPushButton("复制")
+        copy_btn.setToolTip("将当前条目的内容复制到剪贴板")
+        copy_btn.setFixedHeight(30)
+        copy_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db; color: white;
+                border: none; border-radius: 4px;
+                padding: 4px 14px; font-size: 12px; font-weight: bold;
+            }
+            QPushButton:hover { background-color: #2980b9; }
+        """)
+        copy_btn.clicked.connect(self._copy_content)
+        title_row.addWidget(copy_btn)
+
+        # 双语提示标志
+        self.bilingual_label = QLabel("")
+        self.bilingual_label.setStyleSheet("color: #e67e22; font-size: 11px; font-weight: bold; padding: 0 6px;")
+        title_row.addWidget(self.bilingual_label)
+
+        right_layout.addLayout(title_row)
 
         # 描述
         self.content_desc = QLabel("")
@@ -197,6 +222,7 @@ class ReferenceWidget(QWidget):
         icon_map = {
             "设备布置": "🏭", "管道设计": "🔧", "安全规范": "🛡️",
             "计算依据": "📐", "物性数据": "📊", "材料规范": "🔩",
+            "原辅料标准": "🧪", "蒸汽参数": "♨️", "压缩空气": "💨",
         }
 
         for cat in self.ref_data:
@@ -225,6 +251,7 @@ class ReferenceWidget(QWidget):
         icon_map = {
             "设备布置": "🏭", "管道设计": "🔧", "安全规范": "🛡️",
             "计算依据": "📐", "物性数据": "📊", "材料规范": "🔩",
+            "原辅料标准": "🧪", "蒸汽参数": "♨️", "压缩空气": "💨",
         }
 
         match_count = 0
@@ -279,8 +306,9 @@ class ReferenceWidget(QWidget):
         """根据树节点显示对应的参考内容"""
         sec = self._tree_items.get(id(item))
         if sec is None:
-            # 点击了分类节点，不切换内容
             return
+
+        self._current_section = sec  # 保存当前条目，供复制使用
 
         title = sec.get("title", "")
         desc = sec.get("description", "")
@@ -291,7 +319,14 @@ class ReferenceWidget(QWidget):
         self.content_desc.setText(desc)
         self.content_source.setText(f"来源: {source}" if source else "")
 
-        if sec_type == "table":
+        # 双语表提示
+        if sec_type == "bilingual_table":
+            self.bilingual_label.setText("EN↗ 复制为英文")
+            self.bilingual_label.setVisible(True)
+        else:
+            self.bilingual_label.setVisible(False)
+
+        if sec_type == "table" or sec_type == "bilingual_table":
             self._show_table(sec)
         elif sec_type == "text":
             self._show_text(sec)
@@ -381,6 +416,46 @@ class ReferenceWidget(QWidget):
             html_parts.append(f"<div style='padding:2px 0;'>{stripped}</div>")
 
         return "".join(html_parts)
+
+    # ── 复制 ────────────────────────────────────────────────
+
+    def _copy_content(self):
+        """将当前展示的内容以纯文本格式复制到剪贴板（Tab分隔，直接粘贴Excel）"""
+        if not hasattr(self, '_current_section'):
+            return
+
+        sec = self._current_section
+        sec_type = sec.get("type", "")
+        lines = []
+
+        # ── 双语表：直接输出显示的表格内容（Tab 分隔）──
+        if sec_type == "bilingual_table" or sec_type == "table":
+            lines.append("")  # 顶部空行
+            # 表头
+            headers_row = []
+            for c in range(self.table_widget.columnCount()):
+                h = self.table_widget.horizontalHeaderItem(c)
+                headers_row.append(h.text() if h else "")
+            lines.append("\t".join(headers_row))
+            # 数据行
+            for r in range(self.table_widget.rowCount()):
+                row_data = []
+                for c in range(self.table_widget.columnCount()):
+                    item = self.table_widget.item(r, c)
+                    row_data.append(item.text() if item and item.text() else "")
+                lines.append("\t".join(row_data))
+
+        elif sec_type == "text":
+            raw = self.text_widget.toPlainText()
+            if raw.strip():
+                lines.append(raw)
+
+        text = "\n".join(lines)
+        if not text.strip():
+            return
+
+        clipboard = QApplication.clipboard()
+        clipboard.setText(text)
 
     # ── 激活回调 ────────────────────────────────────────────
 

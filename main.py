@@ -4,7 +4,8 @@ import os
 import traceback
 from datetime import datetime
 
-# 先安装防闪退保护层（必须在 QApplication 创建之前）
+# 版本号常量和防闪退保护层
+from version import VERSION as CHEMICAL_VERSION
 from crash_shield import install_crash_shield, SafeApplication
 install_crash_shield()
 
@@ -358,7 +359,7 @@ A: 结果仅供参考，实际工程须由专业工程师审核确认。<br><br>
 {hw}<br>
 
 <b>ChemCal 信息：</b><br>
-- 版本：v1.4.20260602<br>
+- 版本：v{CHEMICAL_VERSION}<br>
 - 数据目录：{os.path.dirname(data_file)}<br>
 - 已加载模块：{loaded}/{total}<br>
 - 运行时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}<br><br>
@@ -428,8 +429,8 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.<br><br>
         self._show_scrollable_dialog("开源许可", text)
 
     def _show_about(self):
-        text = """<h2>ChemCal - 化工工程师个人生产力工具</h2>
-<h3>v1.4.20260602</h3><br>
+        text = f"""<h2>ChemCal - 化工工程师个人生产力工具</h2>
+<h3>v{CHEMICAL_VERSION}</h3><br>
 Copyright 2025-2026 ChemCal Team | virmuran@163.com<br><br>
 
 <b>核心功能：</b><br>
@@ -467,7 +468,7 @@ def resource_path(relative_path):
 def main():
     app = SafeApplication(sys.argv)
     app.setApplicationName("ChemCal")
-    app.setApplicationVersion("1.4")
+    app.setApplicationVersion(CHEMICAL_VERSION.split(".", 1)[0])  # e.g. "1.4"
     app.setOrganizationName("ChemCal")
 
     try:
