@@ -8,47 +8,18 @@ from PySide6.QtCore import Qt
 import math
 import re
 from datetime import datetime
-from modules.combo_box_utils import ComboBoxWheelBlocker
 import sys
 from pathlib import Path
 
-# DOCX 报告导出
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
-from utils.docx_utils import ReportExporter
 
-COMBOBOX_STYLE = """
-    QComboBox {
-        border: 1px solid #888;
-        border-radius: 4px;
-        padding: 6px 10px;
-        /* background via theme */
-        /* color via theme */
-    }
-    QComboBox QAbstractItemView {
-        /* background-color via theme */
-        /* color via theme */
-        border: 1px solid #888;
-        selection-background-color: #3498db;
-        selection-color: black;
-    }
-    QComboBox QAbstractItemView::item {
-        padding: 3px 8px;
-    }
-"""
-GROUP_STYLE = """
-    QGroupBox {
-        font-weight: bold;
-        border: 1px solid #888;
-        border-radius: 8px;
-        margin-top: 10px;
-        padding-top: 10px;
-    }
-    QGroupBox::title {
-        subcontrol-origin: margin;
-        left: 10px;
-        padding: 0 8px 0 8px;
-    }
-"""
+from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
+                        CALC_BUTTON_STYLE, MODE_BUTTON_STYLE,
+                        SCROLL_AREA_STYLE, INPUT_LABEL_STYLE,
+                        CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
+
+from calculator_base import CalculatorBase
+# DOCX 报告导出
+
 
 class ProjectInfoDialog(QDialog):
     """工程信息对话框 - 与压降计算模块保持一致"""
@@ -138,7 +109,7 @@ class ProjectInfoDialog(QDialog):
             'report_number': self.report_number_input.text().strip()
         }
 
-class 管道跨距(QWidget):
+class 管道跨距(CalculatorBase):
     """管道跨距计算（按照压降计算模块UI风格重新设计）"""
     
     def __init__(self, parent=None, data_manager=None):
@@ -154,9 +125,7 @@ class 管道跨距(QWidget):
         self.setup_default_values()
 
         # 禁止未展开时鼠标滚轮切换下拉菜单
-        self._wheel_blocker = ComboBoxWheelBlocker(self)
-        for combo in self.findChildren(QComboBox):
-            combo.installEventFilter(self._wheel_blocker)
+        self.setup_wheel_blocker()
     
     def init_data_manager(self):
         """初始化数据管理器 - 使用单例模式"""

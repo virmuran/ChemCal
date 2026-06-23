@@ -24,50 +24,21 @@ except Exception as e:
     USE_INDUSTRIAL_EOS = False
     refrigerant_eos = None
 
-from modules.combo_box_utils import ComboBoxWheelBlocker
 import sys
 from pathlib import Path
 
+
+from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
+                        CALC_BUTTON_STYLE, MODE_BUTTON_STYLE,
+                        SCROLL_AREA_STYLE, INPUT_LABEL_STYLE,
+                        CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
+
+from calculator_base import CalculatorBase
 # DOCX 报告导出
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
-from utils.docx_utils import ReportExporter
 
 # ---------------------------------------------------------------------------
 #  QGroupBox 统一样式
 # ---------------------------------------------------------------------------
-GROUP_STYLE = """
-    QGroupBox {
-        font-weight: bold;
-        border: 1px solid #888;
-        border-radius: 8px;
-        margin-top: 10px;
-        padding-top: 10px;
-    }
-    QGroupBox::title {
-        subcontrol-origin: margin;
-        left: 10px;
-        padding: 0 8px 0 8px;
-    }
-"""
-COMBOBOX_STYLE = """
-    QComboBox {
-        border: 1px solid #888;
-        border-radius: 4px;
-        padding: 6px 10px;
-        /* background via theme */
-        /* color via theme */
-    }
-    QComboBox QAbstractItemView {
-        /* background-color via theme */
-        /* color via theme */
-        border: 1px solid #888;
-        selection-background-color: #3498db;
-        selection-color: black;
-    }
-    QComboBox QAbstractItemView::item {
-        padding: 3px 8px;
-    }
-"""
 
 LINEEDIT_STYLE = "padding: 6px 10px; border: 1px solid #888; border-radius: 4px;"
 
@@ -100,7 +71,7 @@ _REF_MAP = {
     "R32": "R32", "R125": "R125", "R143a": "R143a",
 }
 
-class RefrigerantPropertiesCalculator(QWidget):
+class RefrigerantPropertiesCalculator(CalculatorBase):
     """制冷剂物性计算器 - 统一UI风格版"""
 
     calculation_type = "refrigerant_properties_calculator"
@@ -117,9 +88,7 @@ class RefrigerantPropertiesCalculator(QWidget):
         self.setup_ui()
 
         # 禁止未展开时鼠标滚轮切换下拉菜单
-        self._wheel_blocker = ComboBoxWheelBlocker(self)
-        for combo in self.findChildren(QComboBox):
-            combo.installEventFilter(self._wheel_blocker)
+        self.setup_wheel_blocker()
 
     def init_data_manager(self):
         try:

@@ -6,13 +6,17 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
 import math
-from modules.combo_box_utils import ComboBoxWheelBlocker
 import sys
 from pathlib import Path
 
+
+from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
+                        CALC_BUTTON_STYLE, MODE_BUTTON_STYLE,
+                        SCROLL_AREA_STYLE, INPUT_LABEL_STYLE,
+                        CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
+
+from calculator_base import CalculatorBase
 # DOCX 报告导出
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
-from utils.docx_utils import ReportExporter
 
 # =============================================================================
 # 工业级气体物性内置数据库
@@ -159,27 +163,8 @@ def _lee_kesler_z(Tr, Pr, omega):
 # ---------------------------------------------------------------------------
 #  QGroupBox 统一样式
 # ---------------------------------------------------------------------------
-COMBOBOX_STYLE = """
-    QComboBox {
-        border: 1px solid #888;
-        border-radius: 4px;
-        padding: 6px 10px;
-        /* background via theme */
-        /* color via theme */
-    }
-    QComboBox QAbstractItemView {
-        /* background-color via theme */
-        /* color via theme */
-        border: 1px solid #888;
-        selection-background-color: #3498db;
-        selection-color: black;
-    }
-    QComboBox QAbstractItemView::item {
-        padding: 3px 8px;
-    }
-"""
 
-class GasMixturePropertiesCalculator(QWidget):
+class GasMixturePropertiesCalculator(CalculatorBase):
     """气体混合物物性计算器 - 统一UI风格版"""
 
     calculation_type = "gas_mixture_properties_calculator"
@@ -197,9 +182,7 @@ class GasMixturePropertiesCalculator(QWidget):
         self.setup_ui()
 
         # 禁止未展开时鼠标滚轮切换下拉菜单
-        self._wheel_blocker = ComboBoxWheelBlocker(self)
-        for combo in self.findChildren(QComboBox):
-            combo.installEventFilter(self._wheel_blocker)
+        self.setup_wheel_blocker()
 
     def init_data_manager(self):
         """初始化数据管理器"""

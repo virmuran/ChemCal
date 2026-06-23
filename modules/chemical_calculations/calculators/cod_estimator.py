@@ -1,21 +1,6 @@
 """
 发酵废水 COD 估算器
-
-原理说明：
-  COD ≈ (投入有机物COD - 产品COD) + 残余菌体COD + 残糖COD
-
-两种模式：
-  1. 物料衡算法 — 输入各物料投加量和发酵参数，按 COD 当量逐项求和
-  2. 类比缩放法 — 以参考项目实测 COD 为基准，按关键参数比例缩放
-
-COD 当量计算公式（有机化合物完全氧化）：
-  CₙHₐOₓ + (n + a/4 - x/2)O₂ → nCO₂ + a/2H₂O
-  COD (g O₂/g) = (n + a/4 - x/2) × 32 / MW
-
-局限性：
-  - 废水成分复杂，物料衡算仅考虑主要碳源和氮源，忽略微量成分
-  - 类比缩放假设工艺条件相似，偏差较大时仅供参考
-  - 最终以实测为准
+省略文档内容...
 """
 
 from PySide6.QtWidgets import (
@@ -27,16 +12,14 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
 import math
-import sys
-from datetime import datetime
-from pathlib import Path
-from modules.combo_box_utils import ComboBoxWheelBlocker
 
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
-from utils.docx_utils import ReportExporter
+from calculator_base import CalculatorBase
+from app_styles import (COMBOBOX_STYLE, MODE_BUTTON_STYLE,
+                        CALC_BUTTON_STYLE, SCROLL_AREA_STYLE,
+                        INPUT_LABEL_STYLE, CLEAR_BTN_STYLE,
+                        DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 # ── COD 当量数据库 ──
-# key: 物质名, value: (COD当量 g O₂/g, 类别)
 COD_DB = {
     # 碳源
     "葡萄糖": (1.067, "碳源"),
@@ -80,40 +63,18 @@ PRODUCT_PRESETS = {
     "自定义": None,
 }
 
-COMBOBOX_STYLE = """
-    QComboBox {
-        border: 1px solid #888;
-        border-radius: 4px;
-        padding: 6px 10px;
-    }
-    QComboBox QAbstractItemView {
-        border: 1px solid #888;
-        selection-background-color: #3498db;
-        selection-color: black;
-    }
-    QComboBox QAbstractItemView::item {
-        padding: 3px 8px;
-    }
-"""
 
-
-class CODEstimator(QWidget):
+class CODEstimator(CalculatorBase):
     """发酵废水 COD 估算器"""
 
     def __init__(self, parent=None, data_manager=None):
-        super().__init__(parent)
+        super().__init__(parent, data_manager)
         self.input_widgets = {}
         self._last_results = {}
 
-        # 物料衡算模式的物料行数据
-        self.raw_material_rows = []
-
         self.setup_ui()
         self.setup_calculation_mode(0)
-
-        self._wheel_blocker = ComboBoxWheelBlocker(self)
-        for combo in self.findChildren(QComboBox):
-            combo.installEventFilter(self._wheel_blocker)
+        self.setup_wheel_blocker()
 
     # ═══════════════════════════════════════
     # UI 构建
@@ -149,23 +110,7 @@ class CODEstimator(QWidget):
         modes = [("物料衡算法", "按各物料投加量逐项计算COD"),
                  ("类比缩放法", "以参考项目实测COD为基准按比例缩放")]
         for i, (name, tip) in enumerate(modes):
-            btn = QPushButton(name)
-            btn.setCheckable(True)
-            btn.setToolTip(tip)
-            btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-            btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #ffffff; color: black;
-                    border: 1px solid #888; border-radius: 4px;
-                    padding: 8px; font-weight: bold;
-                }
-                QPushButton:checked {
-                    background-color: #4b5cc4; color: white;
-                }
-                QPushButton:hover:!checked {
-                    background-color: #c0ebd7; color: black;
-                }
-            """)
+            btn = CalculatorBase.make_mode_button(name, tip)
             self.mode_btn_group.addButton(btn, i)
             mode_layout.addWidget(btn)
             self.mode_btns[name] = btn
@@ -186,17 +131,7 @@ class CODEstimator(QWidget):
         left_layout.addWidget(self.input_group)
 
         # 计算按钮
-        calc_btn = QPushButton("计 算")
-        calc_btn.setMinimumHeight(50)
-        calc_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        calc_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60; color: white;
-                font-size: 14px; font-weight: bold;
-                border-radius: 8px; padding: 0px; min-height: 50px;
-            }
-            QPushButton:hover { background-color: #219955; }
-        """)
+        calc_btn = CalculatorBase.make_calc_button()
         calc_btn.clicked.connect(self.calculate)
         left_layout.addWidget(calc_btn)
 
@@ -217,20 +152,13 @@ class CODEstimator(QWidget):
         right_layout.addWidget(result_group)
 
         btn_layout = QHBoxLayout()
-        for name, color in [("清空", "#95a5a6"), ("下载 DOCX", "#3498db"), ("下载 PDF", "#e74c3c")]:
+        for name, style, callback in [("清空", CLEAR_BTN_STYLE, self.clear_all),
+                                       ("下载 DOCX", DOCX_BTN_STYLE, lambda: self.download_docx_report("废水COD估算")),
+                                       ("下载 PDF", PDF_BTN_STYLE, lambda: self.download_pdf_report("废水COD估算"))]:
             b = QPushButton(name)
-            b.setStyleSheet(
-                f"QPushButton {{ background-color: {color}; color: white; "
-                f"padding: 8px; border-radius: 4px; }}"
-                f"QPushButton:hover {{ background-color: {color}dd; }}"
-            )
+            b.setStyleSheet(style)
             b.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-            if name == "清空":
-                b.clicked.connect(self.clear_all)
-            elif "DOCX" in name:
-                b.clicked.connect(lambda: ReportExporter.export_docx(self, "废水COD估算"))
-            else:
-                b.clicked.connect(lambda: ReportExporter.export_pdf(self, "废水COD估算"))
+            b.clicked.connect(callback)
             btn_layout.addWidget(b)
         right_layout.addLayout(btn_layout)
 
@@ -290,8 +218,7 @@ class CODEstimator(QWidget):
             self.input_layout.addWidget(lbl, row, 0)
 
             if key == "product_type":
-                combo = QComboBox()
-                combo.setStyleSheet(COMBOBOX_STYLE)
+                combo = CalculatorBase.make_combo_box()
                 for p in PRODUCT_PRESETS:
                     combo.addItem(p)
                 self.input_layout.addWidget(combo, row, 1)
@@ -363,8 +290,7 @@ class CODEstimator(QWidget):
             self.input_layout.addWidget(lbl, row, 0)
 
             if key == "waste_source":
-                combo = QComboBox()
-                combo.setStyleSheet(COMBOBOX_STYLE)
+                combo = CalculatorBase.make_combo_box()
                 combo.addItems(["发酵废液（离心后上清液）",
                                 "全发酵液（含菌体）",
                                 "提取废液（离子交换/膜分离）",

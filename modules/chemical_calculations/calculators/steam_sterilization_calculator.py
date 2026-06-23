@@ -33,11 +33,15 @@ import sys
 import importlib.util
 from datetime import datetime
 from pathlib import Path
-from modules.combo_box_utils import ComboBoxWheelBlocker
 
+
+from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
+                        CALC_BUTTON_STYLE, MODE_BUTTON_STYLE,
+                        SCROLL_AREA_STYLE, INPUT_LABEL_STYLE,
+                        CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
+
+from calculator_base import CalculatorBase
 # DOCX 报告导出
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
-from utils.docx_utils import ReportExporter
 
 # 动态加载 IAPWS-IF97 蒸汽物性模块
 try:
@@ -109,24 +113,9 @@ PIPE_DIMENSIONS = {
 }
 
 # ── 样式 ──
-COMBOBOX_STYLE = """
-    QComboBox {
-        border: 1px solid #888;
-        border-radius: 4px;
-        padding: 6px 10px;
-    }
-    QComboBox QAbstractItemView {
-        border: 1px solid #888;
-        selection-background-color: #3498db;
-        selection-color: black;
-    }
-    QComboBox QAbstractItemView::item {
-        padding: 3px 8px;
-    }
-"""
 
 
-class SteamSterilizationCalculator(QWidget):
+class SteamSterilizationCalculator(CalculatorBase):
     """蒸汽空消计算器"""
 
     def __init__(self, parent=None, data_manager=None):
@@ -148,9 +137,7 @@ class SteamSterilizationCalculator(QWidget):
         self.setup_calculation_mode(0)  # 默认罐体空消
 
         # 滚轮拦截
-        self._wheel_blocker = ComboBoxWheelBlocker(self)
-        for combo in self.findChildren(QComboBox):
-            combo.installEventFilter(self._wheel_blocker)
+        self.setup_wheel_blocker()
 
     # ═══════════════════════════════════════════════════════════════
     # UI 构建

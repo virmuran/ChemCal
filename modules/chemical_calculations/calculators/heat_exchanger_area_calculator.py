@@ -13,13 +13,17 @@ import os
 import importlib.util
 from datetime import datetime
 from enum import Enum
-from modules.combo_box_utils import ComboBoxWheelBlocker
 import sys
 from pathlib import Path
 
+
+from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
+                        CALC_BUTTON_STYLE, MODE_BUTTON_STYLE,
+                        SCROLL_AREA_STYLE, INPUT_LABEL_STYLE,
+                        CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
+
+from calculator_base import CalculatorBase
 # DOCX 报告导出
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
-from utils.docx_utils import ReportExporter
 
 # 动态加载 IAPWS-IF97 蒸汽物性模块
 try:
@@ -38,40 +42,7 @@ except Exception as _e:
 
 # ==================== 枚举定义 ====================
 
-COMBOBOX_STYLE = """
-    QComboBox {
-        border: 1px solid #888;
-        border-radius: 4px;
-        padding: 6px 10px;
-        /* background via theme */
-        color: black;
-    }
-    QComboBox QAbstractItemView {
-        /* background-color via theme */
-        color: black;
-        border: 1px solid #888;
-        selection-background-color: #3498db;
-        selection-color: black;
-    }
-    QComboBox QAbstractItemView::item {
-        padding: 3px 8px;
-    }
-"""
 
-GROUP_STYLE = """
-QGroupBox {
-    font-weight: bold;
-    border: 1px solid #888;
-    border-radius: 8px;
-    margin-top: 10px;
-    padding-top: 10px;
-}
-QGroupBox::title {
-    subcontrol-origin: margin;
-    left: 10px;
-    padding: 0 8px 0 8px;
-}
-"""
 class FlowArrangement(Enum):
     """流动方式枚举"""
     COUNTERCURRENT = "逆流"
@@ -87,7 +58,7 @@ class HeatTransferMode(Enum):
 
 # ==================== 主界面类 ====================
 
-class 换热器面积(QWidget):
+class 换热器面积(CalculatorBase):
     """换热器面积计算器 - 统一UI风格版"""
     
     def __init__(self, parent=None, data_manager=None):
@@ -110,9 +81,7 @@ class 换热器面积(QWidget):
         self.setup_mode_dependencies()
 
         # 禁止未展开时鼠标滚轮切换下拉菜单
-        self._wheel_blocker = ComboBoxWheelBlocker(self)
-        for combo in self.findChildren(QComboBox):
-            combo.installEventFilter(self._wheel_blocker)
+        self.setup_wheel_blocker()
 
     def init_data_manager(self):
         """初始化数据管理器"""

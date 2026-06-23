@@ -9,44 +9,19 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QDoubleValidator, QFont
 from PySide6.QtSvgWidgets import QSvgWidget
-from modules.combo_box_utils import ComboBoxWheelBlocker
 import sys
 from pathlib import Path
 
+
+from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
+                        CALC_BUTTON_STYLE, MODE_BUTTON_STYLE,
+                        SCROLL_AREA_STYLE, INPUT_LABEL_STYLE,
+                        CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
+
+from calculator_base import CalculatorBase
 # DOCX 报告导出
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
-from utils.docx_utils import ReportExporter
 
-COMBOBOX_STYLE = """
-    QComboBox {
-        border: 1px solid #888;
-        border-radius: 4px;
-        padding: 6px 10px;
-    }
-    QComboBox QAbstractItemView {
-        border: 1px solid #888;
-        selection-background-color: #3498db;
-        selection-color: black;
-    }
-    QComboBox QAbstractItemView::item {
-        padding: 3px 8px;
-    }
-"""
 
-GROUP_STYLE = """
-QGroupBox {
-    font-weight: bold;
-    border: 1px solid #888;
-    border-radius: 8px;
-    margin-top: 10px;
-    padding-top: 10px;
-}
-QGroupBox::title {
-    subcontrol-origin: margin;
-    left: 10px;
-    padding: 0 8px 0 8px;
-}
-"""
 
 # ── 标准安全阀喉径规格 ──
 STANDARD_VALVES = [
@@ -64,7 +39,7 @@ STANDARD_VALVES = [
     ("DN200", 145, 16513),
 ]
 
-class SafetyValveCalculator(QWidget):
+class SafetyValveCalculator(CalculatorBase):
     """安全阀泄放面积计算 — 模式驱动版"""
 
     # ── 6种计算类型及其默认参数 ──
@@ -89,10 +64,7 @@ class SafetyValveCalculator(QWidget):
         self.setup_ui()
         self._on_mode_changed(self.mode_combo.currentText())
         self._update_svg_diagram()
-
-        self._wheel_blocker = ComboBoxWheelBlocker(self)
-        for combo in self.findChildren(QComboBox):
-            combo.installEventFilter(self._wheel_blocker)
+        self.setup_wheel_blocker()
 
     def init_data_manager(self):
         try:

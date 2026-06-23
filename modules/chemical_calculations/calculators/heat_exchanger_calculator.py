@@ -13,11 +13,15 @@ import sys
 import importlib.util
 from datetime import datetime
 from pathlib import Path
-from modules.combo_box_utils import ComboBoxWheelBlocker
 
+
+from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
+                        CALC_BUTTON_STYLE, MODE_BUTTON_STYLE,
+                        SCROLL_AREA_STYLE, INPUT_LABEL_STYLE,
+                        CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
+
+from calculator_base import CalculatorBase
 # DOCX 报告导出
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
-from utils.docx_utils import ReportExporter
 
 # 动态加载 IAPWS-IF97 蒸汽物性模块
 try:
@@ -35,27 +39,8 @@ except Exception as _e:
     print(f"警告: 无法加载 IAPWS-IF97 模块: {_e}")
 
 
-COMBOBOX_STYLE = """
-    QComboBox {
-        border: 1px solid #888;
-        border-radius: 4px;
-        padding: 6px 10px;
-        /* background via theme */
-        /* color via theme */
-    }
-    QComboBox QAbstractItemView {
-        /* background-color via theme */
-        /* color via theme */
-        border: 1px solid #888;
-        selection-background-color: #3498db;
-        selection-color: black;
-    }
-    QComboBox QAbstractItemView::item {
-        padding: 3px 8px;
-    }
-"""
 
-class 换热器计算(QWidget):
+class 换热器计算(CalculatorBase):
     """换热器计算器（统一UI风格版）"""
     
     def __init__(self, parent=None, data_manager=None):
@@ -80,9 +65,7 @@ class 换热器计算(QWidget):
         self.setup_calculation_mode(0)  # 默认第一种模式
 
         # 禁止未展开时鼠标滚轮切换下拉菜单
-        self._wheel_blocker = ComboBoxWheelBlocker(self)
-        for combo in self.findChildren(QComboBox):
-            combo.installEventFilter(self._wheel_blocker)
+        self.setup_wheel_blocker()
     
     def init_data_manager(self):
         """初始化数据管理器 - 使用单例模式"""

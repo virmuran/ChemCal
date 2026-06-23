@@ -11,13 +11,17 @@ import re
 import os
 import importlib.util
 from datetime import datetime
-from modules.combo_box_utils import ComboBoxWheelBlocker
 import sys
 from pathlib import Path
 
+
+from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
+                        CALC_BUTTON_STYLE, MODE_BUTTON_STYLE,
+                        SCROLL_AREA_STYLE, INPUT_LABEL_STYLE,
+                        CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
+
+from calculator_base import CalculatorBase
 # DOCX 报告导出
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
-from utils.docx_utils import ReportExporter
 
 # IAPWS-IF97 工业标准蒸汽物性（动态导入，避免 relative import 失败）
 try:
@@ -46,20 +50,6 @@ except Exception as e:
     iapws_viscosity = iapws_thermal_cond = None
 
 # QGroupBox 统一样式
-GROUP_STYLE = """
-    QGroupBox {
-        font-weight: bold;
-        border: 1px solid #888;
-        border-radius: 8px;
-        margin-top: 10px;
-        padding-top: 10px;
-    }
-    QGroupBox::title {
-        subcontrol-origin: margin;
-        left: 10px;
-        padding: 0 8px 0 8px;
-    }
-"""
 
 # 滚动条统一样式
 SCROLLBAR_STYLE = """
@@ -93,27 +83,8 @@ SCROLLBAR_STYLE = """
         width: 0;
     }
 """
-COMBOBOX_STYLE = """
-    QComboBox {
-        border: 1px solid #888;
-        border-radius: 4px;
-        padding: 6px 10px;
-        /* background via theme */
-        color: black;
-    }
-    QComboBox QAbstractItemView {
-        /* background-color via theme */
-        color: black;
-        border: 1px solid #888;
-        selection-background-color: #3498db;
-        selection-color: black;
-    }
-    QComboBox QAbstractItemView::item {
-        padding: 3px 8px;
-    }
-"""
 
-class SteamPropertyCalculator(QWidget):
+class SteamPropertyCalculator(CalculatorBase):
     """水蒸气性质查询计算器 - 统一UI规范版本"""
     
     # 计算类型类属性
@@ -149,9 +120,7 @@ class SteamPropertyCalculator(QWidget):
         self.setup_connections()
 
         # 禁止未展开时鼠标滚轮切换下拉菜单
-        self._wheel_blocker = ComboBoxWheelBlocker(self)
-        for combo in self.findChildren(QComboBox):
-            combo.installEventFilter(self._wheel_blocker)
+        self.setup_wheel_blocker()
     
     def init_data_manager(self):
         """初始化数据管理器"""

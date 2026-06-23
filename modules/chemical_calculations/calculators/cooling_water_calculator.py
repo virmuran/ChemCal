@@ -1,6 +1,5 @@
 import os
 import math
-import random
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
     QLabel, QLineEdit, QPushButton, QComboBox,
@@ -10,27 +9,20 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QDoubleValidator, QFont
 from PySide6.QtSvgWidgets import QSvgWidget
-from modules.combo_box_utils import ComboBoxWheelBlocker
 import sys
 from pathlib import Path
 
+
+from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
+                        CALC_BUTTON_STYLE, MODE_BUTTON_STYLE,
+                        SCROLL_AREA_STYLE, INPUT_LABEL_STYLE,
+                        CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
+
+from calculator_base import CalculatorBase
 # DOCX 报告导出
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
-from utils.docx_utils import ReportExporter
 
-COMBOBOX_STYLE = """
-    QComboBox {
-        border: 1px solid #888; border-radius: 4px;
-        padding: 6px 10px;
-    }
-    QComboBox QAbstractItemView {
-        border: 1px solid #888;
-        selection-background-color: #3498db; selection-color: black;
-    }
-    QComboBox QAbstractItemView::item { padding: 3px 8px; }
-"""
 
-class CoolingWaterCalculator(QWidget):
+class CoolingWaterCalculator(CalculatorBase):
     """循环冷却水用水量计算 — 模式驱动版
 
     10种热负荷来源模式（含多效蒸发器）+ 直接输入模式，统一计算循环水量、推荐管径。
@@ -165,10 +157,7 @@ class CoolingWaterCalculator(QWidget):
         self._last_result = {}
         self.setup_ui()
         self._on_mode_changed(self.mode_combo.currentText())
-
-        self._wheel_blocker = ComboBoxWheelBlocker(self)
-        for combo in self.findChildren(QComboBox):
-            combo.installEventFilter(self._wheel_blocker)
+        self.setup_wheel_blocker()
 
     # ═══════════════════════ UI ═══════════════════════
     def setup_ui(self):
