@@ -23,7 +23,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
-# DOCX 报告导出
+from svg_utils import svg_text, svg_rect, svg_line, svg_circle, svg_ellipse, svg_arrow_marker, svg_start, svg_end
 
 # 动态加载 IAPWS-IF97 蒸汽物性模块
 try:
@@ -473,10 +473,8 @@ class 换热器面积(CalculatorBase):
 
     # ───────────────── SVG 示意图 ─────────────────
     def _text(self, x, y, text, size=9, color="#333", bold=False, center=True):
-        """SVG 文本（白字无描边）"""
-        extra = 'font-weight="bold"' if bold else ''
-        anchor = 'text-anchor="middle"' if center else ''
-        return f'<text x="{x}" y="{y}" {anchor} font-size="{size}" fill="{color}" {extra}>{text}</text>'
+        """SVG 文本（委托 svg_utils）"""
+        return svg_text(x, y, text, size, color, bold, center)
 
     def _draw_flow_port(self, parts, x, y_base, y_dir, label, temp_text, color, arrow_id):
         """流体进出口：箭头 + 标签 + 温度"""

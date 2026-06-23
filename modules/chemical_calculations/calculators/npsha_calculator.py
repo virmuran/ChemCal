@@ -5,7 +5,6 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QFont, QDoubleValidator
 from PySide6.QtSvgWidgets import QSvgWidget
-from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtCore import Qt
 import os
 import sys
@@ -18,7 +17,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
-# DOCX 报告导出
+from svg_utils import svg_text
 
 
 class NPSHaCalculator(CalculatorBase):
@@ -708,9 +707,7 @@ H_f    = {friction_loss} m (吸入管路损失)
 
     # ───────────────── 泵吸入安装 SVG 示意图 ─────────────────
     def _text(self, x, y, text, size=9, color="#333", bold=False, center=True):
-        e = 'font-weight="bold"' if bold else ""
-        a = 'text-anchor="middle"' if center else ""
-        return f'<text x="{x}" y="{y}" {a} font-size="{size}" fill="{color}" {e}>{text}</text>'
+        return svg_text(x, y, text, size, color, bold, center)
 
     def _generate_pump_suction_svg(self, **kw):
         """生成泵吸入安装示意图：容器 → 管路 → 泵"""

@@ -19,7 +19,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
-# DOCX 报告导出
+from svg_utils import svg_text
 
 
 class CoolingWaterCalculator(CalculatorBase):
@@ -1152,9 +1152,7 @@ class CoolingWaterCalculator(CalculatorBase):
 
     # ═══════════════════════ SVG ═══════════════════════
     def _text(self, x, y, text, size=9, color="#333", bold=False, center=True):
-        e = 'font-weight="bold"' if bold else ""
-        a = 'text-anchor="middle"' if center else ""
-        return f'<text x="{x}" y="{y}" {a} font-size="{size}" fill="{color}" {e}>{text}</text>'
+        return svg_text(x, y, text, size, color, bold, center)
 
     def _generate_cw_svg(self, **kw):
         w, h = 380, 280

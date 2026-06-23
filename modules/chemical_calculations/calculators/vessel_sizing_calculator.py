@@ -23,6 +23,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
+from svg_utils import svg_text
 # DOCX 报告导出
 
 # 附件选择对话框 -------------------------------------------------

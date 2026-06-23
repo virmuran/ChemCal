@@ -21,6 +21,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
+from svg_utils import svg_text
 # DOCX 报告导出
 
 
@@ -701,9 +702,7 @@ class 管道壁厚(CalculatorBase):
             pass
     
     def _text(self, x, y, text, size=9, color="#333", bold=False, center=True):
-        e = 'font-weight="bold"' if bold else ""
-        a = 'text-anchor="middle"' if center else ""
-        return f'<text x="{x}" y="{y}" {a} font-size="{size}" fill="{color}" {e}>{text}</text>'
+        return svg_text(x, y, text, size, color, bold, center)
 
     def _generate_pipe_svg(self, **kw):
         """管道壁厚截面：双同心圆 + 管壁标注 + Sch 推荐"""
