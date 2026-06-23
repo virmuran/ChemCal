@@ -57,21 +57,9 @@ class DataManager(QObject):
     
     def _get_default_data_file_path(self):
         """获取默认数据文件路径"""
-        try:
-            from PySide6.QtCore import QStandardPaths
-            # 使用 Qt 的标准路径获取应用程序数据目录
-            app_data_dir = QStandardPaths.writableLocation(QStandardPaths.AppDataLocation)
-            
-            if not app_data_dir:
-                app_data_dir = os.path.abspath(".")
-            
-            # 确保目录存在
-            os.makedirs(app_data_dir, exist_ok=True)
-            
-            return os.path.join(app_data_dir, "ChemCal_data.json")
-        except Exception:
-            # 如果 Qt 不可用，使用当前目录
-            return os.path.join(os.path.abspath("."), "ChemCal_data.json")
+        data_dir = os.path.join(os.path.expanduser("~"), ".ChemCal", "data")
+        os.makedirs(data_dir, exist_ok=True)
+        return os.path.join(data_dir, "ChemCal_data.json")
     
     def _load_or_create_data(self):
         """加载或创建数据文件"""
@@ -128,12 +116,6 @@ class DataManager(QObject):
             # 子项名称默认为空
             new_info["subproject_name"] = ""
             
-            # 保留计算人员和审核人员到自定义字段（如果需要）
-            if "calculator" in old_info:
-                data["_old_calculator"] = old_info["calculator"]
-            if "reviewer" in old_info:
-                data["_old_reviewer"] = old_info["reviewer"]
-                
             data["project_info"] = new_info
             
             print("已迁移工程信息数据到新格式")

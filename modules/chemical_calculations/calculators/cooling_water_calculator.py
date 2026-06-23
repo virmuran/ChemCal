@@ -660,8 +660,8 @@ class CoolingWaterCalculator(CalculatorBase):
             data = self.EVAP_EFFECTS[text]
             lo, hi = data[0], data[1]
             if lo > 0:
-                # 系数：范围内随机取值
-                val = round(random.uniform(lo, hi), 2)
+                # 系数：使用区间推荐值（中点）
+                val = round((lo + hi) / 2, 2)
                 self.evap_coeff_input.setText(f"{val}")
                 self.evap_coeff_input.setToolTip(f"系数范围: {lo}~{hi}")
                 # 汽化潜热：根据末效温度自动填充

@@ -74,7 +74,7 @@ class HistoryDB(QObject):
         super().__init__()  # 初始化 QObject
         self._initialized = True
 
-        db_dir = os.path.join(os.path.expandvars("%APPDATA%"), "ChemCal", "ChemCal")
+        db_dir = os.path.join(os.path.expanduser("~"), ".ChemCal", "history")
         os.makedirs(db_dir, exist_ok=True)
         self.db_path = os.path.join(db_dir, "calc_history.db")
 

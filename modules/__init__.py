@@ -1,5 +1,5 @@
 # ChemCal/modules/__init__.py
-__author__ = "ChemCal Team"
+"""ChemCal 模块包 — 路径设置 + 核心数据管理器初始化"""
 
 import os
 import sys
@@ -10,14 +10,40 @@ current_dir = Path(__file__).parent
 if str(current_dir) not in sys.path:
     sys.path.insert(0, str(current_dir))
 
+
+def setup_module_paths():
+    """将 ChemCal 关键目录添加到 sys.path"""
+    added_paths = []
+
+    # 项目根目录
+    root_dir = Path(__file__).parent.parent
+    if str(root_dir) not in sys.path:
+        sys.path.insert(0, str(root_dir))
+        added_paths.append(str(root_dir))
+
+    # converter 目录
+    converter_dir = root_dir / "modules" / "converter"
+    if converter_dir.exists() and str(converter_dir) not in sys.path:
+        sys.path.insert(0, str(converter_dir))
+        added_paths.append(str(converter_dir))
+
+    # process_design 目录
+    process_design_dir = root_dir / "modules" / "process_design"
+    if process_design_dir.exists() and str(process_design_dir) not in sys.path:
+        sys.path.insert(0, str(process_design_dir))
+        added_paths.append(str(process_design_dir))
+
+    return added_paths
+
+
 def init_database(data_file=None):
+    """初始化数据管理器"""
     try:
-        from ..data_manager import DataManager
-        
-        # 获取数据管理器实例
+        from data_manager import DataManager
+
         data_manager = DataManager.get_instance(data_file)
-        
-        # 检查是否有默认的工艺设计数据
+
+        # 初始化工艺设计数据
         if "process_design" not in data_manager.data:
             data_manager.data["process_design"] = {
                 "projects": [],
@@ -25,7 +51,7 @@ def init_database(data_file=None):
                 "equipment": [],
                 "streams": []
             }
-            
+
             # 添加示例物料
             example_materials = [
                 {
@@ -56,12 +82,12 @@ def init_database(data_file=None):
                     "notes": "常用有机溶剂"
                 }
             ]
-            
+
             data_manager.data["process_design"]["materials"] = example_materials
             data_manager._save_data()
-        
+
         return data_manager
-        
+
     except ImportError as e:
         print(f"无法导入 DataManager: {e}")
         raise
@@ -69,113 +95,25 @@ def init_database(data_file=None):
         print(f"数据库初始化失败: {e}")
         raise
 
+
 def get_data_manager(data_file=None):
+    """获取数据管理器实例"""
     try:
-        from ..data_manager import DataManager
+        from data_manager import DataManager
         return DataManager.get_instance(data_file)
     except ImportError as e:
         print(f"无法导入 DataManager: {e}")
         raise
 
-def setup_module_paths():
-    added_paths = []
-    
-    # 添加当前目录的父目录（ChemCal 根目录）
-    root_dir = Path(__file__).parent.parent
-    if str(root_dir) not in sys.path:
-        sys.path.insert(0, str(root_dir))
-        added_paths.append(str(root_dir))
-    
-    # 添加 converter 目录
-    converter_dir = root_dir / "modules" / "converter"
-    if converter_dir.exists() and str(converter_dir) not in sys.path:
-        sys.path.insert(0, str(converter_dir))
-        added_paths.append(str(converter_dir))
-    
-    # 添加 process_design 目录
-    process_design_dir = root_dir / "modules" / "process_design"
-    if process_design_dir.exists() and str(process_design_dir) not in sys.path:
-        sys.path.insert(0, str(process_design_dir))
-        added_paths.append(str(process_design_dir))
-    
-    return added_paths
-
-def check_module_dependencies():
-    dependencies = {
-        "PySide6": False,
-        "pandas": False,
-        "json": True,  # Python 标准库
-        "datetime": True,  # Python 标准库
-        "pathlib": True,  # Python 标准库
-        "dataclasses": True  # Python 3.7+ 标准库
-    }
-    
-    try:
-        import PySide6
-        dependencies["PySide6"] = True
-        dependencies["PySide6_version"] = PySide6.__version__
-    except ImportError:
-        dependencies["PySide6"] = False
-        dependencies["PySide6_error"] = "未安装"
-    
-    try:
-        import pandas
-        dependencies["pandas"] = True
-        dependencies["pandas_version"] = pandas.__version__
-    except ImportError:
-        dependencies["pandas"] = False
-        dependencies["pandas_error"] = "未安装"
-    
-    return dependencies
 
 # 自动设置模块路径
 _added_paths = setup_module_paths()
 if _added_paths:
     print(f"已添加模块路径: {_added_paths}")
 
-# 导出常用函数和类
+# 导出常用函数
 __all__ = [
-    '__author__',
-    'init_database',
-    'get_data_manager',
-    'init_process_design_modules',
-    'setup_module_paths',
-    'check_module_dependencies'
+    "init_database",
+    "get_data_manager",
+    "setup_module_paths",
 ]
-
-# 如果直接运行此文件，执行测试
-if __name__ == "__main__":
-    print("ChemCal 模块包")
-    print(f"作者: {__author__}")
-    
-    print("\n检查模块依赖...")
-    deps = check_module_dependencies()
-    for dep, status in deps.items():
-        if isinstance(status, bool):
-            status_str = "OK" if status else "FAIL"
-            print(f"  {status_str} {dep}")
-    
-    print("\n测试数据库初始化...")
-    try:
-        # 使用测试数据文件
-        test_data_file = "test_ChemCal_data.json"
-        if os.path.exists(test_data_file):
-            os.remove(test_data_file)
-        
-        dm = init_database(test_data_file)
-        print(f"数据管理器初始化成功，实例ID: {id(dm)}")
-        
-        # 检查工艺设计数据
-        if "process_design" in dm.data:
-            materials_count = len(dm.data["process_design"].get("materials", []))
-            print(f"工艺设计数据存在，包含 {materials_count} 个物料")
-        
-        # 清理测试文件
-        if os.path.exists(test_data_file):
-            os.remove(test_data_file)
-            print(f"已清理测试文件: {test_data_file}")
-            
-    except Exception as e:
-        print(f"数据库初始化测试失败: {e}")
-    
-    print("\nChemCal 模块初始化完成")

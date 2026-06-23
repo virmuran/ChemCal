@@ -995,7 +995,7 @@ class 管径计算(CalculatorBase):
                 if vel_min == vel_max:
                     vel = vel_min  # 固定值
                 else:
-                    vel = random.uniform(vel_min, vel_max)  # 范围内随机
+                    vel = (vel_min + vel_max) / 2  # 使用推荐值（中点）
                 self.velocity_input.setText(f"{vel:.1f}")
                 self.velocity_input.setToolTip(f"推荐范围: {vel_min}~{vel_max} m/s（已随机填入 {vel:.1f}）")
 
