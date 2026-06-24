@@ -196,7 +196,7 @@ class ChemCal(QMainWindow):
                     latest = data.get("tag_name", "").lstrip("v")
                     parts = CHEMICAL_VERSION.split(".")
                     cur = (int(parts[0]), int(parts[1]))
-                    lat = tuple(int(x) for x in latest.split("."))
+                    lat = tuple(int(x) for x in latest.split(".")[:2])
                     if lat > cur:
                         self._on_new_version(latest, data.get("html_url", url))
             except Exception:

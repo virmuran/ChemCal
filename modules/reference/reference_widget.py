@@ -134,7 +134,7 @@ class ReferenceWidget(QWidget):
         title_row.addWidget(self.content_title, 1)
 
         copy_btn = QPushButton("复制")
-        copy_btn.setToolTip("将当前条目的内容复制到剪贴板")
+        copy_btn.setToolTip("复制 → Tab分隔直接粘贴Excel\n文本页：自动复制关联参数表\n表格页：选中行→复制选中 | 无选中→复制全部\n小技巧：直接鼠标选中文字后 Ctrl+C 也可复制")
         copy_btn.setFixedHeight(30)
         copy_btn.setStyleSheet("""
             QPushButton {
@@ -174,6 +174,7 @@ class ReferenceWidget(QWidget):
         self.table_widget = QTableWidget()
         self.table_widget.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table_widget.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table_widget.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.table_widget.setAlternatingRowColors(True)
         self.table_widget.horizontalHeader().setStretchLastSection(True)
         self.table_widget.verticalHeader().setVisible(False)
@@ -368,13 +369,36 @@ class ReferenceWidget(QWidget):
         self.content_stack.setCurrentIndex(1)
 
     def _format_text_to_html(self, text):
-        """将纯文本格式化为美观的 HTML"""
+        """将纯文本格式化为美观的 HTML（支持 [TABLE_START]/[TABLE_END] 内嵌表格）"""
         lines = text.split("\n")
         html_parts = []
-        in_formula = False
+        in_table = False
 
         for line in lines:
             stripped = line.strip()
+
+            # [TABLE_END] — 表格块结束
+            if stripped == "[TABLE_END]":
+                in_table = False
+                html_parts.append("</table></div>")
+                continue
+
+            # [TABLE_START] — 表格块开始
+            if stripped == "[TABLE_START]":
+                in_table = True
+                # table opener: styled container + table tag (后续行填充 <tr>/<td>)
+                html_parts.append(
+                    '<div style="overflow-x:auto; margin:8px 0 16px 0;">'
+                    '<table border="1" cellpadding="6" cellspacing="0" '
+                    'style="border-collapse:collapse; width:100%; font-size:12px;">'
+                )
+                continue
+
+            # 表格行 — 直接透传不处理
+            if in_table:
+                html_parts.append(stripped)
+                continue
+
             if not stripped:
                 html_parts.append("<br>")
                 continue
@@ -428,8 +452,19 @@ class ReferenceWidget(QWidget):
         sec_type = sec.get("type", "")
         lines = []
 
-        # ── 双语表：直接输出显示的表格内容（Tab 分隔）──
-        if sec_type == "bilingual_table" or sec_type == "table":
+        # ── 优先使用 copy_table（文本显示 + 表格复制的分离模式）──
+        copy_table = sec.get("copy_table")
+        if copy_table:
+            rows = copy_table.get("rows", [])
+            headers = copy_table.get("headers", [])
+            lines.append("")
+            if headers:
+                lines.append("\t".join(headers))
+            for row in rows:
+                lines.append("\t".join(str(c) for c in row))
+
+        # ── 双语表 / 普通表：从 QTableWidget 读取 ──
+        elif sec_type == "bilingual_table" or sec_type == "table":
             lines.append("")  # 顶部空行
             # 表头
             headers_row = []
@@ -438,7 +473,11 @@ class ReferenceWidget(QWidget):
                 headers_row.append(h.text() if h else "")
             lines.append("\t".join(headers_row))
             # 数据行
-            for r in range(self.table_widget.rowCount()):
+            selected = set()
+            for item in self.table_widget.selectedItems():
+                selected.add(item.row())
+            row_range = sorted(selected) if selected else range(self.table_widget.rowCount())
+            for r in row_range:
                 row_data = []
                 for c in range(self.table_widget.columnCount()):
                     item = self.table_widget.item(r, c)
