@@ -19,6 +19,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
+from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
 # DOCX 报告导出
 
 # 标准 QGroupBox 样式
@@ -376,8 +377,8 @@ class FanPowerCalculator(CalculatorBase):
 
     def _calc_air_density(self, temperature, altitude):
         """ISA 幂律修正空气密度 (kg/m³)"""
-        T_K = temperature + 273.15
-        rho_temp = 1.293 * (273.15 / T_K)
+        T_K = temperature + C_TO_K
+        rho_temp = 1.293 * (C_TO_K / T_K)
         rho_alt = (1 - altitude / 44300) ** 5.255 if altitude < 44300 else 0.01
         return rho_temp * rho_alt
 
@@ -498,7 +499,7 @@ class FanPowerCalculator(CalculatorBase):
            = {shaft_kW:.2f} / ({eta_t:.3f} × {eta_m:.3f})
            = {motor_kW:.2f} kW
 
-    空气密度 ρ = 1.293 × (273.15/T_K) × (1 - H/44300)^5.255
+    空气密度 ρ = 1.293 × (C_TO_K/T_K) × (1 - H/44300)^5.255
            = {rho:.4f} kg/m³{energy_lines}
 
 ══════════

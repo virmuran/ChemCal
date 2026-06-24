@@ -21,6 +21,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
+from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
 # DOCX 报告导出
 
 # ─────────────────── IAPWS-IF97 动态加载 ───────────────────
@@ -820,7 +821,7 @@ class 蒸汽管径流量(CalculatorBase):
     
     def calculate_steam_density(self, pressure_mpa, temperature_c):
         """计算蒸汽密度（优先 IAPWS-IF97，失败则简化公式）"""
-        temperature_k = temperature_c + 273.15
+        temperature_k = temperature_c + C_TO_K
 
         # 优先使用 IAPWS-IF97
         if _IAPWS_MODULE is not None:

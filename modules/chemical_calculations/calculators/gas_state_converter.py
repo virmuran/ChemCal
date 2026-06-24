@@ -19,6 +19,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
+from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
 # DOCX 报告导出
 
 
@@ -465,10 +466,10 @@ class 气体标态转压缩态(CalculatorBase):
             std_temp, std_pressure = self.get_standard_conditions()
             
             # 验证输入
-            std_temp_k = std_temp + 273.15
-            actual_temp_k = actual_temp + 273.15
+            std_temp_k = std_temp + C_TO_K
+            actual_temp_k = actual_temp + C_TO_K
             if std_flow <= 0 or actual_pressure <= 0 or std_temp_k <= 0 or actual_temp_k <= 0:
-                QMessageBox.warning(self, "输入错误", "请填写有效的参数（流量和压力必须大于0，温度不能低于-273.15°C）")
+                QMessageBox.warning(self, "输入错误", "请填写有效的参数（流量和压力必须大于0，温度不能低于-C_TO_K°C）")
                 return
             if compress_factor <= 0:
                 QMessageBox.warning(self, "输入错误", "压缩因子必须大于0")
@@ -577,8 +578,8 @@ Q_actual = Q_std × (P_std / P_actual) × (T_actual / T_std) × Z
 
         outputs = {}
         try:
-            std_temp_k = std_temp + 273.15
-            actual_temp_k = actual_temp + 273.15
+            std_temp_k = std_temp + C_TO_K
+            actual_temp_k = actual_temp + C_TO_K
             actual_flow = std_flow * (std_pressure / actual_pressure) * (actual_temp_k / std_temp_k) * compress_factor
             actual_density_factor = (actual_pressure / std_pressure) * (std_temp_k / actual_temp_k) / compress_factor
             outputs = {

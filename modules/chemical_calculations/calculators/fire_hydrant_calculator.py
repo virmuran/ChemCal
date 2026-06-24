@@ -15,6 +15,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
+from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
 class 消火栓计算(CalculatorBase):
     """消火栓计算器"""
     
@@ -542,7 +543,7 @@ class 消火栓计算(CalculatorBase):
         # 计算沿程水头损失 (简化计算)
         length = 100  # 假设管道长度100m
         friction_factor = 0.02  # 摩擦系数
-        head_loss = friction_factor * (length / (main_diameter / 1000)) * (velocity ** 2) / (2 * 9.81)
+        head_loss = friction_factor * (length / (main_diameter / 1000)) * (velocity ** 2) / (2 * G)
         
         return {
             "diameter": main_diameter,
@@ -569,7 +570,7 @@ class 消火栓计算(CalculatorBase):
         
         # 计算水泵功率 P = ρ·g·Q·H/η，ρ_水=1000 kg/m³
         efficiency = 0.75
-        power_w = 1000 * 9.81 * (total_flow / 1000) * required_head / efficiency
+        power_w = 1000 * G * (total_flow / 1000) * required_head / efficiency
         power_kw = power_w / 1000  # W → kW
         
         return {

@@ -137,6 +137,8 @@ class ChemicalCalculationsWidget(QWidget):
             ("长输蒸汽管道温降计算", "LongDistanceSteamPipeCalculator", "long_distance_steam_pipe_calculator", True),
             ("循环水用水量计算", "CoolingWaterCalculator", "cooling_water_calculator", True),
             ("蒸汽空消计算", "SteamSterilizationCalculator", "steam_sterilization_calculator", True),
+            # ===== 三、搅拌与传氧 =====
+            ("搅拌功率 & kLa", "AgitatorCalculator", "agitator_calculator", True),
             # ===== 三、换热设备 =====
             ("换热器计算", "换热器计算", "heat_exchanger_calculator", True),
             ("换热器面积", "换热器面积", "heat_exchanger_area_calculator", True),

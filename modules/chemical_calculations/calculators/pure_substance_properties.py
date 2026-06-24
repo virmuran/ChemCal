@@ -18,6 +18,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
+from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
 # DOCX 报告导出
 
 # QGroupBox统一样式
@@ -570,7 +571,7 @@ class PureSubstanceProperties(CalculatorBase):
                     "dippr_A": 0.14395, "dippr_B": 0.01111, "dippr_C": 649.727, "dippr_D": 0.05107,
                     "andrade_A": 0.46612, "andrade_B": 1659.4, "andrade_C": -139.49,
                     "cp_A": -203.6060, "cp_B": 1523.29, "cp_C": -3196.13, "cp_D": 2474.55,
-                    "cp_Tmin": 273.15, "cp_Tmax": 623.15,
+                    "cp_Tmin": C_TO_K, "cp_Tmax": 623.15,
                     "kt_A": -0.432, "kt_B": -5.725e-3, "kt_C": -8.078e-6
                 }
             },
@@ -1040,7 +1041,7 @@ class PureSubstanceProperties(CalculatorBase):
         T 单位 K, ρ 单位 kg/m³"""
         try:
             A, B, C, D = fp["dippr_A"], fp["dippr_B"], fp["dippr_C"], fp["dippr_D"]
-            T_K = T_C + 273.15
+            T_K = T_C + C_TO_K
             T_r = T_K / C
             if T_r >= 1.0:
                 return 0.0
@@ -1079,7 +1080,7 @@ class PureSubstanceProperties(CalculatorBase):
         kJ/(kg·K), T 单位 K"""
         try:
             A, B, C, D = fp["cp_A"], fp["cp_B"], fp["cp_C"], fp["cp_D"]
-            T_K = T_C + 273.15
+            T_K = T_C + C_TO_K
             Tmin = fp.get("cp_Tmin", 0)
             Tmax = fp.get("cp_Tmax", 9999)
             if T_K < Tmin or T_K > Tmax:

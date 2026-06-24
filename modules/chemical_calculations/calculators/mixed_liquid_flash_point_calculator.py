@@ -15,6 +15,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
+from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
 
 class ComponentDialog(QDialog):
     """组分添加/编辑对话框"""
@@ -675,14 +676,14 @@ class MixedLiquidFlashPointCalculator(CalculatorBase):
                 mole_fraction = moles / total_moles
                 
                 # 将闪点转换为绝对温度 (K)
-                flash_k = comp["flash_point"] + 273.15
+                flash_k = comp["flash_point"] + C_TO_K
                 sum_reciprocal += mole_fraction / flash_k
         
         if sum_reciprocal == 0:
             return self.calculate_weighted_average_mass()
         
         flash_mix_k = 1 / sum_reciprocal
-        return flash_mix_k - 273.15  # 转换回°C
+        return flash_mix_k - C_TO_K  # 转换回°C
     
     def calculate_minimum_flash(self):
         """最低闪点法计算"""

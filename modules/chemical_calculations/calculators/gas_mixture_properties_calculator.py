@@ -16,6 +16,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
+from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
 # DOCX 报告导出
 
 # =============================================================================
@@ -535,7 +536,7 @@ class GasMixturePropertiesCalculator(CalculatorBase):
 
     def calculate_mixture_properties(self, components, T, P, mixture_type, method):
         """计算气体混合物物性"""
-        T_k = T + 273.15
+        T_k = T + C_TO_K
         mw_mix = sum(comp['y'] * comp['mw'] for comp in components)
 
         if method in ("简单混合规则", "Kay规则"):
@@ -678,7 +679,7 @@ class GasMixturePropertiesCalculator(CalculatorBase):
         lines.append("═══════════════════════════════════════")
         lines.append(f"")
         lines.append(f"计算条件: {r.get('mixture_type', '')} / {r.get('method', '')}")
-        lines.append(f"温度: {r.get('temperature', 0):.1f} °C  ({r.get('temperature', 0)+273.15:.1f} K)")
+        lines.append(f"温度: {r.get('temperature', 0):.1f} °C  ({r.get('temperature', 0)+C_TO_K:.1f} K)")
         lines.append(f"压力: {r.get('pressure', 0):.2f} kPa")
         lines.append(f"")
         lines.append(f"─── 虚拟临界参数 ───")

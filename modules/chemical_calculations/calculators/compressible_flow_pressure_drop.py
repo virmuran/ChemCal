@@ -19,6 +19,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
+from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
 # DOCX 报告导出
 
 
@@ -413,7 +414,7 @@ class CompressibleFlowPressureDrop(CalculatorBase):
             P2    = float(self.P2_in.text()) * 1000.0
             T_C   = float(self.temp_in.text())
             m_kg  = float(self.flow_in.text()) / 3600.0
-            T_K   = T_C + 273.15
+            T_K   = T_C + C_TO_K
             A     = math.pi * d ** 2 / 4.0
             L_eq  = L * eqf
 
@@ -502,7 +503,7 @@ class CompressibleFlowPressureDrop(CalculatorBase):
             P1    = float(self.P1_in.text()) * 1000.0
             P2    = float(self.P2_in.text()) * 1000.0
             T_C   = float(self.temp_in.text())
-            T_K   = T_C + 273.15
+            T_K   = T_C + C_TO_K
             A     = math.pi * d ** 2 / 4.0
             L_eq  = L * eqf
             P_crit = P1 * (2.0 / (gamma + 1.0)) ** (gamma / (gamma - 1.0))

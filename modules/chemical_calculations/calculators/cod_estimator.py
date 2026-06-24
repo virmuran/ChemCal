@@ -14,6 +14,7 @@ from PySide6.QtGui import QFont, QDoubleValidator
 import math
 
 from calculator_base import CalculatorBase
+from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
 from app_styles import (COMBOBOX_STYLE, MODE_BUTTON_STYLE,
                         CALC_BUTTON_STYLE, SCROLL_AREA_STYLE,
                         INPUT_LABEL_STYLE, CLEAR_BTN_STYLE,

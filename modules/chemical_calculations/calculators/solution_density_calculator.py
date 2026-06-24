@@ -23,6 +23,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
+from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
 # DOCX 报告导出
 
 # ─────────────────── IAPWS-IF97 动态加载 ───────────────────
@@ -69,8 +70,8 @@ def rho_water(T: float) -> float:
     if _IAPWS_MODULE is not None:
         try:
             # 常压近似：用饱和压力查 Region 1
-            # 若 steam_iapws 有饱和温度函数则直接用，否则用 0.101325 MPa
-            P_sat = 0.101325  # MPa，常压近似值
+            # 若 steam_iapws 有饱和温度函数则直接用，否则用 ATM_PRESSURE_MPA MPa
+            P_sat = ATM_PRESSURE_MPA  # MPa，常压近似值
             # 尝试调用 region1(P, T) -> dict 含 'v'（比容 m³/kg）
             props = _IAPWS_MODULE.region1(P_sat, T)
             v = props['v']  # 比容 m³/kg

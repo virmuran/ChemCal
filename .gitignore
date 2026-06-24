@@ -1,19 +1,12 @@
-# ================================
-# ChemCal 项目专用 .gitignore 文件
-# ================================
-
-# ── Python 字节码和缓存 ──
+# ── Python ──
 __pycache__/
 *.py[cod]
 *$py.class
+*.egg-info/
 
 # ── PyInstaller 构建输出 ──
 build/
 dist/
-*.spec
-
-# ── 打包脚本（本地使用，不上传）──
-build.bat
 
 # ── 虚拟环境 ──
 venv/
@@ -22,19 +15,19 @@ env/
 ENV/
 .conda/
 
-# ── IDE 和编辑器配置 ──
+# ── IDE ──
 .vscode/
 .idea/
 *.swp
 *.swo
 *.sublime-workspace
 
-# ── 系统文件 ──
+# ── 系统 ──
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# ── 可执行文件和打包产物 ──
+# ── 可执行文件 ──
 *.exe
 *.msi
 
@@ -43,7 +36,7 @@ desktop.ini
 ChemCal_data.json
 *.log
 
-# ── 测试和临时文件 ──
+# ── 临时文件 ──
 *.tmp
 *.bak
 *.orig

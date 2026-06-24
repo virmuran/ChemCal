@@ -19,6 +19,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
+from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
 from svg_utils import svg_text
 
 
@@ -129,7 +130,7 @@ class CoolingWaterCalculator(CalculatorBase):
     # ── 物料密度预设 (kg/m³) ──
     DENSITY_PRESETS = {
         "请选择物料密度":       0,
-        "水":                   1000,
+        "水": WATER_DENSITY,
         "饱和食盐水":           1200,
         "20%氯化钙盐水":        1180,
         "30%氯化钙盐水":        1280,

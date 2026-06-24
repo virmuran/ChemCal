@@ -11,6 +11,7 @@ a = Analysis(
             ('base_module.py', '.'), ('crash_shield.py', '.'),
             ('version.py', '.'), ('app_styles.py', '.'),
             ('calculator_base.py', '.'), ('svg_utils.py', '.'),
+            ('common_constants.py', '.'), ('reference_data.py', '.'),
             ('ChemCal.ico', '.')],
     hiddenimports=['PySide6.QtCore', 'PySide6.QtWidgets', 'PySide6.QtGui', 'PySide6.QtSvgWidgets', 'PySide6.QtSvg', 'numpy', 'scipy', 'scipy.optimize', 'scipy.integrate', 'scipy.special', 'scipy.constants', 'scipy.interpolate', 'datetime', 'json', 'os', 'sys', 'math', 'reportlab', 'reportlab.pdfgen', 'reportlab.pdfgen.canvas', 'reportlab.lib', 'reportlab.lib.pagesizes', 'reportlab.lib.styles', 'reportlab.lib.units', 'reportlab.pdfbase', 'reportlab.pdfbase.ttfonts', 'reportlab.platypus', 'reportlab.platypus.paragraph', 'reportlab.platypus.doctemplate', 'threading', 'time', 're', 'pathlib', 'shutil', 'pyperclip', 'sqlite3', 'modules.history_db', 'modules.reference.reference_widget', 'modules.combo_box_utils', 'utils', 'utils.docx_utils', 'fpdf', 'pandas'],
     hookspath=[],

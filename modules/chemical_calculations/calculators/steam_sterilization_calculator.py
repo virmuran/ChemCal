@@ -43,20 +43,8 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
 from calculator_base import CalculatorBase
 # DOCX 报告导出
 
-# 动态加载 IAPWS-IF97 蒸汽物性模块
-try:
-    _current_dir = os.path.dirname(os.path.abspath(__file__))
-    _parent_dir = os.path.dirname(_current_dir)
-    _spec = importlib.util.spec_from_file_location(
-        "steam_iapws",
-        os.path.join(_parent_dir, "steam_iapws.py")
-    )
-    _steam_iapws = importlib.util.module_from_spec(_spec)
-    _spec.loader.exec_module(_steam_iapws)
-    _iapws_available = True
-except Exception as _e:
-    _iapws_available = False
-    print(f"警告: 无法加载 IAPWS-IF97 模块: {_e}")
+from common_constants import load_steam_iapws, get_steam_props
+_iapws_available = load_steam_iapws()
 
 # ── 输入参数 key 常量（显式定义，避免清洗/硬编码不一致的Bug）──
 K_VOLUME = "volume"               # 罐体体积 m³
@@ -490,11 +478,11 @@ class SteamSterilizationCalculator(CalculatorBase):
             return {"sat_temp": 143.6, "h_fg": 2133.0, "method": "内置近似值"}
 
         try:
-            p_abs = p_gauge_mpa + 0.101325  # 表压转绝对压力 MPa
+            p_abs = p_gauge_mpa + ATM_PRESSURE_MPA  # 表压转绝对压力 MPa
             from iapws import IAPWS97
             steam = IAPWS97(P=p_abs, x=1.0)  # 干饱和蒸汽
             return {
-                "sat_temp": steam.T - 273.15,
+                "sat_temp": steam.T - C_TO_K,
                 "h_fg": steam.h - IAPWS97(P=p_abs, x=0).h,  # h_g - h_f
                 "method": "IAPWS-IF97"
             }
@@ -502,10 +490,10 @@ class SteamSterilizationCalculator(CalculatorBase):
             # 回退到 IAPWS97 saturated temperature
             try:
                 from iapws import IAPWS97
-                steam = IAPWS97(P=p_gauge_mpa + 0.101325, x=1.0)
-                sat_water = IAPWS97(P=p_gauge_mpa + 0.101325, x=0)
+                steam = IAPWS97(P=p_gauge_mpa + ATM_PRESSURE_MPA, x=1.0)
+                sat_water = IAPWS97(P=p_gauge_mpa + ATM_PRESSURE_MPA, x=0)
                 return {
-                    "sat_temp": steam.T - 273.15,
+                    "sat_temp": steam.T - C_TO_K,
                     "h_fg": steam.h - sat_water.h,
                     "method": "IAPWS-IF97"
                 }

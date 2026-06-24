@@ -23,20 +23,8 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
 from calculator_base import CalculatorBase
 # DOCX 报告导出
 
-# 动态加载 IAPWS-IF97 蒸汽物性模块
-try:
-    _current_dir = os.path.dirname(os.path.abspath(__file__))
-    _parent_dir = os.path.dirname(_current_dir)
-    _spec = importlib.util.spec_from_file_location(
-        "steam_iapws",
-        os.path.join(_parent_dir, "steam_iapws.py")
-    )
-    _steam_iapws = importlib.util.module_from_spec(_spec)
-    _spec.loader.exec_module(_steam_iapws)
-    _iapws_available = True
-except Exception as _e:
-    _iapws_available = False
-    print(f"警告: 无法加载 IAPWS-IF97 模块: {_e}")
+from common_constants import load_steam_iapws, get_steam_props, WATER_CP
+_iapws_available = load_steam_iapws()
 
 
 
@@ -80,7 +68,7 @@ class 换热器计算(CalculatorBase):
     def setup_specific_heat_data(self):
         """设置流体比热容数据"""
         return {
-            "水": 4.19,
+            "水": WATER_CP,
             "乙醇": 2.4,
             "95%乙醇": 2.51,
             "90%乙醇": 2.72,
@@ -759,7 +747,7 @@ class 换热器计算(CalculatorBase):
         pressure_mpa: 表压 (MPa)，自动转为绝对压力
         使用 IAPWS-IF97 标准计算，若不可用则回退到查表法
         """
-        P_abs = pressure_mpa + 0.101325  # 表压 → 绝对压力
+        P_abs = pressure_mpa + ATM_PRESSURE_MPA  # 表压 → 绝对压力
         
         if _iapws_available and 0.001 <= P_abs <= 22.064:
             try:
@@ -773,7 +761,7 @@ class 换热器计算(CalculatorBase):
     
     def get_steam_sat_temperature(self, pressure_mpa):
         """根据蒸汽表压获取饱和温度 (°C)"""
-        P_abs = pressure_mpa + 0.101325
+        P_abs = pressure_mpa + ATM_PRESSURE_MPA
         if _iapws_available and 0.001 <= P_abs <= 22.064:
             try:
                 sat = _steam_iapws.saturation_properties(P_MPa=P_abs)
@@ -884,7 +872,7 @@ class 换热器计算(CalculatorBase):
         steam_flow = Q_cold * 3600 / latent_heat
         
         # 构建结果文本
-        P_abs = steam_pressure + 0.101325
+        P_abs = steam_pressure + ATM_PRESSURE_MPA
         method_note = "IAPWS-IF97 标准" if _iapws_available else "查表法(回退)"
         
         result = f"""
@@ -952,7 +940,7 @@ class 换热器计算(CalculatorBase):
         # 计算冷流体流量 (kg/h)
         cold_flow = Q_steam * 3600 / (cold_cp * (cold_t2 - cold_t1))
         
-        P_abs = steam_pressure + 0.101325
+        P_abs = steam_pressure + ATM_PRESSURE_MPA
         method_note = "IAPWS-IF97 标准" if _iapws_available else "查表法(回退)"
         
         # 显示结果
@@ -1017,7 +1005,7 @@ class 换热器计算(CalculatorBase):
                 f"计算出口温度{cold_t2:.1f}°C已达或超过蒸汽饱和温度{sat_temp:.1f}°C\n"
                 f"请检查蒸汽流量是否过大或冷流体流量是否过小")
         
-        P_abs = steam_pressure + 0.101325
+        P_abs = steam_pressure + ATM_PRESSURE_MPA
         method_note = "IAPWS-IF97 标准" if _iapws_available else "查表法(回退)"
         
         # 显示结果

@@ -16,6 +16,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
+from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
 # DOCX 报告导出
 
 # ---------------------------------------------------------------------------
@@ -810,7 +811,7 @@ class VLEActivityCoefficientCalculator(CalculatorBase):
             n = len(components)
             x = self.get_compositions()
             binary_params = self.get_binary_params(components)
-            T_K = T_C + 273.15
+            T_K = T_C + C_TO_K
 
             # 保存计算结果用于报告
             self._last_calc_results = {
@@ -861,7 +862,7 @@ class VLEActivityCoefficientCalculator(CalculatorBase):
         """Newton-Raphson 泡点温度迭代"""
         T_C = T_init_C
         for iteration in range(max_iter):
-            T_K = T_C + 273.15
+            T_K = T_C + C_TO_K
             matrices = self._build_matrices(components, bp, T_K, model, n)
             gamma = self.calculate_activity_coefficients(x, T_K, matrices, model, n)
             Psat = [self._psat(components[i], T_C) for i in range(n)]
@@ -872,7 +873,7 @@ class VLEActivityCoefficientCalculator(CalculatorBase):
                 return T_C, y, gamma, Psat, iteration + 1
             dT = 0.01
             T_C2 = T_C + dT
-            T_K2 = T_C2 + 273.15
+            T_K2 = T_C2 + C_TO_K
             matrices2 = self._build_matrices(components, bp, T_K2, model, n)
             gamma2 = self.calculate_activity_coefficients(x, T_K2, matrices2, model, n)
             Psat2 = [self._psat(components[i], T_C2) for i in range(n)]
@@ -891,7 +892,7 @@ class VLEActivityCoefficientCalculator(CalculatorBase):
         """Newton-Raphson 露点温度迭代"""
         T_C = T_init_C
         for iteration in range(max_iter):
-            T_K = T_C + 273.15
+            T_K = T_C + C_TO_K
             x_est = [0.0] * n
             Psat = [self._psat(components[i], T_C) for i in range(n)]
             denom = sum(y[i] * P / Psat[i] if Psat[i] > 0 else 0 for i in range(n))
@@ -905,7 +906,7 @@ class VLEActivityCoefficientCalculator(CalculatorBase):
                 return T_C, x_calc, gamma, Psat, iteration + 1
             dT = 0.01
             T_C2 = T_C + dT
-            T_K2 = T_C2 + 273.15
+            T_K2 = T_C2 + C_TO_K
             Psat2 = [self._psat(components[i], T_C2) for i in range(n)]
             denom2 = sum(y[i] * P / Psat2[i] if Psat2[i] > 0 else 0 for i in range(n))
             x_est2 = [y[i] * P / Psat2[i] / denom2 if Psat2[i] > 0 and denom2 > 0 else 1.0/n for i in range(n)]

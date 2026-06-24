@@ -20,6 +20,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
+from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
 from svg_utils import svg_text
 # DOCX 报告导出
 
@@ -649,27 +650,10 @@ class 压降计算(CalculatorBase):
             self.pressure_hint.setVisible(True)  # 更新为标签
     
     def setup_roughness_options(self):
-        """设置管道粗糙度选项（基于HG/T 20570-95标准数据）"""
-        roughness_options = [
-            "- 请选择粗糙度 -",
-            "0.06 mm - 新的无缝钢管（ε=0.02~0.1）",
-            "0.4 mm - 中等腐蚀的无缝钢管（ε=0.4）",
-            "0.2 mm - 正常条件下工作的无缝钢管（ε=0.2）",
-            "0.0075 mm - 无缝黄铜、铜及铝管（ε=0.005~0.01）",
-            "0.12 mm - 普通镀锌钢管（ε=0.1~0.15）",
-            "0.07 mm - 新的焊接钢管（ε=0.04~0.1）",
-            "0.5 mm - 使用多年的煤气总管（ε=0.5）",
-            "0.625 mm - 新的铸铁管（ε=0.25~1.0）",
-            "1.7 mm - 使用过的水管铸铁管（ε=1.4~2.0）",
-            "0.006 mm - 洁净的玻璃管（ε=0.0015~0.01）",
-            "0.02 mm - 橡皮软管（ε=0.01~0.03）",
-            "0.075 mm - 石棉水泥管新（ε=0.05~0.1）",
-            "0.6 mm - 石棉水泥管中等状况（ε=0.6）",
-            "0.55 mm - 混凝土管表面抹得较好（ε=0.3~0.8）",
-        ]
-        self.roughness_combo.addItems(roughness_options)
+        """设置管道粗糙度选项"""
+        from reference_data import ROUGHNESS_DISPLAY
+        self.roughness_combo.addItems(ROUGHNESS_DISPLAY)
         self.roughness_combo.setCurrentIndex(0)
-
     def on_roughness_changed(self, text):
         """处理粗糙度选择变化"""
         # 检查是否选择了空值选项
@@ -688,41 +672,9 @@ class 压降计算(CalculatorBase):
     
     def setup_diameter_options(self):
         """设置管道内径选项（Sch 40 标准管）"""
-        diameter_options = [
-            "- 请选择管道内径 -",
-            "6.8 mm - DN6 [1/8\"] (sch 40)",
-            "9.0 mm - DN8 [1/4\"] (sch 40)",
-            "10.3 mm - DN10 [3/8\"] (sch 40)",
-            "15.8 mm - DN15 [1/2\"] (sch 40)",
-            "20.9 mm - DN20 [3/4\"] (sch 40)",
-            "26.6 mm - DN25 [1.00\"] (sch 40)",
-            "35.1 mm - DN32 [1.25\"] (sch 40)",
-            "40.9 mm - DN40 [1.50\"] (sch 40)",
-            "52.5 mm - DN50 [2.00\"] (sch 40)",
-            "62.7 mm - DN65 [2.50\"] (sch 40)",
-            "77.9 mm - DN80 [3.00\"] (sch 40)",
-            "90.1 mm - DN90 [3.50\"] (sch 40)",
-            "102.3 mm - DN100 [4.00\"] (sch 40)",
-            "128.2 mm - DN125 [5.00\"] (sch 40)",
-            "154.1 mm - DN150 [6.00\"] (sch 40)",
-            "202.7 mm - DN200 [8.00\"] (sch 40)",
-            "254.5 mm - DN250 [10.00\"] (sch 40)",
-            "303.3 mm - DN300 [12.00\"] (sch 40)",
-            "333.3 mm - DN350 [14.00\"] (sch 40)",
-            "381.0 mm - DN400 [16.00\"] (sch 40)",
-            "428.7 mm - DN450 [18.00\"] (sch 40)",
-            "477.9 mm - DN500 [20.00\"] (sch 40)",
-            "574.5 mm - DN600 [24.00\"] (sch 40)",
-            "720.0 mm - DN750 [30.00\"] (sch 40)",
-            "864.0 mm - DN900 [36.00\"] (sch 40)",
-            "972.0 mm - DN1000 [40.00\"] (sch 40)",
-            "1167.0 mm - DN1200 [48.00\"] (sch 40)",
-            "1314.0 mm - DN1350 [54.00\"] (sch 40)",
-            "1462.0 mm - DN1500 [60.00\"] (sch 40)",
-        ]
-        self.diameter_combo.addItems(diameter_options)
+        from reference_data import PIPE_ID_DISPLAY, PIPE_SCH40
+        self.diameter_combo.addItems(PIPE_ID_DISPLAY)
         self.diameter_combo.setCurrentIndex(0)
-    
     def on_diameter_changed(self, text):
         """处理直径选择变化"""
         # 检查是否选择了空值选项
@@ -1070,7 +1022,7 @@ class 压降计算(CalculatorBase):
                 pressure_drop_local = self.local_resistance_coeff * (density * velocity ** 2) / 2
                 
                 # 计算静压头变化
-                pressure_drop_elevation = density * 9.81 * elevation
+                pressure_drop_elevation = density * G * elevation
                 
                 # 总压降
                 total_pressure_drop = pressure_drop_friction + pressure_drop_local + pressure_drop_elevation
@@ -1170,7 +1122,7 @@ class 压降计算(CalculatorBase):
                 mass_flow = density * velocity * math.pi * (diameter / 2) ** 2  # kg/s
                 area = math.pi * (diameter / 2) ** 2
                 # 假设气体遵循理想气体: ρ = P/(R*T), R_specific = P/(ρ*T)
-                R_specific = start_pressure / (density * (273.15 + 20))  # J/(kg·K), 假设20°C
+                R_specific = start_pressure / (density * (C_TO_K + 20))  # J/(kg·K), 假设20°C
                 P1_sq = start_pressure ** 2
                 term = (friction_factor * length / diameter) * (mass_flow / area) ** 2 * R_specific * 293.15
                 P2_sq = P1_sq - term
@@ -1261,7 +1213,7 @@ class 压降计算(CalculatorBase):
                 friction_factor = self.solve_colebrook(roughness/diameter, reynolds)
             pd_friction = friction_factor * (length / diameter) * (density * velocity ** 2) / 2
             pd_local = self.local_resistance_coeff * (density * velocity ** 2) / 2
-            pd_elevation = density * 9.81 * elevation
+            pd_elevation = density * G * elevation
             total = pd_friction + pd_local + pd_elevation
             inputs["局部阻力系数"] = self.local_resistance_coeff
             raw_results = {

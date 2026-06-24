@@ -16,6 +16,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
+from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
 # DOCX 报告导出
 
 # IAPWS-IF97 工业标准蒸汽物性（动态导入，避免 relative import 失败）
@@ -708,7 +709,7 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
                 return density, viscosity, specific_heat, thermal_cond
             except Exception:
                 # 降级处理
-                density = pressure_mpa * 100 / (0.4615 * (temp_c + 273.15))
+                density = pressure_mpa * 100 / (0.4615 * (temp_c + C_TO_K))
                 return density, 1.2e-5, 2.0, 0.03
 
         # 初始参数

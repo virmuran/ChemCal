@@ -19,6 +19,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
+from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
 # DOCX 报告导出
 
 
@@ -295,7 +296,7 @@ class WetAirCalculator(CalculatorBase):
                 return
             temp = float(temp_str)
             if self.temp_unit.currentText() == "K":
-                temp -= 273.15
+                temp -= C_TO_K
 
             # 大气压力 → kPa
             if not self.pressure_input.text().strip():
@@ -405,7 +406,7 @@ class WetAirCalculator(CalculatorBase):
         h = 1.006 * temp + W * (2501.0 + 1.86 * temp)
 
         # 比容 (m³/kg干空气)
-        v = 0.287 * (temp + 273.15) * (1.0 + 1.608 * W) / pressure
+        v = 0.287 * (temp + C_TO_K) * (1.0 + 1.608 * W) / pressure
 
         # 湿球温度（Newton-Raphson反求）
         wb = min(temp, dew_pt + (temp - dew_pt) * 0.7)  # 初始猜测

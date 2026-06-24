@@ -19,6 +19,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
+from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
 from svg_utils import svg_text
 # DOCX 报告导出
 
@@ -522,7 +523,7 @@ class SafetyValveCalculator(CalculatorBase):
                 # 估算蒸汽/气体密度
                 mw = float(self.mw_input.text())
                 t_c = float(self.temp_input.text() or 150)
-                rho = relief_p_mpaa * 1e6 * mw / (8314 * (t_c + 273.15))  # kg/m³
+                rho = relief_p_mpaa * 1e6 * mw / (8314 * (t_c + C_TO_K))  # kg/m³
 
                 relief_rate_kgs = rho * pipe_area * pipe_v
                 relief_rate_kgh = relief_rate_kgs * 3600
@@ -534,7 +535,7 @@ class SafetyValveCalculator(CalculatorBase):
             gamma = float(self.gamma_input.text())
             z = float(self.z_input.text())
             t_c = float(self.temp_input.text() or 150)
-            t_k = t_c + 273.15
+            t_k = t_c + C_TO_K
 
             # ── 临界流判断 ──
             back_pa = back_p * 1e6 + 101300  # 转换为 PaA

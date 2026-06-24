@@ -21,6 +21,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
+from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
 # DOCX 报告导出
 
 # 统一滚动条样式
@@ -653,7 +654,7 @@ class CentrifugalPumpCalculator(CalculatorBase):
 
             # === 计算 ===
             # 1. 有效功率 Pe = ρgQH / 3600000 (kW)
-            pe = (flow_rate / 3600) * density * 9.81 * head / 1000
+            pe = (flow_rate / 3600) * density * G * head / 1000
 
             # 2. 轴功率 P = Pe / η_pump
             p_shaft = pe / (efficiency / 100)
@@ -714,7 +715,7 @@ class CentrifugalPumpCalculator(CalculatorBase):
 ═══════════════════════════════════════════════════
 
 Pe = ρ·g·Q·H / 3600000
-   = {density}×9.81×{flow_rate}×{head} / 3600000
+   = {density}×G×{flow_rate}×{head} / 3600000
    = {pe:.2f} kW
 
 P_轴 = Pe / η_pump = {pe:.2f} / {efficiency/100:.3f} = {p_shaft:.2f} kW

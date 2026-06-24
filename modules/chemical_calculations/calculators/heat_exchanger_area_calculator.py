@@ -25,20 +25,8 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
 from calculator_base import CalculatorBase
 from svg_utils import svg_text, svg_rect, svg_line, svg_circle, svg_ellipse, svg_arrow_marker, svg_start, svg_end
 
-# 动态加载 IAPWS-IF97 蒸汽物性模块
-try:
-    _current_dir = os.path.dirname(os.path.abspath(__file__))
-    _parent_dir = os.path.dirname(_current_dir)
-    _spec = importlib.util.spec_from_file_location(
-        "steam_iapws",
-        os.path.join(_parent_dir, "steam_iapws.py")
-    )
-    _steam_iapws = importlib.util.module_from_spec(_spec)
-    _spec.loader.exec_module(_steam_iapws)
-    _iapws_available = True
-except Exception as _e:
-    _iapws_available = False
-    print(f"警告: 无法加载 IAPWS-IF97 模块: {_e}")
+from common_constants import load_steam_iapws, get_steam_props, WATER_CP
+_iapws_available = load_steam_iapws()
 
 # ==================== 枚举定义 ====================
 
@@ -94,7 +82,7 @@ class 换热器面积(CalculatorBase):
     def setup_specific_heat_data(self):
         """设置流体比热容数据 - 增加常用介质"""
         return {
-            "水": 4.187,
+            "水": WATER_CP,
             "95%乙醇": 2.51,
             "乙二醇": 2.35,
             "导热油": 2.9,
@@ -124,7 +112,7 @@ class 换热器面积(CalculatorBase):
         
         优先使用 IAPWS-IF97 标准，不可用时回退到查表插值
         """
-        P_abs = pressure_gauge_MPa + 0.101325  # 表压 → 绝对压力
+        P_abs = pressure_gauge_MPa + ATM_PRESSURE_MPA  # 表压 → 绝对压力
         
         if _iapws_available and 0.001 <= P_abs <= 22.064:
             try:
@@ -1760,7 +1748,7 @@ class 换热器面积(CalculatorBase):
             
             # 7. 准备结果
             mode_text = "蒸汽加热法（设计计算）" if is_design_calculation else "蒸汽加热法（校核计算）"
-            P_abs = steam_pressure + 0.101325  # 表压转绝对压力
+            P_abs = steam_pressure + ATM_PRESSURE_MPA  # 表压转绝对压力
             steam_method = steam_props.get("method", "未知")
             
             result_text = f"""═══════════
@@ -1807,7 +1795,7 @@ class 换热器面积(CalculatorBase):
 计算说明
 ══════════
 
-    • 蒸汽压力为表压，绝对压力 = 表压 + 0.101325 MPa
+    • 蒸汽压力为表压，绝对压力 = 表压 + ATM_PRESSURE_MPA MPa
     • 设计面积已考虑{safety_factor:.2f}倍安全系数
     • 面积裕度{((A_design/A_theoretical)-1)*100:.1f}%确保长期运行可靠性
     • 蒸汽加热器设计时需考虑冷凝水排放问题

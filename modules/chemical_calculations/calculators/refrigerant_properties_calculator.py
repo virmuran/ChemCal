@@ -34,6 +34,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
+from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
 # DOCX 报告导出
 
 # ---------------------------------------------------------------------------
@@ -460,7 +461,7 @@ class RefrigerantPropertiesCalculator(CalculatorBase):
             self.result_text.setPlainText(f"⚠ 计算错误: {str(e)}")
 
     def calculate_refrigerant_properties(self, refrigerant, info, calc_type, T, P, x):
-        T_k = T + 273.15 if T else None
+        T_k = T + C_TO_K if T else None
 
         if calc_type == "饱和性质计算":
             if T is not None:
@@ -516,7 +517,7 @@ class RefrigerantPropertiesCalculator(CalculatorBase):
         if USE_INDUSTRIAL_EOS:
             try:
                 ref_name = _REF_MAP.get(refrigerant, "R134a")
-                sat = refrigerant_eos.saturation_properties(T_K=T+273.15, ref_name=ref_name)
+                sat = refrigerant_eos.saturation_properties(T_K=T+C_TO_K, ref_name=ref_name)
                 return sat['P_MPa'] * 1000
             except Exception:
                 pass
@@ -532,7 +533,7 @@ class RefrigerantPropertiesCalculator(CalculatorBase):
             try:
                 ref_name = _REF_MAP.get(refrigerant, "R134a")
                 sat = refrigerant_eos.saturation_properties(P_MPa=P/1000.0, ref_name=ref_name)
-                return sat['T_K'] - 273.15
+                return sat['T_K'] - C_TO_K
             except Exception:
                 pass
         if refrigerant == "R134a":
@@ -545,13 +546,13 @@ class RefrigerantPropertiesCalculator(CalculatorBase):
         ref_name = _REF_MAP.get(refrigerant, "R134a")
         if USE_INDUSTRIAL_EOS and ref_name in getattr(refrigerant_eos, 'REFRIGERANTS', {}):
             try:
-                sat = refrigerant_eos.saturation_properties(T_K=T+273.15, ref_name=ref_name)
+                sat = refrigerant_eos.saturation_properties(T_K=T+C_TO_K, ref_name=ref_name)
                 ref_data = refrigerant_eos.REFRIGERANTS[ref_name]
                 P_MPa = sat['P_MPa']
                 u_f = sat['h_f'] - P_MPa * 1e3 / sat['rho_f']
                 u_g = sat['h_g'] - P_MPa * 1e3 / sat['rho_g']
-                g_f = sat['h_f'] - (T + 273.15) * sat['s_f']
-                g_g = sat['h_g'] - (T + 273.15) * sat['s_g']
+                g_f = sat['h_f'] - (T + C_TO_K) * sat['s_f']
+                g_g = sat['h_g'] - (T + C_TO_K) * sat['s_g']
                 tp = refrigerant_eos.transport_properties(sat['P_MPa'], T, ref_name=ref_name, phase='liquid')
                 mu = tp['mu'] * 1e6
                 k = tp['k']
@@ -573,7 +574,7 @@ class RefrigerantPropertiesCalculator(CalculatorBase):
         hf, hg = 100 + 2.5 * T, 300 + 1.8 * T
         sf, sg = 0.5 + 0.01 * T, 1.5 + 0.008 * T
         return {'density': 1000-5*T, 'enthalpy': hf, 'entropy': sf,
-                'internal_energy': hf-P/1000, 'gibbs': hf-(T+273.15)*sf/1000,
+                'internal_energy': hf-P/1000, 'gibbs': hf-(T+C_TO_K)*sf/1000,
                 'hf': hf, 'hg': hg, 'hfg': hg-hf,
                 'sf': sf, 'sg': sg, 'sfg': sg-sf,
                 'density_f': 1000-5*T, 'density_g': 20-0.1*T}
@@ -589,7 +590,7 @@ class RefrigerantPropertiesCalculator(CalculatorBase):
                 cp = prop['cp']
                 cv = cp - R_J / 1000.0
                 u = prop['h'] - P_MPa * 1e3 * prop['v']
-                g = prop['h'] - (T + 273.15) * prop['s']
+                g = prop['h'] - (T + C_TO_K) * prop['s']
                 return {
                     'temperature': T, 'pressure': P, 'density': prop['rho'],
                     'enthalpy': prop['h'], 'entropy': prop['s'],
@@ -613,7 +614,7 @@ class RefrigerantPropertiesCalculator(CalculatorBase):
                 cp = prop['cp']
                 cv = cp - R_J / 1000.0
                 u = prop['h'] - P_MPa * 1e3 / prop['rho']
-                g = prop['h'] - (T + 273.15) * prop['s']
+                g = prop['h'] - (T + C_TO_K) * prop['s']
                 tp = refrigerant_eos.transport_properties(P_MPa, T, ref_name=ref_name, phase='liquid')
                 mu = tp['mu'] * 1e6
                 k = tp['k']
@@ -640,7 +641,7 @@ class RefrigerantPropertiesCalculator(CalculatorBase):
                 ref_data = refrigerant_eos.REFRIGERANTS[ref_name]
                 R_J = 8.314 / (ref_data['M'] / 1000.0)
                 Z_v = z['Z_vapor']
-                density = P * 1e3 / (Z_v * R_J * (T + 273.15))
+                density = P * 1e3 / (Z_v * R_J * (T + C_TO_K))
                 cp = ref_data['cp_ideal']
                 cv = cp - R_J / 1000.0
                 return {
@@ -651,19 +652,19 @@ class RefrigerantPropertiesCalculator(CalculatorBase):
                 }
             except Exception:
                 pass
-        tc_k = info.get('tc', 100) + 273.15
-        Tr = (T + 273.15) / tc_k
+        tc_k = info.get('tc', 100) + C_TO_K
+        Tr = (T + C_TO_K) / tc_k
         Pr_val = P / info.get('pc', 4000)
         Z = 1.0 - 0.1 * Pr_val / Tr if Tr < 1.0 else 1.0 + 0.1 * Pr_val / Tr
         return {'temperature': T, 'pressure': P, 'z_factor': Z,
-                'density': P*1000/(Z*8.314/info.get('mw',100)*1000*(T+273.15))}
+                'density': P*1000/(Z*8.314/info.get('mw',100)*1000*(T+C_TO_K))}
 
     def _analyze_cycle(self, refrigerant, T_evap, T_cond):
         ref_name = _REF_MAP.get(refrigerant, "R134a")
         if USE_INDUSTRIAL_EOS and ref_name in getattr(refrigerant_eos, 'REFRIGERANTS', {}):
             try:
                 cycle = refrigerant_eos.refrigeration_cycle_analysis(ref_name, T_evap, T_cond)
-                sat_ev = refrigerant_eos.saturation_properties(T_K=T_evap+273.15, ref_name=ref_name)
+                sat_ev = refrigerant_eos.saturation_properties(T_K=T_evap+C_TO_K, ref_name=ref_name)
                 P_evap = cycle['P_evap_MPa'] * 1000
                 P_cond = cycle['P_cond_MPa'] * 1000
                 vol_cap = cycle['q_evap'] * sat_ev['rho_g']
@@ -699,7 +700,7 @@ class RefrigerantPropertiesCalculator(CalculatorBase):
             'R410A': (1170.0, 1.87), 'R32': (1100.0, 1.80), 'R125': (1000.0, 1.60),
             'R143a': (1050.0, 1.70),
         }
-        T_K = T + 273.15
+        T_K = T + C_TO_K
         if ref_name in C_LIQ:
             a, b = C_LIQ[ref_name]
             c = max(200.0, min(2000.0, a - b * T_K))
@@ -712,7 +713,7 @@ class RefrigerantPropertiesCalculator(CalculatorBase):
         if not T or density <= 0:
             return {'viscosity': 0, 'thermal_cond': 0, 'prandtl': 0, 'sound_speed': 0}
         # 简化 Chapman-Enskog 估算
-        T_K = T + 273.15
+        T_K = T + C_TO_K
         mu = 1.5e-5 * (T_K / 300.0) ** 0.7  # Pa·s
         k = 0.015 * (T_K / 300.0) ** 0.5  # W/(m·K)
         cp = 1.0  # kJ/(kg·K) 近似

@@ -18,6 +18,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
+from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
 # DOCX 报告导出
 
 
@@ -828,12 +829,12 @@ class 管道跨距(CalculatorBase):
             # 计算单位长度重量
             # 管道重量
             pipe_area = math.pi * (od**2 - id_val**2) / 4
-            pipe_weight = pipe_area * material_density * 9.81  # N/m
+            pipe_weight = pipe_area * material_density * G  # N/m
             
             # 流体重量
             if fluid_density > 0:
                 fluid_area = math.pi * id_val**2 / 4
-                fluid_weight = fluid_area * fluid_density * 9.81  # N/m
+                fluid_weight = fluid_area * fluid_density * G  # N/m
             else:
                 fluid_weight = 0
             
@@ -841,7 +842,7 @@ class 管道跨距(CalculatorBase):
             if insulation_thickness > 0 and insulation_density > 0:
                 insulation_od = od + 2 * insulation_thickness
                 insulation_area = math.pi * (insulation_od**2 - od**2) / 4
-                insulation_weight = insulation_area * insulation_density * 9.81  # N/m
+                insulation_weight = insulation_area * insulation_density * G  # N/m
             else:
                 insulation_weight = 0
             
@@ -978,12 +979,12 @@ class 管道跨距(CalculatorBase):
             I = math.pi * (od**4 - id_val**4) / 64
             Z = math.pi * (od**4 - id_val**4) / (32 * od)
             pipe_area = math.pi * (od**2 - id_val**2) / 4
-            pipe_weight = pipe_area * material_density * 9.81
+            pipe_weight = pipe_area * material_density * G
             fluid_area = math.pi * id_val**2 / 4
-            fluid_weight = fluid_area * fluid_density * 9.81 if fluid_density > 0 else 0
+            fluid_weight = fluid_area * fluid_density * G if fluid_density > 0 else 0
             insulation_od = od + 2 * insulation_thickness
             insulation_area = math.pi * (insulation_od**2 - od**2) / 4
-            insulation_weight = insulation_area * insulation_density * 9.81 if insulation_thickness > 0 and insulation_density > 0 else 0
+            insulation_weight = insulation_area * insulation_density * G if insulation_thickness > 0 and insulation_density > 0 else 0
             total_weight = pipe_weight + fluid_weight + insulation_weight
             # 基于应力的跨距（应力限制）
             span_stress = math.sqrt(8 * allowable_stress * Z / total_weight)

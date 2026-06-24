@@ -41,6 +41,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
+from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
 # DOCX 报告导出
 
 # 统一的QGroupBox样式
@@ -530,7 +531,7 @@ class RefrigerationCycleCalculator(CalculatorBase):
         else:
             A, B, C = 6.9094, 1169.0, 224.0  # 默认R134a
         
-        T = temperature + 273.15  # 转换为K
+        T = temperature + C_TO_K  # 转换为K
         P_sat = math.exp(A - B/(T - C)) * 100  # kPa
         return P_sat
     
@@ -677,8 +678,8 @@ class RefrigerationCycleCalculator(CalculatorBase):
         ref_data = eos.REFRIGERANTS[ref_name]
         
         # --- 状态1: 压缩机进口 (蒸发器出口) ---
-        T1_K = evap_temp + 273.15 + superheat
-        sat_ev = eos.saturation_properties(T_K=evap_temp + 273.15, ref_name=ref_name)
+        T1_K = evap_temp + C_TO_K + superheat
+        sat_ev = eos.saturation_properties(T_K=evap_temp + C_TO_K, ref_name=ref_name)
         P_evap_MPa = sat_ev['P_MPa']
         
         # 过热蒸汽性质
@@ -689,7 +690,7 @@ class RefrigerationCycleCalculator(CalculatorBase):
         T1 = T1_C
         
         # --- 状态2: 压缩机出口 (等熵压缩) ---
-        sat_cd = eos.saturation_properties(T_K=cond_temp + 273.15, ref_name=ref_name)
+        sat_cd = eos.saturation_properties(T_K=cond_temp + C_TO_K, ref_name=ref_name)
         P_cond_MPa = sat_cd['P_MPa']
         
         # 等熵压缩温度近似（理想气体）
@@ -700,7 +701,7 @@ class RefrigerationCycleCalculator(CalculatorBase):
         T2_ideal_K = T1_K * (P_cond_MPa / P_evap_MPa) ** ((gamma - 1.0) / gamma)
         h2s = h1 + cp_g * (T2_ideal_K - T1_K)
         h2 = h1 + (h2s - h1) / comp_efficiency
-        T2_C = T2_ideal_K - 273.15 + (1.0 / comp_efficiency - 1.0) * 20  # 近似排气温度
+        T2_C = T2_ideal_K - C_TO_K + (1.0 / comp_efficiency - 1.0) * 20  # 近似排气温度
 
         # --- 状态3: 冷凝器出口 (过冷液体) ---
         T3_C = cond_temp - subcool
@@ -725,7 +726,7 @@ class RefrigerationCycleCalculator(CalculatorBase):
         refrigeration_capacity = mass_flow * refrigeration_effect
 
         # 效率分析
-        carnot_COP = (evap_temp + 273.15) / (cond_temp - evap_temp)
+        carnot_COP = (evap_temp + C_TO_K) / (cond_temp - evap_temp)
         efficiency = COP / carnot_COP * 100
 
         # 容积制冷量
@@ -855,7 +856,7 @@ class RefrigerationCycleCalculator(CalculatorBase):
         compressor_power = mass_flow * compressor_work
         refrigeration_capacity = mass_flow * refrigeration_effect
 
-        carnot_COP = (evap_temp + 273.15) / (cond_temp - evap_temp)
+        carnot_COP = (evap_temp + C_TO_K) / (cond_temp - evap_temp)
         efficiency = COP / carnot_COP * 100
 
         return self._format_results(
@@ -1016,8 +1017,8 @@ class RefrigerationCycleCalculator(CalculatorBase):
             ref_name = ref_map.get(refrigerant, "R134a")
 
             if USE_INDUSTRIAL_CYCLE and ref_name in getattr(_refrigerant_eos, 'REFRIGERANTS', {}):
-                sat_ev = _refrigerant_eos.saturation_properties(T_K=evap_temp+273.15, ref_name=ref_name)
-                sat_cd = _refrigerant_eos.saturation_properties(T_K=cond_temp+273.15, ref_name=ref_name)
+                sat_ev = _refrigerant_eos.saturation_properties(T_K=evap_temp+C_TO_K, ref_name=ref_name)
+                sat_cd = _refrigerant_eos.saturation_properties(T_K=cond_temp+C_TO_K, ref_name=ref_name)
                 P_evap = sat_ev['P_MPa'] * 1000
                 P_cond = sat_cd['P_MPa'] * 1000
 
@@ -1029,7 +1030,7 @@ class RefrigerationCycleCalculator(CalculatorBase):
                 cp_g = ref_data['cp_ideal']
                 R_spec = 8.314 / (ref_data['M'] / 1000.0)
                 gamma = (cp_g * 1000.0 + R_spec) / R_spec
-                T1_K = T1_C + 273.15
+                T1_K = T1_C + C_TO_K
                 T2_ideal_K = T1_K * (sat_cd['P_MPa'] / sat_ev['P_MPa']) ** ((gamma - 1.0) / gamma)
                 h2s = h1 + cp_g * (T2_ideal_K - T1_K)
                 h2 = h1 + (h2s - h1) / comp_efficiency
@@ -1044,7 +1045,7 @@ class RefrigerationCycleCalculator(CalculatorBase):
                 COP = refrigeration_effect / compressor_work
                 compressor_power = mass_flow * compressor_work
                 refrigeration_capacity = mass_flow * refrigeration_effect
-                carnot_COP = (evap_temp + 273.15) / (cond_temp - evap_temp)
+                carnot_COP = (evap_temp + C_TO_K) / (cond_temp - evap_temp)
             else:
                 P_evap = self.calculate_saturation_pressure(refrigerant, evap_temp)
                 P_cond = self.calculate_saturation_pressure(refrigerant, cond_temp)
@@ -1059,7 +1060,7 @@ class RefrigerationCycleCalculator(CalculatorBase):
                 COP = refrigeration_effect / compressor_work
                 compressor_power = mass_flow * compressor_work
                 refrigeration_capacity = mass_flow * refrigeration_effect
-                carnot_COP = (evap_temp + 273.15) / (cond_temp - evap_temp)
+                carnot_COP = (evap_temp + C_TO_K) / (cond_temp - evap_temp)
 
             outputs = {
                 "制冷量_kW": round(refrigeration_capacity, 2),

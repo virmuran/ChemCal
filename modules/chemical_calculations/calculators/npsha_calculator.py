@@ -17,6 +17,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
+from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
 from svg_utils import svg_text
 
 
@@ -567,7 +568,7 @@ class NPSHaCalculator(CalculatorBase):
             
             # ── NPSHa 公式 ──
             # NPSHa = (P_surface - P_vapor) / (ρ·g) + H_static - H_friction
-            g = 9.81
+            g = G
             
             surface_head = (surface_pressure * 1000) / (density * g)
             vapor_head = (vapor_pressure * 1000) / (density * g)
@@ -672,12 +673,12 @@ NPSHa = (P_s - P_v) / (ρ·g) + H_inst - H_f
 P_s    = {surface_pressure} kPaA (液面绝对压力)
 P_v    = {vapor_pressure} kPa (饱和蒸汽压)
 ρ      = {density} kg/m³ (液体密度)
-g      = 9.81 m/s² (重力加速度)
+g      = G m/s² (重力加速度)
 H_inst = {static_head} m (泵安装高度)
 H_f    = {friction_loss} m (吸入管路损失)
 
 详细计算:
-({surface_pressure}×1000/({density}×9.81)) - ({vapor_pressure}×1000/({density}×9.81)) + {static_head} - {friction_loss}
+({surface_pressure}×1000/({density}×G)) - ({vapor_pressure}×1000/({density}×G)) + {static_head} - {friction_loss}
 = {surface_head:.3f} - {vapor_head:.3f} + {static_head} - {friction_loss}
 = {npsha:.3f} m
 
@@ -880,7 +881,7 @@ H_f    = {friction_loss} m (吸入管路损失)
 
         outputs = {}
         try:
-            g = 9.81
+            g = G
             surface_head = (surface_pressure * 1000) / (density * g)
             vapor_head = (vapor_pressure * 1000) / (density * g)
             npsha = surface_head - vapor_head + static_head - friction_loss

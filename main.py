@@ -21,8 +21,8 @@ from PySide6.QtWidgets import (
     QMessageBox, QStatusBar, QLabel, QDialog, QScrollArea, QPushButton,
     QHBoxLayout
 )
-from PySide6.QtCore import Qt, QTimer, QUrl
 from PySide6.QtGui import QAction, QFont, QDesktopServices
+from PySide6.QtCore import Qt, QTimer, QUrl, QMetaObject, Q_ARG, Slot
 
 from data_manager import DataManager
 from theme_manager import ThemeManager
@@ -79,6 +79,8 @@ class ChemCal(QMainWindow):
 
         self._setup_ui()
         self._load_settings()
+        # 启动后延迟1秒检查更新（确保 UI 就绪）
+        QTimer.singleShot(1000, self._check_version)
         logger.info("ChemCal 启动成功，加载模块数: {}", len(self.modules))
 
     # ------------------------------------------------------------------ UI
@@ -160,6 +162,10 @@ class ChemCal(QMainWindow):
         self.theme_label = QLabel(f"主题: {self.theme_manager.current_theme.capitalize()}")
         bar.addPermanentWidget(self.theme_label)
         bar.addPermanentWidget(QLabel("|"))
+        self.update_label = QLabel()
+        self.update_label.setStyleSheet("font-size:11px; padding:0 4px;")
+        bar.addPermanentWidget(self.update_label)
+        bar.addPermanentWidget(QLabel("|"))
         self.time_label = QLabel()
         bar.addPermanentWidget(self.time_label)
 
@@ -170,6 +176,49 @@ class ChemCal(QMainWindow):
 
     def _update_time(self):
         self.time_label.setText(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+    # ------------------------------------------------------------------ 版本检查
+
+    def _check_version(self):
+        """后台线程检查 GitHub 是否有新版本"""
+        import threading
+        repo = "virmuran/ChemCal"
+
+        def _do():
+            import json, urllib.request
+            url = f"https://api.github.com/repos/{repo}/releases/latest"
+            try:
+                req = urllib.request.Request(url, headers={"User-Agent": "ChemCal/1.0"})
+                proxy = urllib.request.ProxyHandler()
+                opener = urllib.request.build_opener(proxy)
+                with opener.open(req, timeout=10) as resp:
+                    data = json.loads(resp.read().decode())
+                    latest = data.get("tag_name", "").lstrip("v")
+                    parts = CHEMICAL_VERSION.split(".")
+                    cur = (int(parts[0]), int(parts[1]))
+                    lat = tuple(int(x) for x in latest.split("."))
+                    if lat > cur:
+                        self._on_new_version(latest, data.get("html_url", url))
+            except Exception:
+                pass
+
+        threading.Thread(target=_do, daemon=True).start()
+
+    def _on_new_version(self, latest, url):
+        """新版本可用 — 调度到主线程更新 UI"""
+        QMetaObject.invokeMethod(
+            self, "_show_update_banner",
+            Qt.ConnectionType.QueuedConnection,
+            Q_ARG(str, latest), Q_ARG(str, url)
+        )
+
+    @Slot(str, str)
+    def _show_update_banner(self, latest, url):
+        self.update_label.setText(f"⬆ v{latest} 可用")
+        self.update_label.setStyleSheet("color:#e67e22; font-size:11px; font-weight:bold; padding:0 4px; text-decoration:underline;")
+        self.update_label.setToolTip(f"GitHub: virmuran/ChemCal — v{latest}")
+        self.update_label.mousePressEvent = lambda e: QDesktopServices.openUrl(QUrl(url))
+        self.update_label.setCursor(Qt.PointingHandCursor)
 
     # ------------------------------------------------------------------ 设置
 
