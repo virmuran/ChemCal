@@ -12,6 +12,7 @@ from .pressure_pipe_definition import 压力管道定义
 from .fire_hydrant_calculator import 消火栓计算
 from .heat_exchanger_calculator import 换热器计算
 from .heat_exchanger_area_calculator import 换热器面积
+from .jacket_coil_calculator import JacketCoilCalculator
 from .tank_weight_calculator import 罐体重量
 from .steam_property_calculator import SteamPropertyCalculator
 from .pump_power_calculator import CentrifugalPumpCalculator
@@ -31,6 +32,7 @@ __all__ = [
     '消火栓计算',
     '换热器计算',
     '换热器面积',
+    'JacketCoilCalculator',
     '罐体重量',
     'SteamPropertyCalculator',
     'CentrifugalPumpCalculator',

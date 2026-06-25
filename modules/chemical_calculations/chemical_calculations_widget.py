@@ -142,6 +142,7 @@ class ChemicalCalculationsWidget(QWidget):
             # ===== 三、换热设备 =====
             ("换热器计算", "换热器计算", "heat_exchanger_calculator", True),
             ("换热器面积", "换热器面积", "heat_exchanger_area_calculator", True),
+            ("夹套/盘管换热面积", "JacketCoilCalculator", "jacket_coil_calculator", True),
             ("风机功率计算", "FanPowerCalculator", "fan_power_calculator", True),
             ("保温厚度计算", "InsulationThicknessCalculator", "insulation_thickness_calculator", True),
             # ===== 四、容器与设备 =====
@@ -367,6 +368,7 @@ class ChemicalCalculationsWidget(QWidget):
         "fire_hydrant_calculator": "安全/消防",
         "heat_exchanger_calculator": "换热",
         "heat_exchanger_area_calculator": "换热",
+        "jacket_coil_calculator": "换热",
         "tank_weight_calculator": "容器/结构",
         "vessel_sizing_calculator": "容器/结构",
         "insulation_thickness_calculator": "换热",
