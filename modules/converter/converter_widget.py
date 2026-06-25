@@ -12,9 +12,6 @@ if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
 
 # 尝试导入计算器类，如果失败则设置为 None
-ScientificCalculator = None
-LoanCalculator = None
-TaxCalculator = None
 LengthConverter = None
 WeightConverter = None
 AreaConverter = None
@@ -29,9 +26,6 @@ ForceConverter = None
 
 # 单独导入每个计算器，这样如果一个失败不会影响其他
 calculators_to_import = [
-    ("calculators.scientific_calculator", "ScientificCalculator"),
-    ("calculators.loan_calculator", "LoanCalculator"),
-    ("calculators.tax_calculator", "TaxCalculator"),
     ("calculators.length_converter", "LengthConverter"),
     ("calculators.weight_converter", "WeightConverter"),
     ("calculators.area_converter", "AreaConverter"),
@@ -81,9 +75,6 @@ class ConverterWidget(QWidget):
         
         # 只添加成功导入的页面，并捕获实例化错误
         page_configs = [
-            (ScientificCalculator, "科学计算器"),
-            (LoanCalculator, "房贷计算"),
-            (TaxCalculator, "个税计算"),
             (LengthConverter, "长度换算"),
             (WeightConverter, "重量换算"),
             (AreaConverter, "面积换算"),
