@@ -11,6 +11,9 @@ scipy>=1.10.0
 # PDF 生成（计算书导出，reportlab 为旧方案，逐步废弃）
 reportlab>=4.0.0
 
+# PDF 生成（纯物质物性、腐蚀查询等计算器的 PDF 导出）
+fpdf2>=2.8.0
+
 # DOCX 报告生成（新方案，替换 TXT 导出）
 python-docx>=0.8.11
 
