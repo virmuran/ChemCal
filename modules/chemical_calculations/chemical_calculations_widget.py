@@ -108,21 +108,38 @@ class ChemicalCalculationsWidget(QWidget):
         # 定义计算器页面配置
         page_configs = [
             # （显示名称, 计算器类名, 模块文件名, 是否支持data_manager）
-            # ===== 一、物性查询 =====
+            #
+            # ══════════════════════════════════════════
+            # 一、物性数据
+            # ══════════════════════════════════════════
             ("水蒸气性质", "SteamPropertyCalculator", "steam_property_calculator", True),
             ("湿空气计算", "WetAirCalculator", "wet_air_calculator", True),
             ("制冷剂物性", "RefrigerantPropertiesCalculator", "refrigerant_properties_calculator", True),
             ("纯物质物性查询", "PureSubstanceProperties", "pure_substance_properties", True),
             ("溶液密度计算", "SolutionDensityCalculator", "solution_density_calculator", True),
             ("固体溶解度", "SolidSolubilityCalculator", "solid_solubility_calculator", True),
-            ("腐蚀查询", "CorrosionDataQuery", "corrosion_data_query", True),
-            ("危险化学品", "HazardousChemicalsQuery", "hazardous_chemicals_query", True),
             ("气体标态转压缩态", "气体标态转压缩态", "gas_state_converter", True),
             ("EOS状态方程", "EOSCalculator", "eos_calculator", True),
             ("气体混合物(EOS)", "GasMixturePropertiesCalculator", "gas_mixture_properties_calculator", True),
             ("汽液平衡(活度系数)", "VLEActivityCoefficientCalculator", "vle_activity_coefficient_calculator", True),
             ("混合液体闪点", "MixedLiquidFlashPointCalculator", "mixed_liquid_flash_point_calculator", True),
-            # ===== 二、管道系统 =====
+            #
+            # ══════════════════════════════════════════
+            # 二、工艺设备
+            # ══════════════════════════════════════════
+            ("换热器计算", "换热器计算", "heat_exchanger_calculator", True),
+            ("换热器面积", "换热器面积", "heat_exchanger_area_calculator", True),
+            ("夹套/盘管换热面积", "JacketCoilCalculator", "jacket_coil_calculator", True),
+            ("搅拌功率 & kLa", "AgitatorCalculator", "agitator_calculator", True),
+            ("设备尺寸计算", "设备尺寸计算", "vessel_sizing_calculator", True),
+            ("罐体重量", "罐体重量", "tank_weight_calculator", True),
+            ("容器设计计算", "VesselDesignCalculator", "vessel_design_calculator", True),
+            ("篮式过滤器", "篮式过滤器", "basket_filter_design_calculator", True),
+            ("风机功率计算", "FanPowerCalculator", "fan_power_calculator", True),
+            #
+            # ══════════════════════════════════════════
+            # 三、流体输送
+            # ══════════════════════════════════════════
             ("管径计算", "管径计算", "pipe_diameter_calculator", True),
             ("管道壁厚", "管道壁厚", "pipe_thickness_calculator", True),
             ("管道跨距", "管道跨距", "pipe_span_calculator", True),
@@ -135,26 +152,24 @@ class ChemicalCalculationsWidget(QWidget):
             ("离心泵NPSHa计算", "NPSHaCalculator", "npsha_calculator", True),
             ("蒸汽管径流量", "蒸汽管径流量", "steam_pipe_calculator", True),
             ("长输蒸汽管道温降计算", "LongDistanceSteamPipeCalculator", "long_distance_steam_pipe_calculator", True),
+            ("蒸汽管道压降计算", "SteamPipePressureDropCalculator", "steam_pipe_pressure_drop_calculator", True),
             ("循环水用水量计算", "CoolingWaterCalculator", "cooling_water_calculator", True),
+            #
+            # ══════════════════════════════════════════
+            # 四、热工制冷
+            # ══════════════════════════════════════════
             ("蒸汽空消计算", "SteamSterilizationCalculator", "steam_sterilization_calculator", True),
-            # ===== 三、搅拌与传氧 =====
-            ("搅拌功率 & kLa", "AgitatorCalculator", "agitator_calculator", True),
-            # ===== 三、换热设备 =====
-            ("换热器计算", "换热器计算", "heat_exchanger_calculator", True),
-            ("换热器面积", "换热器面积", "heat_exchanger_area_calculator", True),
-            ("夹套/盘管换热面积", "JacketCoilCalculator", "jacket_coil_calculator", True),
-            ("风机功率计算", "FanPowerCalculator", "fan_power_calculator", True),
+            ("制冷循环计算", "RefrigerationCycleCalculator", "refrigeration_cycle_calculator", True),
             ("保温厚度计算", "InsulationThicknessCalculator", "insulation_thickness_calculator", True),
-            # ===== 四、容器与设备 =====
-            ("设备尺寸计算", "设备尺寸计算", "vessel_sizing_calculator", True),
-            ("罐体重量", "罐体重量", "tank_weight_calculator", True),
-            ("篮式过滤器", "篮式过滤器", "basket_filter_design_calculator", True),
-            # ===== 五、安全 =====
+            #
+            # ══════════════════════════════════════════
+            # 五、安全环保
+            # ══════════════════════════════════════════
             ("安全阀计算", "SafetyValveCalculator", "safety_valve_calculator", True),
             ("消火栓计算", "消火栓计算", "fire_hydrant_calculator", True),
-            # ===== 六、制冷 =====
-            ("制冷循环计算", "RefrigerationCycleCalculator", "refrigeration_cycle_calculator", True),
-            # ===== 七、环保计算 =====
+            ("消防水池容积", "FireWaterTankCalculator", "fire_water_tank_calculator", True),
+            ("腐蚀查询", "CorrosionDataQuery", "corrosion_data_query", True),
+            ("危险化学品", "HazardousChemicalsQuery", "hazardous_chemicals_query", True),
             ("废水COD估算", "CODEstimator", "cod_estimator", True),
         ]
         
@@ -353,48 +368,58 @@ class ChemicalCalculationsWidget(QWidget):
             print(f"[历史] 保存失败: {e}")
             import traceback; traceback.print_exc()
 
-    # 计算器分类映射
+    # 计算器分类映射 — 五大分类体系
     _CALC_CATEGORIES = {
-        "basket_filter_design_calculator": "容器/结构",
-        "pressure_drop_calculator": "管道",
-        "pipe_diameter_calculator": "管道",
-        "pipe_span_calculator": "管道",
-        "pipe_spacing_calculator": "管道",
-        "pipe_compensation_calculator": "管道",
-        "pipe_thickness_calculator": "管道",
-        "steam_pipe_calculator": "管道",
-        "gas_state_converter": "热工/制冷",
-        "pressure_pipe_definition": "管道",
-        "fire_hydrant_calculator": "安全/消防",
-        "heat_exchanger_calculator": "换热",
-        "heat_exchanger_area_calculator": "换热",
-        "jacket_coil_calculator": "换热",
-        "tank_weight_calculator": "容器/结构",
-        "vessel_sizing_calculator": "容器/结构",
-        "insulation_thickness_calculator": "换热",
+        # 一、物性数据
+        "steam_property_calculator": "物性数据",
+        "wet_air_calculator": "物性数据",
+        "refrigerant_properties_calculator": "物性数据",
+        "pure_substance_properties": "物性数据",
+        "solution_density_calculator": "物性数据",
+        "solid_solubility_calculator": "物性数据",
+        "gas_state_converter": "物性数据",
+        "eos_calculator": "物性数据",
+        "gas_mixture_properties_calculator": "物性数据",
+        "vle_activity_coefficient_calculator": "物性数据",
+        "mixed_liquid_flash_point_calculator": "物性数据",
+        # 二、工艺设备
+        "heat_exchanger_calculator": "工艺设备",
+        "heat_exchanger_area_calculator": "工艺设备",
+        "jacket_coil_calculator": "工艺设备",
+        "agitator_calculator": "工艺设备",
+        "vessel_sizing_calculator": "工艺设备",
+        "tank_weight_calculator": "工艺设备",
+        "vessel_design_calculator": "工艺设备",
+        "basket_filter_design_calculator": "工艺设备",
+        "fan_power_calculator": "工艺设备",
+        # 三、流体输送
+        "pipe_diameter_calculator": "流体输送",
+        "pipe_thickness_calculator": "流体输送",
+        "pipe_span_calculator": "流体输送",
+        "pipe_spacing_calculator": "流体输送",
+        "pipe_compensation_calculator": "流体输送",
+        "pressure_pipe_definition": "流体输送",
+        "pressure_drop_calculator": "流体输送",
+        "compressible_flow_pressure_drop": "流体输送",
+        "pump_power_calculator": "流体输送",
+        "npsha_calculator": "流体输送",
+        "steam_pipe_calculator": "流体输送",
+        "long_distance_steam_pipe_calculator": "流体输送",
+        "steam_pipe_pressure_drop_calculator": "流体输送",
+        "cooling_water_calculator": "流体输送",
+        # 四、热工制冷
+        "steam_sterilization_calculator": "热工制冷",
+        "refrigeration_cycle_calculator": "热工制冷",
+        "insulation_thickness_calculator": "热工制冷",
+        # 五、安全环保
+        "safety_valve_calculator": "安全环保",
+        "fire_hydrant_calculator": "安全环保",
+        "fire_water_tank_calculator": "安全环保",
+        "corrosion_data_query": "安全环保",
+        "hazardous_chemicals_query": "安全环保",
+        "cod_estimator": "安全环保",
+        # 遗留（存量兼容）
         "flange_size_calculator": "其他",
-        "safety_valve_calculator": "安全/消防",
-        "long_distance_steam_pipe_calculator": "管道",
-        "cooling_water_calculator": "管道",
-        "steam_sterilization_calculator": "管道",
-        "fan_power_calculator": "流体设备",
-        "steam_property_calculator": "热工/制冷",
-        "pure_substance_properties": "热力学",
-        "wet_air_calculator": "热工/制冷",
-        "mixed_liquid_flash_point_calculator": "热力学",
-        "eos_calculator": "热力学",
-        "vle_activity_coefficient_calculator": "热力学",
-        "gas_mixture_properties_calculator": "热力学",
-        "corrosion_data_query": "安全/消防",
-        "solid_solubility_calculator": "热力学",
-        "refrigerant_properties_calculator": "热工/制冷",
-        "refrigeration_cycle_calculator": "热工/制冷",
-        "cod_estimator": "环保计算",
-        "hazardous_chemicals_query": "安全/消防",
-        "pump_power_calculator": "流体设备",
-        "npsha_calculator": "流体设备",
-        "compressible_flow_pressure_drop": "管道",
-        "solution_density_calculator": "热力学",
     }
 
     def _get_category_from_module(self, module_name):

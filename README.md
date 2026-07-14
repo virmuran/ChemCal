@@ -16,7 +16,7 @@
     <img src="https://img.shields.io/badge/python-3.13-blue.svg" alt="Python">
   </a>
   <a href="https://github.com/virmuran/ChemCal">
-    <img src="https://img.shields.io/badge/version-1.4-green.svg" alt="Version">
+    <img src="https://img.shields.io/badge/version-1.4.20260623-green.svg" alt="Version">
     <!-- 更新版本号时，同时修改 version.py 中的 VERSION -->
   </a>
   <a href="https://github.com/virmuran/ChemCal">
@@ -26,7 +26,7 @@
 
 ---
 
-**ChemCal（化算）** 是一款面向化工工程师的专业桌面应用，集成了 38 种工程计算器、参考资料库、单位换算、计算历史记录和可视化倒计时。基于 Python 3.13 + PySide6 构建，支持三套主题（亮色 / 暗色 / 蓝色），所有数据本地存储，不上传任何服务器。
+**ChemCal（化算）** 是一款面向化工工程师的专业桌面应用，集成了 44 种工程计算器、参考资料库、单位换算、计算历史记录和可视化倒计时。基于 Python 3.13 + PySide6 构建，支持三套主题（亮色 / 暗色 / 蓝色），所有数据本地存储，不上传任何服务器。
 
 ---
 
@@ -34,15 +34,15 @@
 
 ### 工程计算
 
-ChemCal 提供六大类共 38 个工程计算器，覆盖化工设计核心场景：
+ChemCal 提供六大类共 44 个工程计算器，覆盖化工设计核心场景：
 
 | 类别     | 计算器                                                                                                                                                                                   | 数量 |
 | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--: |
-| 物性查询 | 水蒸气性质（IAPWS-IF97）、湿空气计算、制冷剂物性、纯物质物性、溶液密度、固体溶解度、腐蚀查询、危险化学品、气体状态转换、EOS 状态方程、气体混合物 EOS、汽液平衡（活度系数）、混合液体闪点 |  13  |
-| 管道系统 | 管径计算、管道压降、管道壁厚、管道跨距、管道间距、管道补偿、压力管道定义、可压缩流体压降、离心泵功率、NPSHa 汽蚀余量、蒸汽管径流量、长输蒸汽管道温降、循环水用水量                       |  13  |
-| 换热设备 | 换热器计算、换热器面积（含"未知侧设计"模式）、风机功率、保温厚度                                                                                                                         |  4  |
-| 容器设备 | 设备尺寸计算、罐体重量、篮式过滤器设计                                                                                                                                                   |  3  |
-| 安全消防 | 安全阀计算（模式驱动/6种工况/Kd分类）、消火栓                                                                                                                                            |  2  |
+| 物性查询 | 水蒸气性质（IAPWS-IF97）、湿空气计算、制冷剂物性、纯物质物性、溶液密度、固体溶解度、腐蚀查询、危险化学品、气体状态转换、EOS 状态方程、气体混合物 EOS、汽液平衡（活度系数）、混合液体闪点、发酵废水 COD 估算 |  14  |
+| 管道系统 | 管径计算、管道压降、管道壁厚、管道跨距、管道间距、管道补偿、压力管道定义、可压缩流体压降、离心泵功率、NPSHa 汽蚀余量、蒸汽管径流量、长输蒸汽管道温降、循环水用水量、法兰尺寸、蒸汽管道压降温降、蒸汽空消                       |  16  |
+| 换热设备 | 换热器计算、换热器面积（含"未知侧设计"模式）、风机功率、保温厚度、夹套盘管换热                                                                                                               |  5  |
+| 容器设备 | 设备尺寸计算、罐体重量、篮式过滤器设计、发酵搅拌功率、容器贮罐设计                                                                                                                       |  5  |
+| 安全消防 | 安全阀计算（模式驱动/6种工况/Kd分类）、消火栓、消防水池容积                                                                                                                             |  3  |
 | 制冷热工 | 制冷循环（工业级精度）                                                                                                                                                                   |  1  |
 
 每个计算器均支持 **DOCX/PDF 计算书导出**，方便存档和审查。导出逻辑由 `utils/docx_utils.py` 中的 `ReportExporter` 统一管理。
@@ -113,15 +113,15 @@ python main.py
 
 ### 依赖清单
 
-```txt
-PySide6 >= 6.5
-NumPy
-SciPy
-ReportLab
-python-docx >= 0.8.11
-Loguru
-psutil
-```
+| 库 | 用途 |
+|----|------|
+| [PySide6](https://pypi.org/project/PySide6/) | Qt6 GUI 框架 |
+| [NumPy](https://pypi.org/project/numpy/) | 数值计算 |
+| [SciPy](https://pypi.org/project/scipy/) | 科学计算与方程求解 |
+| [ReportLab](https://pypi.org/project/reportlab/) | PDF 报告生成 |
+| [python-docx](https://pypi.org/project/python-docx/) | DOCX 报告生成 |
+| [Loguru](https://pypi.org/project/loguru/) | 日志系统 |
+| [psutil](https://pypi.org/project/psutil/) | 进程监控（看门狗） |
 
 ---
 
@@ -152,11 +152,13 @@ ChemCal/
 │
 ├── modules/
 │   ├── chemical_calculations/
-│   │   ├── calculators/        # 38 个计算器实现
+│   │   ├── calculators/        # 44 个计算器实现
 │   │   │   ├── steam_property_calculator.py
 │   │   │   ├── pressure_drop_calculator.py
 │   │   │   ├── heat_exchanger_area_calculator.py
 │   │   │   ├── cooling_water_calculator.py  # 循环水用水量（含多效蒸发器/结晶罐）
+│   │   │   ├── agitator_calculator.py       # 发酵搅拌功率 & kLa
+│   │   │   ├── vessel_design_calculator.py   # 容器/贮罐设计（GB 150）
 │   │   │   └── ...
 │   │   ├── steam_iapws.py      # IAPWS-IF97 水蒸气物性
 │   │   ├── refrigerant_eos.py  # 制冷剂 PR 状态方程
@@ -226,6 +228,17 @@ v1.3 将全局报告导出从 TXT 升级为 DOCX，提取 `utils/docx_utils.py` 
 ---
 
 ## 更新日志
+
+### v1.4.20260623 (2026-06-23)
+
+- 新增发酵搅拌功率计算器（不通气/通气功率衰减、kLa 传氧系数、电机选型）
+- 新增蒸汽空消计算器（发酵罐/种子罐/管道灭菌蒸汽量估算）
+- 新增发酵废水 COD 估算器
+- 新增蒸汽管道压降/温降计算器（架空/地沟/直埋三种敷设方式）
+- 新增法兰尺寸计算器
+- 新增夹套/盘管换热面积核算计算器
+- 新增容器/贮罐设计计算器（GB 150 压力容器标准）
+- 新增消防水池容积计算器（GB 50974-2014）
 
 ### v1.4 (2026-06-02)
 

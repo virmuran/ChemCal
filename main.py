@@ -1,6 +1,8 @@
 # ChemCal/main.py
 import sys
 import os
+import threading
+import tempfile
 import traceback
 from datetime import datetime
 
@@ -19,14 +21,18 @@ from loguru import logger
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QTabWidget, QWidget, QVBoxLayout,
     QMessageBox, QStatusBar, QLabel, QDialog, QScrollArea, QPushButton,
-    QHBoxLayout
+    QHBoxLayout, QProgressBar, QDialogButtonBox, QTextEdit
 )
 from PySide6.QtGui import QAction, QFont, QDesktopServices
-from PySide6.QtCore import Qt, QTimer, QUrl, QMetaObject, Q_ARG, Slot
+from PySide6.QtCore import Qt, QTimer, QUrl, QMetaObject, Q_ARG, Slot, QThread, Signal
 
 from data_manager import DataManager
 from theme_manager import ThemeManager
 from module_loader import ModuleLoader
+from updater import (
+    check_for_updates, download_update, create_update_bat,
+    is_frozen, get_app_dir, compare_versions, GITHUB_REPO
+)
 
 # 配置日志：输出到控制台 + 写入文件
 _log_dir = os.path.join(os.path.expanduser("~"), ".ChemCal", "logs")
@@ -80,7 +86,7 @@ class ChemCal(QMainWindow):
         self._setup_ui()
         self._load_settings()
         # 启动后延迟1秒检查更新（确保 UI 就绪）
-        QTimer.singleShot(1000, self._check_version)
+        QTimer.singleShot(1000, lambda: self._check_version(silent=True))
         logger.info("ChemCal 启动成功，加载模块数: {}", len(self.modules))
 
     # ------------------------------------------------------------------ UI
@@ -137,6 +143,7 @@ class ChemCal(QMainWindow):
 
         # 帮助菜单
         help_menu = menubar.addMenu("帮助")
+        self._add_action(help_menu, "检查更新", lambda: self._check_version(silent=False))
         self._add_action(help_menu, "用户手册", self._show_user_manual)
         self._add_action(help_menu, "常见问题", self._show_faq)
         self._add_action(help_menu, "系统信息", self._show_system_info)
@@ -179,46 +186,212 @@ class ChemCal(QMainWindow):
 
     # ------------------------------------------------------------------ 版本检查
 
-    def _check_version(self):
-        """后台线程检查 GitHub 是否有新版本"""
-        import threading
-        repo = "virmuran/ChemCal"
+    def _check_version(self, silent=False):
+        """后台线程检查 GitHub 是否有新版本。
 
-        def _do():
-            import json, urllib.request
-            url = f"https://api.github.com/repos/{repo}/releases/latest"
-            try:
-                req = urllib.request.Request(url, headers={"User-Agent": "ChemCal/1.0"})
-                proxy = urllib.request.ProxyHandler()
-                opener = urllib.request.build_opener(proxy)
-                with opener.open(req, timeout=10) as resp:
-                    data = json.loads(resp.read().decode())
-                    latest = data.get("tag_name", "").lstrip("v")
-                    parts = CHEMICAL_VERSION.split(".")
-                    cur = (int(parts[0]), int(parts[1]))
-                    lat = tuple(int(x) for x in latest.split(".")[:2])
-                    if lat > cur:
-                        self._on_new_version(latest, data.get("html_url", url))
-            except Exception:
-                pass
+        silent=True: 静默检查（启动时），仅状态栏提示
+        silent=False: 手动检查，弹出对话框
+        """
+        if silent:
+            threading.Thread(target=self._do_version_check, args=(silent,), daemon=True).start()
+        else:
+            self.statusBar().showMessage("正在检查更新...", 3000)
+            threading.Thread(target=self._do_version_check, args=(silent,), daemon=True).start()
 
-        threading.Thread(target=_do, daemon=True).start()
-
-    def _on_new_version(self, latest, url):
-        """新版本可用 — 调度到主线程更新 UI"""
-        QMetaObject.invokeMethod(
-            self, "_show_update_banner",
-            Qt.ConnectionType.QueuedConnection,
-            Q_ARG(str, latest), Q_ARG(str, url)
-        )
+    def _do_version_check(self, silent):
+        has_update, latest, url, notes = check_for_updates()
+        if has_update:
+            if silent:
+                QMetaObject.invokeMethod(
+                    self, "_show_update_banner",
+                    Qt.ConnectionType.QueuedConnection,
+                    Q_ARG(str, latest), Q_ARG(str, url)
+                )
+            else:
+                QMetaObject.invokeMethod(
+                    self, "_show_update_dialog",
+                    Qt.ConnectionType.QueuedConnection,
+                    Q_ARG(str, latest), Q_ARG(str, url), Q_ARG(str, notes)
+                )
+        else:
+            if not silent:
+                msg = notes or "当前已是最新版本 v" + CHEMICAL_VERSION
+                QMetaObject.invokeMethod(
+                    self, "_show_no_update",
+                    Qt.ConnectionType.QueuedConnection,
+                    Q_ARG(str, msg)
+                )
 
     @Slot(str, str)
     def _show_update_banner(self, latest, url):
+        """状态栏新版本提示"""
         self.update_label.setText(f"⬆ v{latest} 可用")
-        self.update_label.setStyleSheet("color:#e67e22; font-size:11px; font-weight:bold; padding:0 4px; text-decoration:underline;")
-        self.update_label.setToolTip(f"GitHub: virmuran/ChemCal — v{latest}")
-        self.update_label.mousePressEvent = lambda e: QDesktopServices.openUrl(QUrl(url))
+        self.update_label.setStyleSheet(
+            "color:#e67e22; font-size:11px; font-weight:bold;"
+            "padding:0 4px; text-decoration:underline;"
+        )
+        self.update_label.setToolTip(f"GitHub: {GITHUB_REPO} — v{latest}\n点击查看详情")
+        self.update_label.mousePressEvent = lambda e: self._show_update_dialog(latest, url, "")
         self.update_label.setCursor(Qt.PointingHandCursor)
+
+    @Slot(str)
+    def _show_no_update(self, msg):
+        """没有更新的提示"""
+        QMessageBox.information(self, "检查更新", msg)
+
+    @Slot(str, str, str)
+    def _show_update_dialog(self, latest, url, notes):
+        """弹出更新对话框"""
+
+        # 注意：pack 和 col 这种简单的二维布局，直接用 QVBoxLayout 即可
+        # 无需引入复杂的 grid 依赖
+        update_dialog = QDialog(self)
+        update_dialog.setWindowTitle("发现新版本")
+        update_dialog.setMinimumSize(480, 360)
+
+        layout = QVBoxLayout(update_dialog)
+        layout.setSpacing(12)
+
+        # 标题行
+        title_lbl = QLabel(f"<h2>发现新版本 v{latest}</h2>")
+        title_lbl.setTextFormat(Qt.TextFormat.RichText)
+        layout.addWidget(title_lbl)
+
+        cur_lbl = QLabel(f"当前版本：v{CHEMICAL_VERSION}")
+        cur_lbl.setStyleSheet("color:#666;")
+        layout.addWidget(cur_lbl)
+
+        # 更新日志（截取前 2000 字）
+        if notes:
+            notes_lbl = QTextEdit()
+            notes_lbl.setReadOnly(True)
+            notes_lbl.setPlainText(notes[:2000])
+            notes_lbl.setMaximumHeight(180)
+            notes_lbl.setStyleSheet("background:#f8f9fa; border:1px solid #ddd; border-radius:4px; padding:6px;")
+            layout.addWidget(notes_lbl)
+
+        # 按钮区
+        btn_layout = QHBoxLayout()
+        later_btn = QPushButton("稍后提醒")
+        later_btn.clicked.connect(update_dialog.reject)
+        update_btn = QPushButton("立即更新")
+        update_btn.setStyleSheet(
+            "QPushButton { background:#27ae60; color:white; font-weight:bold;"
+            "padding:8px 20px; border-radius:4px; }"
+            "QPushButton:hover { background:#219955; }"
+        )
+        update_btn.clicked.connect(lambda: self._start_download_update(update_dialog, latest, url))
+        btn_layout.addStretch()
+        btn_layout.addWidget(later_btn)
+        btn_layout.addWidget(update_btn)
+        layout.addLayout(btn_layout)
+
+        update_dialog.exec()
+
+    def _start_download_update(self, parent_dialog, latest, url):
+        """开始下载更新，切换为进度视图"""
+        parent_dialog.setWindowTitle(f"正在下载 v{latest}...")
+
+        # 清空旧内容，换成进度界面
+        layout = parent_dialog.layout()
+        while layout.count():
+            item = layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+            elif item.layout():
+                # 递归清除子布局
+                while item.layout().count():
+                    sub = item.layout().takeAt(0)
+                    if sub.widget():
+                        sub.widget().deleteLater()
+
+        status_lbl = QLabel(f"正在从 GitHub 下载 v{latest}...")
+        status_lbl.setStyleSheet("font-size:13px;")
+        layout.addWidget(status_lbl)
+
+        progress = QProgressBar()
+        progress.setMinimum(0)
+        progress.setMaximum(100)
+        progress.setTextVisible(True)
+        progress.setStyleSheet(
+            "QProgressBar { border:1px solid #ddd; border-radius:4px; text-align:center; }"
+            "QProgressBar::chunk { background:#27ae60; border-radius:3px; }"
+        )
+        layout.addWidget(progress)
+
+        cancel_btn = QPushButton("取消")
+        cancel_btn.clicked.connect(parent_dialog.reject)
+        cancel_layout = QHBoxLayout()
+        cancel_layout.addStretch()
+        cancel_layout.addWidget(cancel_btn)
+        layout.addLayout(cancel_layout)
+
+        # 下载线程
+        class DownloadThread(QThread):
+            progress = Signal(int, int)  # current, total
+            finished_path = Signal(str)
+            error = Signal(str)
+
+            def __init__(self, url, save_path):
+                super().__init__()
+                self.url = url
+                self.save_path = save_path
+
+            def run(self):
+                try:
+                    def cb(done, total):
+                        self.progress.emit(done, total)
+                    download_update(self.url, self.save_path, progress_callback=cb)
+                    self.finished_path.emit(self.save_path)
+                except Exception as e:
+                    self.error.emit(str(e))
+
+        save_path = os.path.join(tempfile.gettempdir(), f"ChemCal_v{latest}.exe")
+        self._download_thread = DownloadThread(url, save_path)
+
+        self._download_thread.progress.connect(
+            lambda cur, tot: progress.setValue(int(cur / tot * 100)) if tot > 0 else None
+        )
+        self._download_thread.finished_path.connect(
+            lambda p: self._on_download_complete(parent_dialog, p)
+        )
+        self._download_thread.error.connect(
+            lambda e: self._on_download_error(parent_dialog, e)
+        )
+        self._download_thread.start()
+
+    def _on_download_complete(self, dialog, filepath):
+        """下载完成，询问是否安装"""
+        dialog.close()
+
+        if not is_frozen():
+            # Python 源码运行模式：打开下载目录
+            reply = QMessageBox.question(
+                self, "下载完成",
+                f"更新文件已下载到：\n{filepath}\n\n"
+                "当前为源码运行模式，无法自动替换。\n是否打开文件所在目录？",
+                QMessageBox.Yes | QMessageBox.No
+            )
+            if reply == QMessageBox.Yes:
+                os.startfile(os.path.dirname(filepath))
+            return
+
+        # exe 模式：询问安装
+        reply = QMessageBox.question(
+            self, "下载完成",
+            f"ChemCal v{CHEMICAL_VERSION} → 新版本已就绪\n\n"
+            "点击「安装并重启」将关闭当前程序，\n自动替换并启动新版本。",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if reply == QMessageBox.Yes:
+            bat = create_update_bat(filepath, get_app_dir())
+            os.startfile(bat)
+            self.close()
+
+    def _on_download_error(self, dialog, error_msg):
+        """下载失败"""
+        dialog.close()
+        QMessageBox.warning(self, "下载失败", f"更新下载失败：\n{error_msg}\n\n请稍后重试或手动访问 GitHub 下载。")
 
     # ------------------------------------------------------------------ 设置
 
@@ -484,6 +657,7 @@ Copyright 2025-2026 ChemCal Team | virmuran@163.com<br><br>
 
 <b>核心功能：</b><br>
 - 工程计算（换热、管道、泵、安全阀、循环水、结晶罐等）<br>
+- 自动更新（GitHub Releases，帮助→检查更新）<br>
 - 参考资料库（设备布置、管道设计、安全规范、计算依据、物性数据、材料规范）<br>
 - 计算历史（记录查询、筛选、详情查看）<br>
 - 换算器（多类单位换算）<br>
