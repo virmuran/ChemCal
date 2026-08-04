@@ -40,13 +40,12 @@ IMPELLER_TYPES = {
     "锚式/框式":               (0.5, "高粘度，层流区"),
 }
 
-# ── 罐体长径比标准 ──
-# (名称, 高径比 H/D, 说明)
-ASPECT_RATIOS = {
-    "标准发酵罐（H/D=2~3）":         2.5,
-    "高径比发酵罐（H/D=3~4）":       3.5,
-    "低矮罐（H/D=1~2）":             1.5,
-    "自定义高径比":                   0,
+# ── 罐体长径比标准（仅作提示） ──
+ASPECT_HINT = {
+    (0, 2):   "低矮罐",
+    (2, 3):   "标准发酵罐",
+    (3, 4):   "高径比发酵罐",
+    (4, 99):  "超细长罐（少见）",
 }
 
 
@@ -140,31 +139,34 @@ class AgitatorCalculator(CalculatorBase):
         tg.addWidget(hint("内径"), r, 2)
         r += 1
 
-        tg.addWidget(lbl("高径比 H/D:"), r, 0)
-        self.aspect_combo = CalculatorBase.make_combo_box()
-        self.aspect_combo.addItems(list(ASPECT_RATIOS.keys()))
-        self.aspect_combo.setCurrentText("标准发酵罐（H/D=2~3）")
-        self.aspect_combo.currentTextChanged.connect(self._on_aspect_changed)
-        tg.addWidget(self.aspect_combo, r, 1)
+        # ── 液位高度：根据 V、D 自动派生（圆柱形：H = 4V/πD²） ──
+        tg.addWidget(lbl("液位高度 (m):"), r, 0)
+        self.liquid_height_label = QLabel("—")
+        self.liquid_height_label.setStyleSheet(
+            "padding: 6px 10px; background: #f5f7fa; border: 1px solid #ddd; "
+            "border-radius: 3px; color: #333; font-size: 13px;"
+        )
+        tg.addWidget(self.liquid_height_label, r, 1)
+        tg.addWidget(hint("由 V 和 D 自动算出"), r, 2)
+        r += 1
 
-        self.aspect_hint = hint("选择后自动计算液位高度")
+        # ── 高径比：同样派生 ──
+        tg.addWidget(lbl("高径比 H/D:"), r, 0)
+        self.aspect_ratio_label = QLabel("—")
+        self.aspect_ratio_label.setStyleSheet(
+            "padding: 6px 10px; background: #f5f7fa; border: 1px solid #ddd; "
+            "border-radius: 3px; color: #333; font-size: 13px;"
+        )
+        tg.addWidget(self.aspect_ratio_label, r, 1)
+        self.aspect_hint = hint("标准发酵罐 H/D ≈ 2~3")
         tg.addWidget(self.aspect_hint, r, 2)
         r += 1
 
-        tg.addWidget(lbl("液位高度 (m):"), r, 0)
-        self.liquid_height_input = inp("6.0", QDoubleValidator(0.1, 30, 2))
-        tg.addWidget(self.liquid_height_input, r, 1)
-        tg.addWidget(hint("装料液面距罐底"), r, 2)
-        r += 1
-
-        self._aspect_custom_row = r
-        tg.addWidget(lbl("自定义 H/D:"), r, 0)
-        self.custom_aspect_input = inp("2.5", QDoubleValidator(1, 6, 1))
-        self.custom_aspect_input.setVisible(False)
-        tg.addWidget(self.custom_aspect_input, r, 1)
-        tg.addWidget(hint("输入自定义高径比"), r, 2)
-        r += 1
         self._row_count_tank = r
+
+        # V / D 任一变化 → 重算 H、H/D、桨径、层数
+        self.volume_input.textChanged.connect(self._update_tank_geometry)
+        self.diameter_input.textChanged.connect(self._update_tank_geometry)
 
         left_layout.addWidget(self._group_tank)
 
@@ -289,6 +291,8 @@ class AgitatorCalculator(CalculatorBase):
 
         # ── 初始状态 ──
         self.mode_btns["搅拌功率计算"].setChecked(True)
+        # 所有控件已就绪，执行一次初始派生
+        self._update_tank_geometry()
 
     # ═══════════════════════════════════════════
     # 事件
@@ -298,23 +302,107 @@ class AgitatorCalculator(CalculatorBase):
         is_kla = btn.text() == "kLa 传氧系数"
         self._group_aeration.setVisible(is_kla)
 
-    def _on_aspect_changed(self, text):
-        ratio = ASPECT_RATIOS.get(text, 0)
-        if ratio > 0 and hasattr(self, 'diameter_input'):
-            try:
-                d = float(self.diameter_input.text() or 0)
-                if d > 0:
-                    h = d * ratio
-                    self.liquid_height_input.setText(f"{h:.2f}")
-                    self.aspect_hint.setText(f"已自动计算: {h:.2f} m")
-            except ValueError:
-                pass
-        if text == "自定义高径比":
-            self.custom_aspect_input.setVisible(True)
-        else:
-            self.custom_aspect_input.setVisible(False)
+    def _update_tank_geometry(self):
+        """V 或 D 改变时，自动派生 H、H/D，并更新搅拌桨直径和桨叶层数建议"""
+        try:
+            v = float(self.volume_input.text() or 0)
+            d = float(self.diameter_input.text() or 0)
+            if v > 0 and d > 0:
+                h = 4.0 * v / (math.pi * d * d)
+                ratio = h / d
+                self.liquid_height_label.setText(f"{h:.2f} m")
+                self.aspect_ratio_label.setText(f"{ratio:.2f}")
+
+                # 罐型提示
+                for (lo, hi), label in ASPECT_HINT.items():
+                    if lo <= ratio < hi:
+                        self.aspect_hint.setText(f"{label}（H/D ≈ {ratio:.3f}）")
+                        break
+
+                # ── 搅拌桨直径：d_impeller = D × 0.33（Rushton 标准比） ──
+                d_rec = d * 0.333
+                self.d_impeller_input.setText(f"{d_rec:.2f}")
+                self.d_impeller_hint.setText(
+                    f"自动填充 d≈D/3={d_rec:.2f}m（手动可改）"
+                )
+
+                # ── 桨叶层数：根据 H/D 自动建议 ──
+                if ratio < 1.5:
+                    layers = 1
+                elif ratio < 2.5:
+                    layers = 2
+                elif ratio < 3.5:
+                    layers = 3
+                else:
+                    layers = 4
+                self.num_impellers_input.setText(str(layers))
+            else:
+                self.liquid_height_label.setText("—")
+                self.aspect_ratio_label.setText("—")
+                self.aspect_hint.setText("标准发酵罐 H/D ≈ 2~3")
+                self.d_impeller_hint.setText("推荐 D/d ≈ 3")
+        except ValueError:
+            self.liquid_height_label.setText("—")
+            self.aspect_ratio_label.setText("—")
 
     def _on_impeller_changed(self, text):
+        """搅拌桨类型切换 → 更新提示文案"""
+        info = IMPELLER_TYPES.get(text, ("", ""))
+        self.impeller_hint.setText(info[1] if len(info) > 1 else "")
+
+    def _validate_geometry(self, V, D, H, d_imp, N) -> list:
+        """校验输入数据是否在合理范围内，返回警告列表（空 = 无问题）"""
+        warnings = []
+        h_d = H / D if D > 0 else 0
+
+        # 1. 高径比
+        if h_d < 0.2:
+            warnings.append(
+                f"高径比 H/D = {h_d:.3f}，罐体过于扁平（H = {H:.2f}m, D = {D:.2f}m）。\n"
+                f"  请检查：直径是否偏大、或装料体积是否偏小"
+            )
+        elif h_d > 6:
+            warnings.append(
+                f"高径比 H/D = {h_d:.2f}，罐体过于细长，搅拌效果可能不理想"
+            )
+
+        # 2. 液位高度绝对值
+        if H < 0.5:
+            warnings.append(
+                f"液位高度 H = {H:.3f}m < 0.5m，几乎为薄层，无法正常搅拌"
+            )
+
+        # 3. 搅拌桨直径 vs 罐径
+        if d_imp > 0 and D > 0:
+            d_ratio = d_imp / D
+            if d_ratio > 0.6:
+                warnings.append(
+                    f"搅拌桨直径 d = {d_imp:.2f}m 大于罐径的 60%（d/D = {d_ratio:.2f}），\n"
+                    f"  桨叶可能与罐壁干涉"
+                )
+            elif d_ratio < 0.2:
+                warnings.append(
+                    f"搅拌桨直径 d = {d_imp:.2f}m 小于罐径的 20%（d/D = {d_ratio:.2f}），\n"
+                    f"  桨叶过小，罐壁附近混合效果差"
+                )
+
+        # 4. 转速
+        if N > 0 and d_imp > 0:
+            tip = math.pi * d_imp * N / 60
+            if tip > 8:
+                warnings.append(
+                    f"叶尖速度 = {tip:.1f} m/s > 8 m/s（严重剪切、气蚀风险）"
+                )
+            elif tip > 6:
+                warnings.append(
+                    f"叶尖速度 = {tip:.1f} m/s（偏高，注意剪切敏感菌种）"
+                )
+            elif tip < 0.5:
+                warnings.append(
+                    f"叶尖速度 = {tip:.1f} m/s < 0.5 m/s（搅拌弱，混合可能不足）"
+                )
+
+        return warnings
         info = IMPELLER_TYPES.get(text, ("", ""))
         self.impeller_hint.setText(info[1] if len(info) > 1 else "")
 
@@ -336,12 +424,26 @@ class AgitatorCalculator(CalculatorBase):
             # ── 读取公共参数 ──
             V = float(self.volume_input.text() or 0)
             D = float(self.diameter_input.text() or 0)
-            H = float(self.liquid_height_input.text() or 0)
+            # 液位高度 H 由 V 和 D 自动派生（圆柱形：H = 4V/πD²）
+            H = 4.0 * V / (math.pi * D * D) if V > 0 and D > 0 else 0
             d_imp = float(self.d_impeller_input.text() or 0)
             N = float(self.speed_input.text() or 0)
             n_imp = float(self.num_impellers_input.text() or 1)
             rho = float(self.density_input.text() or 1000)
             mu = float(self.viscosity_input.text() or 1)
+
+            # ── 输入合理性校验 ──
+            warnings = self._validate_geometry(V, D, H, d_imp, N)
+            if warnings:
+                wmsg = "⚠ 输入可能不合理：\n\n" + "\n".join(f"  • {w}" for w in warnings)
+                wmsg += "\n\n  是否仍要继续计算？"
+                reply = QMessageBox.warning(
+                    self, "输入校验", wmsg,
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No
+                )
+                if reply != QMessageBox.StandardButton.Yes:
+                    return
 
             if mode == "搅拌功率计算":
                 result = self._calc_power(V, D, H, d_imp, N, n_imp, rho, mu)
@@ -370,8 +472,15 @@ class AgitatorCalculator(CalculatorBase):
         P0 = np_val * rho * n_rps**3 * d**5 * n_imp
         P0_kw = P0 / 1000
 
-        # 电机选型建议
-        motor_power = P0_kw * 1.3  # 安全系数 1.3
+        # ── 电机选型（分步考虑效率 & 余量） ──
+        # 搅拌轴功率 P₀ → 密封损失 → 减速机 → 电机输出 → 电机输入 → 设计余量
+        eta_seal = 0.95     # 机械密封/填料函效率
+        eta_gearbox = 0.92  # 减速机（摆线/平行轴）传动效率
+        eta_motor = 0.92    # 电机效率（IE3 等级）
+        k_safety = 1.2      # 设计余量（启动力矩、负荷波动）
+        motor_power = P0_kw / (eta_seal * eta_gearbox * eta_motor) * k_safety
+        # motor_power ≈ P0_kw × 1.49（比之前 1.3 更保守）
+
         motor_choices = ["7.5", "11", "15", "18.5", "22", "30", "37", "45", "55",
                          "75", "90", "110", "132", "160", "200", "250", "315", "400"]
         rec_motor = "≥" + min((m for m in motor_choices if float(m) >= motor_power),
@@ -430,7 +539,7 @@ class AgitatorCalculator(CalculatorBase):
         q_air_required = our / OTR_max * vvm if OTR_max > 0 else float('inf')
 
         return {
-            "Pg_kW": Pg_kW,
+            "Pg_kW": Pg_kw,
             "vs_m_s": vs,
             "kLa_per_h": kLa,
             "kLa_per_s": kLa_s,
@@ -457,12 +566,15 @@ class AgitatorCalculator(CalculatorBase):
             lines.append(f"  雷诺数 Re = {data['Re']:.0f}")
             lines.append(f"  叶尖速度 = {data['tip_speed']:.2f} m/s")
             lines.append("")
-            lines.append(f"  不通气功率 P₀ = {data['P0_kW']:.2f} kW")
-            lines.append(f"  通气功率 Pg  = {data['Pg_kW']:.2f} kW")
+            lines.append(f"  不通气功率 P₀（轴功率）= {data['P0_kW']:.2f} kW")
+            lines.append(f"  通气功率 Pg = {data['Pg_kW']:.2f} kW")
             lines.append(f"  单位体积功率 = {data['PmV']:.2f} kW/m³")
             lines.append("")
-            lines.append(f"  推荐电机功率: {data['motor_rec']} kW")
-            lines.append(f"  (安全系数 1.3, 按不通气选型)")
+            lines.append("  电机选型分解：")
+            lines.append(f"    P₀ = {data['P0_kW']:.2f} kW")
+            lines.append(f"    ÷ η_密封(0.95) ÷ η_减速机(0.92) ÷ η_电机(0.92) × K_余量(1.2)")
+            lines.append(f"    = {data['P0_kW']:.2f} / 0.80 × 1.2 = {data['motor_power']:.2f} kW")
+            lines.append(f"  → 推荐电机: {data['motor_rec']} kW")
 
         if "kLa_per_h" in data:
             lines.append("")

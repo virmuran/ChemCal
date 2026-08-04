@@ -123,6 +123,7 @@ class ChemicalCalculationsWidget(QWidget):
             ("气体混合物(EOS)", "GasMixturePropertiesCalculator", "gas_mixture_properties_calculator", True),
             ("汽液平衡(活度系数)", "VLEActivityCoefficientCalculator", "vle_activity_coefficient_calculator", True),
             ("混合液体闪点", "MixedLiquidFlashPointCalculator", "mixed_liquid_flash_point_calculator", True),
+            ("pH 计算", "PHCalculator", "ph_calculator", True),
             #
             # ══════════════════════════════════════════
             # 二、工艺设备
@@ -134,6 +135,7 @@ class ChemicalCalculationsWidget(QWidget):
             ("设备尺寸计算", "设备尺寸计算", "vessel_sizing_calculator", True),
             ("罐体重量", "罐体重量", "tank_weight_calculator", True),
             ("容器设计计算", "VesselDesignCalculator", "vessel_design_calculator", True),
+            ("常压储罐壁厚", "AtmosphericTankThicknessCalculator", "atmospheric_tank_thickness_calculator", True),
             ("篮式过滤器", "篮式过滤器", "basket_filter_design_calculator", True),
             ("风机功率计算", "FanPowerCalculator", "fan_power_calculator", True),
             #
@@ -317,8 +319,7 @@ class ChemicalCalculationsWidget(QWidget):
         self.pages.append(widget)
 
     def _is_calculate_button(self, btn):
-        text = btn.text().strip()
-        # 匹配计算和查询类按钮
+        text = ''.join(btn.text().split())  # 移除所有空白字符（包括全角/半角空格）
         return text in ("计算", "查询")
 
     def _connect_calculate_buttons(self, widget):
@@ -382,6 +383,7 @@ class ChemicalCalculationsWidget(QWidget):
         "gas_mixture_properties_calculator": "物性数据",
         "vle_activity_coefficient_calculator": "物性数据",
         "mixed_liquid_flash_point_calculator": "物性数据",
+        "ph_calculator": "物性数据",
         # 二、工艺设备
         "heat_exchanger_calculator": "工艺设备",
         "heat_exchanger_area_calculator": "工艺设备",
@@ -390,6 +392,7 @@ class ChemicalCalculationsWidget(QWidget):
         "vessel_sizing_calculator": "工艺设备",
         "tank_weight_calculator": "工艺设备",
         "vessel_design_calculator": "工艺设备",
+        "atmospheric_tank_thickness_calculator": "工艺设备",
         "basket_filter_design_calculator": "工艺设备",
         "fan_power_calculator": "工艺设备",
         # 三、流体输送

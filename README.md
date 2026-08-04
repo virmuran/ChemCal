@@ -13,14 +13,14 @@
     <img alt="license" src="https://img.shields.io/badge/license-MIT-blue">
 </div>
 <div>
-    <img alt="version" src="https://img.shields.io/badge/version-1.5.0-green">
+    <img alt="version" src="https://img.shields.io/badge/version-1.5.2-green">
     <img alt="stars" src="https://img.shields.io/github/stars/virmuran/ChemCal?style=social">
 </div>
 <br>
 
 化工工程师的桌面生产力工具
 
-基于 Python + PySide6，集成 44 种工程计算器、参考资料库、单位换算、计算历史与可视化倒计时。
+基于 Python + PySide6，集成 46 种工程计算器、参考资料库、单位换算、计算历史与可视化倒计时。
 
 </div>
 
@@ -39,7 +39,7 @@ python main.py
 
 ## 亮点功能
 
-- 🧪 **44 种工程计算器** — 覆盖物性查询、管道系统、换热设备、容器设计、安全消防、制冷热工六大类，每个计算器均支持 DOCX / PDF 计算书一键导出
+- 🧪 **46 种工程计算器** — 覆盖物性查询、管道系统、换热设备、容器设计、安全消防、制冷热工六大类，每个计算器均支持 DOCX / PDF 计算书一键导出
 - 📚 **内置参考资料库** — 化工设计常用规范数据电子化，全文搜索，6 大类 26 条数据，告别翻书查表
 - 🔄 **14 类单位换算** — 长度、重量、温度、压力、流量、粘度等，即输即算
 - 📝 **自动计算历史** — SQLite 数据库全程记录，支持按模块筛选和关键词搜索
@@ -120,6 +120,14 @@ python main.py
 
 ## 更新日志
 
+### v1.5.2 (2026-08-04)
+
+- 新增 pH 计算器：四模式（酸碱中和 / 缓冲溶液 / 稀释 / pH 调节），内置 7 种常见缓冲体系预设 pKa/pKb
+
+### v1.5.1 (2026-07-18)
+
+- 新增常压储罐壁厚计算器（GB 50341 一英尺法，逐圈壁厚+底板+顶板+重量汇总）
+
 ### v1.5.0 (2026-07-14)
 
 - 新增自动更新系统（GitHub Releases API + 静默检测 + 一键下载安装）
@@ -179,13 +187,14 @@ ChemCal/
 │
 ├── modules/
 │   ├── chemical_calculations/
-│   │   ├── calculators/        # 44 个计算器
+│   │   ├── calculators/        # 46 个计算器
 │   │   │   ├── steam_property_calculator.py
 │   │   │   ├── pressure_drop_calculator.py
 │   │   │   ├── heat_exchanger_area_calculator.py
 │   │   │   ├── cooling_water_calculator.py  # 循环水（多效蒸发 / 结晶罐）
 │   │   │   ├── agitator_calculator.py       # 搅拌功率 & kLa
 │   │   │   ├── vessel_design_calculator.py   # 容器设计（GB 150）
+│   │   │   ├── atmospheric_tank_thickness_calculator.py  # 常压储罐（GB 50341）
 │   │   │   └── ...
 │   │   ├── steam_iapws.py      # IAPWS-IF97 水蒸气物性
 │   │   ├── refrigerant_eos.py  # 制冷剂 PR 状态方程
