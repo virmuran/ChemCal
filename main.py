@@ -61,6 +61,7 @@ class ChemCal(QMainWindow):
 
     def __init__(self):
         super().__init__()
+        self.hide()  # 立刻隐藏，避免原生窗口句柄闪现
         self.setWindowTitle("ChemCal - 化算")
         # 设置窗口图标
         from PySide6.QtGui import QIcon
