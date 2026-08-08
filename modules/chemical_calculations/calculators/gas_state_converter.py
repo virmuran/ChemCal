@@ -264,27 +264,7 @@ class 气体标态转压缩态(CalculatorBase):
         
         left_layout.addWidget(input_group)
         
-        # 3. 计算按钮
-        calculate_btn = QPushButton("查询")
-        calculate_btn.setFont(QFont("Arial", 12, QFont.Bold))
-        calculate_btn.clicked.connect(self.calculate)
-        calculate_btn.setMinimumHeight(50)
-        calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        calculate_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        left_layout.addWidget(calculate_btn)
-        
-        # 4. 底部按钮布局
+        # 3. 底部按钮布局
         bottom_layout = QHBoxLayout()
         
         # 清空按钮
@@ -355,6 +335,7 @@ class 气体标态转压缩态(CalculatorBase):
         right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
+        right_layout.setContentsMargins(0, 0, 0, 0)
         
         # 结果显示
         self.result_group = QGroupBox("转换结果")
@@ -362,7 +343,7 @@ class 气体标态转压缩态(CalculatorBase):
         
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.result_text.setStyleSheet("""
             QTextEdit {
                 border: 1px solid #666;
@@ -374,6 +355,11 @@ class 气体标态转压缩态(CalculatorBase):
         result_layout.addWidget(self.result_text)
         
         right_layout.addWidget(self.result_group)
+        
+        # 计算按钮
+        calculate_btn = CalculatorBase.make_calc_button("查询")
+        calculate_btn.clicked.connect(self.calculate)
+        right_layout.addWidget(calculate_btn)
         
         # 将左右两部分添加到主布局
         scroll_left.setWidget(left_widget)

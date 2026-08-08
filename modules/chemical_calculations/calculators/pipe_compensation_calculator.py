@@ -164,6 +164,7 @@ class 管道补偿(CalculatorBase):
             "计算管道热膨胀量和需要的补偿量，评估管道热应力，支持L形和Z形补偿计算。"
         )
         description.setWordWrap(True)
+        description.setMaximumHeight(60)
         description.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
@@ -298,6 +299,7 @@ class 管道补偿(CalculatorBase):
         self.material_desc_label = QLabel("")
         self.material_desc_label.setStyleSheet("font-style: italic;")
         self.material_desc_label.setWordWrap(True)
+        self.material_desc_label.setMaximumHeight(24)
         input_layout.addWidget(self.material_desc_label, row, 2)
         
         row += 1
@@ -492,27 +494,9 @@ class 管道补偿(CalculatorBase):
         
         left_layout.addWidget(input_group)
         
-        # 4. 计算按钮
-        calculate_btn = QPushButton("计算")
-        calculate_btn.setFont(QFont("Arial", 12, QFont.Bold))
-        calculate_btn.clicked.connect(self.calculate_compensation)
-        calculate_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        calculate_btn.setMinimumHeight(50)
-        calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        left_layout.addWidget(calculate_btn)
-        
-        # 5. 底部按钮行
+        left_layout.addStretch()
+
+        # 4. 底部按钮行
         bottom_layout = QHBoxLayout()
         
         # 清空按钮
@@ -573,16 +557,13 @@ class 管道补偿(CalculatorBase):
         bottom_layout.addStretch()
         bottom_layout.addWidget(self.download_docx_btn)
         bottom_layout.addWidget(self.download_pdf_btn)
-        left_layout.addLayout(bottom_layout)
-        
-        # 6. 在底部添加拉伸因子
-        left_layout.addStretch()
         
         # 右侧：结果显示区域 (占1/3宽度)
         right_widget = QWidget()
         right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
+        right_layout.setContentsMargins(0, 0, 0, 0)
         
         # 结果显示
         self.result_group = QGroupBox("计算结果")
@@ -598,11 +579,19 @@ class 管道补偿(CalculatorBase):
                 /* bg via theme */min-height: 500px;
             }
         """)
-        self.result_text.setMinimumHeight(500)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.result_text.setMinimumHeight(200)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         result_layout.addWidget(self.result_text)
         
         right_layout.addWidget(self.result_group)
+        
+        # 下载按钮行
+        right_layout.addLayout(bottom_layout)
+        
+        # 计算按钮
+        calculate_btn = CalculatorBase.make_calc_button("计算")
+        calculate_btn.clicked.connect(self.calculate_compensation)
+        right_layout.addWidget(calculate_btn)
         
         # 将左右两部分添加到主布局
         scroll_left.setWidget(left_widget)

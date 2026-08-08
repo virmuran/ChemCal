@@ -72,6 +72,7 @@ class 罐体重量(CalculatorBase):
             "计算各种类型罐体的重量，包括空罐重量、液体重量和总重量。"
         )
         description.setWordWrap(True)
+        description.setMaximumHeight(60)
         description.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
@@ -371,31 +372,39 @@ class 罐体重量(CalculatorBase):
         material_layout.addWidget(self.liquid_density_hint, row, 2)
         
         left_layout.addWidget(material_group)
-        
-        # 5. 计算按钮
-        calculate_btn = QPushButton("计算")
-        calculate_btn.setFont(QFont("Arial", 12, QFont.Bold))
-        calculate_btn.clicked.connect(self.calculate_weight)
-        calculate_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
+
+        left_layout.addStretch()
+
+        # 右侧：结果显示区域 (占1/3宽度)
+        right_widget = QWidget()
+        right_widget.setMinimumWidth(300)
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(15)
+
+        # 结果显示
+        self.result_group = QGroupBox("计算结果")
+        result_layout = QVBoxLayout(self.result_group)
+
+        self.result_text = QTextEdit()
+        self.result_text.setReadOnly(True)
+        self.result_text.setMinimumHeight(200)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.result_text.setStyleSheet("""
+            QTextEdit {
+                border: 1px solid #666;
+                border-radius: 6px;
+                padding: 8px;
+                /* bg via theme */min-height: 500px;
             }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        calculate_btn.setMinimumHeight(50)
-        calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        left_layout.addWidget(calculate_btn)
+        """)
+        result_layout.addWidget(self.result_text)
+
+        right_layout.addWidget(self.result_group)
+
+        # 下载按钮
+        right_bottom_layout = QHBoxLayout()
         
-        # 6. 下载按钮布局
-        bottom_layout = QHBoxLayout()
-        
-        # 清空按钮
         self.clear_btn = QPushButton("清空")
         self.clear_btn.clicked.connect(self.clear_inputs)
         self.clear_btn.setMinimumHeight(50)
@@ -413,7 +422,6 @@ class 罐体重量(CalculatorBase):
                 background-color: #7f8c8d;
             } """)
         
-        # 下载TXT按钮
         self.download_docx_btn = QPushButton("下载计算书(DOCX)")
         self.download_docx_btn.clicked.connect(self.download_docx_report)
         self.download_docx_btn.setMinimumHeight(50)
@@ -431,7 +439,6 @@ class 罐体重量(CalculatorBase):
                 background-color: #2980b9;
             } """)
         
-        # 下载PDF按钮
         self.download_pdf_btn = QPushButton("下载计算书(PDF)")
         self.download_pdf_btn.clicked.connect(self.download_pdf_report)
         self.download_pdf_btn.setMinimumHeight(50)
@@ -449,41 +456,16 @@ class 罐体重量(CalculatorBase):
                 background-color: #c0392b;
             } """)
         
-        bottom_layout.addWidget(self.clear_btn)
-        bottom_layout.addStretch()
-        bottom_layout.addWidget(self.download_docx_btn)
-        bottom_layout.addWidget(self.download_pdf_btn)
-        left_layout.addLayout(bottom_layout)
-        
-        # 在底部添加拉伸因子
-        left_layout.addStretch()
-        
-        # 右侧：结果显示区域 (占1/3宽度)
-        right_widget = QWidget()
-        right_widget.setMinimumWidth(300)
-        right_layout = QVBoxLayout(right_widget)
-        right_layout.setSpacing(15)
-        
-        # 结果显示
-        self.result_group = QGroupBox("计算结果")
-        result_layout = QVBoxLayout(self.result_group)
-        
-        self.result_text = QTextEdit()
-        self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(500)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.result_text.setStyleSheet("""
-            QTextEdit {
-                border: 1px solid #666;
-                border-radius: 6px;
-                padding: 8px;
-                /* bg via theme */min-height: 500px;
-            }
-        """)
-        result_layout.addWidget(self.result_text)
-        
-        right_layout.addWidget(self.result_group)
-        
+        right_bottom_layout.addWidget(self.clear_btn)
+        right_bottom_layout.addWidget(self.download_docx_btn)
+        right_bottom_layout.addWidget(self.download_pdf_btn)
+        right_layout.addLayout(right_bottom_layout)
+
+        # 计算按钮
+        calculate_btn = CalculatorBase.make_calc_button("计算")
+        calculate_btn.clicked.connect(self.calculate_weight)
+        right_layout.addWidget(calculate_btn)
+
         # 将左右两部分添加到主布局
         scroll_left.setWidget(left_widget)
         main_layout.addWidget(scroll_left, 2)  # 左侧占2/3

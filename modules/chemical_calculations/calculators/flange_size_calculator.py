@@ -132,22 +132,6 @@ class FlangeSizeCalculator(CalculatorBase):
         self.query_btn.setStyleSheet("QPushButton { background-color: #34495e; color: white; font-weight: bold; }")
         button_layout.addWidget(self.query_btn)
         
-        self.bolt_calc_btn = QPushButton("计算")
-        self.bolt_calc_btn.clicked.connect(self.bolt_calculation)
-        self.bolt_calc_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        button_layout.addWidget(self.bolt_calc_btn)
-        
         self.clear_btn = QPushButton("清空")
         self.clear_btn.clicked.connect(self.clear_inputs)
         self.clear_btn.setStyleSheet("""
@@ -198,6 +182,11 @@ class FlangeSizeCalculator(CalculatorBase):
         weight_material_layout.addWidget(self.weight_material_table)
         
         layout.addWidget(weight_material_group)
+        
+        # 计算按钮
+        self.bolt_calc_btn = CalculatorBase.make_calc_button()
+        self.bolt_calc_btn.clicked.connect(self.bolt_calculation)
+        layout.addWidget(self.bolt_calc_btn)
         
         # 初始化下拉框
         self.on_standard_changed(self.standard_combo.currentText())

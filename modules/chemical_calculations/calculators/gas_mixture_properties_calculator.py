@@ -333,26 +333,34 @@ class GasMixturePropertiesCalculator(CalculatorBase):
         component_table_layout.addWidget(self.component_table)
         left_layout.addWidget(component_group)
 
-        # 4. 计算按钮
-        calculate_btn = QPushButton("查询")
-        calculate_btn.setFont(QFont("Arial", 12, QFont.Bold))
-        calculate_btn.clicked.connect(self.calculate)
-        calculate_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        calculate_btn.setMinimumHeight(50)
-        left_layout.addWidget(calculate_btn)
+        # 底部拉伸
+        left_layout.addStretch()
 
-        # 5. 底部按钮行
+        # ====== 右侧：结果显示区域 ======
+        right_widget = QWidget()
+        right_widget.setMinimumWidth(300)
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setSpacing(15)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+
+        result_group = QGroupBox("计算结果")
+        result_inner = QVBoxLayout(result_group)
+
+        self.result_text = QTextEdit()
+        self.result_text.setReadOnly(True)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.result_text.setStyleSheet("""
+            QTextEdit {
+                border: 1px solid #666;
+                border-radius: 6px;
+                padding: 8px;
+                /* bg via theme */min-height: 500px;
+            }
+        """)
+        result_inner.addWidget(self.result_text)
+        right_layout.addWidget(result_group)
+
+        # 底部按钮行
         bottom_layout = QHBoxLayout()
         
         # 清空按钮
@@ -413,33 +421,13 @@ class GasMixturePropertiesCalculator(CalculatorBase):
         bottom_layout.addStretch()
         bottom_layout.addWidget(self.download_docx_btn)
         bottom_layout.addWidget(self.download_pdf_btn)
-        left_layout.addLayout(bottom_layout)
+        right_layout.addLayout(bottom_layout)
 
-        # 底部拉伸
-        left_layout.addStretch()
-
-        # ====== 右侧：结果显示区域 ======
-        right_widget = QWidget()
-        right_widget.setMinimumWidth(300)
-        right_layout = QVBoxLayout(right_widget)
-        right_layout.setSpacing(15)
-
-        result_group = QGroupBox("计算结果")
-        result_inner = QVBoxLayout(result_group)
-
-        self.result_text = QTextEdit()
-        self.result_text.setReadOnly(True)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.result_text.setStyleSheet("""
-            QTextEdit {
-                border: 1px solid #666;
-                border-radius: 6px;
-                padding: 8px;
-                /* bg via theme */min-height: 500px;
-            }
-        """)
-        result_inner.addWidget(self.result_text)
-        right_layout.addWidget(result_group)
+        # 计算按钮
+        self.calc_btn = CalculatorBase.make_calc_button()
+        self.calc_btn.setText("查询")
+        self.calc_btn.clicked.connect(self.calculate)
+        right_layout.addWidget(self.calc_btn)
 
         # 将左右添加到主布局
         scroll_left.setWidget(left_widget)

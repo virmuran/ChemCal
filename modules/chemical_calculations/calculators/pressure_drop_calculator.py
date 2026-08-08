@@ -477,30 +477,7 @@ class 压降计算(CalculatorBase):
         """)
         left_layout.addWidget(self.fittings_btn)
         
-        # 5. 计算按钮
-        calculate_btn = QPushButton("计算")
-        calculate_btn.setFont(QFont("Arial", 12, QFont.Bold))
-        calculate_btn.clicked.connect(self.calculate_pressure_drop)
-        calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # 水平扩展
-        calculate_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        calculate_btn.setMinimumHeight(50)
-        left_layout.addWidget(calculate_btn)
-        
-        # 6. 底部按钮行
-        bottom_layout = QHBoxLayout()
-        
-        # 清空按钮
+        # 5. 清空按钮
         self.clear_btn = QPushButton("清空")
         self.clear_btn.clicked.connect(self.clear_inputs)
         self.clear_btn.setMinimumHeight(50)
@@ -517,8 +494,46 @@ class 压降计算(CalculatorBase):
             QPushButton:hover {
                 background-color: #7f8c8d;
             } """)
+        left_layout.addWidget(self.clear_btn)
         
-        # 下载TXT按钮
+        # 6. 在底部添加拉伸因子
+        left_layout.addStretch()
+        
+        # 右侧：结果显示区域 - 使用动态宽度
+        right_widget = QWidget()
+        right_widget.setMinimumWidth(300)  # 设置最小宽度而不是固定宽度
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(15)
+
+        self.svg_widget = QSvgWidget()
+        self.svg_widget.setMinimumHeight(220)
+        self.svg_widget.setMaximumHeight(280)
+        self.svg_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        right_layout.addWidget(self.svg_widget)
+        self.svg_widget.renderer().setAspectRatioMode(Qt.KeepAspectRatio)
+        
+        # 结果显示
+        self.result_group = QGroupBox("计算结果")
+        result_layout = QVBoxLayout(self.result_group)
+        
+        self.result_text = QTextEdit()
+        self.result_text.setReadOnly(True)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)  # 双向扩展
+        self.result_text.setStyleSheet("""
+            QTextEdit {
+                border: 1px solid #666;
+                border-radius: 6px;
+                padding: 8px;
+                /* bg via theme */min-height: 500px;
+            }
+        """)
+        self.result_text.setMinimumHeight(200)
+        result_layout.addWidget(self.result_text)
+        
+        right_layout.addWidget(self.result_group)
+        
+        # 下载按钮
         self.download_docx_btn = QPushButton("下载计算书(DOCX)")
         self.download_docx_btn.clicked.connect(self.download_docx_report)
         self.download_docx_btn.setMinimumHeight(50)
@@ -535,8 +550,8 @@ class 压降计算(CalculatorBase):
             QPushButton:hover {
                 background-color: #2980b9;
             } """)
+        right_layout.addWidget(self.download_docx_btn)
         
-        # 下载PDF按钮
         self.download_pdf_btn = QPushButton("下载计算书(PDF)")
         self.download_pdf_btn.clicked.connect(self.download_pdf_report)
         self.download_pdf_btn.setMinimumHeight(50)
@@ -553,48 +568,12 @@ class 压降计算(CalculatorBase):
             QPushButton:hover {
                 background-color: #c0392b;
             } """)
+        right_layout.addWidget(self.download_pdf_btn)
         
-        bottom_layout.addWidget(self.clear_btn)
-        bottom_layout.addStretch()
-        bottom_layout.addWidget(self.download_docx_btn)
-        bottom_layout.addWidget(self.download_pdf_btn)
-        left_layout.addLayout(bottom_layout)
-        
-        # 7. 在底部添加拉伸因子
-        left_layout.addStretch()
-        
-        # 右侧：结果显示区域 - 使用动态宽度
-        right_widget = QWidget()
-        right_widget.setMinimumWidth(300)  # 设置最小宽度而不是固定宽度
-        right_layout = QVBoxLayout(right_widget)
-        right_layout.setSpacing(15)
-
-        self.svg_widget = QSvgWidget()
-        self.svg_widget.setMinimumHeight(220)
-        self.svg_widget.setMaximumHeight(280)
-        self.svg_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        right_layout.addWidget(self.svg_widget)
-        self.svg_widget.renderer().setAspectRatioMode(Qt.KeepAspectRatio)
-        
-        # 结果显示
-        self.result_group = QGroupBox("计算结果")
-        result_layout = QVBoxLayout(self.result_group)
-        
-        self.result_text = QTextEdit()
-        self.result_text.setReadOnly(True)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # 双向扩展
-        self.result_text.setStyleSheet("""
-            QTextEdit {
-                border: 1px solid #666;
-                border-radius: 6px;
-                padding: 8px;
-                /* bg via theme */min-height: 500px;
-            }
-        """)
-        self.result_text.setMinimumHeight(500)
-        result_layout.addWidget(self.result_text)
-        
-        right_layout.addWidget(self.result_group)
+        # 计算按钮
+        self.calculate_btn = self.make_calc_button("计算")
+        self.calculate_btn.clicked.connect(self.calculate_pressure_drop)
+        right_layout.addWidget(self.calculate_btn)
         
         # 将左右两部分添加到主布局，设置拉伸因子
         main_layout.addWidget(left_widget, 2)  # 左侧占2/3权重

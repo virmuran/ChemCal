@@ -454,30 +454,33 @@ class VLEActivityCoefficientCalculator(CalculatorBase):
         self.tab_widget.addTab(comp_tab, "液相组成")
         left_layout.addWidget(self.tab_widget)
 
-        # 4. 计算按钮
-        calculate_btn = QPushButton("查询")
-        calculate_btn.setFont(QFont("Arial", 12, QFont.Bold))
-        calculate_btn.clicked.connect(self.calculate)
-        calculate_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        calculate_btn.setMinimumHeight(50)
-        calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        left_layout.addWidget(calculate_btn)
+        # ====== 右侧：结果显示区域 ======
+        right_widget = QWidget()
+        right_widget.setMinimumWidth(300)
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(15)
 
-        # 5. 下载按钮行
-        bottom_layout = QHBoxLayout()
+        result_group = QGroupBox("计算结果")
+        result_inner = QVBoxLayout(result_group)
+
+        self.result_text = QTextEdit()
+        self.result_text.setReadOnly(True)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.result_text.setStyleSheet("""
+            QTextEdit {
+                border: 1px solid #666;
+                border-radius: 6px;
+                padding: 8px;
+                /* bg via theme */min-height: 500px;
+            }
+        """)
+        result_inner.addWidget(self.result_text)
+        right_layout.addWidget(result_group)
+
+        # 下载按钮
+        right_bottom_layout = QHBoxLayout()
         
-        # 清空按钮
         self.clear_btn = QPushButton("清空")
         self.clear_btn.clicked.connect(self.clear_inputs)
         self.clear_btn.setMinimumHeight(50)
@@ -495,7 +498,6 @@ class VLEActivityCoefficientCalculator(CalculatorBase):
                 background-color: #7f8c8d;
             } """)
         
-        # 下载TXT按钮
         self.download_docx_btn = QPushButton("下载计算书(DOCX)")
         self.download_docx_btn.clicked.connect(self.download_docx_report)
         self.download_docx_btn.setMinimumHeight(50)
@@ -513,7 +515,6 @@ class VLEActivityCoefficientCalculator(CalculatorBase):
                 background-color: #2980b9;
             } """)
         
-        # 下载PDF按钮
         self.download_pdf_btn = QPushButton("下载计算书(PDF)")
         self.download_pdf_btn.clicked.connect(self.download_pdf_report)
         self.download_pdf_btn.setMinimumHeight(50)
@@ -531,37 +532,15 @@ class VLEActivityCoefficientCalculator(CalculatorBase):
                 background-color: #c0392b;
             } """)
         
-        bottom_layout.addWidget(self.clear_btn)
-        bottom_layout.addStretch()
-        bottom_layout.addWidget(self.download_docx_btn)
-        bottom_layout.addWidget(self.download_pdf_btn)
-        left_layout.addLayout(bottom_layout)
+        right_bottom_layout.addWidget(self.clear_btn)
+        right_bottom_layout.addWidget(self.download_docx_btn)
+        right_bottom_layout.addWidget(self.download_pdf_btn)
+        right_layout.addLayout(right_bottom_layout)
 
-        # 底部拉伸
-        left_layout.addStretch()
-
-        # ====== 右侧：结果显示区域 ======
-        right_widget = QWidget()
-        right_widget.setMinimumWidth(300)
-        right_layout = QVBoxLayout(right_widget)
-        right_layout.setSpacing(15)
-
-        result_group = QGroupBox("计算结果")
-        result_inner = QVBoxLayout(result_group)
-
-        self.result_text = QTextEdit()
-        self.result_text.setReadOnly(True)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.result_text.setStyleSheet("""
-            QTextEdit {
-                border: 1px solid #666;
-                border-radius: 6px;
-                padding: 8px;
-                /* bg via theme */min-height: 500px;
-            }
-        """)
-        result_inner.addWidget(self.result_text)
-        right_layout.addWidget(result_group)
+        # 计算按钮
+        calculate_btn = CalculatorBase.make_calc_button("查询")
+        calculate_btn.clicked.connect(self.calculate)
+        right_layout.addWidget(calculate_btn)
 
         # 将左右添加到主布局
         scroll_left.setWidget(left_widget)

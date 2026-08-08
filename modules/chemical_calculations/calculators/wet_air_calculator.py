@@ -78,6 +78,7 @@ class WetAirCalculator(CalculatorBase):
         desc = QLabel("计算湿空气的各种物性参数：相对湿度、绝对湿度、露点温度、比焓、比容等。"
                        "至少需要输入干球温度，并提供相对湿度、绝对湿度、湿球温度或露点温度之一。")
         desc.setWordWrap(True)
+        desc.setMaximumHeight(60)   # 限制最多 2 行（防止布局撑爆）
         desc.setStyleSheet("font-size: 12px;")
         left_layout.addWidget(desc)
 
@@ -125,6 +126,7 @@ class WetAirCalculator(CalculatorBase):
         hint = QLabel("── 以下四个参数，至少输入其中一个 ──")
         hint.setStyleSheet("color: #7f8c8d; font-size: 11px;")
         hint.setAlignment(Qt.AlignCenter)
+        hint.setMaximumHeight(24)   # 强制单行高度，防止撑爆
         grid.addWidget(hint, 2, 0, 1, 3)
 
         # 行3：相对湿度
@@ -170,94 +172,13 @@ class WetAirCalculator(CalculatorBase):
         grid.addWidget(hint_dp, 6, 2)
 
         left_layout.addWidget(input_group)
-
-        # ── 计算按钮 ──
-        calc_btn = QPushButton("查询")
-        calc_btn.setFont(QFont("Arial", 12))
-        calc_btn.setMinimumHeight(50)
-        calc_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        calc_btn.clicked.connect(self.calculate)
-        left_layout.addWidget(calc_btn)
-
-        # ── 底部按钮行 ──
-        bottom_layout = QHBoxLayout()
-        
-        # 清空按钮
-        self.clear_btn = QPushButton("清空")
-        self.clear_btn.clicked.connect(self.clear_inputs)
-        self.clear_btn.setMinimumHeight(50)
-        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.clear_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #95a5a6;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #7f8c8d;
-            } """)
-        
-        # 下载TXT按钮
-        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
-        self.download_docx_btn.clicked.connect(self.download_docx_report)
-        self.download_docx_btn.setMinimumHeight(50)
-        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_docx_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            } """)
-        
-        # 下载PDF按钮
-        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
-        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
-        self.download_pdf_btn.setMinimumHeight(50)
-        self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_pdf_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #c0392b;
-            } """)
-        
-        bottom_layout.addWidget(self.clear_btn)
-        bottom_layout.addStretch()
-        bottom_layout.addWidget(self.download_docx_btn)
-        bottom_layout.addWidget(self.download_pdf_btn)
-        left_layout.addLayout(bottom_layout)
-        left_layout.addStretch()
+        left_layout.addStretch()   # 防止上方控件被布局撑爆
 
         # ───────── 右侧结果区 ─────────
         right_widget = QWidget()
         right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
+        right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(10)
 
         result_group = QGroupBox("计算结果")
@@ -265,8 +186,8 @@ class WetAirCalculator(CalculatorBase):
 
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(500)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.result_text.setMinimumHeight(200)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.result_text.setStyleSheet("""
             QTextEdit {
                 /* bg via theme */border: 1px solid #ecf0f1;
@@ -279,6 +200,26 @@ class WetAirCalculator(CalculatorBase):
         self.result_text.setPlaceholderText("计算结果将在此显示……")
         result_vbox.addWidget(self.result_text)
         right_layout.addWidget(result_group)
+
+        # 下载按钮行
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(8)
+        for name, style, cb in [
+            ("清空", CLEAR_BTN_STYLE, self.clear_inputs),
+            ("下载 DOCX", DOCX_BTN_STYLE, lambda: self.download_docx_report("湿空气计算")),
+            ("下载 PDF", PDF_BTN_STYLE, lambda: self.download_pdf_report("湿空气计算")),
+        ]:
+            b = QPushButton(name)
+            b.setStyleSheet(style)
+            b.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            b.clicked.connect(cb)
+            btn_layout.addWidget(b)
+        right_layout.addLayout(btn_layout)
+
+        # 计算按钮
+        calc_btn = CalculatorBase.make_calc_button("查询")
+        calc_btn.clicked.connect(self.calculate)
+        right_layout.addWidget(calc_btn)
 
         # 拼合左右
         scroll_left.setWidget(left_widget)

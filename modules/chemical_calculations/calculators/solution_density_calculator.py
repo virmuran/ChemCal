@@ -329,39 +329,6 @@ class SolutionDensityCalculator(CalculatorBase):
 
         left_layout.addStretch()
 
-        # 设置左侧滚动区域
-        left_scroll.setWidget(left_widget)
-        main_layout.addWidget(left_scroll, 2)
-
-        # 右侧结果区
-        right_widget = QWidget()
-        right_layout = QVBoxLayout(right_widget)
-        right_layout.setSpacing(15)
-        right_widget.setMinimumWidth(300)
-
-        # 查询结果组
-        result_group = QGroupBox("查询结果")
-        result_layout = QVBoxLayout(result_group)
-
-        self.result_text = QTextEdit()
-        self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(500)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.result_text.setStyleSheet(
-            "QTextEdit { "
-            "/* bg via theme */"
-            "border: 1px solid #ecf0f1; "
-            "border-radius: 6px; "
-            "padding: 8px; "
-            "font-size: 13px; "
-            "}"
-        )
-        result_layout.addWidget(self.result_text)
-        right_layout.addWidget(result_group)
-
-        # 底部按钮行
-        bottom_layout = QHBoxLayout()
-        
         # 清空按钮
         self.clear_btn = QPushButton("清空")
         self.clear_btn.clicked.connect(self.clear_inputs)
@@ -379,6 +346,38 @@ class SolutionDensityCalculator(CalculatorBase):
             QPushButton:hover {
                 background-color: #7f8c8d;
             } """)
+        left_layout.addWidget(self.clear_btn)
+
+        # 设置左侧滚动区域
+        left_scroll.setWidget(left_widget)
+        main_layout.addWidget(left_scroll, 2)
+
+        # 右侧结果区
+        right_widget = QWidget()
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(15)
+        right_widget.setMinimumWidth(300)
+
+        # 查询结果组
+        result_group = QGroupBox("查询结果")
+        result_layout = QVBoxLayout(result_group)
+
+        self.result_text = QTextEdit()
+        self.result_text.setReadOnly(True)
+        self.result_text.setMinimumHeight(200)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.result_text.setStyleSheet(
+            "QTextEdit { "
+            "/* bg via theme */"
+            "border: 1px solid #ecf0f1; "
+            "border-radius: 6px; "
+            "padding: 8px; "
+            "font-size: 13px; "
+            "}"
+        )
+        result_layout.addWidget(self.result_text)
+        right_layout.addWidget(result_group)
         
         # 下载TXT按钮
         self.download_docx_btn = QPushButton("下载计算书(DOCX)")
@@ -397,6 +396,7 @@ class SolutionDensityCalculator(CalculatorBase):
             QPushButton:hover {
                 background-color: #2980b9;
             } """)
+        right_layout.addWidget(self.download_docx_btn)
         
         # 下载PDF按钮
         self.download_pdf_btn = QPushButton("下载计算书(PDF)")
@@ -415,11 +415,12 @@ class SolutionDensityCalculator(CalculatorBase):
             QPushButton:hover {
                 background-color: #c0392b;
             } """)
+        right_layout.addWidget(self.download_pdf_btn)
         
-        bottom_layout.addWidget(self.clear_btn)
-        bottom_layout.addWidget(self.download_docx_btn)
-        bottom_layout.addWidget(self.download_pdf_btn)
-        right_layout.addLayout(bottom_layout)
+        # 查询按钮
+        self.calculate_btn = self.make_calc_button("查询")
+        self.calculate_btn.clicked.connect(self._calculate_single)
+        right_layout.addWidget(self.calculate_btn)
         main_layout.addWidget(right_widget, 1)
 
     # ── 单点计算 Tab ──────────────────────────────────────────
@@ -484,26 +485,6 @@ class SolutionDensityCalculator(CalculatorBase):
         grid.addWidget(T_hint, 2, 2)
 
         layout.addLayout(grid)
-
-        # 计算按钮（绿色 #27ae60）
-        self.calc_btn = QPushButton("查询")
-        self.calc_btn.setFont(QFont("Arial", 12))
-        self.calc_btn.setMinimumHeight(50)
-        self.calc_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.calc_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        self.calc_btn.clicked.connect(self._calculate_single)
-        layout.addWidget(self.calc_btn)
 
         # 说明区
         self.formula_label = QLabel("")

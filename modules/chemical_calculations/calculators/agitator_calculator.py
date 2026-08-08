@@ -253,15 +253,11 @@ class AgitatorCalculator(CalculatorBase):
         scroll.setWidget(left)
         main_layout.addWidget(scroll, 2)
 
-        # ── 右 ──
+        # ── 右栏: 结果(顶, expanding) → 下载按钮(中) → 计算按钮(底) ──
         right = QWidget()
         right_layout = QVBoxLayout(right)
         right_layout.setSpacing(15)
-
-        # ── 计算按钮 ──
-        calc_btn = CalculatorBase.make_calc_button()
-        calc_btn.clicked.connect(self.calculate)
-        right_layout.addWidget(calc_btn)
+        right_layout.setContentsMargins(0, 0, 0, 0)
 
         # ── 结果 ──
         result_group = QGroupBox("计算结果")
@@ -286,7 +282,11 @@ class AgitatorCalculator(CalculatorBase):
             btn_layout.addWidget(b)
         right_layout.addLayout(btn_layout)
 
-        right_layout.addStretch()
+        # ── 计算按钮 ──
+        calc_btn = CalculatorBase.make_calc_button()
+        calc_btn.clicked.connect(self.calculate)
+        right_layout.addWidget(calc_btn)
+
         main_layout.addWidget(right, 1)
 
         # ── 初始状态 ──

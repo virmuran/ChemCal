@@ -2,7 +2,7 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, 
                               QLabel, QLineEdit, QComboBox, QPushButton, 
                               QTextEdit, QTableWidget, QTableWidgetItem,
-                              QHeaderView, QMessageBox, QTabWidget)
+                              QHeaderView, QMessageBox, QTabWidget, QSizePolicy)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
 import math
@@ -65,7 +65,13 @@ class 压力管道定义(CalculatorBase):
     def create_calculation_tab(self):
         """创建计算标签页"""
         tab = QWidget()
-        layout = QVBoxLayout(tab)
+        main_layout = QHBoxLayout(tab)
+        main_layout.setSpacing(15)
+        
+        # 左侧：输入参数
+        left_widget = QWidget()
+        left_layout = QVBoxLayout(left_widget)
+        left_layout.setSpacing(10)
         
         # 输入参数组
         input_group = QGroupBox(" 输入参数")
@@ -113,28 +119,24 @@ class 压力管道定义(CalculatorBase):
         media_layout.addWidget(self.diameter_input)
         input_layout.addLayout(media_layout)
         
-        layout.addWidget(input_group)
+        left_layout.addWidget(input_group)
         
-        # 按钮组
-        button_layout = QHBoxLayout()
-        self.calculate_btn = QPushButton("计算")
-        self.calculate_btn.clicked.connect(self.calculate_pipe_definition)
-        self.calculate_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        button_layout.addWidget(self.calculate_btn)
+        # 压力管道分类表
+        classification_group = QGroupBox(" 压力管道分类参考")
+        classification_layout = QVBoxLayout(classification_group)
         
+        self.classification_table = QTableWidget()
+        self.classification_table.setColumnCount(4)
+        self.classification_table.setHorizontalHeaderLabels(["类别", "代号", "适用范围", "主要特征"])
+        self.setup_classification_table()
+        classification_layout.addWidget(self.classification_table)
+        
+        left_layout.addWidget(classification_group)
+        
+        # 清空按钮
         self.clear_btn = QPushButton("清空")
         self.clear_btn.clicked.connect(self.clear_inputs)
+        self.clear_btn.setMinimumHeight(40)
         self.clear_btn.setStyleSheet("""
             QPushButton {
                 background-color: #95a5a6;
@@ -147,32 +149,34 @@ class 压力管道定义(CalculatorBase):
             QPushButton:hover {
                 background-color: #7f8c8d;
             } """)
-        button_layout.addWidget(self.clear_btn)
+        left_layout.addWidget(self.clear_btn)
+        left_layout.addStretch()
         
-        layout.addLayout(button_layout)
+        # 右侧：结果显示 + 计算按钮
+        right_widget = QWidget()
+        right_widget.setMinimumWidth(300)
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(10)
         
         # 结果显示组
-        result_group = QGroupBox("计算结果")
+        result_group = QGroupBox(" 计算结果")
         result_layout = QVBoxLayout(result_group)
         
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setMaximumHeight(200)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         result_layout.addWidget(self.result_text)
         
-        layout.addWidget(result_group)
+        right_layout.addWidget(result_group)
         
-        # 压力管道分类表
-        classification_group = QGroupBox(" 压力管道分类参考")
-        classification_layout = QVBoxLayout(classification_group)
+        # 计算按钮
+        self.calculate_btn = self.make_calc_button("计算")
+        self.calculate_btn.clicked.connect(self.calculate_pipe_definition)
+        right_layout.addWidget(self.calculate_btn)
         
-        self.classification_table = QTableWidget()
-        self.classification_table.setColumnCount(4)
-        self.classification_table.setHorizontalHeaderLabels(["类别", "代号", "适用范围", "主要特征"])
-        self.setup_classification_table()
-        classification_layout.addWidget(self.classification_table)
-        
-        layout.addWidget(classification_group)
+        main_layout.addWidget(left_widget, 2)
+        main_layout.addWidget(right_widget, 1)
         
         return tab
     

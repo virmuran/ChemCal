@@ -158,6 +158,7 @@ class 换热器计算(CalculatorBase):
             "换热器计算器 - 支持多种计算模式，包含流体比热容和传热系数选择，可用于热负荷、流量、温度等参数计算。"
         )
         description.setWordWrap(True)
+        description.setMaximumHeight(60)
         description.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
         
@@ -227,27 +228,35 @@ class 换热器计算(CalculatorBase):
         
         left_layout.addWidget(input_group)
         
-        # 4. 计算按钮
-        calculate_btn = QPushButton("计算")
-        calculate_btn.setFont(QFont("Arial", 12, QFont.Bold))
-        calculate_btn.clicked.connect(self.calculate)
-        calculate_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        calculate_btn.setMinimumHeight(50)
-        calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        left_layout.addWidget(calculate_btn)
+        left_layout.addStretch()
         
-        # 5. 下载按钮布局
+        # 右侧：结果显示区域 (占1/3宽度)
+        right_widget = QWidget()
+        right_widget.setMinimumWidth(300)
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setSpacing(15)
+        
+        # 结果显示
+        self.result_group = QGroupBox("计算结果")
+        result_layout = QVBoxLayout(self.result_group)
+        
+        self.result_text = QTextEdit()
+        self.result_text.setReadOnly(True)
+        self.result_text.setMinimumHeight(200)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.result_text.setStyleSheet("""
+            QTextEdit {
+                border: 1px solid #666;
+                border-radius: 6px;
+                padding: 8px;
+                /* bg via theme */min-height: 500px;
+            }
+        """)
+        result_layout.addWidget(self.result_text)
+        
+        right_layout.addWidget(self.result_group)
+        
+        # 下载按钮布局
         bottom_layout = QHBoxLayout()
         
         # 清空按钮
@@ -308,36 +317,14 @@ class 换热器计算(CalculatorBase):
         bottom_layout.addStretch()
         bottom_layout.addWidget(self.download_docx_btn)
         bottom_layout.addWidget(self.download_pdf_btn)
-        left_layout.addLayout(bottom_layout)
+        right_layout.addLayout(bottom_layout)
         
-        # 6. 在底部添加拉伸因子
-        left_layout.addStretch()
+        # 计算按钮
+        self.calculate_btn = CalculatorBase.make_calc_button("计算")
+        self.calculate_btn.clicked.connect(self.calculate)
+        right_layout.addWidget(self.calculate_btn)
         
-        # 右侧：结果显示区域 (占1/3宽度)
-        right_widget = QWidget()
-        right_widget.setMinimumWidth(300)
-        right_layout = QVBoxLayout(right_widget)
-        right_layout.setSpacing(15)
-        
-        # 结果显示
-        self.result_group = QGroupBox("计算结果")
-        result_layout = QVBoxLayout(self.result_group)
-        
-        self.result_text = QTextEdit()
-        self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(500)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.result_text.setStyleSheet("""
-            QTextEdit {
-                border: 1px solid #666;
-                border-radius: 6px;
-                padding: 8px;
-                /* bg via theme */min-height: 500px;
-            }
-        """)
-        result_layout.addWidget(self.result_text)
-        
-        right_layout.addWidget(self.result_group)
+        right_layout.setContentsMargins(0, 0, 0, 0)
         
         # 将左右两部分添加到主布局
         scroll_left.setWidget(left_widget)

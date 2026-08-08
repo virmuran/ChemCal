@@ -151,8 +151,10 @@ class PHCalculator(CalculatorBase):
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
         self.result_text.setStyleSheet("font-size: 12px;")
+        self.result_text.setMinimumHeight(180)   # 给个最小高度够看清结果即可
+        self.result_text.setMaximumHeight(400)   # 但别无限膨胀
         rl.addWidget(self.result_text)
-        right_layout.addWidget(result_group, 1)   # 占据剩余高度
+        right_layout.addWidget(result_group)      # 不加 stretch，让它自然高度
 
         # 下载按钮行（居中，位于结果下方）
         btn_layout = QHBoxLayout()

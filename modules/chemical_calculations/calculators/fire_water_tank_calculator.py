@@ -95,13 +95,6 @@ class FireWaterTankCalculator(CalculatorBase):
         self._create_building_group(left_layout)
         self._create_fire_group(left_layout)
 
-        calc_btn = QPushButton("计  算")
-        calc_btn.setStyleSheet(CALC_BUTTON_STYLE)
-        calc_btn.setFont(QFont("Arial", 12, QFont.Bold))
-        calc_btn.setMinimumHeight(50)
-        calc_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        calc_btn.clicked.connect(self.calculate)
-        left_layout.addWidget(calc_btn)
         left_layout.addStretch()
         scroll_left.setWidget(left_widget)
 
@@ -109,13 +102,14 @@ class FireWaterTankCalculator(CalculatorBase):
         right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(12)
+        right_layout.setContentsMargins(0, 0, 0, 0)
 
         result_group = QGroupBox("计算结果")
         result_group.setStyleSheet(GROUP_STYLE)
         rl = QVBoxLayout(result_group)
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(300)
+        self.result_text.setMinimumHeight(180)
         self.result_text.setStyleSheet("font-size: 13px; font-family: Consolas, 'Microsoft YaHei';")
         rl.addWidget(self.result_text)
         right_layout.addWidget(result_group)
@@ -133,6 +127,12 @@ class FireWaterTankCalculator(CalculatorBase):
             btn.clicked.connect(slot)
             btn_layout.addWidget(btn)
         right_layout.addLayout(btn_layout)
+
+        # 计算按钮
+        self.calc_btn = CalculatorBase.make_calc_button()
+        self.calc_btn.setText("计  算")
+        self.calc_btn.clicked.connect(self.calculate)
+        right_layout.addWidget(self.calc_btn)
 
         main_layout.addWidget(scroll_left, 2)
         main_layout.addWidget(right_widget, 1)
@@ -179,6 +179,7 @@ class FireWaterTankCalculator(CalculatorBase):
         self.inputs["building_height"] = self._add_row(
             grid, 3, "建筑高度 h", "12",
             "m", QDoubleValidator(2, 300, 1))
+        parent.addWidget(group)
 
     def _create_fire_group(self, parent):
         group = QGroupBox("消防参数")
@@ -202,6 +203,7 @@ class FireWaterTankCalculator(CalculatorBase):
         self.inputs["safety_factor"] = self._add_row(
             grid, 5, "安全系数", "1.1",
             "—", QDoubleValidator(1.0, 1.5, 2))
+        parent.addWidget(group)
 
     def calculate(self):
         try:

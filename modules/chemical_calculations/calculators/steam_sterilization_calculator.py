@@ -152,6 +152,7 @@ class SteamSterilizationCalculator(CalculatorBase):
             "基于罐体体积反推几何尺寸和壁厚，估算罐体重量，结合蒸汽汽化潜热计算蒸汽消耗。"
         )
         desc.setWordWrap(True)
+        desc.setMaximumHeight(60)
         desc.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(desc)
 
@@ -209,26 +210,7 @@ class SteamSterilizationCalculator(CalculatorBase):
         self.input_layout.setColumnStretch(2, 5)
         left_layout.addWidget(input_group)
 
-        # 计算按钮
-        calc_btn = QPushButton("计 算")
-        calc_btn.setMinimumHeight(50)
-        calc_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        calc_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                font-size: 14px;
-                font-weight: bold;
-                border-radius: 8px;
-                padding: 0px;
-                min-height: 50px;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            }
-        """)
-        calc_btn.clicked.connect(self.calculate)
-        left_layout.addWidget(calc_btn)
+        left_layout.addStretch()
 
         scroll_left.setWidget(left_widget)
 
@@ -236,6 +218,7 @@ class SteamSterilizationCalculator(CalculatorBase):
         right_widget = QWidget()
         right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
+        right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(10)
 
         result_group = QGroupBox("计算结果")
@@ -280,6 +263,11 @@ class SteamSterilizationCalculator(CalculatorBase):
         btn_layout.addWidget(pdf_btn)
 
         right_layout.addLayout(btn_layout)
+
+        # 计算按钮
+        calc_btn = CalculatorBase.make_calc_button("计 算")
+        calc_btn.clicked.connect(self.calculate)
+        right_layout.addWidget(calc_btn)
 
         # 组装左右
         main_layout.addWidget(scroll_left, 2)

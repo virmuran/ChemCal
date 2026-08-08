@@ -107,9 +107,6 @@ class 篮式过滤器(CalculatorBase):
         self.setup_economic_parameters(economic_layout)
         left_layout.addWidget(economic_group)
         
-        # 按钮区域
-        self.setup_buttons(left_layout)
-        
         left_layout.addStretch()
         
         # 右侧：结果显示区域
@@ -118,10 +115,11 @@ class 篮式过滤器(CalculatorBase):
         right_widget.setMaximumWidth(500)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
+        right_layout.setContentsMargins(0, 0, 0, 0)
         
         # 创建结果Tab
         self.result_tabs = self.create_result_tabs()
-        right_layout.addWidget(self.result_tabs)
+        right_layout.addWidget(self.result_tabs, 1)
         
         # 复制按钮
         copy_btn = QPushButton(" 复制结果")
@@ -140,6 +138,71 @@ class 篮式过滤器(CalculatorBase):
             }
         """)
         right_layout.addWidget(copy_btn)
+        
+        # 底部按钮行（清空 + 下载）
+        bottom_layout = QHBoxLayout()
+        
+        self.clear_btn = QPushButton("清空")
+        self.clear_btn.clicked.connect(self.clear_inputs)
+        self.clear_btn.setMinimumHeight(50)
+        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.clear_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #95a5a6;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #7f8c8d;
+            } """)
+        
+        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
+        self.download_docx_btn.clicked.connect(self.download_docx_report)
+        self.download_docx_btn.setMinimumHeight(50)
+        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_docx_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            } """)
+        
+        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
+        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
+        self.download_pdf_btn.setMinimumHeight(50)
+        self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_pdf_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e74c3c;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #c0392b;
+            } """)
+        
+        bottom_layout.addWidget(self.clear_btn)
+        bottom_layout.addStretch()
+        bottom_layout.addWidget(self.download_docx_btn)
+        bottom_layout.addWidget(self.download_pdf_btn)
+        right_layout.addLayout(bottom_layout)
+        
+        # 计算按钮
+        self.calculate_btn = CalculatorBase.make_calc_button()
+        self.calculate_btn.clicked.connect(self.perform_design_calculation)
+        right_layout.addWidget(self.calculate_btn)
         
         # 将左右两部分添加到主布局
         scroll_left.setWidget(left_widget)
@@ -256,90 +319,6 @@ class 篮式过滤器(CalculatorBase):
         # 第1行：企业所得税和利润
         self.corporate_tax_input = self.add_labeled_input(layout, 1, 0, "企业所得税:", QLineEdit(), "例如：0.05", QDoubleValidator(0, 1, 3))
         self.profit_input = self.add_labeled_input(layout, 1, 2, "利润:", QLineEdit(), "例如：0.2", QDoubleValidator(0, 1, 3))
-    
-    def setup_buttons(self, layout):
-        """设置按钮区域"""
-        # 计算按钮
-        calculate_btn = QPushButton("计算")
-        calculate_btn.setFont(QFont("Arial", 12, QFont.Bold))
-        calculate_btn.clicked.connect(self.perform_design_calculation)
-        calculate_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        calculate_btn.setMinimumHeight(50)
-        layout.addWidget(calculate_btn)
-        
-        # 底部按钮行
-        bottom_layout = QHBoxLayout()
-        
-        # 清空按钮
-        self.clear_btn = QPushButton("清空")
-        self.clear_btn.clicked.connect(self.clear_inputs)
-        self.clear_btn.setMinimumHeight(50)
-        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.clear_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #95a5a6;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #7f8c8d;
-            } """)
-        
-        # 下载TXT按钮
-        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
-        self.download_docx_btn.clicked.connect(self.download_docx_report)
-        self.download_docx_btn.setMinimumHeight(50)
-        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_docx_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            } """)
-        
-        # 下载PDF按钮
-        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
-        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
-        self.download_pdf_btn.setMinimumHeight(50)
-        self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_pdf_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #c0392b;
-            } """)
-        
-        bottom_layout.addWidget(self.clear_btn)
-        bottom_layout.addStretch()
-        bottom_layout.addWidget(self.download_docx_btn)
-        bottom_layout.addWidget(self.download_pdf_btn)
-        layout.addLayout(bottom_layout)
     
     def clear_inputs(self):
         """清空输入"""

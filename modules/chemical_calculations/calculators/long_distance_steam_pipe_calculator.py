@@ -188,6 +188,7 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         # 顶部说明文字
         desc_label = QLabel("计算长距离蒸汽管道的温度降、压力损失和热损失，基于能量平衡和动量平衡方程进行分段计算。")
         desc_label.setWordWrap(True)
+        desc_label.setMaximumHeight(60)
         desc_label.setStyleSheet("font-size: 12px; padding: 5px;")
         scroll_layout.addWidget(desc_label)
 
@@ -385,25 +386,7 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
 
         scroll_layout.addWidget(insulation_group)
 
-        # 计算按钮
-        self.calc_btn = QPushButton("计算")
-        self.calc_btn.setFont(QFont("Arial", 12, QFont.Bold))
-        self.calc_btn.setMinimumHeight(50)
-        self.calc_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.calc_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        self.calc_btn.clicked.connect(self.calculate)
-        scroll_layout.addWidget(self.calc_btn)
+        scroll_layout.addStretch()
 
         # 底部按钮行：清空 → Stretch → 下载TXT → 下载PDF
         bottom_layout = QHBoxLayout()
@@ -467,9 +450,6 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         bottom_layout.addWidget(self.download_docx_btn)
         bottom_layout.addWidget(self.download_pdf_btn)
 
-        scroll_layout.addLayout(bottom_layout)
-        scroll_layout.addStretch()
-
         scroll_area.setWidget(scroll_content)
 
         # ===== 右侧结果区 =====
@@ -484,8 +464,8 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
 
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(500)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.result_text.setMinimumHeight(200)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.result_text.setStyleSheet(
             "QTextEdit {"
             "  /* bg via theme */"
@@ -496,6 +476,14 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         )
         result_inner.addWidget(self.result_text)
         right_layout.addWidget(self.result_group)
+
+        # 下载按钮行
+        right_layout.addLayout(bottom_layout)
+
+        # 计算按钮
+        self.calc_btn = CalculatorBase.make_calc_button("计算")
+        self.calc_btn.clicked.connect(self.calculate)
+        right_layout.addWidget(self.calc_btn)
 
         # 按比例添加到主布局
         main_layout.addWidget(scroll_area, 2)
