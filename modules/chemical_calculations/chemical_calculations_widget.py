@@ -123,6 +123,7 @@ class ChemicalCalculationsWidget(QWidget):
             ("气体混合物(EOS)", "GasMixturePropertiesCalculator", "gas_mixture_properties_calculator", True),
             ("汽液平衡(活度系数)", "VLEActivityCoefficientCalculator", "vle_activity_coefficient_calculator", True),
             ("混合液体闪点", "MixedLiquidFlashPointCalculator", "mixed_liquid_flash_point_calculator", True),
+            ("pH 计算", "PHCalculator", "ph_calculator", True),
             #
             # ══════════════════════════════════════════
             # 二、工艺设备
@@ -382,6 +383,7 @@ class ChemicalCalculationsWidget(QWidget):
         "gas_mixture_properties_calculator": "物性数据",
         "vle_activity_coefficient_calculator": "物性数据",
         "mixed_liquid_flash_point_calculator": "物性数据",
+        "ph_calculator": "物性数据",
         # 二、工艺设备
         "heat_exchanger_calculator": "工艺设备",
         "heat_exchanger_area_calculator": "工艺设备",
