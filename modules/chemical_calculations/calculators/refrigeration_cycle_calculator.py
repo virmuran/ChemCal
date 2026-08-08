@@ -315,7 +315,30 @@ class RefrigerationCycleCalculator(CalculatorBase):
 
         left_layout.addWidget(input_group)
 
-        # ========== 清空按钮 ==========
+        # ========== 计算按钮 ==========
+        calculate_btn = QPushButton("计算")
+        calculate_btn.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+        calculate_btn.setMinimumHeight(50)
+        calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        calculate_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                min-height: 50px; padding: 0px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #219955;
+            } """)
+        calculate_btn.clicked.connect(self.calculate)
+        left_layout.addWidget(calculate_btn)
+
+        # ========== 底部按钮行 ==========
+        bottom_layout = QHBoxLayout()
+        
+        # 清空按钮
         self.clear_btn = QPushButton("清空")
         self.clear_btn.clicked.connect(self.clear_inputs)
         self.clear_btn.setMinimumHeight(50)
@@ -332,32 +355,6 @@ class RefrigerationCycleCalculator(CalculatorBase):
             QPushButton:hover {
                 background-color: #7f8c8d;
             } """)
-        left_layout.addWidget(self.clear_btn)
-        left_layout.addStretch()  # 将内容顶到顶部，剩余空间在底部
-
-        # ========== 右侧结果区 ==========
-        right_widget = QWidget()
-        right_widget.setMinimumWidth(300)
-        right_layout = QVBoxLayout(right_widget)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-        right_layout.setSpacing(15)
-
-        # 结果显示组
-        result_group = QGroupBox("计算结果")
-        result_layout = QVBoxLayout(result_group)
-
-        self.result_text = QTextEdit()
-        self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(200)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        self.result_text.setStyleSheet(
-            "QTextEdit { /* bg via theme */border: 1px solid #ecf0f1; "
-            "border-radius: 6px; font-family: Consolas, monospace; font-size: 13px; padding: 8px; }"
-        )
-        self.result_text.setPlaceholderText("计算结果将在此显示……")
-        result_layout.addWidget(self.result_text)
-
-        right_layout.addWidget(result_group)
         
         # 下载TXT按钮
         self.download_docx_btn = QPushButton("下载计算书(DOCX)")
@@ -376,7 +373,6 @@ class RefrigerationCycleCalculator(CalculatorBase):
             QPushButton:hover {
                 background-color: #2980b9;
             } """)
-        right_layout.addWidget(self.download_docx_btn)
         
         # 下载PDF按钮
         self.download_pdf_btn = QPushButton("下载计算书(PDF)")
@@ -395,12 +391,36 @@ class RefrigerationCycleCalculator(CalculatorBase):
             QPushButton:hover {
                 background-color: #c0392b;
             } """)
-        right_layout.addWidget(self.download_pdf_btn)
         
-        # 计算按钮
-        self.calculate_btn = self.make_calc_button("计算")
-        self.calculate_btn.clicked.connect(self.calculate)
-        right_layout.addWidget(self.calculate_btn)
+        bottom_layout.addWidget(self.clear_btn)
+        bottom_layout.addStretch()
+        bottom_layout.addWidget(self.download_docx_btn)
+        bottom_layout.addWidget(self.download_pdf_btn)
+        left_layout.addLayout(bottom_layout)
+        left_layout.addStretch()  # 将内容顶到顶部，剩余空间在底部
+
+        # ========== 右侧结果区 ==========
+        right_widget = QWidget()
+        right_widget.setMinimumWidth(300)
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setSpacing(15)
+
+        # 结果显示组
+        result_group = QGroupBox("计算结果")
+        result_layout = QVBoxLayout(result_group)
+
+        self.result_text = QTextEdit()
+        self.result_text.setReadOnly(True)
+        self.result_text.setMinimumHeight(500)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.result_text.setStyleSheet(
+            "QTextEdit { /* bg via theme */border: 1px solid #ecf0f1; "
+            "border-radius: 6px; font-family: Consolas, monospace; font-size: 13px; padding: 8px; }"
+        )
+        self.result_text.setPlaceholderText("计算结果将在此显示……")
+        result_layout.addWidget(self.result_text)
+
+        right_layout.addWidget(result_group)
 
         # ========== 将左右两部分添加到主布局 ==========
         scroll_left.setWidget(left_widget)

@@ -233,7 +233,6 @@ class 设备尺寸计算(CalculatorBase):
         # 说明
         desc = QLabel("计算设备的直径、高度、容积、重量等参数，支持正向/反向计算。")
         desc.setWordWrap(True)
-        desc.setMaximumHeight(60)
         desc.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(desc)
 
@@ -480,40 +479,30 @@ class 设备尺寸计算(CalculatorBase):
         """)
         left_layout.addWidget(self.accessory_btn)
 
-        left_layout.addStretch()
-
-        # 右侧结果显示区域
-        right_widget = QWidget()
-        right_widget.setMinimumWidth(300)
-        right_layout = QVBoxLayout(right_widget)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-        right_layout.setSpacing(15)
-
-        # 罐体示意图 (SVG)
-        self.svg_widget = QSvgWidget()
-        self.svg_widget.setMinimumHeight(220)
-        self.svg_widget.setMaximumHeight(280)
-        self.svg_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        right_layout.addWidget(self.svg_widget)
-
-        self.result_group = QGroupBox("计算结果")
-        result_layout = QVBoxLayout(self.result_group)
-
-        self.result_text = QTextEdit()
-        self.result_text.setMinimumHeight(200)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        self.result_text.setStyleSheet("""
-            QTextEdit {
-                border: 1px solid #666;
-                padding: 8px; /* bg via theme */min-height: 500px;
+        # 计算按钮
+        calc_btn = QPushButton("计算")
+        calc_btn.setFont(QFont("Arial", 12, QFont.Bold))
+        calc_btn.clicked.connect(self.calculate)
+        calc_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                min-height: 50px; padding: 0px;
+                font-weight: bold;
             }
-        """)
-        result_layout.addWidget(self.result_text)
-        right_layout.addWidget(self.result_group)
+            QPushButton:hover {
+                background-color: #219955;
+            } """)
+        calc_btn.setMinimumHeight(50)
+        calc_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        left_layout.addWidget(calc_btn)
 
         # 下载按钮
-        right_bottom_layout = QHBoxLayout()
+        bottom_layout = QHBoxLayout()
         
+        # 清空按钮
         self.clear_btn = QPushButton("清空")
         self.clear_btn.clicked.connect(self.clear_inputs)
         self.clear_btn.setMinimumHeight(50)
@@ -531,6 +520,7 @@ class 设备尺寸计算(CalculatorBase):
                 background-color: #7f8c8d;
             } """)
         
+        # 下载TXT按钮
         self.download_docx_btn = QPushButton("下载计算书(DOCX)")
         self.download_docx_btn.clicked.connect(self.download_docx_report)
         self.download_docx_btn.setMinimumHeight(50)
@@ -548,6 +538,7 @@ class 设备尺寸计算(CalculatorBase):
                 background-color: #2980b9;
             } """)
         
+        # 下载PDF按钮
         self.download_pdf_btn = QPushButton("下载计算书(PDF)")
         self.download_pdf_btn.clicked.connect(self.download_pdf_report)
         self.download_pdf_btn.setMinimumHeight(50)
@@ -565,15 +556,40 @@ class 设备尺寸计算(CalculatorBase):
                 background-color: #c0392b;
             } """)
         
-        right_bottom_layout.addWidget(self.clear_btn)
-        right_bottom_layout.addWidget(self.download_docx_btn)
-        right_bottom_layout.addWidget(self.download_pdf_btn)
-        right_layout.addLayout(right_bottom_layout)
+        bottom_layout.addWidget(self.clear_btn)
+        bottom_layout.addStretch()
+        bottom_layout.addWidget(self.download_docx_btn)
+        bottom_layout.addWidget(self.download_pdf_btn)
+        left_layout.addLayout(bottom_layout)
+        left_layout.addStretch()
 
-        # 计算按钮
-        calc_btn = CalculatorBase.make_calc_button("计算")
-        calc_btn.clicked.connect(self.calculate)
-        right_layout.addWidget(calc_btn)
+        # 右侧结果显示区域
+        right_widget = QWidget()
+        right_widget.setMinimumWidth(300)
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setSpacing(15)
+
+        # 罐体示意图 (SVG)
+        self.svg_widget = QSvgWidget()
+        self.svg_widget.setMinimumHeight(220)
+        self.svg_widget.setMaximumHeight(280)
+        self.svg_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        right_layout.addWidget(self.svg_widget)
+
+        self.result_group = QGroupBox("计算结果")
+        result_layout = QVBoxLayout(self.result_group)
+
+        self.result_text = QTextEdit()
+        self.result_text.setMinimumHeight(500)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.result_text.setStyleSheet("""
+            QTextEdit {
+                border: 1px solid #666;
+                padding: 8px; /* bg via theme */min-height: 500px;
+            }
+        """)
+        result_layout.addWidget(self.result_text)
+        right_layout.addWidget(self.result_group)
 
         scroll_left.setWidget(left_widget)
         main_layout.addWidget(scroll_left, 2)

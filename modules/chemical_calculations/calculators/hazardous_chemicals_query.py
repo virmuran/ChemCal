@@ -488,7 +488,6 @@ class HazardousChemicalsQuery(CalculatorBase):
         right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
-        right_layout.setContentsMargins(0, 0, 0, 0)
 
         # 结果详情GroupBox
         result_group = QGroupBox("查询结果")
@@ -511,6 +510,30 @@ class HazardousChemicalsQuery(CalculatorBase):
 
         # result_text 属性别名，用于模板兼容
         self.result_text = self.detail_text
+
+        # 查看详情按钮（绿色，与计算按钮一致）
+        self.detail_btn = QPushButton("查看完整详情")
+        self.detail_btn.clicked.connect(self.show_full_detail)
+        self.detail_btn.setMinimumHeight(50)
+        self.detail_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.detail_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover:!checked {
+                background-color: #219955;
+            }
+            QPushButton:disabled {
+                background-color: #bdc3c7;
+            }
+        """)
+        self.detail_btn.setEnabled(False)
+        result_layout.addWidget(self.detail_btn)
 
         right_layout.addWidget(result_group)
 
@@ -577,12 +600,6 @@ class HazardousChemicalsQuery(CalculatorBase):
         bottom_layout.addWidget(self.download_docx_btn)
         bottom_layout.addWidget(self.download_pdf_btn)
         right_layout.addLayout(bottom_layout)
-
-        # 查询/查看详情按钮
-        self.detail_btn = CalculatorBase.make_calc_button("查看完整详情")
-        self.detail_btn.clicked.connect(self.show_full_detail)
-        self.detail_btn.setEnabled(False)
-        right_layout.addWidget(self.detail_btn)
 
         # ========== 将左右两部分添加到主布局 ==========
         # 比例：addWidget(left, 2) / addWidget(right, 1)

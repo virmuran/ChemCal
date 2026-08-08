@@ -108,22 +108,29 @@ class VesselDesignCalculator(CalculatorBase):
         # 材料参数组
         self._create_material_group(left_layout)
 
+        calc_btn = QPushButton("计  算")
+        calc_btn.setStyleSheet(CALC_BUTTON_STYLE)
+        calc_btn.setFont(QFont("Arial", 12, QFont.Bold))
+        calc_btn.setMinimumHeight(50)
+        calc_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        calc_btn.clicked.connect(self.calculate)
+        left_layout.addWidget(calc_btn)
+
         left_layout.addStretch()
         scroll_left.setWidget(left_widget)
 
-        # ── 右栏: 结果(顶, expanding) → 下载按钮(中) → 计算按钮(底) ──
+        # ── 右侧：结果 ──
         right_widget = QWidget()
         right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(12)
-        right_layout.setContentsMargins(0, 0, 0, 0)
 
         result_group = QGroupBox("计算结果")
         result_group.setStyleSheet(GROUP_STYLE)
         rl = QVBoxLayout(result_group)
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(180)
+        self.result_text.setMinimumHeight(300)
         self.result_text.setStyleSheet("font-size: 13px; font-family: Consolas, 'Microsoft YaHei';")
         rl.addWidget(self.result_text)
         right_layout.addWidget(result_group)
@@ -141,10 +148,6 @@ class VesselDesignCalculator(CalculatorBase):
             btn.clicked.connect(slot)
             btn_layout.addWidget(btn)
         right_layout.addLayout(btn_layout)
-
-        calc_btn = CalculatorBase.make_calc_button()
-        calc_btn.clicked.connect(self.calculate)
-        right_layout.addWidget(calc_btn)
 
         main_layout.addWidget(scroll_left, 2)
         main_layout.addWidget(right_widget, 1)
@@ -205,7 +208,6 @@ class VesselDesignCalculator(CalculatorBase):
         self.inputs["weld_coeff"].setStyleSheet(COMBOBOX_STYLE)
         self.inputs["weld_coeff"].setCurrentIndex(1)  # 默认 0.85
         grid.addWidget(self.inputs["weld_coeff"], 5, 1, 1, 2)
-        parent.addWidget(group)
 
     def _create_geometry_group(self, parent):
         group = QGroupBox("几何参数")
@@ -227,7 +229,6 @@ class VesselDesignCalculator(CalculatorBase):
         self.inputs["insulation_thk"] = self._add_row(
             grid, 3, "保温层厚（重量用）", "0",
             "mm", QDoubleValidator(0, 500, 1))
-        parent.addWidget(group)
 
     def _create_material_group(self, parent):
         group = QGroupBox("材料参数")
@@ -248,7 +249,6 @@ class VesselDesignCalculator(CalculatorBase):
         self.inputs["density"] = self._add_row(
             grid, 2, "材料密度 ρ", "7930",
             "kg/m³", QDoubleValidator(1000, 20000, 1))
-        parent.addWidget(group)
 
     def _fill_stress(self, name=None):
         """根据材料和设计温度自动填入许用应力"""

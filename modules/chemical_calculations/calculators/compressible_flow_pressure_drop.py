@@ -224,6 +224,46 @@ class CompressibleFlowPressureDrop(CalculatorBase):
         self.mbg.addButton(rb4); mgrid.addWidget(rb4, 1, 1)
         ll.addWidget(mg)
 
+        # ---- 计算按钮 ----
+        bb = QHBoxLayout()
+        b_calc = QPushButton("计算")
+        calc_font = QFont("Arial", 12)
+        calc_font.setBold(True)
+        b_calc.setFont(calc_font)
+        b_calc.setMinimumHeight(50)
+        b_calc.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        b_calc.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                min-height: 50px; padding: 0px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #219955;
+            } """)
+        b_calc.clicked.connect(self.calculate_pressure_drop)
+        b_flow = QPushButton("反算流量")
+        b_flow.setMinimumHeight(50)
+        b_flow.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        b_flow.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                min-height: 50px; padding: 0px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #219955;
+            } """)
+        b_flow.clicked.connect(self.auto_calculate_flow)
+        bb.addWidget(b_calc); bb.addWidget(b_flow)
+        ll.addLayout(bb)
+
         # ---- 详细参数表 ----
         dg = QGroupBox("详细参数")
         dv = QVBoxLayout(dg)
@@ -234,21 +274,6 @@ class CompressibleFlowPressureDrop(CalculatorBase):
         self.dtable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         dv.addWidget(self.dtable)
         ll.addWidget(dg)
-
-        # ---- 右侧结果区 ----
-        right = QWidget(); right.setMinimumWidth(300)
-        rl = QVBoxLayout(right); rl.setSpacing(15)
-        rl.setContentsMargins(0, 0, 0, 0)
-        rg = QGroupBox("计算结果")
-        rv = QVBoxLayout(rg)
-        self.result_text = QTextEdit()
-        self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(200)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        self.result_text.setStyleSheet("QTextEdit{/* bg via theme */border:1px solid #ecf0f1;border-radius:6px;padding:8px;}")
-        self.result_text.setPlaceholderText("计算结果将在此显示……")
-        rv.addWidget(self.result_text)
-        rl.addWidget(rg)
 
         # ---- 底部按钮行 ----
         bottom_layout = QHBoxLayout()
@@ -311,30 +336,21 @@ class CompressibleFlowPressureDrop(CalculatorBase):
         bottom_layout.addStretch()
         bottom_layout.addWidget(self.download_docx_btn)
         bottom_layout.addWidget(self.download_pdf_btn)
-        rl.addLayout(bottom_layout)
+        ll.addLayout(bottom_layout)
 
-        # ---- 计算按钮 ----
-        bb = QHBoxLayout()
-        b_calc = CalculatorBase.make_calc_button()
-        b_calc.clicked.connect(self.calculate_pressure_drop)
-        b_flow = QPushButton("反算流量")
-        b_flow.setMinimumHeight(50)
-        b_flow.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        b_flow.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        b_flow.clicked.connect(self.auto_calculate_flow)
-        bb.addWidget(b_calc); bb.addWidget(b_flow)
-        rl.addLayout(bb)
+        # ---- 右侧结果区 ----
+        right = QWidget(); right.setMinimumWidth(300)
+        rl = QVBoxLayout(right); rl.setSpacing(15)
+        rg = QGroupBox("计算结果")
+        rv = QVBoxLayout(rg)
+        self.result_text = QTextEdit()
+        self.result_text.setReadOnly(True)
+        self.result_text.setMinimumHeight(500)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.result_text.setStyleSheet("QTextEdit{/* bg via theme */border:1px solid #ecf0f1;border-radius:6px;padding:8px;}")
+        self.result_text.setPlaceholderText("计算结果将在此显示……")
+        rv.addWidget(self.result_text)
+        rl.addWidget(rg)
 
         scroll_left.setWidget(left)
         main.addWidget(scroll_left, 2)

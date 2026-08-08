@@ -92,7 +92,6 @@ class InsulationThicknessCalculator(CalculatorBase):
             "请根据实际工况选择计算方法并填写参数。"
         )
         desc.setWordWrap(True)
-        desc.setMaximumHeight(60)
         desc.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(desc)
 
@@ -230,7 +229,25 @@ class InsulationThicknessCalculator(CalculatorBase):
 
         left_layout.addWidget(input_group)
 
-        left_layout.addStretch()
+        # ── 计算按钮 ──
+        calc_btn = QPushButton("计算")
+        calc_btn.setFont(QFont("Arial", 12, QFont.Bold))
+        calc_btn.setMinimumHeight(50)
+        calc_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        calc_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                min-height: 50px; padding: 0px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #219955;
+            } """)
+        calc_btn.clicked.connect(self.calculate)
+        left_layout.addWidget(calc_btn)
 
         # ── 底部按钮行 ──
         bottom_layout = QHBoxLayout()
@@ -293,21 +310,22 @@ class InsulationThicknessCalculator(CalculatorBase):
         bottom_layout.addStretch()
         bottom_layout.addWidget(self.download_docx_btn)
         bottom_layout.addWidget(self.download_pdf_btn)
+        left_layout.addLayout(bottom_layout)
+        left_layout.addStretch()
 
         # ──────────────── 右侧结果区 ────────────────
         right_widget = QWidget()
         right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
-        right_layout.setContentsMargins(0, 0, 0, 0)
 
         result_group = QGroupBox("计算结果")
         result_vbox = QVBoxLayout(result_group)
 
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(200)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.result_text.setMinimumHeight(500)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet("""
             QTextEdit {
                 /* bg via theme */border: 1px solid #ecf0f1;
@@ -318,14 +336,6 @@ class InsulationThicknessCalculator(CalculatorBase):
         self.result_text.setPlaceholderText("计算结果将在此显示……")
         result_vbox.addWidget(self.result_text)
         right_layout.addWidget(result_group)
-
-        # 下载按钮行
-        right_layout.addLayout(bottom_layout)
-
-        # 计算按钮
-        calc_btn = CalculatorBase.make_calc_button("计算")
-        calc_btn.clicked.connect(self.calculate)
-        right_layout.addWidget(calc_btn)
 
         # 拼合
         scroll_left.setWidget(left_widget)

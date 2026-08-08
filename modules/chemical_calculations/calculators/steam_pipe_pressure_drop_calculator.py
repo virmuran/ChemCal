@@ -78,13 +78,19 @@ class SteamPipePressureDropCalculator(CalculatorBase):
         self._create_pipe_group(left_layout)
         self._create_env_group(left_layout)
 
+        calc_btn = QPushButton("计  算")
+        calc_btn.setStyleSheet(CALC_BUTTON_STYLE)
+        calc_btn.setFont(QFont("Arial", 12, QFont.Bold))
+        calc_btn.setMinimumHeight(50)
+        calc_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        calc_btn.clicked.connect(self.calculate)
+        left_layout.addWidget(calc_btn)
         left_layout.addStretch()
         scroll_left.setWidget(left_widget)
 
         right_widget = QWidget()
         right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
-        right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(12)
 
         result_group = QGroupBox("计算结果")
@@ -92,7 +98,7 @@ class SteamPipePressureDropCalculator(CalculatorBase):
         rl = QVBoxLayout(result_group)
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(180)
+        self.result_text.setMinimumHeight(300)
         self.result_text.setStyleSheet("font-size: 13px; font-family: Consolas, 'Microsoft YaHei';")
         rl.addWidget(self.result_text)
         right_layout.addWidget(result_group)
@@ -110,11 +116,6 @@ class SteamPipePressureDropCalculator(CalculatorBase):
             btn.clicked.connect(slot)
             btn_layout.addWidget(btn)
         right_layout.addLayout(btn_layout)
-        
-        # 计算按钮
-        self.calculate_btn = self.make_calc_button("计  算")
-        self.calculate_btn.clicked.connect(self.calculate)
-        right_layout.addWidget(self.calculate_btn)
 
         main_layout.addWidget(scroll_left, 2)
         main_layout.addWidget(right_widget, 1)
@@ -155,7 +156,6 @@ class SteamPipePressureDropCalculator(CalculatorBase):
         self.inputs["steam_state"].addItems(["饱和蒸汽", "微过热蒸汽(过热度10°C)"])
         self.inputs["steam_state"].setStyleSheet(COMBOBOX_STYLE)
         grid.addWidget(self.inputs["steam_state"], 2, 1, 1, 2)
-        parent.addWidget(group)
 
     def _create_pipe_group(self, parent):
         group = QGroupBox("管道参数")
@@ -191,7 +191,6 @@ class SteamPipePressureDropCalculator(CalculatorBase):
         self.inputs["insulation_thk"] = self._add_row(
             grid, 5, "保温层厚度", "50",
             "mm", QDoubleValidator(0, 300, 1))
-        parent.addWidget(group)
 
     def _create_env_group(self, parent):
         group = QGroupBox("环境条件")
@@ -205,7 +204,6 @@ class SteamPipePressureDropCalculator(CalculatorBase):
         self.inputs["wind_speed"] = self._add_row(
             grid, 1, "平均风速", "3",
             "m/s", QDoubleValidator(0, 30, 1))
-        parent.addWidget(group)
 
     # ── 计算 ────────────────────────────────────────────────
 

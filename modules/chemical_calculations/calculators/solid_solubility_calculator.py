@@ -283,29 +283,30 @@ class SolidSolubilityCalculator(CalculatorBase):
 
         left_layout.addWidget(query_group)
 
+        # ── 查询按钮 ──
+        calc_btn = QPushButton("查询")
+        calc_btn.setFont(QFont("Arial", 12))
+        calc_btn.setMinimumHeight(50)
+        calc_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        calc_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                min-height: 50px; padding: 0px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #219955;
+            } """)
+        calc_btn.clicked.connect(self.query_solubility)
+        left_layout.addWidget(calc_btn)
+
         # 进度条
         self.progress_bar = QProgressBar()
         self.progress_bar.setVisible(False)
         left_layout.addWidget(self.progress_bar)
-
-        # 清空按钮
-        self.clear_btn = QPushButton("清空")
-        self.clear_btn.clicked.connect(self.clear_inputs)
-        self.clear_btn.setMinimumHeight(50)
-        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.clear_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #95a5a6;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #7f8c8d;
-            } """)
-        left_layout.addWidget(self.clear_btn)
 
         # ── 参考数据表 ──
         ref_group = QGroupBox("常见固体溶解度参考表")
@@ -325,7 +326,6 @@ class SolidSolubilityCalculator(CalculatorBase):
         right_widget = QWidget()
         right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
-        right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(15)
 
         result_group = QGroupBox("查询结果")
@@ -333,8 +333,8 @@ class SolidSolubilityCalculator(CalculatorBase):
 
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(200)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.result_text.setMinimumHeight(500)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet("""
             QTextEdit {
                 /* bg via theme */border: 1px solid #ecf0f1;
@@ -346,6 +346,27 @@ class SolidSolubilityCalculator(CalculatorBase):
         self.result_text.setPlaceholderText("查询结果将在此显示……")
         result_vbox.addWidget(self.result_text)
         right_layout.addWidget(result_group)
+
+        # ── 底部按钮行（右侧） ──
+        bottom_layout = QHBoxLayout()
+        
+        # 清空按钮
+        self.clear_btn = QPushButton("清空")
+        self.clear_btn.clicked.connect(self.clear_inputs)
+        self.clear_btn.setMinimumHeight(50)
+        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.clear_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #95a5a6;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #7f8c8d;
+            } """)
         
         # 下载TXT按钮
         self.download_docx_btn = QPushButton("下载计算书(DOCX)")
@@ -364,7 +385,6 @@ class SolidSolubilityCalculator(CalculatorBase):
             QPushButton:hover {
                 background-color: #2980b9;
             } """)
-        right_layout.addWidget(self.download_docx_btn)
         
         # 下载PDF按钮
         self.download_pdf_btn = QPushButton("下载计算书(PDF)")
@@ -383,12 +403,11 @@ class SolidSolubilityCalculator(CalculatorBase):
             QPushButton:hover {
                 background-color: #c0392b;
             } """)
-        right_layout.addWidget(self.download_pdf_btn)
         
-        # 查询按钮
-        self.calculate_btn = self.make_calc_button("查询")
-        self.calculate_btn.clicked.connect(self.query_solubility)
-        right_layout.addWidget(self.calculate_btn)
+        bottom_layout.addWidget(self.clear_btn)
+        bottom_layout.addWidget(self.download_docx_btn)
+        bottom_layout.addWidget(self.download_pdf_btn)
+        right_layout.addLayout(bottom_layout)
 
         # 拼合
         scroll_left.setWidget(left_widget)

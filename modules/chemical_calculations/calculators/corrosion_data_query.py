@@ -185,6 +185,26 @@ class CorrosionDataQuery(CalculatorBase):
 
         left_layout.addWidget(query_group)
 
+        # 查询按钮（绿色 #27ae60）
+        self.query_btn = QPushButton("查询")
+        self.query_btn.clicked.connect(self.calculate)
+        self.query_btn.setFont(QFont("Arial", 12))
+        self.query_btn.setMinimumHeight(50)
+        self.query_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.query_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                min-height: 50px; padding: 0px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #219955;
+            } """)
+        left_layout.addWidget(self.query_btn)
+
         # 搜索功能
         search_group = QGroupBox("快速搜索")
         search_layout = QHBoxLayout(search_group)
@@ -269,8 +289,8 @@ class CorrosionDataQuery(CalculatorBase):
         # 右侧 QTextEdit：只读、浅灰背景、圆角、最小高度500px
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(200)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.result_text.setMinimumHeight(500)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet(
             "QTextEdit { "
             "/* bg via theme */"
@@ -345,12 +365,6 @@ class CorrosionDataQuery(CalculatorBase):
         bottom_layout.addWidget(self.download_docx_btn)
         bottom_layout.addWidget(self.download_pdf_btn)
         right_layout.addLayout(bottom_layout)
-
-        # 查询按钮
-        self.query_btn = CalculatorBase.make_calc_button()
-        self.query_btn.setText("查询")
-        self.query_btn.clicked.connect(self.calculate)
-        right_layout.addWidget(self.query_btn)
 
         # ========= 按比例添加到主布局 =========
         main_layout.addWidget(left_scroll, 2)   # 左侧占2份

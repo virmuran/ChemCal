@@ -379,12 +379,31 @@ class MixedLiquidFlashPointCalculator(CalculatorBase):
         
         left_layout.addWidget(components_group)
         
+        # 计算按钮
+        calculate_btn = QPushButton("查询")
+        calculate_btn.setFont(QFont("Arial", 12, QFont.Bold))
+        calculate_btn.clicked.connect(self.calculate_flash_point)
+        calculate_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                min-height: 50px; padding: 0px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #219955;
+            } """)
+        calculate_btn.setMinimumHeight(50)
+        calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        left_layout.addWidget(calculate_btn)
+        
         # 右侧：结果显示区域
         right_widget = QWidget()
         right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
-        right_layout.setContentsMargins(0, 0, 0, 0)
         
         # 结果显示
         self.result_group = QGroupBox("计算结果")
@@ -392,7 +411,7 @@ class MixedLiquidFlashPointCalculator(CalculatorBase):
         
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet("""
             QTextEdit {
                 border: 1px solid #666;
@@ -404,11 +423,6 @@ class MixedLiquidFlashPointCalculator(CalculatorBase):
         result_layout.addWidget(self.result_text)
         
         right_layout.addWidget(self.result_group)
-
-        # 计算按钮
-        calculate_btn = CalculatorBase.make_calc_button("查询")
-        calculate_btn.clicked.connect(self.calculate_flash_point)
-        right_layout.addWidget(calculate_btn)
         
         # 将左右两部分添加到主布局
         scroll_left.setWidget(left_widget)

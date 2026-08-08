@@ -131,6 +131,11 @@ class CODEstimator(CalculatorBase):
         self.input_layout.setColumnStretch(2, 5)
         left_layout.addWidget(self.input_group)
 
+        # 计算按钮
+        calc_btn = CalculatorBase.make_calc_button()
+        calc_btn.clicked.connect(self.calculate)
+        left_layout.addWidget(calc_btn)
+
         scroll.setWidget(left)
 
         # ── 右 ──
@@ -138,7 +143,6 @@ class CODEstimator(CalculatorBase):
         right.setMinimumWidth(300)
         right_layout = QVBoxLayout(right)
         right_layout.setSpacing(10)
-        right_layout.setContentsMargins(0, 0, 0, 0)
 
         result_group = QGroupBox("计算结果")
         result_inner = QVBoxLayout(result_group)
@@ -158,11 +162,6 @@ class CODEstimator(CalculatorBase):
             b.clicked.connect(callback)
             btn_layout.addWidget(b)
         right_layout.addLayout(btn_layout)
-
-        # 计算按钮
-        self.calc_btn = CalculatorBase.make_calc_button()
-        self.calc_btn.clicked.connect(self.calculate)
-        right_layout.addWidget(self.calc_btn)
 
         main_layout.addWidget(scroll, 2)
         main_layout.addWidget(right, 1)

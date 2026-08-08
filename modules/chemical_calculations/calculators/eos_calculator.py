@@ -148,7 +148,6 @@ class EOSCalculator(CalculatorBase):
             "可计算压缩因子、逸度系数、剩余焓/熵/Gibbs 自由能等。"
         )
         desc.setWordWrap(True)
-        desc.setMaximumHeight(60)
         desc.setStyleSheet("font-size: 12px;")
         ll.addWidget(desc)
 
@@ -315,35 +314,28 @@ class EOSCalculator(CalculatorBase):
         info_layout.addWidget(info_text)
         ll.addWidget(info_group)
 
-        ll.addStretch()
+        # ---- 计算按钮 ----
+        b_calc = QPushButton("查询")
+        b_calc.setFont(QFont("Arial", 12, QFont.Bold))
+        b_calc.setMinimumHeight(50)
+        b_calc.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        b_calc.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                min-height: 50px; padding: 0px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #219955;
+            } """)
+        b_calc.clicked.connect(self.calculate)
 
-        # ========== 右侧结果区 ==========
-        right = QWidget()
-        right.setMinimumWidth(300)
-        rl = QVBoxLayout(right)
-        rl.setSpacing(10)
-        rl.setContentsMargins(0, 0, 0, 0)
-
-        rg = QGroupBox("计算结果")
-        rv = QVBoxLayout(rg)
-
-        self.result_text = QTextEdit()
-        self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(200)
-        self.result_text.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.result_text.setStyleSheet(
-            "QTextEdit {"
-            "  /* bg via theme */"
-            "  border: 1px solid #dee2e6;"
-            "  border-radius: 6px;"
-            "  font-family: Consolas, monospace;"
-            "  font-size: 13px;"
-            "  padding: 8px;"
-            "}"
-        )
-        self.result_text.setPlaceholderText("计算结果将在此显示……")
-        rv.addWidget(self.result_text)
-        rl.addWidget(rg)
+        bb = QHBoxLayout()
+        bb.addWidget(b_calc)
+        ll.addLayout(bb)
 
         # ---- 底部按钮行 ----
         bottom_layout = QHBoxLayout()
@@ -406,13 +398,34 @@ class EOSCalculator(CalculatorBase):
         bottom_layout.addStretch()
         bottom_layout.addWidget(self.download_docx_btn)
         bottom_layout.addWidget(self.download_pdf_btn)
-        rl.addLayout(bottom_layout)
+        ll.addLayout(bottom_layout)
 
-        # ---- 计算按钮 ----
-        self.calc_btn = CalculatorBase.make_calc_button()
-        self.calc_btn.setText("查询")
-        self.calc_btn.clicked.connect(self.calculate)
-        rl.addWidget(self.calc_btn)
+        # ========== 右侧结果区 ==========
+        right = QWidget()
+        right.setMinimumWidth(300)
+        rl = QVBoxLayout(right)
+        rl.setSpacing(10)
+
+        rg = QGroupBox("计算结果")
+        rv = QVBoxLayout(rg)
+
+        self.result_text = QTextEdit()
+        self.result_text.setReadOnly(True)
+        self.result_text.setMinimumHeight(500)
+        self.result_text.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.result_text.setStyleSheet(
+            "QTextEdit {"
+            "  /* bg via theme */"
+            "  border: 1px solid #dee2e6;"
+            "  border-radius: 6px;"
+            "  font-family: Consolas, monospace;"
+            "  font-size: 13px;"
+            "  padding: 8px;"
+            "}"
+        )
+        self.result_text.setPlaceholderText("计算结果将在此显示……")
+        rv.addWidget(self.result_text)
+        rl.addWidget(rg)
 
         scroll_left.setWidget(left)
         main.addWidget(scroll_left, 2)

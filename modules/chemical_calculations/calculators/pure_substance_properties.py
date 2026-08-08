@@ -186,6 +186,26 @@ class PureSubstanceProperties(CalculatorBase):
         
         left_layout.addWidget(query_group)
         
+        # 计算按钮（绿色 #27ae60，字号12pt，最小高度50px）
+        self.query_btn = QPushButton("查询")
+        self.query_btn.clicked.connect(self.calculate)
+        self.query_btn.setFont(QFont("Arial", 12))
+        self.query_btn.setMinimumHeight(50)
+        self.query_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.query_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                min-height: 50px; padding: 0px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #219955;
+            } """)
+        left_layout.addWidget(self.query_btn)
+        
         # 温度影响计算按钮
         self.temp_calc_btn = QPushButton("温度影响计算")
         self.temp_calc_btn.clicked.connect(self.temperature_calculation)
@@ -203,25 +223,6 @@ class PureSubstanceProperties(CalculatorBase):
             "QPushButton:hover:!checked { background-color: #7d3c98; }"
         )
         left_layout.addWidget(self.temp_calc_btn)
-        
-        # 清空按钮
-        self.clear_btn = QPushButton("清空")
-        self.clear_btn.clicked.connect(self.clear_inputs)
-        self.clear_btn.setMinimumHeight(40)
-        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.clear_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #95a5a6;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #7f8c8d;
-            } """)
-        left_layout.addWidget(self.clear_btn)
         
         # 基本物性 & 热力学性质 - 左右分布
         tables_layout = QHBoxLayout()
@@ -266,7 +267,6 @@ class PureSubstanceProperties(CalculatorBase):
         # 右侧结果区
         right_widget = QWidget()
         right_layout = QVBoxLayout(right_widget)
-        right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(15)
         right_widget.setMinimumWidth(300)
         
@@ -277,8 +277,8 @@ class PureSubstanceProperties(CalculatorBase):
         # 结果文本区（按照规范：背景#f8f9fa，边框1px solid #ecf0f1，圆角6px，padding 8px，minHeight 500px，Expanding/Expanding）
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(200)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.result_text.setMinimumHeight(500)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.result_text.setStyleSheet(
             "QTextEdit { "
             "/* bg via theme */"
@@ -291,6 +291,27 @@ class PureSubstanceProperties(CalculatorBase):
         result_layout.addWidget(self.result_text)
         
         right_layout.addWidget(result_group)
+        
+        # 底部按钮行
+        bottom_layout = QHBoxLayout()
+        
+        # 清空按钮
+        self.clear_btn = QPushButton("清空")
+        self.clear_btn.clicked.connect(self.clear_inputs)
+        self.clear_btn.setMinimumHeight(50)
+        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.clear_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #95a5a6;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #7f8c8d;
+            } """)
         
         # 下载TXT按钮
         self.download_docx_btn = QPushButton("下载计算书(DOCX)")
@@ -309,7 +330,6 @@ class PureSubstanceProperties(CalculatorBase):
             QPushButton:hover {
                 background-color: #2980b9;
             } """)
-        right_layout.addWidget(self.download_docx_btn)
         
         # 下载PDF按钮
         self.download_pdf_btn = QPushButton("下载计算书(PDF)")
@@ -328,12 +348,11 @@ class PureSubstanceProperties(CalculatorBase):
             QPushButton:hover {
                 background-color: #c0392b;
             } """)
-        right_layout.addWidget(self.download_pdf_btn)
         
-        # 查询按钮
-        self.query_btn = self.make_calc_button("查询")
-        self.query_btn.clicked.connect(self.calculate)
-        right_layout.addWidget(self.query_btn)
+        bottom_layout.addWidget(self.clear_btn)
+        bottom_layout.addWidget(self.download_docx_btn)
+        bottom_layout.addWidget(self.download_pdf_btn)
+        right_layout.addLayout(bottom_layout)
         
         main_layout.addWidget(right_widget, 1)
         

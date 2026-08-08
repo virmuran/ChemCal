@@ -188,6 +188,21 @@ class 消火栓计算(CalculatorBase):
         
         # 按钮组
         button_layout = QHBoxLayout()
+        self.calculate_btn = QPushButton("计算")
+        self.calculate_btn.clicked.connect(self.calculate_hydrant_system)
+        self.calculate_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                min-height: 50px; padding: 0px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #219955;
+            } """)
+        button_layout.addWidget(self.calculate_btn)
         
         self.clear_btn = QPushButton("清空")
         self.clear_btn.clicked.connect(self.clear_inputs)
@@ -228,11 +243,6 @@ class 消火栓计算(CalculatorBase):
         config_layout.addWidget(self.config_table)
         
         layout.addWidget(config_group)
-        
-        # 计算按钮
-        self.calculate_btn = CalculatorBase.make_calc_button()
-        self.calculate_btn.clicked.connect(self.calculate_hydrant_system)
-        layout.addWidget(self.calculate_btn)
         
         return tab
     

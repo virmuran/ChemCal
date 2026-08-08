@@ -126,6 +126,16 @@ class JacketCoilCalculator(CalculatorBase):
         # 高级参数组（可折叠感）
         self._create_advanced_group(left_layout)
 
+        # 计算按钮
+        calc_btn = QPushButton("计  算")
+        calc_btn.setStyleSheet(CALC_BUTTON_STYLE)
+        calc_btn.setFont(QFont("Arial", 12, QFont.Bold))
+        calc_btn.setMinimumHeight(50)
+        calc_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        calc_btn.clicked.connect(self.calculate)
+        left_layout.addWidget(calc_btn)
+
+        left_layout.addStretch()
         scroll_left.setWidget(left_widget)
 
         # ── 右侧：结果 + SVG (占 1/3) ──
@@ -133,7 +143,6 @@ class JacketCoilCalculator(CalculatorBase):
         right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(12)
-        right_layout.setContentsMargins(0, 0, 0, 0)
 
         # SVG 示意图
         svg_group = QGroupBox("示意图")
@@ -183,11 +192,6 @@ class JacketCoilCalculator(CalculatorBase):
         btn_layout.addWidget(docx_btn)
         btn_layout.addWidget(pdf_btn)
         right_layout.addLayout(btn_layout)
-
-        # 计算按钮
-        calc_btn = CalculatorBase.make_calc_button("计  算")
-        calc_btn.clicked.connect(self.calculate)
-        right_layout.addWidget(calc_btn)
 
         main_layout.addWidget(scroll_left, 2)
         main_layout.addWidget(right_widget, 1)

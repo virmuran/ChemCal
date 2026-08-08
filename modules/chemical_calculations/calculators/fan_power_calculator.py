@@ -210,32 +210,26 @@ class FanPowerCalculator(CalculatorBase):
         grid.addWidget(self._hint("用于费用估算（可选）"), row, 2)
 
         left_layout.addWidget(input_group)
-        left_layout.addStretch()
 
-        # ── 右侧：结果区 ──────────────────────────────────────────
-        right_widget = QWidget()
-        right_widget.setMinimumWidth(300)
-        right_layout = QVBoxLayout(right_widget)
-        right_layout.setSpacing(15)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-
-        result_group = QGroupBox("计算结果")
-        rlayout = QVBoxLayout(result_group)
-
-        self.result_text = QTextEdit()
-        self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(200)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        self.result_text.setStyleSheet("""
-            QTextEdit {
-                border: 1px solid #666;
-                border-radius: 6px;
-                padding: 8px;
-                /* bg via theme */min-height: 500px;
+        # ── 计算按钮 ──────────────────────────────────────────────
+        calc_btn = QPushButton("计算")
+        calc_btn.setFont(QFont("Arial", 12, QFont.Bold))
+        calc_btn.setMinimumHeight(50)
+        calc_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        calc_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                min-height: 50px; padding: 0px;
+                font-weight: bold;
             }
-        """)
-        rlayout.addWidget(self.result_text)
-        right_layout.addWidget(result_group)
+            QPushButton:hover {
+                background-color: #219955;
+            } """)
+        calc_btn.clicked.connect(self.calculate)
+        left_layout.addWidget(calc_btn)
 
         # ── 底部按钮行 ────────────────────────────────────────────
         bottom_layout = QHBoxLayout()
@@ -298,12 +292,32 @@ class FanPowerCalculator(CalculatorBase):
         bottom_layout.addStretch()
         bottom_layout.addWidget(self.download_docx_btn)
         bottom_layout.addWidget(self.download_pdf_btn)
-        right_layout.addLayout(bottom_layout)
+        left_layout.addLayout(bottom_layout)
+        left_layout.addStretch()
 
-        # ── 计算按钮 ──────────────────────────────────────────────
-        self.calc_btn = CalculatorBase.make_calc_button()
-        self.calc_btn.clicked.connect(self.calculate)
-        right_layout.addWidget(self.calc_btn)
+        # ── 右侧：结果区 ──────────────────────────────────────────
+        right_widget = QWidget()
+        right_widget.setMinimumWidth(300)
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setSpacing(15)
+
+        result_group = QGroupBox("计算结果")
+        rlayout = QVBoxLayout(result_group)
+
+        self.result_text = QTextEdit()
+        self.result_text.setReadOnly(True)
+        self.result_text.setMinimumHeight(500)
+        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.result_text.setStyleSheet("""
+            QTextEdit {
+                border: 1px solid #666;
+                border-radius: 6px;
+                padding: 8px;
+                /* bg via theme */min-height: 500px;
+            }
+        """)
+        rlayout.addWidget(self.result_text)
+        right_layout.addWidget(result_group)
 
         # ── 组装主布局 ────────────────────────────────────────────
         scroll_left.setWidget(left_widget)

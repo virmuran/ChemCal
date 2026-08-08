@@ -486,6 +486,14 @@ class CoolingWaterCalculator(CalculatorBase):
 
         ll.addWidget(self._group_cw)
 
+        # ── 计算按钮 ──
+        calc_btn = QPushButton("计算")
+        calc_btn.setFont(QFont("Arial", 12, QFont.Bold))
+        calc_btn.setMinimumHeight(50)
+        calc_btn.setStyleSheet("QPushButton{background-color:#27ae60;color:white;border:none;border-radius:8px;font-weight:bold;}QPushButton:hover{background-color:#219955;}")
+        calc_btn.clicked.connect(self.calculate)
+        ll.addWidget(calc_btn)
+
         # ── 底部按钮 ──
         bl = QHBoxLayout()
         for name, color, hover, cb in [
@@ -509,7 +517,6 @@ class CoolingWaterCalculator(CalculatorBase):
         rw.setMinimumWidth(300)
         rl = QVBoxLayout(rw)
         rl.setSpacing(15)
-        rl.setContentsMargins(0, 0, 0, 0)
 
         self.svg_widget = QSvgWidget()
         self.svg_widget.setMinimumHeight(220)
@@ -522,31 +529,11 @@ class CoolingWaterCalculator(CalculatorBase):
         rvl = QVBoxLayout(rg)
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(200)
+        self.result_text.setMinimumHeight(500)
         self.result_text.setStyleSheet("QTextEdit{border:1px solid #888;border-radius:6px;padding:8px;min-height:500px;}")
         self.result_text.setPlaceholderText("计算结果将在此显示……")
         rvl.addWidget(self.result_text)
         rl.addWidget(rg)
-
-        # ── 下载按钮 ──
-        dl_btn_layout = QHBoxLayout()
-        dl_btn_layout.setSpacing(8)
-        self.dl_docx_btn = QPushButton("下载计算书(DOCX)")
-        self.dl_docx_btn.clicked.connect(self.download_docx_report)
-        self.dl_docx_btn.setMinimumHeight(36)
-        self.dl_docx_btn.setStyleSheet(DOCX_BTN_STYLE)
-        dl_btn_layout.addWidget(self.dl_docx_btn)
-        self.dl_pdf_btn = QPushButton("下载计算书(PDF)")
-        self.dl_pdf_btn.clicked.connect(self.download_pdf_report)
-        self.dl_pdf_btn.setMinimumHeight(36)
-        self.dl_pdf_btn.setStyleSheet(PDF_BTN_STYLE)
-        dl_btn_layout.addWidget(self.dl_pdf_btn)
-        rl.addLayout(dl_btn_layout)
-
-        # ── 计算按钮 ──
-        self.calc_btn = CalculatorBase.make_calc_button()
-        self.calc_btn.clicked.connect(self.calculate)
-        rl.addWidget(self.calc_btn)
 
         main.addWidget(scroll, 2)
         main.addWidget(rw, 1)

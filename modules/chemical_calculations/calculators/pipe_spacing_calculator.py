@@ -70,6 +70,89 @@ class 管道间距(CalculatorBase):
         
         main_layout.addLayout(content_layout)
         
+        # 计算按钮
+        self.calculate_btn = QPushButton("计算")
+        self.calculate_btn.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+        self.calculate_btn.clicked.connect(self.calculate_spacing)
+        self.calculate_btn.setMinimumHeight(50)
+        self.calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.calculate_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                min-height: 50px; padding: 0px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #219955;
+            } """)
+        main_layout.addWidget(self.calculate_btn)
+        
+        # 底部按钮
+        bottom_layout = QHBoxLayout()
+        
+        # 清空按钮
+        self.clear_btn = QPushButton("清空")
+        self.clear_btn.clicked.connect(self.clear_inputs)
+        self.clear_btn.setMinimumHeight(50)
+        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.clear_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #95a5a6;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #7f8c8d;
+            } """)
+        
+        # 下载TXT按钮
+        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
+        self.download_docx_btn.clicked.connect(self.download_docx_report)
+        self.download_docx_btn.setMinimumHeight(50)
+        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_docx_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            } """)
+        
+        # 下载PDF按钮
+        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
+        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
+        self.download_pdf_btn.setMinimumHeight(50)
+        self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.download_pdf_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e74c3c;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #c0392b;
+            } """)
+        
+        bottom_layout.addWidget(self.clear_btn)
+        bottom_layout.addStretch()
+        bottom_layout.addWidget(self.download_docx_btn)
+        bottom_layout.addWidget(self.download_pdf_btn)
+        main_layout.addLayout(bottom_layout)
+        
     def create_input_section(self):
         """创建输入参数区域"""
         widget = QWidget()
@@ -196,7 +279,6 @@ class 管道间距(CalculatorBase):
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setSpacing(15)
-        layout.setContentsMargins(0, 0, 0, 0)
         
         # 计算结果组
         result_group = QGroupBox("计算结果")
@@ -230,7 +312,7 @@ class 管道间距(CalculatorBase):
         
         result_group.setLayout(result_layout)
         layout.addWidget(result_group)
-
+        
         # 标准间距表组
         table_group = QGroupBox("标准间距要求")
         table_group
@@ -273,70 +355,6 @@ class 管道间距(CalculatorBase):
         
         principle_group.setLayout(principle_layout)
         layout.addWidget(principle_group)
-        
-        # 下载按钮行
-        btn_layout = QHBoxLayout()
-        
-        self.clear_btn = QPushButton("清空")
-        self.clear_btn.clicked.connect(self.clear_inputs)
-        self.clear_btn.setMinimumHeight(50)
-        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.clear_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #95a5a6;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #7f8c8d;
-            } """)
-        
-        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
-        self.download_docx_btn.clicked.connect(self.download_docx_report)
-        self.download_docx_btn.setMinimumHeight(50)
-        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_docx_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            } """)
-        
-        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
-        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
-        self.download_pdf_btn.setMinimumHeight(50)
-        self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_pdf_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #c0392b;
-            } """)
-        
-        btn_layout.addWidget(self.clear_btn)
-        btn_layout.addWidget(self.download_docx_btn)
-        btn_layout.addWidget(self.download_pdf_btn)
-        layout.addLayout(btn_layout)
-        
-        # 计算按钮
-        self.calculate_btn = CalculatorBase.make_calc_button("计算")
-        self.calculate_btn.clicked.connect(self.calculate_spacing)
-        layout.addWidget(self.calculate_btn)
         
         return widget
     
