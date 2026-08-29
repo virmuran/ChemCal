@@ -14,18 +14,16 @@
 import math
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
-    QGroupBox, QTextEdit, QComboBox, QMessageBox, QScrollArea,
+    QGroupBox, QTextEdit, QMessageBox, QScrollArea,
     QButtonGroup, QGridLayout, QSizePolicy,
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QDoubleValidator
+from PySide6.QtGui import QDoubleValidator
 
 from calculator_base import CalculatorBase
-from app_styles import (COMBOBOX_STYLE, GROUP_STYLE, MODE_BUTTON_STYLE,
-                        CALC_BUTTON_STYLE, SCROLL_AREA_STYLE,
-                        INPUT_LABEL_STYLE, CLEAR_BTN_STYLE,
+from utils.docx_utils import ReportExporter
+from app_styles import (INPUT_LABEL_STYLE, CLEAR_BTN_STYLE,
                         DOCX_BTN_STYLE, PDF_BTN_STYLE)
-from common_constants import G, WATER_DENSITY
 
 
 # ── 搅拌桨类型 ──
@@ -70,9 +68,16 @@ class AgitatorCalculator(CalculatorBase):
 
         # ── 左 ──
         scroll = QScrollArea()
+        scroll.setStyleSheet(
+            "QScrollArea { border: none; background: transparent; } "
+            "QScrollBar:vertical { background: transparent; width: 8px; margin: 0; } "
+            "QScrollBar::handle:vertical { background: #c0c0c0; border-radius: 4px; min-height: 30px; } "
+            "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }"
+        )
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         left = QWidget()
+        left.setStyleSheet("")
         left_layout = QVBoxLayout(left)
         left_layout.setSpacing(15)
 
@@ -253,29 +258,33 @@ class AgitatorCalculator(CalculatorBase):
 
         # ── 右 ──
         right = QWidget()
+        right.setMinimumWidth(300)
         right_layout = QVBoxLayout(right)
         right_layout.setSpacing(15)
-
-        # ── 计算按钮 ──
-        calc_btn = CalculatorBase.make_calc_button()
-        calc_btn.clicked.connect(self.calculate)
-        right_layout.addWidget(calc_btn)
 
         # ── 结果 ──
         result_group = QGroupBox("计算结果")
         result_layout = QVBoxLayout(result_group)
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setStyleSheet("font-size: 12px;")
+        self.result_text.setMinimumHeight(300)
+        self.result_text.setPlaceholderText("计算结果将在此显示……")
+        self.result_text.setStyleSheet(
+            "QTextEdit { "
+            "font-family: Consolas, 'Microsoft YaHei', monospace; "
+            "font-size: 13px; "
+            "}"
+        )
         result_layout.addWidget(self.result_text)
         right_layout.addWidget(result_group)
 
-        # ── 底部按钮 ──
+        # ── 下载按钮行：清空 → DOCX → PDF ──
         btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(8)
         for name, style, cb in [
             ("清空", CLEAR_BTN_STYLE, self.clear_all),
-            ("下载 DOCX", DOCX_BTN_STYLE, lambda: self.download_docx_report("搅拌功率&kLa计算")),
-            ("下载 PDF", PDF_BTN_STYLE, lambda: self.download_pdf_report("搅拌功率&kLa计算")),
+            ("DOCX", DOCX_BTN_STYLE, self.download_docx_report),
+            ("PDF", PDF_BTN_STYLE, self.download_pdf_report),
         ]:
             b = QPushButton(name)
             b.setStyleSheet(style)
@@ -284,7 +293,11 @@ class AgitatorCalculator(CalculatorBase):
             btn_layout.addWidget(b)
         right_layout.addLayout(btn_layout)
 
-        right_layout.addStretch()
+        # ── 计算按钮（最底部） ──
+        calc_btn = CalculatorBase.make_calc_button("计 算")
+        calc_btn.clicked.connect(self.calculate)
+        right_layout.addWidget(calc_btn)
+
         main_layout.addWidget(right, 1)
 
         # ── 初始状态 ──
@@ -430,7 +443,7 @@ class AgitatorCalculator(CalculatorBase):
         q_air_required = our / OTR_max * vvm if OTR_max > 0 else float('inf')
 
         return {
-            "Pg_kW": Pg_kW,
+            "Pg_kW": Pg_kw,
             "vs_m_s": vs,
             "kLa_per_h": kLa,
             "kLa_per_s": kLa_s,
@@ -495,15 +508,26 @@ class AgitatorCalculator(CalculatorBase):
 
     # ── 报告导出 ──
 
+    def get_project_info(self):
+        return {
+            "project_name": "搅拌功率 & kLa 传氧系数计算",
+            "calculator_name": "搅拌功率 & kLa 传氧系数计算器",
+            "version": "1.0",
+            "description": "不通气/通气搅拌功率计算 + 电机选型 + van't Riet 关联式 kLa 传氧系数与需氧校核"
+        }
+
     def generate_report(self):
         """生成计算书文本（供 ReportExporter 使用）"""
-        lines = []
         if not self._last_results:
-            return ""
-        lines.append("搅拌功率 & kLa 传氧系数计算书")
-        self._display_result(
-            self.mode_btn_group.checkedButton().text() if self.mode_btn_group.checkedButton() else "",
-            self._last_results
-        )
+            return "尚未进行计算。"
+        lines = ["搅拌功率 & kLa 传氧系数计算书", "=" * 50]
         lines.append(self.result_text.toPlainText())
         return "\n".join(lines)
+
+    def download_docx_report(self):
+        """生成 DOCX 计算书"""
+        ReportExporter.export_docx(self, "搅拌功率&kLa计算")
+
+    def download_pdf_report(self):
+        """生成 PDF 计算书"""
+        ReportExporter.export_pdf(self, "搅拌功率&kLa计算")

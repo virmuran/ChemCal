@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
     QScrollArea, QSizePolicy
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QDoubleValidator, QFont
+from PySide6.QtGui import QDoubleValidator
 import sys
 from pathlib import Path
 
@@ -19,6 +19,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
 from calculator_base import CalculatorBase
 from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
 # DOCX 报告导出
+from utils.docx_utils import ReportExporter
 
 # ---------------------------------------------------------------------------
 #  纯 Python 三次方程求解器（无需 numpy）
@@ -42,7 +43,8 @@ def solve_cubic_real_roots(a, b, c, d):
     disc = -(4 * A * A * A + 27 * B * B)
     if disc > 1e-10:
         m = 2.0 * math.sqrt(-A / 3.0)
-        theta = math.acos(max(-1.0, min(1.0, -B / (m * m * m / 2.0)))) / 3.0
+        # 标准三根公式: cos(3θ) = 3B/(2A)·√(-3/A)，等价于 -B/(m³/4)
+        theta = math.acos(max(-1.0, min(1.0, -B / (m * m * m / 4.0)))) / 3.0
         roots = []
         for k in range(3):
             t = m * math.cos(theta + 2 * math.pi * k / 3.0)
@@ -56,13 +58,21 @@ def solve_cubic_real_roots(a, b, c, d):
             return sorted([x1, x2], reverse=True)
         return [x1]
     else:
+        # 单实根情况（disc<0），标准 Cardano 公式:
+        # u = cbrt(-B/2 + √(B²/4 + A³/27)), v = cbrt(-B/2 - √(B²/4 + A³/27))
+        # 根 = u + v - p/3
         half_B = B / 2.0
         sq = half_B * half_B + A * A * A / 27.0
         if sq < 0:
             sq = 0.0
-        C = (abs(half_B + math.sqrt(sq))) ** (1.0 / 3.0)
-        D = (abs(half_B - math.sqrt(sq))) ** (1.0 / 3.0)
-        t = -(C + D) if B > 0 else -(C - D)
+        s = math.sqrt(sq)
+
+        def _cbrt(x):
+            return math.copysign(abs(x) ** (1.0 / 3.0), x)
+
+        C = _cbrt(-half_B + s)
+        D = _cbrt(-half_B - s)
+        t = C + D
         return [t - p / 3.0]
 
 def _solve_cubic(a, b, c, d):
@@ -314,91 +324,8 @@ class EOSCalculator(CalculatorBase):
         info_layout.addWidget(info_text)
         ll.addWidget(info_group)
 
-        # ---- 计算按钮 ----
-        b_calc = QPushButton("查询")
-        b_calc.setFont(QFont("Arial", 12, QFont.Bold))
-        b_calc.setMinimumHeight(50)
-        b_calc.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        b_calc.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        b_calc.clicked.connect(self.calculate)
-
-        bb = QHBoxLayout()
-        bb.addWidget(b_calc)
-        ll.addLayout(bb)
-
-        # ---- 底部按钮行 ----
-        bottom_layout = QHBoxLayout()
-        
-        # 清空按钮
-        self.clear_btn = QPushButton("清空")
-        self.clear_btn.clicked.connect(self.clear_inputs)
-        self.clear_btn.setMinimumHeight(50)
-        self.clear_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self.clear_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #95a5a6;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #7f8c8d;
-            } """)
-        
-        # 下载TXT按钮
-        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
-        self.download_docx_btn.clicked.connect(self.download_docx_report)
-        self.download_docx_btn.setMinimumHeight(50)
-        self.download_docx_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self.download_docx_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            } """)
-        
-        # 下载PDF按钮
-        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
-        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
-        self.download_pdf_btn.setMinimumHeight(50)
-        self.download_pdf_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self.download_pdf_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #c0392b;
-            } """)
-        
-        bottom_layout.addWidget(self.clear_btn)
-        bottom_layout.addStretch()
-        bottom_layout.addWidget(self.download_docx_btn)
-        bottom_layout.addWidget(self.download_pdf_btn)
-        ll.addLayout(bottom_layout)
+        # ---- 底部拉伸 ----
+        ll.addStretch()
 
         # ========== 右侧结果区 ==========
         right = QWidget()
@@ -411,21 +338,36 @@ class EOSCalculator(CalculatorBase):
 
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(500)
-        self.result_text.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.result_text.setMinimumHeight(300)
+        self.result_text.setPlaceholderText("计算结果将在此显示……")
         self.result_text.setStyleSheet(
-            "QTextEdit {"
-            "  /* bg via theme */"
-            "  border: 1px solid #dee2e6;"
-            "  border-radius: 6px;"
-            "  font-family: Consolas, monospace;"
-            "  font-size: 13px;"
-            "  padding: 8px;"
+            "QTextEdit { "
+            "font-family: Consolas, 'Microsoft YaHei', monospace; "
+            "font-size: 13px; "
             "}"
         )
-        self.result_text.setPlaceholderText("计算结果将在此显示……")
         rv.addWidget(self.result_text)
         rl.addWidget(rg)
+
+        # 下载按钮行：清空 → DOCX → PDF
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(8)
+        for label, style, slot in [
+            ("清空", CLEAR_BTN_STYLE, self.clear_inputs),
+            ("DOCX", DOCX_BTN_STYLE, self.download_docx_report),
+            ("PDF", PDF_BTN_STYLE, self.download_pdf_report),
+        ]:
+            btn = QPushButton(label)
+            btn.setStyleSheet(style)
+            btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            btn.clicked.connect(slot)
+            btn_layout.addWidget(btn)
+        rl.addLayout(btn_layout)
+
+        # 计算按钮（最底部）
+        calc_btn = self.make_calc_button("查 询")
+        calc_btn.clicked.connect(self.calculate)
+        rl.addWidget(calc_btn)
 
         scroll_left.setWidget(left)
         main.addWidget(scroll_left, 2)
@@ -502,7 +444,7 @@ class EOSCalculator(CalculatorBase):
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _solve_Z(eos_type, params, Tr, Pr):
+    def _solve_Z(eos_type, params, T, P):
         """将立方 EOS 转为 Z 的多项式，返回气相根（最大的正实根）。"""
         R = 8.314
         if not params:
@@ -510,8 +452,8 @@ class EOSCalculator(CalculatorBase):
 
         a = params['a']
         b = params['b']
-        A = a * (Pr * 1000) / (R * Tr) ** 2
-        B = b * (Pr * 1000) / (R * Tr)
+        A = a * (P * 1000) / (R * T) ** 2
+        B = b * (P * 1000) / (R * T)
 
         if eos_type == "范德瓦尔斯方程":
             coeffs = (1.0, -(1 + B), A, -A * B)
@@ -534,7 +476,7 @@ class EOSCalculator(CalculatorBase):
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _fugacity_coeff(eos_type, params, Z, Tr, Pr):
+    def _fugacity_coeff(eos_type, params, Z, T, P):
         """解析逸度系数 ln φ"""
         R = 8.314
         if not params or Z <= 0:
@@ -542,8 +484,8 @@ class EOSCalculator(CalculatorBase):
 
         a = params['a']
         b = params['b']
-        A = a * (Pr * 1000) / (R * Tr) ** 2
-        B = b * (Pr * 1000) / (R * Tr)
+        A = a * (P * 1000) / (R * T) ** 2
+        B = b * (P * 1000) / (R * T)
 
         if eos_type == "范德瓦尔斯方程":
             ln_phi = Z - 1.0 - math.log(Z - B) - A / Z
@@ -566,7 +508,7 @@ class EOSCalculator(CalculatorBase):
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _residual_properties(eos_type, params, Z, Tr, Pr, T, tc, omega):
+    def _residual_properties(eos_type, params, Z, T, P, tc, omega):
         """
         返回 (H^R, S^R, G^R) J/mol, J/(mol·K), J/mol
         """
@@ -576,17 +518,17 @@ class EOSCalculator(CalculatorBase):
 
         a = params['a']
         b = params['b']
-        A = a * (Pr * 1000) / (R * Tr) ** 2
-        B = b * (Pr * 1000) / (R * Tr)
+        A = a * (P * 1000) / (R * T) ** 2
+        B = b * (P * 1000) / (R * T)
 
         if eos_type == "范德瓦尔斯方程":
-            H_R = R * T * (Z - 1.0) - a * (Pr * 1000) / (Z * R * T)
+            H_R = R * T * (Z - 1.0) - a * (P * 1000) / (Z * R * T)
             S_R = R * (math.log(Z) + B / Z)
 
         elif eos_type in ("Redlich-Kwong方程", "Soave-Redlich-Kwong方程"):
             if eos_type == "Soave-Redlich-Kwong方程":
                 m_srk = 0.480 + 1.574 * omega - 0.176 * omega ** 2
-                sqrt_Tr = math.sqrt(Tr) if Tr > 0 else 1.0
+                sqrt_Tr = math.sqrt(T / tc) if tc > 0 else 1.0
                 da_over_a = -m_srk / (T * sqrt_Tr) if T > 0 else 0.0
             else:
                 da_over_a = -0.5 / T if T > 0 else 0.0
@@ -596,7 +538,7 @@ class EOSCalculator(CalculatorBase):
 
         elif eos_type == "Peng-Robinson方程":
             kappa = 0.37464 + 1.54226 * omega - 0.26992 * omega ** 2
-            sqrt_Tr = math.sqrt(Tr) if Tr > 0 else 1.0
+            sqrt_Tr = math.sqrt(T / tc) if tc > 0 else 1.0
             dalpha_over_alpha = kappa / (T * sqrt_Tr) if T > 0 else 0.0
             da_over_a = dalpha_over_alpha
 
@@ -628,17 +570,17 @@ class EOSCalculator(CalculatorBase):
             if eos_type == "理想气体方程":
                 Z = 1.0
             else:
-                Z = self._solve_Z(eos_type, params, Tr, Pr)
+                Z = self._solve_Z(eos_type, params, T, P)
             V = Z * R * T / (P * 1000)
         else:
             Z = P * 1000 * V / (R * T)
 
         density = mw / (V * 1000) if V and V > 0 else 0.0
 
-        phi = self._fugacity_coeff(eos_type, params, Z, Tr, Pr)
+        phi = self._fugacity_coeff(eos_type, params, Z, T, P)
         fugacity = phi * P
 
-        H_R, S_R, G_R = self._residual_properties(eos_type, params, Z, Tr, Pr, T, tc, omega)
+        H_R, S_R, G_R = self._residual_properties(eos_type, params, Z, T, P, tc, omega)
 
         Vc = R * tc / (pc * 1000) if pc > 0 else 1.0
         Vr = V / Vc if V else 0.0

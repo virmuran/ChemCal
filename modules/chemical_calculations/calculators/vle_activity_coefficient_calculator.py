@@ -1,13 +1,11 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
                               QLabel, QLineEdit, QPushButton, QComboBox,
-                              QFormLayout, QTextEdit, QGridLayout, QScrollArea,
+                              QTextEdit, QGridLayout, QScrollArea,
                               QTableWidget, QTableWidgetItem, QHeaderView,
                               QTabWidget, QMessageBox, QSizePolicy)
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QDoubleValidator
+from PySide6.QtGui import QDoubleValidator
 import math
-import sys
-from pathlib import Path
 
 
 from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
@@ -18,6 +16,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
 from calculator_base import CalculatorBase
 from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
 # DOCX 报告导出
+from utils.docx_utils import ReportExporter
 
 # ---------------------------------------------------------------------------
 #  物质数据库（Antoine + UNIQUAC r/q + 分子量）
@@ -89,6 +88,8 @@ BINARY_PARAMS_DB = {
 
 def _get_binary_params(comp_i, comp_j, model):
     """查找预设二元参数，正反均可匹配"""
+    # 兼容 UI 显示名（"Wilson方程"）与数据库键（"Wilson"）
+    model = {"Wilson方程": "Wilson", "NRTL方程": "NRTL", "UNIQUAC方程": "UNIQUAC"}.get(model, model)
     key1 = (comp_i, comp_j)
     key2 = (comp_j, comp_i)
     db_entry = BINARY_PARAMS_DB.get(key1) or BINARY_PARAMS_DB.get(key2)
@@ -204,10 +205,11 @@ def uniquac_ln_gamma(x, T, r_list, q_list, tau_mat, n):
     for i in range(n):
         if x[i] <= 0:
             continue
-        phi_i = r_list[i] / r_avg
-        theta_i = q_list[i] / q_avg
+        # φᵢ = rᵢ·xᵢ/Σrⱼxⱼ, θᵢ = qᵢ·xᵢ/Σqⱼxⱼ (标准 UNIQUAC, 配位数 z=10)
+        phi_i = r_list[i] * x[i] / r_avg
+        theta_i = q_list[i] * x[i] / q_avg
         l_i = 10.0 / 2.0 * (r_list[i] - q_list[i]) - (r_list[i] - 1.0)
-        ln_gamma_C[i] = (math.log(phi_i / x[i]) + 5.0 / 2.0 * q_list[i] * math.log(theta_i / phi_i)
+        ln_gamma_C[i] = (math.log(phi_i / x[i]) + 10.0 / 2.0 * q_list[i] * math.log(theta_i / phi_i)
                          + l_i - phi_i / x[i] * sum(x[j] * l_j for j, l_j in enumerate(
                               [10.0 / 2.0 * (r_list[k] - q_list[k]) - (r_list[k] - 1.0) for k in range(n)])))
 
@@ -219,16 +221,15 @@ def uniquac_ln_gamma(x, T, r_list, q_list, tau_mat, n):
         for j in range(n):
             if x[j] <= 0:
                 continue
-            theta_j = q_list[j] / q_avg
+            theta_j = q_list[j] * x[j] / q_avg
             sum_xk_theta_k_tao_kj = sum(x[k] * q_list[k] / q_avg * tau_mat[k][j]
                                          for k in range(n) if x[k] > 0)
             if sum_xk_theta_k_tao_kj <= 0:
                 continue
-            sum_xj_theta_j_tao_ji += theta_j * tau_mat[j][i] / sum_xk_theta_k_tao_kj
-        theta_i = q_list[i] / q_avg
+            sum_xj_theta_j_tao_ji += theta_j * tau_mat[i][j] / sum_xk_theta_k_tao_kj
         sum_xk_theta_k_tao_ki = sum(x[k] * q_list[k] / q_avg * tau_mat[k][i]
                                      for k in range(n) if x[k] > 0)
-        ln_gamma_R[i] = (q_list[i] / 2.0 * (1.0 - math.log(sum_xk_theta_k_tao_ki)
+        ln_gamma_R[i] = (q_list[i] * (1.0 - math.log(sum_xk_theta_k_tao_ki)
                           - sum_xj_theta_j_tao_ji)) if sum_xk_theta_k_tao_ki > 0 else 0.0
 
     return [ln_gamma_C[i] + ln_gamma_R[i] for i in range(n)]
@@ -454,89 +455,6 @@ class VLEActivityCoefficientCalculator(CalculatorBase):
         self.tab_widget.addTab(comp_tab, "液相组成")
         left_layout.addWidget(self.tab_widget)
 
-        # 4. 计算按钮
-        calculate_btn = QPushButton("查询")
-        calculate_btn.setFont(QFont("Arial", 12, QFont.Bold))
-        calculate_btn.clicked.connect(self.calculate)
-        calculate_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        calculate_btn.setMinimumHeight(50)
-        calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        left_layout.addWidget(calculate_btn)
-
-        # 5. 下载按钮行
-        bottom_layout = QHBoxLayout()
-        
-        # 清空按钮
-        self.clear_btn = QPushButton("清空")
-        self.clear_btn.clicked.connect(self.clear_inputs)
-        self.clear_btn.setMinimumHeight(50)
-        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.clear_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #95a5a6;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #7f8c8d;
-            } """)
-        
-        # 下载TXT按钮
-        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
-        self.download_docx_btn.clicked.connect(self.download_docx_report)
-        self.download_docx_btn.setMinimumHeight(50)
-        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_docx_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            } """)
-        
-        # 下载PDF按钮
-        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
-        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
-        self.download_pdf_btn.setMinimumHeight(50)
-        self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_pdf_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #c0392b;
-            } """)
-        
-        bottom_layout.addWidget(self.clear_btn)
-        bottom_layout.addStretch()
-        bottom_layout.addWidget(self.download_docx_btn)
-        bottom_layout.addWidget(self.download_pdf_btn)
-        left_layout.addLayout(bottom_layout)
-
         # 底部拉伸
         left_layout.addStretch()
 
@@ -551,17 +469,36 @@ class VLEActivityCoefficientCalculator(CalculatorBase):
 
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.result_text.setStyleSheet("""
-            QTextEdit {
-                border: 1px solid #666;
-                border-radius: 6px;
-                padding: 8px;
-                /* bg via theme */min-height: 500px;
-            }
-        """)
+        self.result_text.setMinimumHeight(300)
+        self.result_text.setPlaceholderText("计算结果将在此显示……")
+        self.result_text.setStyleSheet(
+            "QTextEdit { "
+            "font-family: Consolas, 'Microsoft YaHei', monospace; "
+            "font-size: 13px; "
+            "}"
+        )
         result_inner.addWidget(self.result_text)
         right_layout.addWidget(result_group)
+
+        # 下载按钮行：清空 → DOCX → PDF
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(8)
+        for label, style, slot in [
+            ("清空", CLEAR_BTN_STYLE, self.clear_inputs),
+            ("DOCX", DOCX_BTN_STYLE, self.download_docx_report),
+            ("PDF", PDF_BTN_STYLE, self.download_pdf_report),
+        ]:
+            btn = QPushButton(label)
+            btn.setStyleSheet(style)
+            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            btn.clicked.connect(slot)
+            btn_layout.addWidget(btn)
+        right_layout.addLayout(btn_layout)
+
+        # 计算按钮（最底部）
+        calc_btn = self.make_calc_button("查 询")
+        calc_btn.clicked.connect(self.calculate)
+        right_layout.addWidget(calc_btn)
 
         # 将左右添加到主布局
         scroll_left.setWidget(left_widget)
@@ -795,9 +732,12 @@ class VLEActivityCoefficientCalculator(CalculatorBase):
 
     @staticmethod
     def _psat(comp, T_C):
-        """Antoine 饱和蒸气压 (kPa)"""
+        """Antoine 饱和蒸气压 (kPa)
+
+        Antoine 系数为 log10 mmHg 基准，需 ×0.133322 换算为 kPa。
+        """
         logP = comp['antoine_a'] - comp['antoine_b'] / (T_C + comp['antoine_c'])
-        return 10.0 ** logP
+        return 10.0 ** logP * 0.133322
 
     def calculate(self):
         """执行计算并显示结果"""
@@ -860,8 +800,15 @@ class VLEActivityCoefficientCalculator(CalculatorBase):
 
     def _bubble_point_T(self, x, P, components, bp, model, n, T_init_C, tol=1e-4, max_iter=200):
         """Newton-Raphson 泡点温度迭代"""
-        T_C = T_init_C
+        # 二分法求解：f(T)=ΣKi·xi-1 在 [T_lo, T_hi] 上单调递增
+        # 泡点温度必介于组分沸点之间（±30°C 缓冲覆盖最低/最高共沸情形）
+        bp_list = [self._boiling_point(comp, P) for comp in components]
+        t_lo = min(bp_list) - 30.0
+        t_hi = max(bp_list) + 30.0
+
+        gamma, Psat, K = [1.0] * n, [0.0] * n, [0.0] * n
         for iteration in range(max_iter):
+            T_C = (t_lo + t_hi) / 2.0
             T_K = T_C + C_TO_K
             matrices = self._build_matrices(components, bp, T_K, model, n)
             gamma = self.calculate_activity_coefficients(x, T_K, matrices, model, n)
@@ -871,29 +818,39 @@ class VLEActivityCoefficientCalculator(CalculatorBase):
             if abs(f) < tol:
                 y = [K[i] * x[i] for i in range(n)]
                 return T_C, y, gamma, Psat, iteration + 1
-            dT = 0.01
-            T_C2 = T_C + dT
-            T_K2 = T_C2 + C_TO_K
-            matrices2 = self._build_matrices(components, bp, T_K2, model, n)
-            gamma2 = self.calculate_activity_coefficients(x, T_K2, matrices2, model, n)
-            Psat2 = [self._psat(components[i], T_C2) for i in range(n)]
-            K2 = [gamma2[i] * Psat2[i] / P for i in range(n)]
-            f2 = sum(K2[i] * x[i] for i in range(n)) - 1.0
-            df = (f2 - f) / dT
-            if abs(df) < 1e-12:
-                T_C += 0.5
+            if f > 0:
+                t_hi = T_C
             else:
-                T_C -= f / df
-            T_C = max(-50, min(500, T_C))
+                t_lo = T_C
+            if t_hi - t_lo < 1e-6:
+                break
+        T_C = (t_lo + t_hi) / 2.0
         y = [K[i] * x[i] for i in range(n)]
-        return T_C, y, gamma, Psat, max_iter
+        return T_C, y, gamma, Psat, iteration + 1
+
+    @staticmethod
+    def _boiling_point(comp, P):
+        """二分求组分沸点（Psat=P 的温度, °C）"""
+        a, b = -50.0, 500.0
+        for _ in range(80):
+            m = (a + b) / 2.0
+            if VLEActivityCoefficientCalculator._psat(comp, m) < P:
+                a = m
+            else:
+                b = m
+        return (a + b) / 2.0
 
     def _dew_point_T(self, y, P, components, bp, model, n, T_init_C, tol=1e-4, max_iter=200):
-        """Newton-Raphson 露点温度迭代"""
-        T_C = T_init_C
+        """二分法求露点温度：f(T)=Σyi/Ki-1 在 [T_lo, T_hi] 上单调递减"""
+        # 露点温度同样介于组分沸点之间（±30°C 缓冲）
+        bp_list = [self._boiling_point(comp, P) for comp in components]
+        t_lo = min(bp_list) - 30.0
+        t_hi = max(bp_list) + 30.0
+
+        gamma, Psat, K = [1.0] * n, [0.0] * n, [0.0] * n
         for iteration in range(max_iter):
+            T_C = (t_lo + t_hi) / 2.0
             T_K = T_C + C_TO_K
-            x_est = [0.0] * n
             Psat = [self._psat(components[i], T_C) for i in range(n)]
             denom = sum(y[i] * P / Psat[i] if Psat[i] > 0 else 0 for i in range(n))
             x_est = [y[i] * P / Psat[i] / denom if Psat[i] > 0 and denom > 0 else 1.0/n for i in range(n)]
@@ -904,24 +861,16 @@ class VLEActivityCoefficientCalculator(CalculatorBase):
             if abs(f) < tol:
                 x_calc = [y[i] / K[i] for i in range(n)]
                 return T_C, x_calc, gamma, Psat, iteration + 1
-            dT = 0.01
-            T_C2 = T_C + dT
-            T_K2 = T_C2 + C_TO_K
-            Psat2 = [self._psat(components[i], T_C2) for i in range(n)]
-            denom2 = sum(y[i] * P / Psat2[i] if Psat2[i] > 0 else 0 for i in range(n))
-            x_est2 = [y[i] * P / Psat2[i] / denom2 if Psat2[i] > 0 and denom2 > 0 else 1.0/n for i in range(n)]
-            matrices2 = self._build_matrices(components, bp, T_K2, model, n)
-            gamma2 = self.calculate_activity_coefficients(x_est2, T_K2, matrices2, model, n)
-            K2 = [gamma2[i] * Psat2[i] / P for i in range(n)]
-            f2 = sum(y[i] / K2[i] for i in range(n)) - 1.0
-            df = (f2 - f) / dT
-            if abs(df) < 1e-12:
-                T_C -= 0.5
+            if f > 0:
+                # Σy/K > 1 说明 K 偏小，温度偏低 → 升温
+                t_lo = T_C
             else:
-                T_C -= f / df
-            T_C = max(-50, min(500, T_C))
+                t_hi = T_C
+            if t_hi - t_lo < 1e-6:
+                break
+        T_C = (t_lo + t_hi) / 2.0
         x_calc = [y[i] / K[i] for i in range(n)]
-        return T_C, x_calc, gamma, Psat, max_iter
+        return T_C, x_calc, gamma, Psat, iteration + 1
 
     # ------------------------------------------------------------------
     #  结果格式化（输出到右侧 QTextEdit）

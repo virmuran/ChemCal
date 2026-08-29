@@ -108,14 +108,6 @@ class VesselDesignCalculator(CalculatorBase):
         # 材料参数组
         self._create_material_group(left_layout)
 
-        calc_btn = QPushButton("计  算")
-        calc_btn.setStyleSheet(CALC_BUTTON_STYLE)
-        calc_btn.setFont(QFont("Arial", 12, QFont.Bold))
-        calc_btn.setMinimumHeight(50)
-        calc_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        calc_btn.clicked.connect(self.calculate)
-        left_layout.addWidget(calc_btn)
-
         left_layout.addStretch()
         scroll_left.setWidget(left_widget)
 
@@ -131,7 +123,14 @@ class VesselDesignCalculator(CalculatorBase):
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
         self.result_text.setMinimumHeight(300)
-        self.result_text.setStyleSheet("font-size: 13px; font-family: Consolas, 'Microsoft YaHei';")
+        # 结果框统一标准：边框/背景/文字色交给主题系统，仅指定等宽字体
+        self.result_text.setStyleSheet("""
+            QTextEdit {
+                font-family: Consolas, 'Microsoft YaHei', monospace;
+                font-size: 13px;
+            }
+        """)
+        self.result_text.setPlaceholderText("计算结果将在此显示……")
         rl.addWidget(self.result_text)
         right_layout.addWidget(result_group)
 
@@ -139,7 +138,7 @@ class VesselDesignCalculator(CalculatorBase):
         btn_layout.setSpacing(8)
         for label, style, slot in [
             ("清空", CLEAR_BTN_STYLE, self.clear),
-            ("TXT", DOCX_BTN_STYLE, self._on_download_txt),
+            ("DOCX", DOCX_BTN_STYLE, self._on_download_txt),
             ("PDF", PDF_BTN_STYLE, self._on_download_pdf),
         ]:
             btn = QPushButton(label)
@@ -148,6 +147,11 @@ class VesselDesignCalculator(CalculatorBase):
             btn.clicked.connect(slot)
             btn_layout.addWidget(btn)
         right_layout.addLayout(btn_layout)
+
+        # 计算按钮放最底部（结果→下载→计算）
+        calc_btn = self.make_calc_button("计  算")
+        calc_btn.clicked.connect(self.calculate)
+        right_layout.addWidget(calc_btn)
 
         main_layout.addWidget(scroll_left, 2)
         main_layout.addWidget(right_widget, 1)
@@ -188,7 +192,7 @@ class VesselDesignCalculator(CalculatorBase):
         self.inputs["head_type"] = QComboBox()
         self.inputs["head_type"].addItems(list(HEAD_TYPES.keys()))
         self.inputs["head_type"].setStyleSheet(COMBOBOX_STYLE)
-        grid.addWidget(self.inputs["head_type"], 2, 1, 1, 2)
+        grid.addWidget(self.inputs["head_type"], 2, 1)
 
         grid.addWidget(QLabel("腐蚀裕量 C₂"), 3, 0)
         self.inputs["corrosion"] = QLineEdit("1.5")
@@ -207,7 +211,9 @@ class VesselDesignCalculator(CalculatorBase):
         self.inputs["weld_coeff"].addItems(list(WELD_COEFF.keys()))
         self.inputs["weld_coeff"].setStyleSheet(COMBOBOX_STYLE)
         self.inputs["weld_coeff"].setCurrentIndex(1)  # 默认 0.85
-        grid.addWidget(self.inputs["weld_coeff"], 5, 1, 1, 2)
+        grid.addWidget(self.inputs["weld_coeff"], 5, 1)
+
+        parent.addWidget(group)
 
     def _create_geometry_group(self, parent):
         group = QGroupBox("几何参数")
@@ -230,6 +236,8 @@ class VesselDesignCalculator(CalculatorBase):
             grid, 3, "保温层厚（重量用）", "0",
             "mm", QDoubleValidator(0, 500, 1))
 
+        parent.addWidget(group)
+
     def _create_material_group(self, parent):
         group = QGroupBox("材料参数")
         group.setStyleSheet(GROUP_STYLE)
@@ -240,7 +248,7 @@ class VesselDesignCalculator(CalculatorBase):
         self.inputs["material"].addItems(list(ALLOWABLE_STRESS.keys()))
         self.inputs["material"].setStyleSheet(COMBOBOX_STYLE)
         self.inputs["material"].currentTextChanged.connect(self._fill_stress)
-        grid.addWidget(self.inputs["material"], 0, 1, 1, 2)
+        grid.addWidget(self.inputs["material"], 0, 1)
 
         self.inputs["allow_stress"] = self._add_row(
             grid, 1, "许用应力 [σ]ᵗ", "137",
@@ -249,6 +257,8 @@ class VesselDesignCalculator(CalculatorBase):
         self.inputs["density"] = self._add_row(
             grid, 2, "材料密度 ρ", "7930",
             "kg/m³", QDoubleValidator(1000, 20000, 1))
+
+        parent.addWidget(group)
 
     def _fill_stress(self, name=None):
         """根据材料和设计温度自动填入许用应力"""

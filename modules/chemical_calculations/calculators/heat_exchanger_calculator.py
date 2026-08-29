@@ -1,30 +1,21 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
-    QGroupBox, QTextEdit, QComboBox, QMessageBox, QFrame,
-    QScrollArea, QDialog, QSpinBox, QButtonGroup, QGridLayout,
-    QFileDialog, QDialogButtonBox, QSizePolicy
+    QGroupBox, QTextEdit, QComboBox, QMessageBox,
+    QScrollArea, QGridLayout, QSizePolicy
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QDoubleValidator
+from PySide6.QtGui import QDoubleValidator
 import math
 import re
-import os
-import sys
-import importlib.util
-from datetime import datetime
-from pathlib import Path
 
 
-from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
-                        CALC_BUTTON_STYLE, MODE_BUTTON_STYLE,
-                        SCROLL_AREA_STYLE, INPUT_LABEL_STYLE,
+from app_styles import (COMBOBOX_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
-# DOCX 报告导出
+from utils.docx_utils import ReportExporter
 
-from common_constants import load_steam_iapws, get_steam_props, WATER_CP
-_iapws_available = load_steam_iapws()
+from common_constants import get_steam_props, WATER_CP, ATM_PRESSURE_MPA
 
 
 
@@ -227,90 +218,7 @@ class 换热器计算(CalculatorBase):
         
         left_layout.addWidget(input_group)
         
-        # 4. 计算按钮
-        calculate_btn = QPushButton("计算")
-        calculate_btn.setFont(QFont("Arial", 12, QFont.Bold))
-        calculate_btn.clicked.connect(self.calculate)
-        calculate_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        calculate_btn.setMinimumHeight(50)
-        calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        left_layout.addWidget(calculate_btn)
-        
-        # 5. 下载按钮布局
-        bottom_layout = QHBoxLayout()
-        
-        # 清空按钮
-        self.clear_btn = QPushButton("清空")
-        self.clear_btn.clicked.connect(self.clear_inputs)
-        self.clear_btn.setMinimumHeight(50)
-        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.clear_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #95a5a6;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #7f8c8d;
-            } """)
-        
-        # 下载DOCX按钮
-        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
-        self.download_docx_btn.clicked.connect(self.download_docx_report)
-        self.download_docx_btn.setMinimumHeight(50)
-        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_docx_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            } """)
-        
-        # 下载PDF按钮
-        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
-        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
-        self.download_pdf_btn.setMinimumHeight(50)
-        self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_pdf_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #c0392b;
-            } """)
-        
-        bottom_layout.addWidget(self.clear_btn)
-        bottom_layout.addStretch()
-        bottom_layout.addWidget(self.download_docx_btn)
-        bottom_layout.addWidget(self.download_pdf_btn)
-        left_layout.addLayout(bottom_layout)
-        
-        # 6. 在底部添加拉伸因子
+        # 在底部添加拉伸因子
         left_layout.addStretch()
         
         # 右侧：结果显示区域 (占1/3宽度)
@@ -325,19 +233,37 @@ class 换热器计算(CalculatorBase):
         
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(500)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.result_text.setStyleSheet("""
-            QTextEdit {
-                border: 1px solid #666;
-                border-radius: 6px;
-                padding: 8px;
-                /* bg via theme */min-height: 500px;
-            }
-        """)
+        self.result_text.setMinimumHeight(300)
+        self.result_text.setPlaceholderText("计算结果将在此显示……")
+        self.result_text.setStyleSheet(
+            "QTextEdit { "
+            "font-family: Consolas, 'Microsoft YaHei', monospace; "
+            "font-size: 13px; "
+            "}"
+        )
         result_layout.addWidget(self.result_text)
         
         right_layout.addWidget(self.result_group)
+        
+        # 下载按钮行：清空 → DOCX → PDF
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(8)
+        for label, style, slot in [
+            ("清空", CLEAR_BTN_STYLE, self.clear_inputs),
+            ("DOCX", DOCX_BTN_STYLE, self.download_docx_report),
+            ("PDF", PDF_BTN_STYLE, self.download_pdf_report),
+        ]:
+            btn = QPushButton(label)
+            btn.setStyleSheet(style)
+            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            btn.clicked.connect(slot)
+            btn_layout.addWidget(btn)
+        right_layout.addLayout(btn_layout)
+        
+        # 计算按钮（最底部）
+        calc_btn = self.make_calc_button("计 算")
+        calc_btn.clicked.connect(self.calculate)
+        right_layout.addWidget(calc_btn)
         
         # 将左右两部分添加到主布局
         scroll_left.setWidget(left_widget)
@@ -742,57 +668,12 @@ class 换热器计算(CalculatorBase):
             print(f"解析传热系数范围失败: {e}")
     
     def get_steam_latent_heat(self, pressure_mpa):
-        """根据蒸汽表压获取汽化潜热 (kJ/kg)
-        
-        pressure_mpa: 表压 (MPa)，自动转为绝对压力
-        使用 IAPWS-IF97 标准计算，若不可用则回退到查表法
-        """
-        P_abs = pressure_mpa + ATM_PRESSURE_MPA  # 表压 → 绝对压力
-        
-        if _iapws_available and 0.001 <= P_abs <= 22.064:
-            try:
-                sat = _steam_iapws.saturation_properties(P_MPa=P_abs)
-                return sat['h_fg']
-            except Exception:
-                pass
-        
-        # 回退：查表法
-        return self._steam_latent_heat_fallback(P_abs)
-    
+        """根据蒸汽表压获取汽化潜热 (kJ/kg)"""
+        return get_steam_props(pressure_mpa)['h_fg']
+
     def get_steam_sat_temperature(self, pressure_mpa):
         """根据蒸汽表压获取饱和温度 (°C)"""
-        P_abs = pressure_mpa + ATM_PRESSURE_MPA
-        if _iapws_available and 0.001 <= P_abs <= 22.064:
-            try:
-                sat = _steam_iapws.saturation_properties(P_MPa=P_abs)
-                return sat['T_C']
-            except Exception:
-                pass
-        return None
-    
-    @staticmethod
-    def _steam_latent_heat_fallback(P_abs):
-        """回退查表法：绝对压力(MPa) → 汽化潜热(kJ/kg)"""
-        if P_abs <= 0.1:
-            return 2257.0
-        elif P_abs <= 0.2:
-            return 2202.0
-        elif P_abs <= 0.3:
-            return 2164.0
-        elif P_abs <= 0.4:
-            return 2133.0
-        elif P_abs <= 0.5:
-            return 2108.0
-        elif P_abs <= 0.6:
-            return 2085.0
-        elif P_abs <= 0.7:
-            return 2065.0
-        elif P_abs <= 0.8:
-            return 2047.0
-        elif P_abs <= 0.9:
-            return 2030.0
-        else:
-            return 2015.0
+        return get_steam_props(pressure_mpa)['sat_temp']
     
     def get_input_value(self, key, default=0.0):
         """获取输入值"""
@@ -873,7 +754,7 @@ class 换热器计算(CalculatorBase):
         
         # 构建结果文本
         P_abs = steam_pressure + ATM_PRESSURE_MPA
-        method_note = "IAPWS-IF97 标准" if _iapws_available else "查表法(回退)"
+        method_note = get_steam_props(steam_pressure)["method"]
         
         result = f"""
 ═══════════
@@ -941,7 +822,7 @@ class 换热器计算(CalculatorBase):
         cold_flow = Q_steam * 3600 / (cold_cp * (cold_t2 - cold_t1))
         
         P_abs = steam_pressure + ATM_PRESSURE_MPA
-        method_note = "IAPWS-IF97 标准" if _iapws_available else "查表法(回退)"
+        method_note = get_steam_props(steam_pressure)["method"]
         
         # 显示结果
         result = f"""
@@ -1006,7 +887,7 @@ class 换热器计算(CalculatorBase):
                 f"请检查蒸汽流量是否过大或冷流体流量是否过小")
         
         P_abs = steam_pressure + ATM_PRESSURE_MPA
-        method_note = "IAPWS-IF97 标准" if _iapws_available else "查表法(回退)"
+        method_note = get_steam_props(steam_pressure)["method"]
         
         # 显示结果
         result = f"""
@@ -1412,197 +1293,19 @@ class 换热器计算(CalculatorBase):
         return {"inputs": inputs, "outputs": outputs}
 
     def get_project_info(self):
-        """获取工程信息 - 使用共享的项目信息"""
-        try:
-            class ProjectInfoDialog(QDialog):
-                def __init__(self, parent=None, default_info=None, report_number=""):
-                    super().__init__(parent)
-                    self.default_info = default_info or {}
-                    self.report_number = report_number
-                    self.setWindowTitle("工程信息")
-                    self.setFixedSize(400, 350)
-                    self.setup_ui()
-                    
-                def setup_ui(self):
-                    layout = QVBoxLayout(self)
-                    
-                    # 标题
-                    title_label = QLabel("请输入工程信息")
-                    title_label.setStyleSheet("font-weight: bold; font-size: 14px; margin: 10px;")
-                    layout.addWidget(title_label)
-                    
-                    # 公司名称
-                    company_layout = QHBoxLayout()
-                    company_label = QLabel("公司名称:")
-                    company_label.setFixedWidth(80)
-                    self.company_input = QLineEdit()
-                    self.company_input.setPlaceholderText("例如：XX建筑工程有限公司")
-                    self.company_input.setText(self.default_info.get('company_name', ''))
-                    company_layout.addWidget(company_label)
-                    company_layout.addWidget(self.company_input)
-                    layout.addLayout(company_layout)
-                    
-                    # 工程编号
-                    number_layout = QHBoxLayout()
-                    number_label = QLabel("工程编号:")
-                    number_label.setFixedWidth(80)
-                    self.project_number_input = QLineEdit()
-                    self.project_number_input.setPlaceholderText("例如：2024-HE-001")
-                    self.project_number_input.setText(self.default_info.get('project_number', ''))
-                    number_layout.addWidget(number_label)
-                    number_layout.addWidget(self.project_number_input)
-                    layout.addLayout(number_layout)
-                    
-                    # 工程名称
-                    project_layout = QHBoxLayout()
-                    project_label = QLabel("工程名称:")
-                    project_label.setFixedWidth(80)
-                    self.project_input = QLineEdit()
-                    self.project_input.setPlaceholderText("例如：化工厂换热系统")
-                    self.project_input.setText(self.default_info.get('project_name', ''))
-                    project_layout.addWidget(project_label)
-                    project_layout.addWidget(self.project_input)
-                    layout.addLayout(project_layout)
-                    
-                    # 子项名称
-                    subproject_layout = QHBoxLayout()
-                    subproject_label = QLabel("子项名称:")
-                    subproject_label.setFixedWidth(80)
-                    self.subproject_input = QLineEdit()
-                    self.subproject_input.setPlaceholderText("例如：主生产区换热器")
-                    self.subproject_input.setText(self.default_info.get('subproject_name', ''))
-                    subproject_layout.addWidget(subproject_label)
-                    subproject_layout.addWidget(self.subproject_input)
-                    layout.addLayout(subproject_layout)
-                    
-                    # 计算书编号
-                    report_number_layout = QHBoxLayout()
-                    report_number_label = QLabel("计算书编号:")
-                    report_number_label.setFixedWidth(80)
-                    self.report_number_input = QLineEdit()
-                    self.report_number_input.setText(self.report_number)
-                    report_number_layout.addWidget(report_number_label)
-                    report_number_layout.addWidget(self.report_number_input)
-                    layout.addLayout(report_number_layout)
-                    
-                    # 按钮
-                    button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-                    button_box.accepted.connect(self.accept)
-                    button_box.rejected.connect(self.reject)
-                    layout.addWidget(button_box)
-                    
-                def get_info(self):
-                    return {
-                        'company_name': self.company_input.text().strip(),
-                        'project_number': self.project_number_input.text().strip(),
-                        'project_name': self.project_input.text().strip(),
-                        'subproject_name': self.subproject_input.text().strip(),
-                        'report_number': self.report_number_input.text().strip()
-                    }
-            
-            # 从数据管理器获取共享的项目信息
-            saved_info = {}
-            if self.data_manager:
-                saved_info = self.data_manager.get_project_info()
-            
-            # 获取下一个报告编号
-            report_number = ""
-            if self.data_manager:
-                report_number = self.data_manager.get_next_report_number("HEAT")
-            
-            dialog = ProjectInfoDialog(self, saved_info, report_number)
-            if dialog.exec() == QDialog.Accepted:
-                info = dialog.get_info()
-                # 验证必填字段
-                if not info['project_name']:
-                    QMessageBox.warning(self, "输入错误", "工程名称不能为空")
-                    return self.get_project_info()  # 重新弹出对话框
-                
-                # 保存项目信息到数据管理器
-                if self.data_manager:
-                    info_to_save = {
-                        'company_name': info['company_name'],
-                        'project_number': info['project_number'],
-                        'project_name': info['project_name'],
-                        'subproject_name': info['subproject_name']
-                    }
-                    self.data_manager.update_project_info(info_to_save)
-                    print("项目信息已保存")
-                
-                return info
-            else:
-                return None  # 用户取消了
-                    
-        except Exception as e:
-            print(f"获取工程信息失败: {e}")
-            return None
-    
+        return {
+            "project_name": "换热器计算",
+            "calculator_name": "换热器计算器",
+            "version": "1.0",
+            "description": "7种模式：饱和蒸汽流量/冷热流体流量/出口温度/传热计算"
+        }
+
     def generate_report(self):
-        """生成计算书"""
-        try:
-            # 获取当前结果文本
-            result_text = self.result_text.toPlainText()
-            
-            # 更宽松的检查条件
-            if not result_text or ("计算结果" not in result_text and "输入参数" not in result_text):
-                QMessageBox.warning(self, "生成失败", "请先进行计算再生成计算书")
-                return None
-                
-            # 获取工程信息
-            project_info = self.get_project_info()
-            if not project_info:
-                return None  # 用户取消了输入
-            
-            # 获取当前计算模式
-            current_mode = self.mode_combo.currentText()
-            
-            # 添加报告头信息
-            report = f"""工程计算书 - 换热器计算
-生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-计算工具: ChemCal 工程计算模块
-计算模式: {current_mode}
-========================================
-
-"""
-            report += result_text
-            
-            # 添加工程信息部分
-            report += f"""══════════
- 工程信息
-══════════
-
-    公司名称: {project_info['company_name']}
-    工程编号: {project_info['project_number']}
-    工程名称: {project_info['project_name']}
-    子项名称: {project_info['subproject_name']}
-    计算日期: {datetime.now().strftime('%Y-%m-%d')}
-
-══════════
-计算书标识
-══════════
-
-    计算书编号: {project_info['report_number']}
-    版本: 1.0
-    状态: 正式计算书
-
-══════════
-备注说明
-══════════
-
-    1. 本计算书基于热力学原理及相关标准规范
-    2. 计算结果仅供参考，实际应用需考虑安全系数
-    3. 重要工程参数应经专业工程师审核确认
-    4. 计算条件变更时应重新进行计算
-    5. 蒸汽参数计算为简化计算，实际应用请参考蒸汽表
-
----
-生成于 ChemCal 工程计算模块
-"""
-            return report
-            
-        except Exception as e:
-            print(f"生成计算书失败: {e}")
-            return None
+        content = self.result_text.toPlainText().strip()
+        if not content:
+            return "尚未进行计算。"
+        lines = ["换热器计算报告", "=" * 50, "", content]
+        return "\n".join(lines)
     
     def download_docx_report(self):
         """生成DOCX格式计算书"""
@@ -1611,25 +1314,6 @@ class 换热器计算(CalculatorBase):
     def download_pdf_report(self):
         """生成PDF格式计算书"""
         ReportExporter.export_pdf(self, "换热器计算")
-
-    def process_content_for_pdf(self, content):
-        """处理内容，使其适合PDF显示"""
-        # 清理bullet符号
-        content = content.replace("•", "")
-        # 替换表情图标
-        for emoji, text in replacements.items():
-            content = content.replace(emoji, text)
-        
-        # 替换单位符号
-        content = content.replace("m³", "m3")
-        content = content.replace("g/100g", "g/100g")
-        content = content.replace("kg/m³", "kg/m3")
-        content = content.replace("Nm³/h", "Nm3/h")
-        content = content.replace("Pa·s", "Pa.s")
-        content = content.replace("kJ/(kg·K)", "kJ/(kg.K)")
-        content = content.replace("W/(K·m²)", "W/(K.m2)")
-        
-        return content
 
 
 if __name__ == "__main__":

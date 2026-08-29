@@ -124,7 +124,7 @@ class FireWaterTankCalculator(CalculatorBase):
         btn_layout.setSpacing(8)
         for label, style, slot in [
             ("清空", CLEAR_BTN_STYLE, self.clear),
-            ("TXT", DOCX_BTN_STYLE, self._on_download_txt),
+            ("DOCX", DOCX_BTN_STYLE, self._on_download_txt),
             ("PDF", PDF_BTN_STYLE, self._on_download_pdf),
         ]:
             btn = QPushButton(label)

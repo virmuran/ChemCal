@@ -1,21 +1,19 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
-    QGroupBox, QTextEdit, QComboBox, QMessageBox, QFrame,
-    QScrollArea, QDialog, QSpinBox, QButtonGroup, QGridLayout,
-    QTableWidget, QTableWidgetItem, QHeaderView, QSizePolicy
+    QGroupBox, QTextEdit, QComboBox, QMessageBox,
+    QScrollArea, QDialog, QGridLayout,
+    QTableWidget, QTableWidgetItem, QSizePolicy
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QDoubleValidator
-import math
+from PySide6.QtGui import QDoubleValidator
 
 
-from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
-                        CALC_BUTTON_STYLE, MODE_BUTTON_STYLE,
-                        SCROLL_AREA_STYLE, INPUT_LABEL_STYLE,
-                        CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
+from app_styles import (COMBOBOX_STYLE, CLEAR_BTN_STYLE,
+                        DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
-from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
+from common_constants import C_TO_K
+from utils.docx_utils import ReportExporter
 
 class ComponentDialog(QDialog):
     """组分添加/编辑对话框"""
@@ -379,51 +377,52 @@ class MixedLiquidFlashPointCalculator(CalculatorBase):
         
         left_layout.addWidget(components_group)
         
-        # 计算按钮
-        calculate_btn = QPushButton("查询")
-        calculate_btn.setFont(QFont("Arial", 12, QFont.Bold))
-        calculate_btn.clicked.connect(self.calculate_flash_point)
-        calculate_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        calculate_btn.setMinimumHeight(50)
-        calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        left_layout.addWidget(calculate_btn)
-        
+        left_layout.addStretch()
+
         # 右侧：结果显示区域
         right_widget = QWidget()
         right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
-        
+
         # 结果显示
         self.result_group = QGroupBox("计算结果")
         result_layout = QVBoxLayout(self.result_group)
-        
+
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.result_text.setStyleSheet("""
-            QTextEdit {
-                border: 1px solid #666;
-                border-radius: 6px;
-                padding: 8px;
-                /* bg via theme */min-height: 500px;
-            }
-        """)
+        self.result_text.setMinimumHeight(300)
+        self.result_text.setPlaceholderText("计算结果将在此显示……")
+        self.result_text.setStyleSheet(
+            "QTextEdit { "
+            "font-family: Consolas, 'Microsoft YaHei', monospace; "
+            "font-size: 13px; "
+            "}"
+        )
         result_layout.addWidget(self.result_text)
-        
+
         right_layout.addWidget(self.result_group)
-        
+
+        # 下载按钮行：清空 → DOCX → PDF
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(8)
+        for label, style, slot in [
+            ("清空", CLEAR_BTN_STYLE, self.clear_inputs),
+            ("DOCX", DOCX_BTN_STYLE, self.download_docx_report),
+            ("PDF", PDF_BTN_STYLE, self.download_pdf_report),
+        ]:
+            btn = QPushButton(label)
+            btn.setStyleSheet(style)
+            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            btn.clicked.connect(slot)
+            btn_layout.addWidget(btn)
+        right_layout.addLayout(btn_layout)
+
+        # 计算按钮（最底部）
+        calc_btn = self.make_calc_button("查 询")
+        calc_btn.clicked.connect(self.calculate_flash_point)
+        right_layout.addWidget(calc_btn)
+
         # 将左右两部分添加到主布局
         scroll_left.setWidget(left_widget)
         main_layout.addWidget(scroll_left, 2)
@@ -814,6 +813,39 @@ class MixedLiquidFlashPointCalculator(CalculatorBase):
             return "Class I C (易燃)"
         else:
             return "Class II/III (可燃/难燃)"
+
+    # ------------------------------------------------------------------
+    #  清空 / 历史数据 / 报告
+    # ------------------------------------------------------------------
+
+    def clear_inputs(self):
+        """清空所有输入与结果"""
+        self.components.clear()
+        self.update_components_table()
+        self.result_text.clear()
+
+    def get_project_info(self):
+        return {
+            "project_name": "混合液体闪点计算",
+            "calculator_name": "混合液体闪点计算器",
+            "version": "1.0",
+            "description": "Le Chatelier法则/最低闪点/质量摩尔加权平均/Cox图表法"
+        }
+
+    def generate_report(self):
+        content = self.result_text.toPlainText().strip()
+        if not content:
+            return "尚未进行计算。"
+        lines = ["混合液体闪点计算报告", "=" * 50, "", content]
+        return "\n".join(lines)
+
+    def download_docx_report(self):
+        """生成DOCX格式计算书"""
+        ReportExporter.export_docx(self, "MixedLiquidFlashPointCalculator")
+
+    def download_pdf_report(self):
+        """生成PDF格式计算书"""
+        ReportExporter.export_pdf(self, "MixedLiquidFlashPointCalculator")
 
 
 if __name__ == "__main__":

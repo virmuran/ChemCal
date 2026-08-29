@@ -79,13 +79,12 @@ def get_steam_props(p_gauge_mpa):
         return {"sat_temp": 143.6, "h_fg": 2133.0, "method": "内置近似值"}
 
     try:
-        from iapws import IAPWS97
+        module = _steam_iapws_cache.get("module")
         p_abs = p_gauge_mpa + ATM_PRESSURE_MPA
-        steam = IAPWS97(P=p_abs, x=1.0)
-        water = IAPWS97(P=p_abs, x=0.0)
+        sat = module.saturation_properties(P_MPa=p_abs)
         return {
-            "sat_temp": steam.T - C_TO_K,
-            "h_fg": steam.h - water.h,
+            "sat_temp": sat["T_C"],
+            "h_fg": sat["h_fg"],
             "method": "IAPWS-IF97"
         }
     except Exception:

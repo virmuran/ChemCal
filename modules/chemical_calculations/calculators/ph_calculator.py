@@ -19,10 +19,9 @@ from PySide6.QtGui import QDoubleValidator
 from PySide6.QtWidgets import QCheckBox
 
 from calculator_base import CalculatorBase
-from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
-                        CALC_BUTTON_STYLE, SCROLL_AREA_STYLE,
-                        INPUT_LABEL_STYLE, CLEAR_BTN_STYLE,
+from app_styles import (INPUT_LABEL_STYLE, CLEAR_BTN_STYLE,
                         DOCX_BTN_STYLE, PDF_BTN_STYLE)
+from utils.docx_utils import ReportExporter
 
 # ── 常见弱酸/弱碱 pKa/pKb 参照 ──
 # (名称, 类型 acid/base, pK 值, 温度)
@@ -98,9 +97,16 @@ class PHCalculator(CalculatorBase):
 
         # ── 左 ──
         scroll = QScrollArea()
+        scroll.setStyleSheet(
+            "QScrollArea { border: none; background: transparent; } "
+            "QScrollBar:vertical { background: transparent; width: 8px; margin: 0; } "
+            "QScrollBar::handle:vertical { background: #c0c0c0; border-radius: 4px; min-height: 30px; } "
+            "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }"
+        )
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         left = QWidget()
+        left.setStyleSheet("")
         left_layout = QVBoxLayout(left)
         left_layout.setSpacing(15)
 
@@ -142,17 +148,22 @@ class PHCalculator(CalculatorBase):
 
         # ── 右栏: 结果（顶）→ 下载按钮（中）→ 计算按钮（底） ──
         right = QWidget()
+        right.setMinimumWidth(300)
         right_layout = QVBoxLayout(right)
         right_layout.setSpacing(15)
-        right_layout.setContentsMargins(0, 0, 0, 0)
 
         result_group = QGroupBox("计算结果")
         rl = QVBoxLayout(result_group)
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setStyleSheet("font-size: 12px;")
-        self.result_text.setMinimumHeight(180)   # 给个最小高度够看清结果即可
-        self.result_text.setMaximumHeight(400)   # 但别无限膨胀
+        self.result_text.setMinimumHeight(300)   # 给个最小高度够看清结果即可
+        self.result_text.setPlaceholderText("计算结果将在此显示……")
+        self.result_text.setStyleSheet(
+            "QTextEdit { "
+            "font-family: Consolas, 'Microsoft YaHei', monospace; "
+            "font-size: 13px; "
+            "}"
+        )
         rl.addWidget(self.result_text)
         right_layout.addWidget(result_group)      # 不加 stretch，让它自然高度
 
@@ -160,10 +171,8 @@ class PHCalculator(CalculatorBase):
         btn_layout = QHBoxLayout()
         for name, style, cb in [
             ("清空", CLEAR_BTN_STYLE, self.clear),
-            ("下载 DOCX", DOCX_BTN_STYLE,
-             lambda: self.download_docx_report("pH 计算")),
-            ("下载 PDF", PDF_BTN_STYLE,
-             lambda: self.download_pdf_report("pH 计算")),
+            ("DOCX", DOCX_BTN_STYLE, self.download_docx_report),
+            ("PDF", PDF_BTN_STYLE, self.download_pdf_report),
         ]:
             b = QPushButton(name)
             b.setStyleSheet(style)
@@ -709,3 +718,32 @@ class PHCalculator(CalculatorBase):
             "outputs": r,
             "notes": "",
         }
+
+    # ═════════════════════════════════════════
+    #  报告
+    # ═════════════════════════════════════════
+
+    def get_project_info(self):
+        return {
+            "project_name": "pH 计算",
+            "calculator_name": "pH 计算器",
+            "version": "1.0",
+            "description": "酸碱中和/缓冲溶液(Henderson-Hasselbalch)/稀释/pH调节"
+        }
+
+    def generate_report(self):
+        content = self.result_text.toPlainText().strip()
+        if not content:
+            return "尚未进行计算。"
+        btn = self.mode_btn_group.checkedButton()
+        mode = btn.text() if btn else ""
+        lines = [f"pH 计算报告（{mode}）", "=" * 50, "", content]
+        return "\n".join(lines)
+
+    def download_docx_report(self):
+        """生成DOCX格式计算书"""
+        ReportExporter.export_docx(self, "PHCalculator")
+
+    def download_pdf_report(self):
+        """生成PDF格式计算书"""
+        ReportExporter.export_pdf(self, "PHCalculator")

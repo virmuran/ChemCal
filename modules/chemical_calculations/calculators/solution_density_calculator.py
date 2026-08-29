@@ -6,7 +6,7 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QGroupBox, QComboBox, QFrame, QGridLayout, QTextEdit, QScrollArea,
-    QTabWidget, QTableWidget, QTableWidgetItem, QHeaderView, QSizePolicy
+    QToolButton, QSizePolicy
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
@@ -25,6 +25,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
 from calculator_base import CalculatorBase
 from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
 # DOCX 报告导出
+from utils.docx_utils import ReportExporter
 
 # ─────────────────── IAPWS-IF97 动态加载 ───────────────────
 _IAPWS_MODULE = None
@@ -320,12 +321,10 @@ class SolutionDensityCalculator(CalculatorBase):
         desc_label.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(desc_label)
 
-        # Tab：单点计算 / 温度扫描 / 公式参考
-        self.tabs = QTabWidget()
-        self.tabs.addTab(self._build_single_tab(), "单点计算")
-        self.tabs.addTab(self._build_scan_tab(),   "温度扫描")
-        self.tabs.addTab(self._build_ref_tab(),    "公式参考")
-        left_layout.addWidget(self.tabs)
+        # 单页布局：输入参数 + 温度扫描 + 公式参考（折叠）
+        self._build_input_group(left_layout)
+        self._build_scan_group(left_layout)
+        self._build_ref_group(left_layout)
 
         left_layout.addStretch()
 
@@ -345,101 +344,54 @@ class SolutionDensityCalculator(CalculatorBase):
 
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(500)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.result_text.setMinimumHeight(300)
+        self.result_text.setPlaceholderText("计算结果将在此显示……")
         self.result_text.setStyleSheet(
             "QTextEdit { "
-            "/* bg via theme */"
-            "border: 1px solid #ecf0f1; "
-            "border-radius: 6px; "
-            "padding: 8px; "
+            "font-family: Consolas, 'Microsoft YaHei', monospace; "
             "font-size: 13px; "
             "}"
         )
         result_layout.addWidget(self.result_text)
         right_layout.addWidget(result_group)
 
-        # 底部按钮行
-        bottom_layout = QHBoxLayout()
-        
-        # 清空按钮
-        self.clear_btn = QPushButton("清空")
-        self.clear_btn.clicked.connect(self.clear_inputs)
-        self.clear_btn.setMinimumHeight(50)
-        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.clear_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #95a5a6;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #7f8c8d;
-            } """)
-        
-        # 下载TXT按钮
-        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
-        self.download_docx_btn.clicked.connect(self.download_docx_report)
-        self.download_docx_btn.setMinimumHeight(50)
-        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_docx_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            } """)
-        
-        # 下载PDF按钮
-        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
-        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
-        self.download_pdf_btn.setMinimumHeight(50)
-        self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_pdf_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #c0392b;
-            } """)
-        
-        bottom_layout.addWidget(self.clear_btn)
-        bottom_layout.addWidget(self.download_docx_btn)
-        bottom_layout.addWidget(self.download_pdf_btn)
-        right_layout.addLayout(bottom_layout)
+        # 下载按钮行：清空 → DOCX → PDF
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(8)
+        for label, style, slot in [
+            ("清空", CLEAR_BTN_STYLE, self.clear_inputs),
+            ("DOCX", DOCX_BTN_STYLE, self.download_docx_report),
+            ("PDF", PDF_BTN_STYLE, self.download_pdf_report),
+        ]:
+            btn = QPushButton(label)
+            btn.setStyleSheet(style)
+            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            btn.clicked.connect(slot)
+            btn_layout.addWidget(btn)
+        right_layout.addLayout(btn_layout)
+
+        # 计算按钮（最底部）
+        calc_btn = self.make_calc_button("查 询")
+        calc_btn.clicked.connect(self.calculate)
+        right_layout.addWidget(calc_btn)
+
         main_layout.addWidget(right_widget, 1)
 
-    # ── 单点计算 Tab ──────────────────────────────────────────
+    # ── 输入参数组（单点计算） ────────────────────────────────
 
-    def _build_single_tab(self):
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
-        layout.setSpacing(12)
-        layout.setContentsMargins(5, 5, 5, 5)
-
-        # 输入区（不用 GroupBox，避免与外层 QScrollArea 双框嵌套）
-        grid = QGridLayout()
+    def _build_input_group(self, parent_layout):
+        """输入参数组：物料 + 质量分数 + 温度（单点计算与温度扫描共用）"""
+        group = QGroupBox("输入参数")
+        grid = QGridLayout(group)
         grid.setSpacing(12)
         grid.setHorizontalSpacing(10)
         grid.setColumnStretch(0, 4)
         grid.setColumnStretch(1, 8)
         grid.setColumnStretch(2, 5)
 
-        # 物料选择 - 第0行
         label_style = "font-weight: bold; padding-right: 10px;"
+
+        # 物料种类 - 第0行
         substance_label = QLabel("物料种类:")
         substance_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         substance_label.setStyleSheet(label_style)
@@ -450,7 +402,11 @@ class SolutionDensityCalculator(CalculatorBase):
         self.substance_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.substance_combo.addItems(list(SUBSTANCE_CONFIG.keys()))
         self.substance_combo.currentTextChanged.connect(self._on_substance_changed)
-        grid.addWidget(self.substance_combo, 0, 1, 1, 2)
+        grid.addWidget(self.substance_combo, 0, 1)
+
+        sub_hint = QLabel("支持 8 种常见物料")
+        sub_hint.setStyleSheet("font-style: italic;")
+        grid.addWidget(sub_hint, 0, 2)
 
         # 质量分数 - 第1行
         w_label = QLabel("质量分数 w:")
@@ -483,131 +439,78 @@ class SolutionDensityCalculator(CalculatorBase):
         T_hint.setStyleSheet("font-style: italic;")
         grid.addWidget(T_hint, 2, 2)
 
-        layout.addLayout(grid)
-
-        # 计算按钮（绿色 #27ae60）
-        self.calc_btn = QPushButton("查询")
-        self.calc_btn.setFont(QFont("Arial", 12))
-        self.calc_btn.setMinimumHeight(50)
-        self.calc_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.calc_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        self.calc_btn.clicked.connect(self._calculate_single)
-        layout.addWidget(self.calc_btn)
-
-        # 说明区
+        # 当前物料公式说明
         self.formula_label = QLabel("")
         self.formula_label.setStyleSheet(
             "color: inherit; font-size: 12px; padding: 5px;"
         )
         self.formula_label.setWordWrap(True)
-        layout.addWidget(self.formula_label)
+        grid.addWidget(self.formula_label, 3, 0, 1, 3)
 
-        layout.addStretch()
+        parent_layout.addWidget(group)
 
         # 初始化显示
         self._on_substance_changed(self.substance_combo.currentText())
-        return tab
 
-    # ── 温度扫描 Tab ──────────────────────────────────────────
+    # ── 温度扫描参数组 ────────────────────────────────────────
 
-    def _build_scan_tab(self):
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
-        layout.setSpacing(10)
-        layout.setContentsMargins(5, 5, 5, 5)
+    def _build_scan_group(self, parent_layout):
+        """温度扫描参数组：物料与质量分数复用上方输入参数组"""
+        group = QGroupBox("温度扫描")
+        grid = QGridLayout(group)
+        grid.setSpacing(12)
+        grid.setHorizontalSpacing(10)
+        grid.setColumnStretch(0, 4)
+        grid.setColumnStretch(1, 8)
+        grid.setColumnStretch(2, 5)
 
         label_style = "font-weight: bold; padding-right: 10px;"
         hint_style = "color: inherit; font-style: italic;"
 
-        # 参数行
-        param_group = QGroupBox("扫描参数")
-        param_grid = QGridLayout(param_group)
-        param_grid.setSpacing(12)
-        param_grid.setHorizontalSpacing(10)
-        param_grid.setColumnStretch(0, 4)
-        param_grid.setColumnStretch(1, 8)
-        param_grid.setColumnStretch(2, 4)
-        param_grid.setColumnStretch(3, 8)
-        param_grid.setColumnStretch(4, 5)
-
-        # 第0行：物料 + 质量分数
-        lbl1 = QLabel("物料:")
-        lbl1.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        lbl1.setStyleSheet(label_style)
-        param_grid.addWidget(lbl1, 0, 0)
-
-        self.scan_substance_combo = QComboBox()
-        self.scan_substance_combo.setStyleSheet(COMBOBOX_STYLE)
-        self.scan_substance_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.scan_substance_combo.addItems(list(SUBSTANCE_CONFIG.keys()))
-        param_grid.addWidget(self.scan_substance_combo, 0, 1)
-
-        lbl2 = QLabel("质量分数 w:")
-        lbl2.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        lbl2.setStyleSheet(label_style)
-        param_grid.addWidget(lbl2, 0, 2)
-
-        self.scan_w_input = QLineEdit("0.20")
-        self.scan_w_input.setValidator(QDoubleValidator(0.0, 1.0, 6))
-        self.scan_w_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        param_grid.addWidget(self.scan_w_input, 0, 3)
-
-        scan_hint = QLabel("0~1")
-        scan_hint.setStyleSheet(hint_style)
-        param_grid.addWidget(scan_hint, 0, 4)
-
-        # 第1行：起始温度 + 终止温度
+        # 第0行：起始温度
         lbl3 = QLabel("起始温度 (°C):")
         lbl3.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         lbl3.setStyleSheet(label_style)
-        param_grid.addWidget(lbl3, 1, 0)
+        grid.addWidget(lbl3, 0, 0)
 
         self.scan_T_start = QLineEdit("0")
         self.scan_T_start.setValidator(QDoubleValidator(-10.0, 200.0, 1))
         self.scan_T_start.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        param_grid.addWidget(self.scan_T_start, 1, 1)
+        grid.addWidget(self.scan_T_start, 0, 1)
 
+        start_hint = QLabel("扫描起始温度")
+        start_hint.setStyleSheet(hint_style)
+        grid.addWidget(start_hint, 0, 2)
+
+        # 第1行：终止温度
         lbl4 = QLabel("终止温度 (°C):")
         lbl4.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         lbl4.setStyleSheet(label_style)
-        param_grid.addWidget(lbl4, 1, 2)
+        grid.addWidget(lbl4, 1, 0)
 
         self.scan_T_end = QLineEdit("100")
         self.scan_T_end.setValidator(QDoubleValidator(-10.0, 200.0, 1))
         self.scan_T_end.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        param_grid.addWidget(self.scan_T_end, 1, 3)
+        grid.addWidget(self.scan_T_end, 1, 1)
 
         end_hint = QLabel("大于起始")
         end_hint.setStyleSheet(hint_style)
-        param_grid.addWidget(end_hint, 1, 4)
+        grid.addWidget(end_hint, 1, 2)
 
         # 第2行：步长
         lbl5 = QLabel("步长 (°C):")
         lbl5.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         lbl5.setStyleSheet(label_style)
-        param_grid.addWidget(lbl5, 2, 0)
+        grid.addWidget(lbl5, 2, 0)
 
         self.scan_step = QLineEdit("10")
         self.scan_step.setValidator(QDoubleValidator(0.1, 50.0, 1))
         self.scan_step.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        param_grid.addWidget(self.scan_step, 2, 1)
+        grid.addWidget(self.scan_step, 2, 1)
 
         step_hint = QLabel("温度间隔")
         step_hint.setStyleSheet(hint_style)
-        param_grid.addWidget(step_hint, 2, 2, 1, 3)
-
-        layout.addWidget(param_group)
+        grid.addWidget(step_hint, 2, 2)
 
         # 扫描按钮（紫色 #8e44ad，辅助按钮）
         scan_btn = QPushButton("开始扫描")
@@ -622,45 +525,60 @@ class SolutionDensityCalculator(CalculatorBase):
             "QPushButton:hover:!checked { background-color: #7d3c98; }"
         )
         scan_btn.clicked.connect(self._run_scan)
-        layout.addWidget(scan_btn)
+        grid.addWidget(scan_btn, 3, 0, 1, 3)
 
-        layout.addStretch()
-        return tab
+        parent_layout.addWidget(group)
 
-    # ── 公式参考 Tab ──────────────────────────────────────────
+    # ── 公式参考（可折叠） ────────────────────────────────────
 
-    def _build_ref_tab(self):
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
-        layout.setSpacing(12)
-        layout.setContentsMargins(15, 15, 15, 15)
+    def _build_ref_group(self, parent_layout):
+        """公式参考：默认收起，点击标题展开全部物料的公式说明"""
+        self.ref_toggle = QToolButton()
+        self.ref_toggle.setText("公式参考")
+        self.ref_toggle.setCheckable(True)
+        self.ref_toggle.setChecked(False)
+        self.ref_toggle.setArrowType(Qt.RightArrow)
+        self.ref_toggle.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.ref_toggle.setStyleSheet(
+            "QToolButton { border: none; font-weight: bold; "
+            "font-size: 13px; color: inherit; padding: 4px; }"
+        )
+        self.ref_toggle.clicked.connect(self._toggle_ref)
+        parent_layout.addWidget(self.ref_toggle)
 
+        self.ref_widget = QWidget()
+        ref_layout = QVBoxLayout(self.ref_widget)
+        ref_layout.setContentsMargins(10, 2, 10, 2)
+
+        ref_text = QTextEdit()
+        ref_text.setReadOnly(True)
+        ref_text.setMinimumHeight(240)
+        ref_text.setStyleSheet(
+            "QTextEdit { "
+            "font-family: Consolas, 'Microsoft YaHei', monospace; "
+            "font-size: 12px; "
+            "border: none; background: transparent; "
+            "}"
+        )
+        content = ""
         for name, cfg in SUBSTANCE_CONFIG.items():
-            box = QGroupBox(name)
-            box_layout = QGridLayout(box)
-            box_layout.setSpacing(6)
+            content += f"【{name}】\n"
+            content += f"  浓度范围: w = {cfg['w_range'][0]:.0%} ~ {cfg['w_range'][1]:.0%}\n"
+            content += f"  温度范围: {cfg['T_range'][0]} ~ {cfg['T_range'][1]} °C\n"
+            content += f"  计算公式: {cfg['formula']}\n"
+            content += f"  数据来源: {cfg['ref']}\n"
+            content += f"  精度: {cfg['accuracy']}\n\n"
+        ref_text.setPlainText(content.strip())
+        ref_layout.addWidget(ref_text)
 
-            rows = [
-                ("适用浓度范围:", f"w = {cfg['w_range'][0]:.0%} ~ {cfg['w_range'][1]:.0%}"),
-                ("适用温度范围:", f"{cfg['T_range'][0]} ~ {cfg['T_range'][1]} °C"),
-                ("计算公式:",     cfg["formula"]),
-                ("数据来源:",     cfg["ref"]),
-                ("精度:",         cfg["accuracy"]),
-            ]
-            for r, (k, v) in enumerate(rows):
-                key_lbl = QLabel(k)
-                key_lbl.setStyleSheet("font-weight:bold; color:#2c3e50;")
-                key_lbl.setAlignment(Qt.AlignRight | Qt.AlignTop)
-                val_lbl = QLabel(v)
-                val_lbl.setWordWrap(True)
-                val_lbl.setStyleSheet("color:#444;")
-                box_layout.addWidget(key_lbl, r, 0)
-                box_layout.addWidget(val_lbl, r, 1)
+        self.ref_widget.setVisible(False)
+        parent_layout.addWidget(self.ref_widget)
 
-            layout.addWidget(box)
-
-        layout.addStretch()
-        return tab
+    def _toggle_ref(self):
+        """展开/收起公式参考"""
+        expanded = self.ref_toggle.isChecked()
+        self.ref_toggle.setArrowType(Qt.DownArrow if expanded else Qt.RightArrow)
+        self.ref_widget.setVisible(expanded)
 
     # ── 事件处理 ──────────────────────────────────────────────
 
@@ -720,13 +638,13 @@ class SolutionDensityCalculator(CalculatorBase):
         # 保存到历史记录
 
     def _run_scan(self):
-        name = self.scan_substance_combo.currentText()
+        name = self.substance_combo.currentText()
         cfg = SUBSTANCE_CONFIG.get(name)
         if not cfg:
             return
 
         try:
-            w = float(self.scan_w_input.text())
+            w = float(self.w_input.text()) if self.w_input.isEnabled() else 0.0
             T_start = float(self.scan_T_start.text())
             T_end = float(self.scan_T_end.text())
             step = float(self.scan_step.text())

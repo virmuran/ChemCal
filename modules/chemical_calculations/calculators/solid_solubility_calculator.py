@@ -21,6 +21,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
 from calculator_base import CalculatorBase
 from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
 # DOCX 报告导出
+from utils.docx_utils import ReportExporter
 
 
 
@@ -283,31 +284,6 @@ class SolidSolubilityCalculator(CalculatorBase):
 
         left_layout.addWidget(query_group)
 
-        # ── 查询按钮 ──
-        calc_btn = QPushButton("查询")
-        calc_btn.setFont(QFont("Arial", 12))
-        calc_btn.setMinimumHeight(50)
-        calc_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        calc_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        calc_btn.clicked.connect(self.query_solubility)
-        left_layout.addWidget(calc_btn)
-
-        # 进度条
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setVisible(False)
-        left_layout.addWidget(self.progress_bar)
-
         # ── 参考数据表 ──
         ref_group = QGroupBox("常见固体溶解度参考表")
         ref_vbox = QVBoxLayout(ref_group)
@@ -333,81 +309,41 @@ class SolidSolubilityCalculator(CalculatorBase):
 
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(500)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.result_text.setStyleSheet("""
-            QTextEdit {
-                /* bg via theme */border: 1px solid #ecf0f1;
-                border-radius: 6px;
-                font-size: 13px;
-                padding: 8px;
-            }
-        """)
-        self.result_text.setPlaceholderText("查询结果将在此显示……")
+        self.result_text.setMinimumHeight(300)
+        self.result_text.setStyleSheet(
+            "QTextEdit { "
+            "font-family: Consolas, 'Microsoft YaHei', monospace; "
+            "font-size: 13px; "
+            "}"
+        )
+        self.result_text.setPlaceholderText("计算结果将在此显示……")
         result_vbox.addWidget(self.result_text)
         right_layout.addWidget(result_group)
 
-        # ── 底部按钮行（右侧） ──
-        bottom_layout = QHBoxLayout()
-        
-        # 清空按钮
-        self.clear_btn = QPushButton("清空")
-        self.clear_btn.clicked.connect(self.clear_inputs)
-        self.clear_btn.setMinimumHeight(50)
-        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.clear_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #95a5a6;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #7f8c8d;
-            } """)
-        
-        # 下载TXT按钮
-        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
-        self.download_docx_btn.clicked.connect(self.download_docx_report)
-        self.download_docx_btn.setMinimumHeight(50)
-        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_docx_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            } """)
-        
-        # 下载PDF按钮
-        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
-        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
-        self.download_pdf_btn.setMinimumHeight(50)
-        self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_pdf_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #c0392b;
-            } """)
-        
-        bottom_layout.addWidget(self.clear_btn)
-        bottom_layout.addWidget(self.download_docx_btn)
-        bottom_layout.addWidget(self.download_pdf_btn)
-        right_layout.addLayout(bottom_layout)
+        # ── 下载按钮行（右侧）：清空 → DOCX → PDF ──
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(8)
+        for label, style, slot in [
+            ("清空", CLEAR_BTN_STYLE, self.clear_inputs),
+            ("DOCX", DOCX_BTN_STYLE, self.download_docx_report),
+            ("PDF", PDF_BTN_STYLE, self.download_pdf_report),
+        ]:
+            btn = QPushButton(label)
+            btn.setStyleSheet(style)
+            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            btn.clicked.connect(slot)
+            btn_layout.addWidget(btn)
+        right_layout.addLayout(btn_layout)
+
+        # 进度条（查询中显示）
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setVisible(False)
+        right_layout.addWidget(self.progress_bar)
+
+        # 计算按钮（最底部）
+        calc_btn = self.make_calc_button("查 询")
+        calc_btn.clicked.connect(self.query_solubility)
+        right_layout.addWidget(calc_btn)
 
         # 拼合
         scroll_left.setWidget(left_widget)

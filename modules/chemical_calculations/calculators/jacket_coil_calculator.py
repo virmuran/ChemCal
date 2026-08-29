@@ -21,25 +21,22 @@
 """
 
 import math
-import os
-from datetime import datetime
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QGroupBox, QTextEdit, QComboBox, QMessageBox, QScrollArea,
     QButtonGroup, QGridLayout, QSizePolicy,
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QDoubleValidator
+from PySide6.QtGui import QDoubleValidator
 from PySide6.QtSvgWidgets import QSvgWidget
 
 from calculator_base import CalculatorBase
+from utils.docx_utils import ReportExporter
 from app_styles import (COMBOBOX_STYLE, GROUP_STYLE, MODE_BUTTON_STYLE,
-                        CALC_BUTTON_STYLE, SCROLL_AREA_STYLE,
-                        INPUT_LABEL_STYLE, CLEAR_BTN_STYLE,
+                        SCROLL_AREA_STYLE, CLEAR_BTN_STYLE,
                         DOCX_BTN_STYLE, PDF_BTN_STYLE)
-from svg_utils import svg_text, svg_rect, svg_line, svg_circle, svg_start, svg_end
-from common_constants import G, WATER_DENSITY, WATER_CP, WATER_LATENT_HEAT, \
-    ATM_PRESSURE_MPA, load_steam_iapws, get_steam_props
+from svg_utils import svg_text, svg_rect, svg_line, svg_start, svg_end
+from common_constants import G, WATER_DENSITY, WATER_CP, get_steam_props
 
 # ── 换热介质类型 ──
 MEDIA_TYPES = {
@@ -111,8 +108,9 @@ class JacketCoilCalculator(CalculatorBase):
         scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         left_widget = QWidget()
+        left_widget.setStyleSheet("")
         left_layout = QVBoxLayout(left_widget)
-        left_layout.setSpacing(12)
+        left_layout.setSpacing(15)
 
         # 模式选择按钮
         self._create_mode_buttons(left_layout)
@@ -126,15 +124,6 @@ class JacketCoilCalculator(CalculatorBase):
         # 高级参数组（可折叠感）
         self._create_advanced_group(left_layout)
 
-        # 计算按钮
-        calc_btn = QPushButton("计  算")
-        calc_btn.setStyleSheet(CALC_BUTTON_STYLE)
-        calc_btn.setFont(QFont("Arial", 12, QFont.Bold))
-        calc_btn.setMinimumHeight(50)
-        calc_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        calc_btn.clicked.connect(self.calculate)
-        left_layout.addWidget(calc_btn)
-
         left_layout.addStretch()
         scroll_left.setWidget(left_widget)
 
@@ -142,9 +131,9 @@ class JacketCoilCalculator(CalculatorBase):
         right_widget = QWidget()
         right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
-        right_layout.setSpacing(12)
+        right_layout.setSpacing(15)
 
-        # SVG 示意图
+        # SVG 示意图（特色功能，保留在右栏最上方）
         svg_group = QGroupBox("示意图")
         svg_group.setStyleSheet(GROUP_STYLE)
         svg_inner = QVBoxLayout(svg_group)
@@ -160,38 +149,36 @@ class JacketCoilCalculator(CalculatorBase):
         result_layout = QVBoxLayout(result_group)
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(200)
-        self.result_text.setStyleSheet("font-size: 13px;")
+        self.result_text.setMinimumHeight(300)
+        self.result_text.setPlaceholderText("计算结果将在此显示……")
+        self.result_text.setStyleSheet(
+            "QTextEdit { "
+            "font-family: Consolas, 'Microsoft YaHei', monospace; "
+            "font-size: 13px; "
+            "}"
+        )
         result_layout.addWidget(self.result_text)
         right_layout.addWidget(result_group)
 
-        # 底部按钮
+        # 下载按钮行：清空 → DOCX → PDF
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(8)
-
-        clear_btn = QPushButton("清空")
-        clear_btn.setStyleSheet(CLEAR_BTN_STYLE)
-        clear_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        clear_btn.clicked.connect(self.clear)
-
-        docx_btn = QPushButton("TXT")
-        docx_btn.setStyleSheet(DOCX_BTN_STYLE)
-        docx_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        docx_btn.clicked.connect(lambda: self.download_docx_report(
-            self.generate_report(),
-            os.path.join(os.path.expanduser("~"), "Desktop",
-                         f"夹套盘管换热_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx")
-        ))
-
-        pdf_btn = QPushButton("PDF")
-        pdf_btn.setStyleSheet(PDF_BTN_STYLE)
-        pdf_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        pdf_btn.clicked.connect(self._on_download_pdf)
-
-        btn_layout.addWidget(clear_btn)
-        btn_layout.addWidget(docx_btn)
-        btn_layout.addWidget(pdf_btn)
+        for label, style, slot in [
+            ("清空", CLEAR_BTN_STYLE, self.clear),
+            ("DOCX", DOCX_BTN_STYLE, self.download_docx_report),
+            ("PDF", PDF_BTN_STYLE, self.download_pdf_report),
+        ]:
+            btn = QPushButton(label)
+            btn.setStyleSheet(style)
+            btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            btn.clicked.connect(slot)
+            btn_layout.addWidget(btn)
         right_layout.addLayout(btn_layout)
+
+        # 计算按钮（最底部）
+        calc_btn = self.make_calc_button("计 算")
+        calc_btn.clicked.connect(self.calculate)
+        right_layout.addWidget(calc_btn)
 
         main_layout.addWidget(scroll_left, 2)
         main_layout.addWidget(right_widget, 1)
@@ -501,7 +488,6 @@ class JacketCoilCalculator(CalculatorBase):
         self.inputs["media_out_temp"].setReadOnly(is_steam)
         if is_steam:
             self.inputs["media_out_temp"].setText(self.inputs["media_in_temp"].text())
-            self.inputs["media_out_temp"].setStyleSheet("background: #f0f0f0;")  # 只读视觉提示
 
     def _on_wall_mtrl_changed(self, name):
         """釜体材质变更"""
@@ -884,20 +870,29 @@ class JacketCoilCalculator(CalculatorBase):
 
     # ── 报告导出 ─────────────────────────────────────────────
 
+    def get_project_info(self):
+        return {
+            "project_name": "夹套/盘管换热面积核算",
+            "calculator_name": "夹套/盘管换热面积计算器",
+            "version": "1.0",
+            "description": "夹套/盘管两种换热型式：给热系数计算 → 总传热系数 → 面积核算与裕量"
+        }
+
     def generate_report(self):
         """生成报告文本"""
-        return self.result_text.toPlainText()
+        lines = []
+        lines.append("夹套/盘管换热面积核算报告")
+        lines.append("=" * 50)
+        lines.append(self.result_text.toPlainText())
+        return "\n".join(lines)
 
-    def _on_download_pdf(self):
-        """下载 PDF"""
-        try:
-            self.download_pdf_report(
-                self.generate_report(),
-                os.path.join(os.path.expanduser("~"), "Desktop",
-                             f"夹套盘管换热_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf")
-            )
-        except Exception as e:
-            QMessageBox.warning(self, "导出失败", f"PDF导出失败: {e}")
+    def download_docx_report(self):
+        """生成 DOCX 计算书"""
+        ReportExporter.export_docx(self, "夹套盘管换热面积")
+
+    def download_pdf_report(self):
+        """生成 PDF 计算书"""
+        ReportExporter.export_pdf(self, "夹套盘管换热面积")
 
     def _get_history_data(self):
         """历史记录数据"""
