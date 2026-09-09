@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QListWidget,
-    QListWidgetItem, QStackedWidget, QFrame, QPushButton
+    QListWidgetItem, QStackedWidget, QFrame, QPushButton,
+    QLineEdit, QDialog, QMessageBox
 )
 from PySide6.QtCore import Qt, QSize, QTimer
 from PySide6.QtGui import QFont
@@ -62,6 +63,23 @@ class ChemicalCalculationsWidget(QWidget):
         self.nav_list.setFixedWidth(220)
         self.nav_list.setObjectName("calcNavList")  # 样式由主题 QSS 提供
         self.nav_list.setAttribute(Qt.WidgetAttribute.WA_MacShowFocusRect, False)
+        # 右键菜单（隐藏计算器 / 打开管理面板）
+        self.nav_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.nav_list.customContextMenuRequested.connect(self._show_nav_menu)
+
+        # 导航顶部：搜索框 + 管理按钮
+        nav_tools = QHBoxLayout()
+        nav_tools.setSpacing(6)
+        self.nav_search = QLineEdit()
+        self.nav_search.setPlaceholderText("搜索计算器…")
+        self.nav_search.setClearButtonEnabled(True)
+        self.nav_search.textChanged.connect(self._apply_nav_filter)
+        self.manage_btn = QPushButton("⚙")
+        self.manage_btn.setFixedWidth(36)
+        self.manage_btn.setToolTip("管理计算器（显示/隐藏、排序）")
+        self.manage_btn.clicked.connect(self._open_manager)
+        nav_tools.addWidget(self.nav_search, 1)
+        nav_tools.addWidget(self.manage_btn)
         
         # 创建右侧内容区域
         self.content_stack = QStackedWidget()
@@ -93,6 +111,7 @@ class ChemicalCalculationsWidget(QWidget):
         
         left_layout.addWidget(title_label)
         left_layout.addWidget(desc_label)
+        left_layout.addLayout(nav_tools)
         left_layout.addWidget(self.nav_list)
         
         # 添加到主布局
@@ -174,9 +193,33 @@ class ChemicalCalculationsWidget(QWidget):
             ("废水COD估算", "CODEstimator", "cod_estimator", True),
         ]
         
-        # 添加所有页面
+        # 记录完整注册表（含被隐藏的），供管理面板使用
+        self._calc_registry = list(page_configs)
+
+        # 读取用户配置：隐藏清单 + 排序（按模块名标识）
+        prefs = self._load_calc_prefs()
+        registry_modules = [c[2] for c in page_configs]
+        hidden = {m for m in prefs["hidden"] if m in registry_modules}
+        order = [m for m in prefs["order"] if m in registry_modules]
+
+        # 防呆：全部隐藏时视为未隐藏，至少保留一个
+        if len(page_configs) - len(hidden) < 1:
+            hidden = set()
+
+        # 排序：order 里排在前面的模块提前，未提及的保持默认顺序（稳定排序）
+        def sort_key(cfg):
+            try:
+                return order.index(cfg[2])
+            except ValueError:
+                return len(order)
+
+        configs = sorted(page_configs, key=sort_key)
+
+        # 添加页面（隐藏的直接跳过：不导入模块、不构建控件，加快启动）
         success_count = 0
-        for title, calculator_name, module_name, supports_data_manager in page_configs:
+        for title, calculator_name, module_name, supports_data_manager in configs:
+            if module_name in hidden:
+                continue
             try:
                 widget = self.create_calculator_widget(calculator_name, module_name, supports_data_manager, title)
                 self.add_page(title, widget)
@@ -316,6 +359,183 @@ class ChemicalCalculationsWidget(QWidget):
 
         # 保存页面引用
         self.pages.append(widget)
+
+    # ══════════════════════════════════════════
+    # 计算器显隐与排序（配置存 settings.calculator_hidden / calculator_order）
+    # ══════════════════════════════════════════
+
+    def _load_calc_prefs(self):
+        """读取计算器显隐/排序配置"""
+        prefs = {"hidden": [], "order": []}
+        try:
+            if self.data_manager is not None:
+                s = self.data_manager.get_settings()
+                if isinstance(s.get("calculator_hidden"), list):
+                    prefs["hidden"] = [str(m) for m in s["calculator_hidden"]]
+                if isinstance(s.get("calculator_order"), list):
+                    prefs["order"] = [str(m) for m in s["calculator_order"]]
+        except Exception as e:
+            print(f"[设置] 读取计算器配置失败: {e}")
+        return prefs
+
+    def _save_calc_prefs(self, hidden, order):
+        """保存计算器显隐/排序配置"""
+        try:
+            if self.data_manager is None:
+                return
+            s = self.data_manager.get_settings()
+            s["calculator_hidden"] = list(hidden)
+            s["calculator_order"] = list(order)
+            self.data_manager.update_settings(s)
+        except Exception as e:
+            print(f"[设置] 保存计算器配置失败: {e}")
+
+    def _rebuild_pages(self):
+        """按最新配置重建导航和页面（隐藏的计算器不实例化）"""
+        self.nav_list.blockSignals(True)
+        self.nav_list.clear()
+        self.nav_list.blockSignals(False)
+        while self.content_stack.count():
+            w = self.content_stack.widget(0)
+            self.content_stack.removeWidget(w)
+            w.deleteLater()
+        self.pages.clear()
+        self.add_calculator_pages()
+        self._apply_nav_filter()
+        if self.nav_list.count() > 0:
+            self.nav_list.setCurrentRow(0)
+
+    def _apply_nav_filter(self):
+        """按搜索关键词过滤导航项（仅隐藏行，行号不变）"""
+        kw = self.nav_search.text().strip().lower()
+        for i in range(self.nav_list.count()):
+            it = self.nav_list.item(i)
+            it.setHidden(bool(kw) and kw not in it.text().lower())
+
+    def _show_nav_menu(self, pos):
+        """导航右键菜单：隐藏此计算器 / 管理计算器"""
+        from PySide6.QtWidgets import QMenu
+        item = self.nav_list.itemAt(pos)
+        row = self.nav_list.row(item) if item else -1
+        menu = QMenu(self)
+        can_hide = False
+        if item is not None and 0 <= row < len(self.pages):
+            meta = getattr(self.pages[row], "_calc_meta", None)
+            if meta is not None:
+                visible_count = sum(1 for p in self.pages if getattr(p, "_calc_meta", None))
+                can_hide = visible_count > 1
+        act_hide = menu.addAction("隐藏此计算器")
+        act_hide.setEnabled(can_hide)
+        menu.addSeparator()
+        act_manage = menu.addAction("管理计算器…")
+        chosen = menu.exec(self.nav_list.mapToGlobal(pos))
+        if chosen is None:
+            return
+        if chosen == act_hide and item is not None:
+            self._hide_calculator_at(row)
+        elif chosen == act_manage:
+            self._open_manager()
+
+    def _hide_calculator_at(self, row):
+        """隐藏指定行的计算器并持久化"""
+        if not (0 <= row < len(self.pages)):
+            return
+        meta = getattr(self.pages[row], "_calc_meta", None)
+        if meta is None:
+            return
+        prefs = self._load_calc_prefs()
+        hidden = set(prefs["hidden"])
+        hidden.add(meta["id"])
+        order = list(prefs["order"])
+        if meta["id"] not in order:
+            order.append(meta["id"])
+        self._save_calc_prefs(sorted(hidden), order)
+        self._rebuild_pages()
+
+    def _open_manager(self):
+        """管理面板：勾选显隐 + 上移/下移排序 + 恢复默认"""
+        if not getattr(self, "_calc_registry", None):
+            return
+        prefs = self._load_calc_prefs()
+        registry = self._calc_registry
+        modules = [c[2] for c in registry]
+        title_of = {c[2]: c[0] for c in registry}
+        hidden = {m for m in prefs["hidden"] if m in modules}
+        order = [m for m in prefs["order"] if m in modules]
+        effective = order + [m for m in modules if m not in order]
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle("管理计算器")
+        dlg.resize(380, 540)
+        v = QVBoxLayout(dlg)
+        tip = QLabel("勾选 = 在导航中显示；选中行后用按钮调整顺序。")
+        tip.setWordWrap(True)
+        v.addWidget(tip)
+
+        lst = QListWidget()
+        for m in effective:
+            it = QListWidgetItem(title_of.get(m, m))
+            it.setData(Qt.ItemDataRole.UserRole, m)
+            it.setToolTip(f"分类：{self._get_category_from_module(m)}")
+            it.setFlags(it.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            it.setCheckState(Qt.CheckState.Unchecked if m in hidden else Qt.CheckState.Checked)
+            lst.addItem(it)
+        v.addWidget(lst, 1)
+
+        row_btns = QHBoxLayout()
+        def move_item(delta):
+            r = lst.currentRow()
+            if r < 0:
+                return
+            if (delta < 0 and r == 0) or (delta > 0 and r == lst.count() - 1):
+                return
+            it = lst.takeItem(r)
+            lst.insertItem(r + delta, it)
+            lst.setCurrentRow(r + delta)
+        up_btn = QPushButton("上移")
+        up_btn.clicked.connect(lambda: move_item(-1))
+        down_btn = QPushButton("下移")
+        down_btn.clicked.connect(lambda: move_item(1))
+        restore_btn = QPushButton("恢复默认")
+        def restore_default():
+            lst.clear()
+            for c in registry:
+                it = QListWidgetItem(c[0])
+                it.setData(Qt.ItemDataRole.UserRole, c[2])
+                it.setToolTip(f"分类：{self._get_category_from_module(c[2])}")
+                it.setFlags(it.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+                it.setCheckState(Qt.CheckState.Checked)
+                lst.addItem(it)
+        restore_btn.clicked.connect(restore_default)
+        row_btns.addWidget(up_btn)
+        row_btns.addWidget(down_btn)
+        row_btns.addStretch()
+        row_btns.addWidget(restore_btn)
+        v.addLayout(row_btns)
+
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+        cancel_btn = QPushButton("取消")
+        cancel_btn.clicked.connect(dlg.reject)
+        ok_btn = QPushButton("确定")
+        def apply():
+            checked = sum(1 for i in range(lst.count())
+                          if lst.item(i).checkState() == Qt.CheckState.Checked)
+            if checked == 0:
+                QMessageBox.information(dlg, "提示", "至少保留一个计算器可见。")
+                return
+            order_new = [lst.item(i).data(Qt.ItemDataRole.UserRole) for i in range(lst.count())]
+            hidden_new = [lst.item(i).data(Qt.ItemDataRole.UserRole) for i in range(lst.count())
+                          if lst.item(i).checkState() == Qt.CheckState.Unchecked]
+            self._save_calc_prefs(hidden_new, order_new)
+            self._rebuild_pages()
+            dlg.accept()
+        ok_btn.clicked.connect(apply)
+        btn_row.addWidget(cancel_btn)
+        btn_row.addWidget(ok_btn)
+        v.addLayout(btn_row)
+
+        dlg.exec()
 
     def _is_calculate_button(self, btn):
         text = ''.join(btn.text().split())  # 移除所有空白字符（"计 算"/"查 询"均可匹配）
