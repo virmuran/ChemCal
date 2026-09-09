@@ -1,28 +1,34 @@
+"""
+制冷循环计算器 — 计算蒸汽压缩制冷循环的性能参数（制冷量、压缩功、COP 等）
+
+支持理想循环（无过冷过热）与实际循环（含过冷过热）。
+优先使用 refrigerant_eos 模块（PR EOS 工业级精度），缺失时回退简化计算。
+"""
+
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
-    QGroupBox, QTextEdit, QComboBox, QMessageBox, QFrame,
-    QScrollArea, QDialog, QSpinBox, QButtonGroup, QGridLayout, QFileDialog,
-    QSizePolicy,
+    QGroupBox, QTextEdit, QComboBox, QMessageBox,
+    QScrollArea, QButtonGroup, QGridLayout, QSizePolicy,
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QDoubleValidator
+from PySide6.QtGui import QDoubleValidator
 import math
-import sys
 import os
+from datetime import datetime
 
 # 导入工业级精度制冷剂物性模块
 try:
     current_dir = os.path.dirname(os.path.abspath(__file__))
     parent_dir = os.path.dirname(current_dir)
-    
+
     import importlib.util
     spec = importlib.util.spec_from_file_location(
-        "refrigerant_eos", 
+        "refrigerant_eos",
         os.path.join(parent_dir, "refrigerant_eos.py")
     )
     _refrigerant_eos = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(_refrigerant_eos)
-    
+
     USE_INDUSTRIAL_CYCLE = True
     print("成功加载工业级制冷循环计算模块 (refrigerant_eos)")
 except Exception as e:
@@ -31,20 +37,13 @@ except Exception as e:
     USE_INDUSTRIAL_CYCLE = False
     _refrigerant_eos = None
 
-import sys
-from pathlib import Path
-
-
-from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
-                        CALC_BUTTON_STYLE, MODE_BUTTON_STYLE,
-                        SCROLL_AREA_STYLE, INPUT_LABEL_STYLE,
+from app_styles import (COMBOBOX_STYLE, SCROLL_AREA_STYLE, INPUT_LABEL_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
-from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
-# DOCX 报告导出
+from common_constants import C_TO_K
+from utils.docx_utils import ReportExporter
 
-# 统一的QGroupBox样式
 
 class RefrigerationCycleCalculator(CalculatorBase):
     """制冷循环计算器"""
@@ -52,7 +51,7 @@ class RefrigerationCycleCalculator(CalculatorBase):
 
     def __init__(self, parent=None, data_manager=None):
         """初始化制冷循环计算器
-        
+
         Args:
             parent: 父窗口
             data_manager: 数据管理器，用于保存历史记录
@@ -78,7 +77,7 @@ class RefrigerationCycleCalculator(CalculatorBase):
         except Exception as e:
             print(f"数据管理器初始化失败: {e}")
             self.data_manager = None
-    
+
     def setup_ui(self):
         """设置制冷循环计算UI"""
         # 创建主布局
@@ -88,12 +87,7 @@ class RefrigerationCycleCalculator(CalculatorBase):
 
         # ========== 左侧输入区 ==========
         scroll_left = QScrollArea()
-        scroll_left.setStyleSheet(
-            "QScrollArea { border: none; background: transparent; } "
-            "QScrollBar:vertical { background: transparent; width: 8px; margin: 0; } "
-            "QScrollBar::handle:vertical { background: #c0c0c0; border-radius: 4px; min-height: 30px; } "
-            "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }"
-        )
+        scroll_left.setStyleSheet(SCROLL_AREA_STYLE)
         scroll_left.setWidgetResizable(True)
         scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
@@ -101,7 +95,6 @@ class RefrigerationCycleCalculator(CalculatorBase):
         left_widget.setStyleSheet("")
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
-        left_layout.setContentsMargins(0, 0, 0, 0)
 
         # 顶部说明文字
         description = QLabel(
@@ -112,7 +105,7 @@ class RefrigerationCycleCalculator(CalculatorBase):
         left_layout.addWidget(description)
 
         # ========== 循环类型选择组 ==========
-        cycle_group = QGroupBox("循环类型")
+        cycle_group = CalculatorBase.make_group_box("循环类型")
         cycle_layout = QHBoxLayout(cycle_group)
         cycle_layout.setSpacing(10)
 
@@ -124,40 +117,17 @@ class RefrigerationCycleCalculator(CalculatorBase):
         ]
 
         for i, (cycle_name, tooltip) in enumerate(cycles):
-            btn = QPushButton(cycle_name)
-            btn.setCheckable(True)
-            btn.setToolTip(tooltip)
-            btn.setMinimumWidth(120)
-            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-            btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #ffffff;
-                    border: 1px solid #666;
-                    border-radius: 4px;
-                    padding: 8px;
-                    color: black;
-                    text-align: center;
-                }
-                QPushButton:checked {
-                    background-color: #4b5cc4;
-                    color: white;
-                }
-                QPushButton:hover:!checked {
-                    background-color: #c0ebd7;
-                    color: black;
-                }
-            """)
+            btn = CalculatorBase.make_mode_button(cycle_name, tooltip)
             self.cycle_button_group.addButton(btn, i)
             cycle_layout.addWidget(btn)
 
-        cycle_layout.addStretch()
         self.cycle_button_group.button(0).setChecked(True)
         self.cycle_button_group.buttonClicked.connect(self.on_cycle_type_changed)
 
         left_layout.addWidget(cycle_group)
 
         # ========== 输入参数组 ==========
-        input_group = QGroupBox("输入参数")
+        input_group = CalculatorBase.make_group_box("输入参数")
 
         input_layout = QGridLayout(input_group)
         input_layout.setVerticalSpacing(12)
@@ -168,236 +138,97 @@ class RefrigerationCycleCalculator(CalculatorBase):
 
         row = 0
 
-        # 制冷剂选择
-        label_ref = QLabel("制冷剂:")
-        label_ref.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        label_ref.setStyleSheet("font-weight: bold; padding-right: 10px;")
-        label_ref.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        input_layout.addWidget(label_ref, row, 0)
+        def lbl(text):
+            w = QLabel(text)
+            w.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            w.setStyleSheet(INPUT_LABEL_STYLE)
+            input_layout.addWidget(w, row, 0)
+            return w
 
+        def hint(text):
+            w = QLabel(text)
+            w.setStyleSheet("font-style: italic;")
+            input_layout.addWidget(w, row, 2)
+            return w
+
+        # 制冷剂选择
+        lbl("制冷剂:")
         self.refrigerant_combo = QComboBox()
         self.refrigerant_combo.setStyleSheet(COMBOBOX_STYLE)
         self.setup_refrigerant_options()
-        self.refrigerant_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.refrigerant_combo.currentTextChanged.connect(self.on_refrigerant_changed)
         input_layout.addWidget(self.refrigerant_combo, row, 1)
-
-        hint_ref = QLabel("选择循环工质")
-        hint_ref.setStyleSheet("font-style: italic;")
-        hint_ref.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        input_layout.addWidget(hint_ref, row, 2)
+        hint("选择循环工质")
 
         row += 1
 
         # 蒸发温度
-        label_evap = QLabel("蒸发温度 (°C):")
-        label_evap.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        label_evap.setStyleSheet("font-weight: bold; padding-right: 10px;")
-        label_evap.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        input_layout.addWidget(label_evap, row, 0)
-
+        lbl("蒸发温度 (°C):")
         self.evap_temp_input = QLineEdit()
         self.evap_temp_input.setPlaceholderText("例如: -10")
         self.evap_temp_input.setValidator(QDoubleValidator(-100.0, 100.0, 2))
         self.evap_temp_input.setText("-10")
-        self.evap_temp_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.evap_temp_input, row, 1)
-
-        hint_evap = QLabel("制冷剂蒸发温度")
-        hint_evap.setStyleSheet("font-style: italic;")
-        hint_evap.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        input_layout.addWidget(hint_evap, row, 2)
+        hint("制冷剂蒸发温度")
 
         row += 1
 
         # 冷凝温度
-        label_cond = QLabel("冷凝温度 (°C):")
-        label_cond.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        label_cond.setStyleSheet("font-weight: bold; padding-right: 10px;")
-        label_cond.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        input_layout.addWidget(label_cond, row, 0)
-
+        lbl("冷凝温度 (°C):")
         self.cond_temp_input = QLineEdit()
         self.cond_temp_input.setPlaceholderText("例如: 40")
         self.cond_temp_input.setValidator(QDoubleValidator(-50.0, 100.0, 2))
         self.cond_temp_input.setText("40")
-        self.cond_temp_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.cond_temp_input, row, 1)
-
-        hint_cond = QLabel("制冷剂冷凝温度")
-        hint_cond.setStyleSheet("font-style: italic;")
-        hint_cond.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        input_layout.addWidget(hint_cond, row, 2)
+        hint("制冷剂冷凝温度")
 
         row += 1
 
         # 过冷度
-        self.subcool_label = QLabel("过冷度 (K):")
-        self.subcool_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.subcool_label.setStyleSheet("font-weight: bold; padding-right: 10px;")
-        self.subcool_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        input_layout.addWidget(self.subcool_label, row, 0)
-
+        self.subcool_label = lbl("过冷度 (K):")
         self.subcool_input = QLineEdit()
         self.subcool_input.setPlaceholderText("例如: 5")
         self.subcool_input.setValidator(QDoubleValidator(0.0, 50.0, 2))
         self.subcool_input.setText("5")
-        self.subcool_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.subcool_input, row, 1)
-
-        self.subcool_hint = QLabel("仅实际循环")
-        self.subcool_hint.setStyleSheet("font-style: italic;")
-        self.subcool_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        input_layout.addWidget(self.subcool_hint, row, 2)
+        self.subcool_hint = hint("仅实际循环")
 
         row += 1
 
         # 过热度
-        self.superheat_label = QLabel("过热度 (K):")
-        self.superheat_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.superheat_label.setStyleSheet("font-weight: bold; padding-right: 10px;")
-        self.superheat_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        input_layout.addWidget(self.superheat_label, row, 0)
-
+        self.superheat_label = lbl("过热度 (K):")
         self.superheat_input = QLineEdit()
         self.superheat_input.setPlaceholderText("例如: 5")
         self.superheat_input.setValidator(QDoubleValidator(0.0, 50.0, 2))
         self.superheat_input.setText("5")
-        self.superheat_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.superheat_input, row, 1)
-
-        self.superheat_hint = QLabel("仅实际循环")
-        self.superheat_hint.setStyleSheet("font-style: italic;")
-        self.superheat_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        input_layout.addWidget(self.superheat_hint, row, 2)
+        self.superheat_hint = hint("仅实际循环")
 
         row += 1
 
         # 质量流量
-        label_flow = QLabel("质量流量 (kg/s):")
-        label_flow.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        label_flow.setStyleSheet("font-weight: bold; padding-right: 10px;")
-        label_flow.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        input_layout.addWidget(label_flow, row, 0)
-
+        lbl("质量流量 (kg/s):")
         self.mass_flow_input = QLineEdit()
         self.mass_flow_input.setPlaceholderText("例如: 0.1")
         self.mass_flow_input.setValidator(QDoubleValidator(0.001, 100.0, 6))
         self.mass_flow_input.setText("0.1")
-        self.mass_flow_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.mass_flow_input, row, 1)
-
-        hint_flow = QLabel("循环制冷剂流量")
-        hint_flow.setStyleSheet("font-style: italic;")
-        hint_flow.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        input_layout.addWidget(hint_flow, row, 2)
+        hint("循环制冷剂流量")
 
         row += 1
 
         # 压缩机效率
-        label_eff = QLabel("压缩机效率 (%):")
-        label_eff.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        label_eff.setStyleSheet("font-weight: bold; padding-right: 10px;")
-        label_eff.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        input_layout.addWidget(label_eff, row, 0)
-
+        lbl("压缩机效率 (%):")
         self.comp_eff_input = QLineEdit()
         self.comp_eff_input.setPlaceholderText("例如: 80")
         self.comp_eff_input.setValidator(QDoubleValidator(10.0, 100.0, 2))
         self.comp_eff_input.setText("80")
-        self.comp_eff_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.comp_eff_input, row, 1)
-
-        hint_eff = QLabel("等熵效率")
-        hint_eff.setStyleSheet("font-style: italic;")
-        hint_eff.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        input_layout.addWidget(hint_eff, row, 2)
+        hint("等熵效率")
 
         left_layout.addWidget(input_group)
 
-        # ========== 计算按钮 ==========
-        calculate_btn = QPushButton("计算")
-        calculate_btn.setFont(QFont("Arial", 12, QFont.Weight.Bold))
-        calculate_btn.setMinimumHeight(50)
-        calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        calculate_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        calculate_btn.clicked.connect(self.calculate)
-        left_layout.addWidget(calculate_btn)
-
-        # ========== 底部按钮行 ==========
-        bottom_layout = QHBoxLayout()
-        
-        # 清空按钮
-        self.clear_btn = QPushButton("清空")
-        self.clear_btn.clicked.connect(self.clear_inputs)
-        self.clear_btn.setMinimumHeight(50)
-        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.clear_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #95a5a6;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #7f8c8d;
-            } """)
-        
-        # 下载TXT按钮
-        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
-        self.download_docx_btn.clicked.connect(self.download_docx_report)
-        self.download_docx_btn.setMinimumHeight(50)
-        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_docx_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            } """)
-        
-        # 下载PDF按钮
-        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
-        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
-        self.download_pdf_btn.setMinimumHeight(50)
-        self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_pdf_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #c0392b;
-            } """)
-        
-        bottom_layout.addWidget(self.clear_btn)
-        bottom_layout.addStretch()
-        bottom_layout.addWidget(self.download_docx_btn)
-        bottom_layout.addWidget(self.download_pdf_btn)
-        left_layout.addLayout(bottom_layout)
-        left_layout.addStretch()  # 将内容顶到顶部，剩余空间在底部
+        left_layout.addStretch()
 
         # ========== 右侧结果区 ==========
         right_widget = QWidget()
@@ -406,21 +237,42 @@ class RefrigerationCycleCalculator(CalculatorBase):
         right_layout.setSpacing(15)
 
         # 结果显示组
-        result_group = QGroupBox("计算结果")
+        result_group = CalculatorBase.make_group_box("计算结果")
         result_layout = QVBoxLayout(result_group)
 
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(500)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.result_text.setStyleSheet(
-            "QTextEdit { /* bg via theme */border: 1px solid #ecf0f1; "
-            "border-radius: 6px; font-family: Consolas, monospace; font-size: 13px; padding: 8px; }"
-        )
+        self.result_text.setMinimumHeight(300)
+        # 结果框统一标准：边框/背景/文字色交给主题系统，仅指定等宽字体
+        self.result_text.setStyleSheet("""
+            QTextEdit {
+                font-family: Consolas, 'Microsoft YaHei', monospace;
+                font-size: 13px;
+            } """)
         self.result_text.setPlaceholderText("计算结果将在此显示……")
         result_layout.addWidget(self.result_text)
 
         right_layout.addWidget(result_group)
+
+        # ── 底部按钮行：清空 | DOCX | PDF ──
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(8)
+        for name, style, cb in [
+            ("清空", CLEAR_BTN_STYLE, self.clear_inputs),
+            ("DOCX", DOCX_BTN_STYLE, self.download_docx_report),
+            ("PDF", PDF_BTN_STYLE, self.download_pdf_report),
+        ]:
+            btn = QPushButton(name)
+            btn.setStyleSheet(style)
+            btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            btn.clicked.connect(cb)
+            btn_layout.addWidget(btn)
+        right_layout.addLayout(btn_layout)
+
+        # ── 计算按钮（最底部） ──
+        calc_btn = self.make_calc_button("计 算")
+        calc_btn.clicked.connect(self.calculate)
+        right_layout.addWidget(calc_btn)
 
         # ========== 将左右两部分添加到主布局 ==========
         scroll_left.setWidget(left_widget)
@@ -476,7 +328,7 @@ class RefrigerationCycleCalculator(CalculatorBase):
                 "GWP": 1
             }
         }
-    
+
     def setup_refrigerant_options(self):
         """设置制冷剂选项"""
         refrigerants = [
@@ -488,15 +340,15 @@ class RefrigerationCycleCalculator(CalculatorBase):
             "R744 (CO₂) - 天然制冷剂，环保"
         ]
         self.refrigerant_combo.addItems(refrigerants)
-    
+
     def on_refrigerant_changed(self, text):
         """处理制冷剂选择变化"""
         pass
-    
+
     def on_cycle_type_changed(self):
         """处理循环类型变化"""
         is_actual = self.cycle_button_group.checkedButton().text() == "实际循环"
-        
+
         # 对于理想循环，隐藏过冷过热输入
         self.subcool_label.setVisible(is_actual)
         self.subcool_input.setVisible(is_actual)
@@ -504,14 +356,14 @@ class RefrigerationCycleCalculator(CalculatorBase):
         self.superheat_label.setVisible(is_actual)
         self.superheat_input.setVisible(is_actual)
         self.superheat_hint.setVisible(is_actual)
-    
+
     def calculate_saturation_pressure(self, refrigerant, temperature):
         """计算饱和压力（简化计算）
-        
+
         Args:
             refrigerant: 制冷剂名称
             temperature: 温度（°C）
-            
+
         Returns:
             饱和压力（kPa）
         """
@@ -530,20 +382,20 @@ class RefrigerationCycleCalculator(CalculatorBase):
             A, B, C = 6.8123, 1301.0, 273.0
         else:
             A, B, C = 6.9094, 1169.0, 224.0  # 默认R134a
-        
+
         T = temperature + C_TO_K  # 转换为K
         P_sat = math.exp(A - B/(T - C)) * 100  # kPa
         return P_sat
-    
+
     def calculate_enthalpy(self, refrigerant, temperature, pressure, is_vapor=True):
         """计算焓值（简化计算）
-        
+
         Args:
             refrigerant: 制冷剂名称
             temperature: 温度（°C）
             pressure: 压力（kPa）
             is_vapor: 是否为气相
-            
+
         Returns:
             焓值（kJ/kg）
         """
@@ -561,16 +413,16 @@ class RefrigerationCycleCalculator(CalculatorBase):
                 return 250 + 1.8 * temperature
             else:
                 return 100 + 1.5 * temperature
-    
+
     def calculate_entropy(self, refrigerant, temperature, pressure, is_vapor=True):
         """计算熵值（简化计算）
-        
+
         Args:
             refrigerant: 制冷剂名称
             temperature: 温度（°C）
             pressure: 压力（kPa）
             is_vapor: 是否为气相
-            
+
         Returns:
             熵值（kJ/kg·K）
         """
@@ -584,10 +436,10 @@ class RefrigerationCycleCalculator(CalculatorBase):
                 return 0.9 + 0.01 * temperature
             else:
                 return 0.4 + 0.005 * temperature
-    
+
     def calculate(self):
         """计算制冷循环 - 统一接口方法
-        
+
         此方法为统一UI规范要求的接口，调用实际的计算逻辑
         """
         try:
@@ -595,24 +447,24 @@ class RefrigerationCycleCalculator(CalculatorBase):
             cycle_type = self.cycle_button_group.checkedButton().text()
             refrigerant_text = self.refrigerant_combo.currentText()
             refrigerant = refrigerant_text.split(" - ")[0]
-            
+
             evap_temp = float(self.evap_temp_input.text())
             cond_temp = float(self.cond_temp_input.text())
             mass_flow = float(self.mass_flow_input.text())
             comp_efficiency = float(self.comp_eff_input.text()) / 100
-            
+
             # 验证输入
             if evap_temp >= cond_temp:
                 QMessageBox.warning(self, "输入错误", "蒸发温度必须低于冷凝温度")
                 return
-            
+
             if cycle_type == "实际循环":
                 subcool = float(self.subcool_input.text())
                 superheat = float(self.superheat_input.text())
             else:
                 subcool = 0
                 superheat = 0
-            
+
             # 制冷剂名称映射
             ref_map = {
                 "R134a": "R134a",
@@ -623,7 +475,7 @@ class RefrigerationCycleCalculator(CalculatorBase):
                 "R744 (CO₂)": "R410A",  # CO2 无 Antoine 系数，近似使用 R410A
             }
             ref_name = ref_map.get(refrigerant, "R134a")
-            
+
             # 尝试使用工业级精度计算
             if USE_INDUSTRIAL_CYCLE and ref_name in getattr(_refrigerant_eos, 'REFRIGERANTS', {}):
                 result = self._calculate_cycle_industrial(
@@ -635,7 +487,7 @@ class RefrigerationCycleCalculator(CalculatorBase):
                     refrigerant, evap_temp, cond_temp, subcool, superheat,
                     mass_flow, comp_efficiency, cycle_type
                 )
-            
+
             # 输出结果到QTextEdit
             self.result_text.setPlainText(result)
             self._last_result = result
@@ -650,17 +502,15 @@ class RefrigerationCycleCalculator(CalculatorBase):
                 "comp_efficiency": comp_efficiency,
             }
 
-            # 保存历史
-            
         except ValueError as e:
             QMessageBox.critical(self, "计算错误", f"参数输入格式错误: {str(e)}")
         except Exception as e:
             QMessageBox.critical(self, "计算错误", f"计算过程中发生错误: {str(e)}")
 
-    def _calculate_cycle_industrial(self, ref_name, evap_temp, cond_temp, 
+    def _calculate_cycle_industrial(self, ref_name, evap_temp, cond_temp,
                                      subcool, superheat, mass_flow, comp_efficiency, cycle_type):
         """工业级精度制冷循环计算 (PR EOS)
-        
+
         Args:
             ref_name: 制冷剂名称
             evap_temp: 蒸发温度（°C）
@@ -670,34 +520,34 @@ class RefrigerationCycleCalculator(CalculatorBase):
             mass_flow: 质量流量（kg/s）
             comp_efficiency: 压缩机效率（0-1）
             cycle_type: 循环类型
-            
+
         Returns:
             格式化后的计算结果字符串
         """
         eos = _refrigerant_eos
         ref_data = eos.REFRIGERANTS[ref_name]
-        
+
         # --- 状态1: 压缩机进口 (蒸发器出口) ---
         T1_K = evap_temp + C_TO_K + superheat
         sat_ev = eos.saturation_properties(T_K=evap_temp + C_TO_K, ref_name=ref_name)
         P_evap_MPa = sat_ev['P_MPa']
-        
+
         # 过热蒸汽性质
         T1_C = evap_temp + superheat
         prop1 = eos.vapor_properties(P_evap_MPa, T1_C, ref_name=ref_name)
         h1 = prop1['h']
         s1 = prop1['s']
         T1 = T1_C
-        
+
         # --- 状态2: 压缩机出口 (等熵压缩) ---
         sat_cd = eos.saturation_properties(T_K=cond_temp + C_TO_K, ref_name=ref_name)
         P_cond_MPa = sat_cd['P_MPa']
-        
+
         # 等熵压缩温度近似（理想气体）
         cp_g = ref_data['cp_ideal']
         R_spec = 8.314 / (ref_data['M'] / 1000.0)  # J/(kg·K)
         gamma = (cp_g * 1000.0 + R_spec) / R_spec
-        
+
         T2_ideal_K = T1_K * (P_cond_MPa / P_evap_MPa) ** ((gamma - 1.0) / gamma)
         h2s = h1 + cp_g * (T2_ideal_K - T1_K)
         h2 = h1 + (h2s - h1) / comp_efficiency
@@ -817,7 +667,7 @@ class RefrigerationCycleCalculator(CalculatorBase):
     def _calculate_cycle_simplified(self, refrigerant, evap_temp, cond_temp,
                                      subcool, superheat, mass_flow, comp_efficiency, cycle_type):
         """简化计算（保底方案）
-        
+
         Args:
             refrigerant: 制冷剂名称
             evap_temp: 蒸发温度（°C）
@@ -827,7 +677,7 @@ class RefrigerationCycleCalculator(CalculatorBase):
             mass_flow: 质量流量（kg/s）
             comp_efficiency: 压缩机效率（0-1）
             cycle_type: 循环类型
-            
+
         Returns:
             格式化后的计算结果字符串
         """
@@ -866,15 +716,15 @@ class RefrigerationCycleCalculator(CalculatorBase):
             compressor_power, refrigeration_capacity, carnot_COP, efficiency
         )
 
-    def _format_results(self, cycle_type, refrigerant, evap_temp, cond_temp, subcool, 
-                      superheat, mass_flow, comp_efficiency, P_evap, P_cond, h1, h2, 
-                      h3, h4, refrigeration_effect, compressor_work, heat_rejection, 
+    def _format_results(self, cycle_type, refrigerant, evap_temp, cond_temp, subcool,
+                      superheat, mass_flow, comp_efficiency, P_evap, P_cond, h1, h2,
+                      h3, h4, refrigeration_effect, compressor_work, heat_rejection,
                       COP, compressor_power, refrigeration_capacity, carnot_COP, efficiency):
         """格式化计算结果
-        
+
         Args:
             各种计算参数
-            
+
         Returns:
             格式化后的字符串
         """
@@ -900,7 +750,7 @@ class RefrigerationCycleCalculator(CalculatorBase):
   焓值: {h1:.2f} kJ/kg
 
 • 点2 (压缩机出口):
-  温度: {cond_temp + 20:.1f} °C, 压力: {P_cond:.1f} kPa  
+  温度: {cond_temp + 20:.1f} °C, 压力: {P_cond:.1f} kPa
   焓值: {h2:.2f} kJ/kg
 
 • 点3 (冷凝器出口):
@@ -917,7 +767,7 @@ class RefrigerationCycleCalculator(CalculatorBase):
 
 单位质量参数:
 • 制冷效应: {refrigeration_effect:.2f} kJ/kg
-• 压缩功: {compressor_work:.2f} kJ/kg  
+• 压缩功: {compressor_work:.2f} kJ/kg
 • 排热量: {heat_rejection:.2f} kJ/kg
 
 系统性能:
@@ -950,35 +800,80 @@ class RefrigerationCycleCalculator(CalculatorBase):
         self.superheat_input.setText("5")
         self.mass_flow_input.setText("0.1")
         self.comp_eff_input.setText("80")
+        self.on_cycle_type_changed()
         self.result_text.clear()
         self._last_result = ""
         self._last_params = {}
 
     def get_project_info(self):
-        """获取项目信息 - 统一接口方法
-        
-        Returns:
-            项目信息字典
-        """
-        return {"calculator": "RefrigerationCycleCalculator", "name": "制冷循环计算"}
+        """获取工程信息 - 返回 dict"""
+        try:
+            saved_info = {}
+            if self.data_manager:
+                saved_info = self.data_manager.get_project_info()
+            return {
+                'company_name': saved_info.get('company_name', ''),
+                'project_number': saved_info.get('project_number', ''),
+                'project_name': saved_info.get('project_name', ''),
+                'subproject_name': saved_info.get('subproject_name', ''),
+                'report_number': ''
+            }
+        except Exception as e:
+            print(f"获取工程信息失败: {e}")
+            return {}
 
     def generate_report(self):
-        """生成报告 - 统一接口方法
-        
-        Returns:
-            报告文本
-        """
-        return self.result_text.toPlainText()
+        """生成计算书文本（str）"""
+        try:
+            result_text = self.result_text.toPlainText()
+            if not result_text or ("COP" not in result_text):
+                return None
+
+            project_info = self.get_project_info()
+            report = f"""══════════════════════════════════════════
+          制冷循环计算计算书
+══════════════════════════════════════════
+
+{result_text}
+
+══════════════════════════════════════════
+ 工程信息
+══════════════════════════════════════════
+
+  公司名称: {project_info.get('company_name', '')}
+  工程编号: {project_info.get('project_number', '')}
+  工程名称: {project_info.get('project_name', '')}
+  子项名称: {project_info.get('subproject_name', '')}
+  计算日期: {datetime.now().strftime('%Y-%m-%d')}
+
+══════════════════════════════════════════
+备注说明
+══════════════════════════════════════════
+
+  1. 优先采用 PR 状态方程工业级物性，缺失时回退简化关联式
+  2. 压缩过程按等熵效率修正，膨胀过程按等焓节流处理
+  3. 计算结果适用于工程初步设计，实际选型需经专业工程师审核确认
+
+---
+生成于 ChemCal 工程计算模块
+"""
+            return report
+
+        except Exception as e:
+            print(f"生成计算书失败: {e}")
+            return None
 
     def download_docx_report(self):
         """生成DOCX格式计算书"""
-        ReportExporter.export_docx(self, "RefrigerationCycleCalculator")
+        ReportExporter.export_docx(self, "制冷循环计算")
+
     def download_pdf_report(self):
         """生成PDF格式计算书"""
-        ReportExporter.export_pdf(self, "RefrigerationCycleCalculator")
+        ReportExporter.export_pdf(self, "制冷循环计算")
+
     def _get_history_data(self):
         """获取历史记录数据 - 统一接口方法
-        
+
         Returns:
             包含输入和输出数据的字典
         """
@@ -1019,8 +914,6 @@ class RefrigerationCycleCalculator(CalculatorBase):
             if USE_INDUSTRIAL_CYCLE and ref_name in getattr(_refrigerant_eos, 'REFRIGERANTS', {}):
                 sat_ev = _refrigerant_eos.saturation_properties(T_K=evap_temp+C_TO_K, ref_name=ref_name)
                 sat_cd = _refrigerant_eos.saturation_properties(T_K=cond_temp+C_TO_K, ref_name=ref_name)
-                P_evap = sat_ev['P_MPa'] * 1000
-                P_cond = sat_cd['P_MPa'] * 1000
 
                 T1_C = evap_temp + superheat
                 prop1 = _refrigerant_eos.vapor_properties(sat_ev['P_MPa'], T1_C, ref_name=ref_name)
@@ -1079,11 +972,11 @@ if __name__ == "__main__":
     # 测试代码
     import sys
     from PySide6.QtWidgets import QApplication
-    
+
     app = QApplication(sys.argv)
-    
+
     widget = RefrigerationCycleCalculator()
     widget.resize(1300, 700)
     widget.show()
-    
+
     sys.exit(app.exec())

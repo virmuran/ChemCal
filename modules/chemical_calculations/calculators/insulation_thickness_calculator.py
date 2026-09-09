@@ -1,28 +1,25 @@
-import os
-import math
-from datetime import datetime
+"""
+保温厚度计算器 — 支持四种计算方法：
+绝热层经济厚度、表面温度法、防结露、热损失法（GB/T 8175 近似）
+"""
+
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
     QLabel, QLineEdit, QPushButton, QComboBox,
     QTextEdit, QGridLayout,
-    QButtonGroup, QMessageBox, QFileDialog,
+    QButtonGroup, QMessageBox,
     QScrollArea, QSizePolicy,
-
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QDoubleValidator
-import sys
-from pathlib import Path
+from PySide6.QtGui import QDoubleValidator
+from datetime import datetime
+import math
 
-
-from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
-                        CALC_BUTTON_STYLE, MODE_BUTTON_STYLE,
-                        SCROLL_AREA_STYLE, INPUT_LABEL_STYLE,
+from app_styles import (COMBOBOX_STYLE, SCROLL_AREA_STYLE, INPUT_LABEL_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
-from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
-# DOCX 报告导出
+from utils.docx_utils import ReportExporter
 
 
 class InsulationThicknessCalculator(CalculatorBase):
@@ -74,10 +71,8 @@ class InsulationThicknessCalculator(CalculatorBase):
 
         # ──────────────── 左侧输入区 ────────────────
         scroll_left = QScrollArea()
-        scroll_left.setStyleSheet("QScrollArea { border: none; background: transparent; } QScrollBar:vertical { background: transparent; width: 8px; margin: 0; } QScrollBar::handle:vertical { background: #c0c0c0; border-radius: 4px; min-height: 30px; } QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }")
-
+        scroll_left.setStyleSheet(SCROLL_AREA_STYLE)
         scroll_left.setWidgetResizable(True)
-
         scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         left_widget = QWidget()
@@ -96,7 +91,7 @@ class InsulationThicknessCalculator(CalculatorBase):
         left_layout.addWidget(desc)
 
         # ── 计算类型选择（按钮组）──
-        type_group = QGroupBox("计算类型")
+        type_group = CalculatorBase.make_group_box("计算类型")
         type_layout = QHBoxLayout(type_group)
 
         self.calc_type_group = QButtonGroup(self)
@@ -107,28 +102,7 @@ class InsulationThicknessCalculator(CalculatorBase):
             ("热损失法",       "根据允许热损失量计算保温厚度"),
         ]
         for i, (text, tip) in enumerate(calc_types):
-            btn = QPushButton(text)
-            btn.setCheckable(True)
-            btn.setToolTip(tip)
-            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-            btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #ffffff;
-                    color: black;
-                    border: 1px solid #666;
-                    border-radius: 6px;
-                    padding: 7px 4px;
-                    font-size: 12px;
-                }
-                QPushButton:checked {
-                    background-color: #4b5cc4;
-                    color: white;
-                    font-weight: bold;
-                }
-                QPushButton:hover:!checked {
-                    background-color: #c0ebd7;
-                }
-            """)
+            btn = CalculatorBase.make_mode_button(text, tip)
             self.calc_type_group.addButton(btn, i)
             type_layout.addWidget(btn)
         self.calc_type_group.buttons()[0].setChecked(True)
@@ -136,181 +110,140 @@ class InsulationThicknessCalculator(CalculatorBase):
 
         left_layout.addWidget(type_group)
 
-        # ── 输入参数组（四列网格，适配多计算方法）──
-        input_group = QGroupBox("输入参数")
+        # ── 输入参数组（三列网格：标签(4) : 输入(8) : 提示(5)）──
+        input_group = CalculatorBase.make_group_box("输入参数")
         grid = QGridLayout(input_group)
         grid.setHorizontalSpacing(10)
         grid.setVerticalSpacing(12)
+        grid.setColumnStretch(0, 4)
+        grid.setColumnStretch(1, 8)
+        grid.setColumnStretch(2, 5)
 
-        label_style = "font-weight: bold; padding-right: 10px;"
+        row = 0
 
-        def make_lbl(text, row, col):
+        def make_lbl(text):
+            nonlocal row
             lbl = QLabel(text)
             lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            lbl.setStyleSheet(label_style)
-            grid.addWidget(lbl, row, col)
+            lbl.setStyleSheet(INPUT_LABEL_STYLE)
+            grid.addWidget(lbl, row, 0)
             return lbl
 
-        def make_edit(placeholder, validator_range, row, col):
+        def make_edit(placeholder, validator_range, default=None):
             ed = QLineEdit()
             ed.setPlaceholderText(placeholder)
-            ed.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             if validator_range:
                 lo, hi, dec = validator_range
                 ed.setValidator(QDoubleValidator(lo, hi, dec))
-            grid.addWidget(ed, row, col)
+            if default is not None:
+                ed.setText(default)
             return ed
 
-        def make_combo(items, row, col):
-            cb = QComboBox()
-            cb.setStyleSheet(COMBOBOX_STYLE)
-            cb.addItems(items)
-            cb.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-            grid.addWidget(cb, row, col)
-            return cb
+        def make_hint(text):
+            h = QLabel(text)
+            h.setStyleSheet("font-style: italic;")
+            grid.addWidget(h, row, 2)
+            return h
 
         # 行0：设备型式 + 保温类型
-        make_lbl("设备型式:", 0, 0)
-        self.equipment_type_combo = make_combo(
-            ["管道或圆筒形设备", "平面形设备"], 0, 1)
+        make_lbl("设备型式:")
+        self.equipment_type_combo = QComboBox()
+        self.equipment_type_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.equipment_type_combo.addItems(["管道或圆筒形设备", "平面形设备"])
         self.equipment_type_combo.currentTextChanged.connect(
             self._on_equipment_type_changed)
+        grid.addWidget(self.equipment_type_combo, row, 1)
+        make_hint("管道直径或平面宽度")
 
-        make_lbl("保温类型:", 0, 2)
-        self.insulation_type_combo = make_combo(
-            ["保温", "保冷"], 0, 3)
+        row += 1
+
+        make_lbl("保温类型:")
+        self.insulation_type_combo = QComboBox()
+        self.insulation_type_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.insulation_type_combo.addItems(["保温", "保冷"])
         self.insulation_type_combo.currentTextChanged.connect(
             self._on_insulation_type_changed)
+        grid.addWidget(self.insulation_type_combo, row, 1)
+        self.insulation_hint = make_hint("保冷时需填写露点温度")
 
-        # 行1：设备尺寸 + 保温材料
-        make_lbl("设备尺寸(mm):", 1, 0)
-        self.size_input = make_edit("108", (1.0, 5000.0, 2), 1, 1)
-        self.size_input.setText("108")
+        row += 1
 
-        make_lbl("保温材料:", 1, 2)
-        self.material_combo = make_combo(
-            list(self.material_properties.keys()) + ["自定义材料"], 1, 3)
+        # 行2：设备尺寸 + 保温材料
+        make_lbl("设备尺寸(mm):")
+        self.size_input = make_edit("108", (1.0, 5000.0, 2), "108")
+        grid.addWidget(self.size_input, row, 1)
+        make_hint("管道公称直径或设备宽度")
+
+        row += 1
+
+        make_lbl("保温材料:")
+        self.material_combo = QComboBox()
+        self.material_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.material_combo.addItems(
+            list(self.material_properties.keys()) + ["自定义材料"])
         self.material_combo.currentTextChanged.connect(self._on_material_changed)
+        grid.addWidget(self.material_combo, row, 1)
+        make_hint("选择材料自动填充物性")
 
-        # 行2：导热系数 + 材料密度
-        make_lbl("导热系数(W/m·K):", 2, 0)
-        self.conductivity_input = make_edit("0.0512", (0.001, 1.0, 6), 2, 1)
-        self.conductivity_input.setText("0.0512")
+        row += 1
 
-        make_lbl("密度(kg/m³):", 2, 2)
-        self.density_input = make_edit("170", (10.0, 500.0, 2), 2, 3)
-        self.density_input.setText("170")
+        # 行4：导热系数 + 材料密度
+        make_lbl("导热系数(W/m·K):")
+        self.conductivity_input = make_edit("0.0512", (0.001, 1.0, 6), "0.0512")
+        grid.addWidget(self.conductivity_input, row, 1)
+        make_hint("随温度略有变化")
 
-        # 行3：环境温度 + 风速
-        make_lbl("环境温度(°C):", 3, 0)
-        self.ambient_temp_input = make_edit("20", (-50.0, 60.0, 2), 3, 1)
-        self.ambient_temp_input.setText("20")
+        row += 1
 
-        make_lbl("风速(m/s):", 3, 2)
-        self.wind_speed_input = make_edit("3", (0.0, 20.0, 2), 3, 3)
-        self.wind_speed_input.setText("3")
+        make_lbl("密度(kg/m³):")
+        self.density_input = make_edit("170", (10.0, 500.0, 2), "170")
+        grid.addWidget(self.density_input, row, 1)
+        make_hint("用于估算荷载")
 
-        # 行4：露点温度 + 设备温度
-        make_lbl("露点温度(°C):", 4, 0)
-        self.dew_point_input = make_edit("22", (-50.0, 60.0, 2), 4, 1)
-        self.dew_point_input.setText("22")
-        self.dew_point_label = grid.itemAtPosition(4, 0).widget()
+        row += 1
 
-        make_lbl("设备温度(°C):", 4, 2)
-        self.equipment_temp_input = make_edit("200", (-200.0, 1000.0, 2), 4, 3)
-        self.equipment_temp_input.setText("200")
+        # 行6：环境温度 + 风速
+        make_lbl("环境温度(°C):")
+        self.ambient_temp_input = make_edit("20", (-50.0, 60.0, 2), "20")
+        grid.addWidget(self.ambient_temp_input, row, 1)
+        make_hint("室内可取20~25")
+
+        row += 1
+
+        make_lbl("风速(m/s):")
+        self.wind_speed_input = make_edit("3", (0.0, 20.0, 2), "3")
+        grid.addWidget(self.wind_speed_input, row, 1)
+        make_hint("室外一般取2~5")
+
+        row += 1
+
+        # 行8：露点温度 + 设备温度
+        make_lbl("露点温度(°C):")
+        self.dew_point_input = make_edit("22", (-50.0, 60.0, 2), "22")
+        grid.addWidget(self.dew_point_input, row, 1)
+        self.dew_point_hint = make_hint("仅保冷工况使用")
+
+        row += 1
+
+        make_lbl("设备温度(°C):")
+        self.equipment_temp_input = make_edit("200", (-200.0, 1000.0, 2), "200")
+        grid.addWidget(self.equipment_temp_input, row, 1)
+        make_hint("介质工作温度")
+
+        row += 1
 
         # ── 动态参数区（不同计算方法的特定参数）──
         self.dynamic_container = QWidget()
         self.dynamic_layout = QGridLayout(self.dynamic_container)
         self.dynamic_layout.setHorizontalSpacing(10)
         self.dynamic_layout.setVerticalSpacing(10)
-        grid.addWidget(self.dynamic_container, 5, 0, 1, 4)
+        self.dynamic_layout.setColumnStretch(0, 4)
+        self.dynamic_layout.setColumnStretch(1, 8)
+        self.dynamic_layout.setColumnStretch(2, 5)
+        grid.addWidget(self.dynamic_container, row, 0, 1, 3)
 
         left_layout.addWidget(input_group)
 
-        # ── 计算按钮 ──
-        calc_btn = QPushButton("计算")
-        calc_btn.setFont(QFont("Arial", 12, QFont.Bold))
-        calc_btn.setMinimumHeight(50)
-        calc_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        calc_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        calc_btn.clicked.connect(self.calculate)
-        left_layout.addWidget(calc_btn)
-
-        # ── 底部按钮行 ──
-        bottom_layout = QHBoxLayout()
-        
-        # 清空按钮
-        self.clear_btn = QPushButton("清空")
-        self.clear_btn.clicked.connect(self.clear_inputs)
-        self.clear_btn.setMinimumHeight(50)
-        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.clear_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #95a5a6;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #7f8c8d;
-            } """)
-        
-        # 下载TXT按钮
-        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
-        self.download_docx_btn.clicked.connect(self.download_docx_report)
-        self.download_docx_btn.setMinimumHeight(50)
-        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_docx_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            } """)
-        
-        # 下载PDF按钮
-        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
-        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
-        self.download_pdf_btn.setMinimumHeight(50)
-        self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_pdf_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #c0392b;
-            } """)
-        
-        bottom_layout.addWidget(self.clear_btn)
-        bottom_layout.addStretch()
-        bottom_layout.addWidget(self.download_docx_btn)
-        bottom_layout.addWidget(self.download_pdf_btn)
-        left_layout.addLayout(bottom_layout)
         left_layout.addStretch()
 
         # ──────────────── 右侧结果区 ────────────────
@@ -319,23 +252,41 @@ class InsulationThicknessCalculator(CalculatorBase):
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
 
-        result_group = QGroupBox("计算结果")
+        result_group = CalculatorBase.make_group_box("计算结果")
         result_vbox = QVBoxLayout(result_group)
 
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(500)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.result_text.setMinimumHeight(300)
+        # 结果框统一标准：边框/背景/文字色交给主题系统，仅指定等宽字体
         self.result_text.setStyleSheet("""
             QTextEdit {
-                /* bg via theme */border: 1px solid #ecf0f1;
-                border-radius: 6px;
-                padding: 8px;
-            }
-        """)
+                font-family: Consolas, 'Microsoft YaHei', monospace;
+                font-size: 13px;
+            } """)
         self.result_text.setPlaceholderText("计算结果将在此显示……")
         result_vbox.addWidget(self.result_text)
         right_layout.addWidget(result_group)
+
+        # ── 底部按钮行：清空 | DOCX | PDF ──
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(8)
+        for name, style, cb in [
+            ("清空", CLEAR_BTN_STYLE, self.clear_inputs),
+            ("DOCX", DOCX_BTN_STYLE, self.download_docx_report),
+            ("PDF", PDF_BTN_STYLE, self.download_pdf_report),
+        ]:
+            btn = QPushButton(name)
+            btn.setStyleSheet(style)
+            btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            btn.clicked.connect(cb)
+            btn_layout.addWidget(btn)
+        right_layout.addLayout(btn_layout)
+
+        # ── 计算按钮（最底部） ──
+        calc_btn = self.make_calc_button("计 算")
+        calc_btn.clicked.connect(self.calculate)
+        right_layout.addWidget(calc_btn)
 
         # 拼合
         scroll_left.setWidget(left_widget)
@@ -361,57 +312,67 @@ class InsulationThicknessCalculator(CalculatorBase):
         def lbl(text):
             w = QLabel(text)
             w.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            w.setStyleSheet("font-weight: bold; padding-right: 10px;")
+            w.setStyleSheet(INPUT_LABEL_STYLE)
+            self.dynamic_layout.addWidget(w, row, 0)
             return w
 
-        def ed(placeholder, val_range):
+        def ed(placeholder, val_range, default=None):
             w = QLineEdit()
             w.setPlaceholderText(placeholder)
-            w.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             if val_range:
                 lo, hi, dec = val_range
                 w.setValidator(QDoubleValidator(lo, hi, dec))
+            if default is not None:
+                w.setText(default)
+            return w
+
+        def hint(text):
+            w = QLabel(text)
+            w.setStyleSheet("font-style: italic;")
+            self.dynamic_layout.addWidget(w, row, 2)
             return w
 
         if calc_type == "绝热层经济厚度":
-            self.dynamic_layout.addWidget(lbl("能量价格(元/GJ):"), row, 0)
-            self.energy_price_input = ed("3.6", (0.1, 100.0, 2))
-            self.energy_price_input.setText("3.6")
+            lbl("能量价格(元/GJ):")
+            self.energy_price_input = ed("3.6", (0.1, 100.0, 2), "3.6")
             self.dynamic_layout.addWidget(self.energy_price_input, row, 1)
-
-            self.dynamic_layout.addWidget(lbl("绝热造价(元/m³):"), row, 2)
-            self.insulation_cost_input = ed("640", (100.0, 5000.0, 2))
-            self.insulation_cost_input.setText("640")
-            self.dynamic_layout.addWidget(self.insulation_cost_input, row, 3)
+            hint("蒸汽/电折算价格")
             row += 1
 
-            self.dynamic_layout.addWidget(lbl("年运行时间(小时):"), row, 0)
-            self.operation_time_input = ed("8000", (1.0, 8760.0, 2))
-            self.operation_time_input.setText("8000")
+            lbl("绝热造价(元/m³):")
+            self.insulation_cost_input = ed("640", (100.0, 5000.0, 2), "640")
+            self.dynamic_layout.addWidget(self.insulation_cost_input, row, 1)
+            hint("含材料+施工")
+            row += 1
+
+            lbl("年运行时间(小时):")
+            self.operation_time_input = ed("8000", (1.0, 8760.0, 2), "8000")
             self.dynamic_layout.addWidget(self.operation_time_input, row, 1)
-
-            self.dynamic_layout.addWidget(lbl("年利率(%):"), row, 2)
-            self.interest_rate_input = ed("10", (0.1, 50.0, 2))
-            self.interest_rate_input.setText("10")
-            self.dynamic_layout.addWidget(self.interest_rate_input, row, 3)
+            hint("连续运行取8000+")
             row += 1
 
-            self.dynamic_layout.addWidget(lbl("计息年限(年):"), row, 0)
-            self.years_input = ed("5", (1.0, 30.0, 2))
-            self.years_input.setText("5")
+            lbl("年利率(%):")
+            self.interest_rate_input = ed("10", (0.1, 50.0, 2), "10")
+            self.dynamic_layout.addWidget(self.interest_rate_input, row, 1)
+            hint("投资回收折现率")
+            row += 1
+
+            lbl("计息年限(年):")
+            self.years_input = ed("5", (1.0, 30.0, 2), "5")
             self.dynamic_layout.addWidget(self.years_input, row, 1)
+            hint("投资回收年限")
 
         elif calc_type == "表面温度法":
-            self.dynamic_layout.addWidget(lbl("外表面温度(°C):"), row, 0)
-            self.surface_temp_input = ed("26", (-50.0, 200.0, 2))
-            self.surface_temp_input.setText("26")
+            lbl("外表面温度(°C):")
+            self.surface_temp_input = ed("26", (-50.0, 200.0, 2), "26")
             self.dynamic_layout.addWidget(self.surface_temp_input, row, 1)
+            hint("防烫伤常取≤50")
 
         elif calc_type == "热损失法":
-            self.dynamic_layout.addWidget(lbl("允许热损失(W/m²):"), row, 0)
-            self.heat_loss_limit_input = ed("160", (10.0, 1000.0, 2))
-            self.heat_loss_limit_input.setText("160")
+            lbl("允许热损失(W/m²):")
+            self.heat_loss_limit_input = ed("160", (10.0, 1000.0, 2), "160")
             self.dynamic_layout.addWidget(self.heat_loss_limit_input, row, 1)
+            hint("按GB/T 4272选取")
 
         # 防结露法：无额外参数
 
@@ -438,8 +399,8 @@ class InsulationThicknessCalculator(CalculatorBase):
     def _update_ui_visibility(self):
         is_cold = self.insulation_type_combo.currentText() == "保冷"
         self.dew_point_input.setEnabled(is_cold)
-        if hasattr(self, "dew_point_label"):
-            self.dew_point_label.setEnabled(is_cold)
+        if hasattr(self, "dew_point_hint"):
+            self.dew_point_hint.setEnabled(is_cold)
 
     # ──────────────────── 计算核心 ──────────────────────────────
     @staticmethod
@@ -514,8 +475,6 @@ class InsulationThicknessCalculator(CalculatorBase):
             }
             self._last_params = args
             self._display_result(thk, ct, method_name, args)
-
-            
 
         except ValueError as e:
             self._show_error(f"输入错误：{e}")
@@ -739,21 +698,72 @@ class InsulationThicknessCalculator(CalculatorBase):
         }
 
     def get_project_info(self):
-        return {
-            "calculator": "InsulationThicknessCalculator",
-            "name": "保温厚度计算",
-        }
+        """获取工程信息 - 返回 dict"""
+        try:
+            saved_info = {}
+            if self.data_manager:
+                saved_info = self.data_manager.get_project_info()
+            return {
+                'company_name': saved_info.get('company_name', ''),
+                'project_number': saved_info.get('project_number', ''),
+                'project_name': saved_info.get('project_name', ''),
+                'subproject_name': saved_info.get('subproject_name', ''),
+                'report_number': ''
+            }
+        except Exception as e:
+            print(f"获取工程信息失败: {e}")
+            return {}
 
     # ──────────────────── 报告生成 ──────────────────────────────
     def generate_report(self):
-        return self.result_text.toPlainText()
+        """生成计算书文本（str）"""
+        try:
+            result_text = self.result_text.toPlainText()
+            if not result_text or ("保温厚度" not in result_text or "错误" in result_text[:10]):
+                return None
+
+            project_info = self.get_project_info()
+            report = f"""══════════════════════════════════════════
+          保温厚度计算计算书
+══════════════════════════════════════════
+
+{result_text}
+
+══════════════════════════════════════════
+ 工程信息
+══════════════════════════════════════════
+
+  公司名称: {project_info.get('company_name', '')}
+  工程编号: {project_info.get('project_number', '')}
+  工程名称: {project_info.get('project_name', '')}
+  子项名称: {project_info.get('subproject_name', '')}
+  计算日期: {datetime.now().strftime('%Y-%m-%d')}
+
+══════════════════════════════════════════
+备注说明
+══════════════════════════════════════════
+
+  1. 计算依据 GB/T 4272-2008、GB/T 8175-2008 及 ASHRAE 手册
+  2. 表面传热系数按风速与温差近似取值，实际受气象条件影响
+  3. 计算结果为理论值，实际工程需结合施工条件由专业工程师确认
+
+---
+生成于 ChemCal 工程计算模块
+"""
+            return report
+
+        except Exception as e:
+            print(f"生成计算书失败: {e}")
+            return None
 
     def download_docx_report(self):
         """生成DOCX格式计算书"""
-        ReportExporter.export_docx(self, "InsulationThicknessCalculator")
+        ReportExporter.export_docx(self, "保温厚度计算")
+
     def download_pdf_report(self):
         """生成PDF格式计算书"""
-        ReportExporter.export_pdf(self, "InsulationThicknessCalculator")
+        ReportExporter.export_pdf(self, "保温厚度计算")
+
 if __name__ == "__main__":
     import sys
     from PySide6.QtWidgets import QApplication

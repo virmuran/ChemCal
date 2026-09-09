@@ -21,30 +21,21 @@
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
-    QGroupBox, QTextEdit, QComboBox, QMessageBox, QFrame,
+    QGroupBox, QTextEdit, QComboBox, QMessageBox,
     QScrollArea, QButtonGroup, QGridLayout,
-    QFileDialog, QSizePolicy
+    QSizePolicy
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QDoubleValidator
+from PySide6.QtGui import QDoubleValidator
 import math
-import os
-import sys
-import importlib.util
 from datetime import datetime
-from pathlib import Path
 
-
-from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
-                        CALC_BUTTON_STYLE, MODE_BUTTON_STYLE,
-                        SCROLL_AREA_STYLE, INPUT_LABEL_STYLE,
+from app_styles import (COMBOBOX_STYLE, SCROLL_AREA_STYLE, INPUT_LABEL_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
-# DOCX 报告导出
-
-from common_constants import load_steam_iapws, get_steam_props
-_iapws_available = load_steam_iapws()
+from common_constants import get_steam_props
+from utils.docx_utils import ReportExporter
 
 # ── 输入参数 key 常量（显式定义，避免清洗/硬编码不一致的Bug）──
 K_VOLUME = "volume"               # 罐体体积 m³
@@ -100,8 +91,6 @@ PIPE_DIMENSIONS = {
     "DN300": (323.9, 10.3),
 }
 
-# ── 样式 ──
-
 
 class SteamSterilizationCalculator(CalculatorBase):
     """蒸汽空消计算器"""
@@ -139,10 +128,12 @@ class SteamSterilizationCalculator(CalculatorBase):
 
         # ── 左侧：输入区域 ──
         scroll_left = QScrollArea()
+        scroll_left.setStyleSheet(SCROLL_AREA_STYLE)
         scroll_left.setWidgetResizable(True)
         scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         left_widget = QWidget()
+        left_widget.setStyleSheet("")
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
 
@@ -156,7 +147,7 @@ class SteamSterilizationCalculator(CalculatorBase):
         left_layout.addWidget(desc)
 
         # 计算模式按钮组
-        mode_group = QGroupBox("计算模式")
+        mode_group = CalculatorBase.make_group_box("计算模式")
         mode_layout = QHBoxLayout(mode_group)
 
         self.mode_button_group = QButtonGroup(self)
@@ -168,38 +159,16 @@ class SteamSterilizationCalculator(CalculatorBase):
         ]
 
         for i, (name, tip) in enumerate(modes):
-            btn = QPushButton(name)
-            btn.setCheckable(True)
-            btn.setToolTip(tip)
-            btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-            btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #ffffff;
-                    color: black;
-                    border: 1px solid #888;
-                    border-radius: 4px;
-                    padding: 8px;
-                    font-weight: bold;
-                }
-                QPushButton:checked {
-                    background-color: #4b5cc4;
-                    color: white;
-                }
-                QPushButton:hover:!checked {
-                    background-color: #c0ebd7;
-                    color: black;
-                }
-            """)
+            btn = CalculatorBase.make_mode_button(name, tip)
             self.mode_button_group.addButton(btn, i)
             mode_layout.addWidget(btn)
             self.mode_buttons[name] = btn
 
         self.mode_buttons["罐体空消"].setChecked(True)
-        mode_layout.addStretch()
         left_layout.addWidget(mode_group)
 
         # 输入参数网格
-        input_group = QGroupBox("输入参数")
+        input_group = CalculatorBase.make_group_box("输入参数")
         self.input_layout = QGridLayout(input_group)
         self.input_layout.setSpacing(12)
         self.input_layout.setContentsMargins(10, 15, 10, 15)
@@ -209,26 +178,7 @@ class SteamSterilizationCalculator(CalculatorBase):
         self.input_layout.setColumnStretch(2, 5)
         left_layout.addWidget(input_group)
 
-        # 计算按钮
-        calc_btn = QPushButton("计 算")
-        calc_btn.setMinimumHeight(50)
-        calc_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        calc_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                font-size: 14px;
-                font-weight: bold;
-                border-radius: 8px;
-                padding: 0px;
-                min-height: 50px;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            }
-        """)
-        calc_btn.clicked.connect(self.calculate)
-        left_layout.addWidget(calc_btn)
+        left_layout.addStretch()
 
         scroll_left.setWidget(left_widget)
 
@@ -236,50 +186,42 @@ class SteamSterilizationCalculator(CalculatorBase):
         right_widget = QWidget()
         right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
-        right_layout.setSpacing(10)
+        right_layout.setSpacing(15)
 
-        result_group = QGroupBox("计算结果")
+        result_group = CalculatorBase.make_group_box("计算结果")
         result_inner = QVBoxLayout(result_group)
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setStyleSheet("font-size: 13px;")
+        self.result_text.setMinimumHeight(300)
+        # 结果框统一标准：边框/背景/文字色交给主题系统，仅指定等宽字体
+        self.result_text.setStyleSheet("""
+            QTextEdit {
+                font-family: Consolas, 'Microsoft YaHei', monospace;
+                font-size: 13px;
+            } """)
+        self.result_text.setPlaceholderText("计算结果将在此显示……")
         result_inner.addWidget(self.result_text)
         right_layout.addWidget(result_group)
 
-        # 底部按钮
+        # 底部按钮行：清空 | DOCX | PDF
         btn_layout = QHBoxLayout()
-
-        clear_btn = QPushButton("清空")
-        clear_btn.setStyleSheet(
-            "QPushButton { background-color: #95a5a6; color: white; "
-            "padding: 8px; border-radius: 4px; }"
-            "QPushButton:hover { background-color: #7f8c8d; }"
-        )
-        clear_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        clear_btn.clicked.connect(self.clear_all)
-        btn_layout.addWidget(clear_btn)
-
-        docx_btn = QPushButton("下载 DOCX")
-        docx_btn.setStyleSheet(
-            "QPushButton { background-color: #3498db; color: white; "
-            "padding: 8px; border-radius: 4px; }"
-            "QPushButton:hover { background-color: #2980b9; }"
-        )
-        docx_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        docx_btn.clicked.connect(self.download_docx_report)
-        btn_layout.addWidget(docx_btn)
-
-        pdf_btn = QPushButton("下载 PDF")
-        pdf_btn.setStyleSheet(
-            "QPushButton { background-color: #e74c3c; color: white; "
-            "padding: 8px; border-radius: 4px; }"
-            "QPushButton:hover { background-color: #c0392b; }"
-        )
-        pdf_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        pdf_btn.clicked.connect(self.download_pdf_report)
-        btn_layout.addWidget(pdf_btn)
-
+        btn_layout.setSpacing(8)
+        for name, style, cb in [
+            ("清空", CLEAR_BTN_STYLE, self.clear_all),
+            ("DOCX", DOCX_BTN_STYLE, self.download_docx_report),
+            ("PDF", PDF_BTN_STYLE, self.download_pdf_report),
+        ]:
+            btn = QPushButton(name)
+            btn.setStyleSheet(style)
+            btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            btn.clicked.connect(cb)
+            btn_layout.addWidget(btn)
         right_layout.addLayout(btn_layout)
+
+        # 计算按钮（最底部）
+        calc_btn = self.make_calc_button("计 算")
+        calc_btn.clicked.connect(self.calculate)
+        right_layout.addWidget(calc_btn)
 
         # 组装左右
         main_layout.addWidget(scroll_left, 2)
@@ -322,60 +264,26 @@ class SteamSterilizationCalculator(CalculatorBase):
 
     def _setup_tank_mode(self):
         """罐体空消输入界面"""
-        label_style = "font-weight: bold; padding-right: 10px; text-align: right;"
-
         inputs = [
-            (0, "罐体体积 (m³):", K_VOLUME, "例如：10", QDoubleValidator(0.1, 10000, 2)),
-            (1, "高径比 H/D:", K_HD_RATIO, "默认 2.0", QDoubleValidator(0.5, 5.0, 1)),
-            (2, "罐体材质:", K_MATERIAL, None, None),
-            (3, "灭菌温度 (°C):", K_T_STERILIZE, "默认 121", QDoubleValidator(100, 150, 1)),
-            (4, "初始温度 (°C):", K_T_INITIAL, "默认 25", QDoubleValidator(-10, 50, 1)),
-            (5, "蒸汽压力 MPa(g):", K_P_STEAM, "默认 0.3", QDoubleValidator(0.05, 2.5, 2)),
-            (6, "保温类型:", K_INSULATION, None, None),
-            (7, "灭菌时间 (min):", K_TIME, "默认 30", QDoubleValidator(5, 240, 1)),
-            (8, "安全系数:", K_SAFETY, "默认 1.2", QDoubleValidator(1.0, 2.0, 2)),
-            (9, "热效率:", K_EFFICIENCY, "默认 0.95", QDoubleValidator(0.5, 1.0, 2)),
+            (0, "罐体体积 (m³):", K_VOLUME, "例如：10", QDoubleValidator(0.1, 10000, 2), None),
+            (1, "高径比 H/D:", K_HD_RATIO, "默认 2.0", QDoubleValidator(0.5, 5.0, 1), None),
+            (2, "罐体材质:", K_MATERIAL, None, None, [MATERIAL_DB[m]["display"] for m in MATERIAL_DB]),
+            (3, "灭菌温度 (°C):", K_T_STERILIZE, "默认 121", QDoubleValidator(100, 150, 1), None),
+            (4, "初始温度 (°C):", K_T_INITIAL, "默认 25", QDoubleValidator(-10, 50, 1), None),
+            (5, "蒸汽压力 MPa(g):", K_P_STEAM, "默认 0.3", QDoubleValidator(0.05, 2.5, 2), None),
+            (6, "保温类型:", K_INSULATION, None, None, list(INSULATION_DB.keys())),
+            (7, "灭菌时间 (min):", K_TIME, "默认 30", QDoubleValidator(5, 240, 1), None),
+            (8, "安全系数:", K_SAFETY, "默认 1.2", QDoubleValidator(1.0, 2.0, 2), None),
+            (9, "热效率:", K_EFFICIENCY, "默认 0.95", QDoubleValidator(0.5, 1.0, 2), None),
         ]
+        defaults = {
+            K_VOLUME: "", K_HD_RATIO: "2.0", K_T_STERILIZE: "121",
+            K_T_INITIAL: "25", K_P_STEAM: "0.3", K_TIME: "30",
+            K_SAFETY: "1.2", K_EFFICIENCY: "0.95",
+        }
+        default_index = {K_MATERIAL: 0, K_INSULATION: 1}  # 保温默认岩棉50mm
 
-        for row, label_text, key, placeholder, validator in inputs:
-            lbl = QLabel(label_text)
-            lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            lbl.setStyleSheet(label_style)
-            self.input_layout.addWidget(lbl, row, 0)
-
-            if key == K_MATERIAL:
-                combo = QComboBox()
-                combo.setStyleSheet(COMBOBOX_STYLE)
-                for mat in MATERIAL_DB:
-                    combo.addItem(mat)
-                combo.setCurrentIndex(0)
-                self.input_layout.addWidget(combo, row, 1)
-                self.input_widgets[key] = combo
-            elif key == K_INSULATION:
-                combo = QComboBox()
-                combo.setStyleSheet(COMBOBOX_STYLE)
-                for ins in INSULATION_DB:
-                    combo.addItem(ins)
-                combo.setCurrentIndex(1)  # 默认岩棉50mm
-                self.input_layout.addWidget(combo, row, 1)
-                self.input_widgets[key] = combo
-            else:
-                line = QLineEdit()
-                line.setAlignment(Qt.AlignmentFlag.AlignLeft)
-                if placeholder:
-                    line.setPlaceholderText(placeholder)
-                    # 设置默认值
-                    defaults = {
-                        K_VOLUME: "", K_HD_RATIO: "2.0", K_T_STERILIZE: "121",
-                        K_T_INITIAL: "25", K_P_STEAM: "0.3", K_TIME: "30",
-                        K_SAFETY: "1.2", K_EFFICIENCY: "0.95",
-                    }
-                    if key in defaults and defaults[key]:
-                        line.setText(defaults[key])
-                if validator:
-                    line.setValidator(validator)
-                self.input_layout.addWidget(line, row, 1)
-                self.input_widgets[key] = line
+        self._build_inputs(inputs, defaults, default_index)
 
     # ═══════════════════════════════════════════════════════════════
     # 模式2 — 管道消毒
@@ -383,51 +291,42 @@ class SteamSterilizationCalculator(CalculatorBase):
 
     def _setup_pipe_mode(self):
         """管道消毒输入界面"""
-        label_style = "font-weight: bold; padding-right: 10px; text-align: right;"
-
+        pipe_mats = ["304不锈钢", "316L不锈钢", "碳钢Q235"]
         inputs = [
-            (0, "管道公称直径:", K_PIPE_DN, None, None),
-            (1, "管道长度 (m):", K_PIPE_LENGTH, "例如：50", QDoubleValidator(0.5, 5000, 1)),
-            (2, "管道材质:", K_PIPE_MATERIAL, None, None),
-            (3, "灭菌温度 (°C):", K_T_STERILIZE, "默认 121", QDoubleValidator(100, 150, 1)),
-            (4, "初始温度 (°C):", K_T_INITIAL, "默认 25", QDoubleValidator(-10, 50, 1)),
-            (5, "蒸汽压力 MPa(g):", K_P_STEAM, "默认 0.3", QDoubleValidator(0.05, 2.5, 2)),
-            (6, "保温类型:", K_INSULATION, None, None),
-            (7, "灭菌时间 (min):", K_TIME, "默认 30", QDoubleValidator(5, 240, 1)),
-            (8, "安全系数:", K_SAFETY, "默认 1.2", QDoubleValidator(1.0, 2.0, 2)),
-            (9, "热效率:", K_EFFICIENCY, "默认 0.95", QDoubleValidator(0.5, 1.0, 2)),
+            (0, "管道公称直径:", K_PIPE_DN, None, None,
+             [f"{dn} (外径{od}×{wt}mm)" for dn, (od, wt) in PIPE_DIMENSIONS.items()]),
+            (1, "管道长度 (m):", K_PIPE_LENGTH, "例如：50", QDoubleValidator(0.5, 5000, 1), None),
+            (2, "管道材质:", K_PIPE_MATERIAL, None, None, pipe_mats),
+            (3, "灭菌温度 (°C):", K_T_STERILIZE, "默认 121", QDoubleValidator(100, 150, 1), None),
+            (4, "初始温度 (°C):", K_T_INITIAL, "默认 25", QDoubleValidator(-10, 50, 1), None),
+            (5, "蒸汽压力 MPa(g):", K_P_STEAM, "默认 0.3", QDoubleValidator(0.05, 2.5, 2), None),
+            (6, "保温类型:", K_INSULATION, None, None, list(INSULATION_DB.keys())),
+            (7, "灭菌时间 (min):", K_TIME, "默认 30", QDoubleValidator(5, 240, 1), None),
+            (8, "安全系数:", K_SAFETY, "默认 1.2", QDoubleValidator(1.0, 2.0, 2), None),
+            (9, "热效率:", K_EFFICIENCY, "默认 0.95", QDoubleValidator(0.5, 1.0, 2), None),
         ]
+        defaults = {
+            K_PIPE_LENGTH: "50", K_T_STERILIZE: "121",
+            K_T_INITIAL: "25", K_P_STEAM: "0.3", K_TIME: "30",
+            K_SAFETY: "1.2", K_EFFICIENCY: "0.95",
+        }
+        default_index = {K_PIPE_DN: 5, K_PIPE_MATERIAL: 0, K_INSULATION: 1}  # DN50 / 304 / 岩棉50mm
 
-        for row, label_text, key, placeholder, validator in inputs:
+        self._build_inputs(inputs, defaults, default_index)
+
+    def _build_inputs(self, inputs, defaults, default_index):
+        """按统一网格构建输入行"""
+        for row, label_text, key, placeholder, validator, items in inputs:
             lbl = QLabel(label_text)
             lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            lbl.setStyleSheet(label_style)
+            lbl.setStyleSheet(INPUT_LABEL_STYLE)
             self.input_layout.addWidget(lbl, row, 0)
 
-            if key == K_PIPE_DN:
+            if items is not None:
                 combo = QComboBox()
                 combo.setStyleSheet(COMBOBOX_STYLE)
-                for dn in PIPE_DIMENSIONS:
-                    od, wt = PIPE_DIMENSIONS[dn]
-                    combo.addItem(f"{dn} (外径{od}×{wt}mm)")
-                combo.setCurrentIndex(5)  # 默认 DN50
-                self.input_layout.addWidget(combo, row, 1)
-                self.input_widgets[key] = combo
-            elif key == K_PIPE_MATERIAL:
-                combo = QComboBox()
-                combo.setStyleSheet(COMBOBOX_STYLE)
-                pipe_mats = ["304不锈钢", "316L不锈钢", "碳钢Q235"]
-                for mat in pipe_mats:
-                    combo.addItem(mat)
-                combo.setCurrentIndex(0)
-                self.input_layout.addWidget(combo, row, 1)
-                self.input_widgets[key] = combo
-            elif key == K_INSULATION:
-                combo = QComboBox()
-                combo.setStyleSheet(COMBOBOX_STYLE)
-                for ins in INSULATION_DB:
-                    combo.addItem(ins)
-                combo.setCurrentIndex(1)
+                combo.addItems(items)
+                combo.setCurrentIndex(default_index.get(key, 0))
                 self.input_layout.addWidget(combo, row, 1)
                 self.input_widgets[key] = combo
             else:
@@ -435,12 +334,7 @@ class SteamSterilizationCalculator(CalculatorBase):
                 line.setAlignment(Qt.AlignmentFlag.AlignLeft)
                 if placeholder:
                     line.setPlaceholderText(placeholder)
-                    defaults = {
-                        K_PIPE_LENGTH: "50", K_T_STERILIZE: "121",
-                        K_T_INITIAL: "25", K_P_STEAM: "0.3", K_TIME: "30",
-                        K_SAFETY: "1.2", K_EFFICIENCY: "0.95",
-                    }
-                    if key in defaults and defaults[key]:
+                    if defaults.get(key):
                         line.setText(defaults[key])
                 if validator:
                     line.setValidator(validator)
@@ -467,38 +361,6 @@ class SteamSterilizationCalculator(CalculatorBase):
         elif isinstance(w, QComboBox):
             return w.currentText()
         return default
-
-    # ═══════════════════════════════════════════════════════════════
-    # 蒸汽物性（通过 IAPWS-IF97）
-    # ═══════════════════════════════════════════════════════════════
-
-    def _get_steam_props(self, p_gauge_mpa):
-        """由表压 MPa(g) 获取蒸汽物性"""
-        if not _iapws_available:
-            return {"sat_temp": 143.6, "h_fg": 2133.0, "method": "内置近似值"}
-
-        try:
-            p_abs = p_gauge_mpa + ATM_PRESSURE_MPA  # 表压转绝对压力 MPa
-            from iapws import IAPWS97
-            steam = IAPWS97(P=p_abs, x=1.0)  # 干饱和蒸汽
-            return {
-                "sat_temp": steam.T - C_TO_K,
-                "h_fg": steam.h - IAPWS97(P=p_abs, x=0).h,  # h_g - h_f
-                "method": "IAPWS-IF97"
-            }
-        except Exception:
-            # 回退到 IAPWS97 saturated temperature
-            try:
-                from iapws import IAPWS97
-                steam = IAPWS97(P=p_gauge_mpa + ATM_PRESSURE_MPA, x=1.0)
-                sat_water = IAPWS97(P=p_gauge_mpa + ATM_PRESSURE_MPA, x=0)
-                return {
-                    "sat_temp": steam.T - C_TO_K,
-                    "h_fg": steam.h - sat_water.h,
-                    "method": "IAPWS-IF97"
-                }
-            except Exception:
-                return {"sat_temp": 143.6, "h_fg": 2133.0, "method": "内置近似值"}
 
     # ═══════════════════════════════════════════════════════════════
     # 罐体几何计算
@@ -612,8 +474,8 @@ class SteamSterilizationCalculator(CalculatorBase):
         h_loss = INSULATION_DB[insulation]  # W/(m²·K)
         q_loss = h_loss * geo["A_total"] * (t_sterilize - t_ambient) * time_min * 60 / 1000  # kJ
 
-        # 6. 蒸汽物性
-        steam = self._get_steam_props(p_steam)
+        # 6. 蒸汽物性（标准接口：入参为表压 MPa）
+        steam = get_steam_props(p_steam)
         h_fg = steam["h_fg"]  # kJ/kg
 
         # 7. 蒸汽用量
@@ -640,7 +502,7 @@ class SteamSterilizationCalculator(CalculatorBase):
             "q_loss": q_loss,
             "steam_sat_temp": steam["sat_temp"],
             "h_fg": h_fg,
-            "steam_method": steam["method"],
+            "steam_method": steam.get("method", ""),
             "q_total": q_total,
             "steam_mass_theoretical": steam_mass_theoretical,
             "safety": safety,
@@ -697,8 +559,8 @@ class SteamSterilizationCalculator(CalculatorBase):
         h_loss = INSULATION_DB[insulation]
         q_loss = h_loss * A_total * (t_sterilize - t_ambient) * time_min * 60 / 1000  # kJ
 
-        # 5. 蒸汽物性
-        steam = self._get_steam_props(p_steam)
+        # 5. 蒸汽物性（标准接口：入参为表压 MPa）
+        steam = get_steam_props(p_steam)
         h_fg = steam["h_fg"]
 
         # 6. 蒸汽用量
@@ -722,7 +584,7 @@ class SteamSterilizationCalculator(CalculatorBase):
             "q_loss": q_loss,
             "steam_sat_temp": steam["sat_temp"],
             "h_fg": h_fg,
-            "steam_method": steam["method"],
+            "steam_method": steam.get("method", ""),
             "q_total": q_total,
             "steam_mass_theoretical": steam_mass_theoretical,
             "safety": safety,
@@ -756,7 +618,7 @@ class SteamSterilizationCalculator(CalculatorBase):
 
 【热负荷计算】
   材质: {r['material']} (比热容 {MATERIAL_DB[r['material']]['cp']} J/(kg·K))
-  温差: {r['delta_t']:.1f} °C ({r['t_sterilize']} → {r['t_initial']})
+  温差: {r['delta_t']:.1f} °C ({r['t_initial']} → {r['t_sterilize']})
   罐体加热热负荷: {r['q_heat']/1000:.1f} MJ ({r['q_heat']:.0f} kJ)
   散热系数: {INSULATION_DB.get(r['insulation'], '?')} W/(m²·K) ({r['insulation']})
   灭菌时间: {r['time_min']:.0f} min
@@ -775,7 +637,7 @@ class SteamSterilizationCalculator(CalculatorBase):
   热效率: {r['efficiency']:.2f}
   ★ 实际蒸汽用量: {r['steam_mass_actual']:.2f} kg
   ★ 折合标况: {r['steam_mass_actual']/r['volume']:.1f} kg/m³(罐容)
-"""  
+"""
         self.result_text.setText(text)
 
     def _display_pipe_result(self):
@@ -838,9 +700,9 @@ class SteamSterilizationCalculator(CalculatorBase):
                 "罐体体积_m3": r.get("volume", 0),
                 "高径比": r.get("hd_ratio", 0),
                 "材质": r.get("material", ""),
-                "灭菌温度_C": self._last_results.get("t_sterilize", 0),
-                "初始温度_C": self._last_results.get("t_initial", 0),
-                "蒸汽压力_MPa": self._last_results.get("p_steam", 0),
+                "灭菌温度_C": r.get("t_sterilize", 0),
+                "初始温度_C": r.get("t_initial", 0),
+                "蒸汽压力_MPa": r.get("p_steam", 0),
                 "保温类型": r.get("insulation", ""),
                 "灭菌时间_min": r.get("time_min", 0),
                 "安全系数": r.get("safety", 0),
@@ -851,9 +713,9 @@ class SteamSterilizationCalculator(CalculatorBase):
                 "管道规格": r.get("pipe_dn", ""),
                 "管道长度_m": r.get("pipe_length", 0),
                 "材质": r.get("material", ""),
-                "灭菌温度_C": self._last_results.get("t_sterilize", 0),
-                "初始温度_C": self._last_results.get("t_initial", 0),
-                "蒸汽压力_MPa": self._last_results.get("p_steam", 0),
+                "灭菌温度_C": r.get("t_sterilize", 0),
+                "初始温度_C": r.get("t_initial", 0),
+                "蒸汽压力_MPa": r.get("p_steam", 0),
                 "保温类型": r.get("insulation", ""),
                 "灭菌时间_min": r.get("time_min", 0),
                 "安全系数": r.get("safety", 0),
@@ -867,6 +729,64 @@ class SteamSterilizationCalculator(CalculatorBase):
     # ═══════════════════════════════════════════════════════════════
     # 报告导出
     # ═══════════════════════════════════════════════════════════════
+
+    def get_project_info(self):
+        """获取工程信息 - 返回 dict"""
+        try:
+            saved_info = {}
+            if self.data_manager:
+                saved_info = self.data_manager.get_project_info()
+            return {
+                'company_name': saved_info.get('company_name', ''),
+                'project_number': saved_info.get('project_number', ''),
+                'project_name': saved_info.get('project_name', ''),
+                'subproject_name': saved_info.get('subproject_name', ''),
+                'report_number': ''
+            }
+        except Exception as e:
+            print(f"获取工程信息失败: {e}")
+            return {}
+
+    def generate_report(self):
+        """生成计算书文本（str）"""
+        try:
+            result_text = self.result_text.toPlainText()
+            if not result_text or ("蒸汽用量" not in result_text):
+                return None
+
+            project_info = self.get_project_info()
+            report = f"""══════════════════════════════════════════
+          蒸汽空消计算计算书
+══════════════════════════════════════════
+
+{result_text}
+
+══════════════════════════════════════════
+ 工程信息
+══════════════════════════════════════════
+
+  公司名称: {project_info.get('company_name', '')}
+  工程编号: {project_info.get('project_number', '')}
+  工程名称: {project_info.get('project_name', '')}
+  子项名称: {project_info.get('subproject_name', '')}
+  计算日期: {datetime.now().strftime('%Y-%m-%d')}
+
+══════════════════════════════════════════
+备注说明
+══════════════════════════════════════════
+
+  1. 罐体重量由壁厚估算（ASME BPVC VIII-1），存在 ±15~20% 偏差
+  2. 保温散热系数为经验值，实际散热损失受保温施工质量影响
+  3. 计算结果仅供参考，实际工程需经专业工程师审核确认
+
+---
+生成于 ChemCal 工程计算模块
+"""
+            return report
+
+        except Exception as e:
+            print(f"生成计算书失败: {e}")
+            return None
 
     def download_docx_report(self):
         """生成DOCX计算书"""
