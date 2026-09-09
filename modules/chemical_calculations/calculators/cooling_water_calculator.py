@@ -1,17 +1,13 @@
-import os
 import math
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
     QLabel, QLineEdit, QPushButton, QComboBox,
-    QTextEdit, QGridLayout, QFileDialog, QMessageBox,
+    QTextEdit, QGridLayout,
     QScrollArea, QSizePolicy,
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QDoubleValidator, QFont
+from PySide6.QtGui import QDoubleValidator
 from PySide6.QtSvgWidgets import QSvgWidget
-import sys
-from pathlib import Path
-
 
 from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CALC_BUTTON_STYLE, MODE_BUTTON_STYLE,
@@ -19,8 +15,10 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
-from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
+from common_constants import WATER_DENSITY
+from utils.docx_utils import ReportExporter
 from svg_utils import svg_text
+from datetime import datetime
 
 
 class CoolingWaterCalculator(CalculatorBase):
@@ -168,7 +166,7 @@ class CoolingWaterCalculator(CalculatorBase):
 
         # ── 左侧 ──
         scroll = QScrollArea()
-        scroll.setStyleSheet("QScrollArea{border:none;background:transparent;}QScrollBar:vertical{background:transparent;width:8px;}QScrollBar::handle:vertical{background:#c0c0c0;border-radius:4px;min-height:30px;}QScrollBar::add-line:vertical,QScrollBar::sub-line:vertical{height:0;}")
+        scroll.setStyleSheet(SCROLL_AREA_STYLE)
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
@@ -181,7 +179,7 @@ class CoolingWaterCalculator(CalculatorBase):
         desc.setStyleSheet("font-size:12px;padding:5px;")
         ll.addWidget(desc)
 
-        ls = "font-weight:bold;padding-right:8px;"
+        ls = INPUT_LABEL_STYLE
         def lbl(t):
             w = QLabel(t)
             w.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -193,7 +191,7 @@ class CoolingWaterCalculator(CalculatorBase):
             return w
 
         # ── 计算模式组 ──
-        g1 = QGroupBox("计算模式")
+        g1 = CalculatorBase.make_group_box("计算模式")
         g1g = QGridLayout(g1)
         g1g.setHorizontalSpacing(10); g1g.setVerticalSpacing(10)
         g1g.setColumnStretch(0, 4); g1g.setColumnStretch(1, 8); g1g.setColumnStretch(2, 5)
@@ -221,7 +219,7 @@ class CoolingWaterCalculator(CalculatorBase):
         ll.addWidget(g1)
 
         # ── 热负荷参数组 ──
-        self._group_load = QGroupBox("热负荷参数")
+        self._group_load = CalculatorBase.make_group_box("热负荷参数")
         glg = QGridLayout(self._group_load)
         glg.setHorizontalSpacing(10); glg.setVerticalSpacing(10)
         glg.setColumnStretch(0, 4); glg.setColumnStretch(1, 8); glg.setColumnStretch(2, 5)
@@ -450,7 +448,7 @@ class CoolingWaterCalculator(CalculatorBase):
         ll.addWidget(self._group_load)
 
         # ── 冷却水参数组 ──
-        self._group_cw = QGroupBox("冷却水参数")
+        self._group_cw = CalculatorBase.make_group_box("冷却水参数")
         gcg = QGridLayout(self._group_cw)
         gcg.setHorizontalSpacing(10); gcg.setVerticalSpacing(10)
         gcg.setColumnStretch(0, 4); gcg.setColumnStretch(1, 8); gcg.setColumnStretch(2, 5)
@@ -486,28 +484,6 @@ class CoolingWaterCalculator(CalculatorBase):
 
         ll.addWidget(self._group_cw)
 
-        # ── 计算按钮 ──
-        calc_btn = QPushButton("计算")
-        calc_btn.setFont(QFont("Arial", 12, QFont.Bold))
-        calc_btn.setMinimumHeight(50)
-        calc_btn.setStyleSheet("QPushButton{background-color:#27ae60;color:white;border:none;border-radius:8px;font-weight:bold;}QPushButton:hover{background-color:#219955;}")
-        calc_btn.clicked.connect(self.calculate)
-        ll.addWidget(calc_btn)
-
-        # ── 底部按钮 ──
-        bl = QHBoxLayout()
-        for name, color, hover, cb in [
-            ("清空", "#95a5a6", "#7f8c8d", self.clear_inputs),
-            ("下载计算书(DOCX)", "#3498db", "#2980b9", self.download_docx_report),
-            ("下载计算书(PDF)", "#e74c3c", "#c0392b", self.download_pdf_report),
-        ]:
-            btn = QPushButton(name)
-            btn.clicked.connect(cb)
-            btn.setMinimumHeight(50)
-            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-            btn.setStyleSheet(f"QPushButton{{background-color:{color};color:white;border:none;border-radius:6px;padding:8px;font-weight:bold;}}QPushButton:hover{{background-color:{hover};}}")
-            bl.addWidget(btn)
-        ll.addLayout(bl)
         ll.addStretch()
 
         scroll.setWidget(lw)
@@ -525,15 +501,39 @@ class CoolingWaterCalculator(CalculatorBase):
         rl.addWidget(self.svg_widget)
         self.svg_widget.renderer().setAspectRatioMode(Qt.KeepAspectRatio)
 
-        rg = QGroupBox("计算结果")
+        rg = CalculatorBase.make_group_box("计算结果")
         rvl = QVBoxLayout(rg)
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(500)
-        self.result_text.setStyleSheet("QTextEdit{border:1px solid #888;border-radius:6px;padding:8px;min-height:500px;}")
+        self.result_text.setMinimumHeight(300)
+        self.result_text.setStyleSheet("""
+            QTextEdit {
+                font-family: Consolas, 'Microsoft YaHei', monospace;
+                font-size: 13px;
+            } """)
         self.result_text.setPlaceholderText("计算结果将在此显示……")
         rvl.addWidget(self.result_text)
         rl.addWidget(rg)
+
+        # ── 底部按钮行：清空 | DOCX | PDF ──
+        bl = QHBoxLayout()
+        bl.setSpacing(8)
+        for name, style, cb in [
+            ("清空", CLEAR_BTN_STYLE, self.clear_inputs),
+            ("DOCX", DOCX_BTN_STYLE, self.download_docx_report),
+            ("PDF", PDF_BTN_STYLE, self.download_pdf_report),
+        ]:
+            btn = QPushButton(name)
+            btn.setStyleSheet(style)
+            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            btn.clicked.connect(cb)
+            bl.addWidget(btn)
+        rl.addLayout(bl)
+
+        # ── 计算按钮（最底部） ──
+        calc_btn = self.make_calc_button("计 算")
+        calc_btn.clicked.connect(self.calculate)
+        rl.addWidget(calc_btn)
 
         main.addWidget(scroll, 2)
         main.addWidget(rw, 1)
@@ -1146,10 +1146,70 @@ class CoolingWaterCalculator(CalculatorBase):
         }
 
     def get_project_info(self):
-        return {"calculator": "CoolingWaterCalculator", "name": "循环水计算"}
+        """获取工程信息 - 返回 dict"""
+        try:
+            saved_info = {}
+            if self.data_manager:
+                saved_info = self.data_manager.get_project_info()
+            return {
+                'company_name': saved_info.get('company_name', ''),
+                'project_number': saved_info.get('project_number', ''),
+                'project_name': saved_info.get('project_name', ''),
+                'subproject_name': saved_info.get('subproject_name', ''),
+                'report_number': ''
+            }
+        except Exception as e:
+            print(f"获取工程信息失败: {e}")
+            return {}
 
     def generate_report(self):
-        return self.result_text.toPlainText()
+        """生成计算书文本（str）"""
+        try:
+            result_text = self.result_text.toPlainText()
+            if not result_text or ("循环水量" not in result_text and "循环液量" not in result_text):
+                return None
+
+            project_info = self.get_project_info()
+            report = f"""══════════════════════════════════════════
+          循环水用水量计算计算书
+══════════════════════════════════════════
+
+{result_text}
+
+══════════════════════════════════════════
+ 工程信息
+══════════════════════════════════════════
+
+  公司名称: {project_info.get('company_name', '')}
+  工程编号: {project_info.get('project_number', '')}
+  工程名称: {project_info.get('project_name', '')}
+  子项名称: {project_info.get('subproject_name', '')}
+  计算日期: {datetime.now().strftime('%Y-%m-%d')}
+
+══════════════════════════════════════════
+备注说明
+══════════════════════════════════════════
+
+  1. 循环水量按 Q = m·cp·ΔT 计算，含安全系数
+  2. 多台设备并联时需累加各设备循环水量
+  3. 计算结果仅供参考，实际工程需经专业工程师审核确认
+
+---
+生成于 ChemCal 工程计算模块
+"""
+            return report
+
+        except Exception as e:
+            print(f"生成计算书失败: {e}")
+            return None
+
+    # ═══════════════════════ 报告 ═══════════════════════
+    def download_docx_report(self):
+        """生成DOCX格式计算书"""
+        ReportExporter.export_docx(self, "循环水用水量")
+    def download_pdf_report(self):
+        """生成PDF格式计算书"""
+        ReportExporter.export_pdf(self, "循环水用水量")
 
     # ═══════════════════════ SVG ═══════════════════════
     def _text(self, x, y, text, size=9, color="#333", bold=False, center=True):
@@ -1289,13 +1349,6 @@ class CoolingWaterCalculator(CalculatorBase):
         except:
             pass
 
-    # ═══════════════════════ 报告 ═══════════════════════
-    def download_docx_report(self):
-        """生成DOCX格式计算书"""
-        ReportExporter.export_docx(self, "CoolingWaterCalculator")
-    def download_pdf_report(self):
-        """生成PDF格式计算书"""
-        ReportExporter.export_pdf(self, "CoolingWaterCalculator")
 if __name__ == "__main__":
     import sys
     from PySide6.QtWidgets import QApplication

@@ -17,6 +17,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
 
 from calculator_base import CalculatorBase
 from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
+from utils.docx_utils import ReportExporter
 # DOCX 报告导出
 
 # IAPWS-IF97 工业标准蒸汽物性（动态导入，避免 relative import 失败）
@@ -36,107 +37,6 @@ try:
 except Exception as e:
     print(f"警告: 无法加载 IAPWS-IF97 模块: {e}")
     iapws_steam = iapws_mu = iapws_k = None
-
-# 统一 QGroupBox 样式
-
-# 统一滚动条样式
-SCROLLBAR_STYLE = """
-    QScrollBar:vertical {
-        border: none;
-        background: #e8e8e8;
-        width: 8px;
-        margin: 0;
-        border-radius: 4px;
-    }
-    QScrollBar::handle:vertical {
-        background: #c0c0c0;
-        min-height: 30px;
-        border-radius: 4px;
-    }
-    QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-        height: 0;
-    }
-    QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
-        background: none;
-    }
-    QScrollBar:horizontal {
-        border: none;
-        background: #e8e8e8;
-        height: 8px;
-        margin: 0;
-        border-radius: 4px;
-    }
-    QScrollBar::handle:horizontal {
-        background: #c0c0c0;
-        min-width: 30px;
-        border-radius: 4px;
-    }
-    QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
-        width: 0;
-    }
-    QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
-        background: none;
-    }
-"""
-
-# 计算按钮样式
-CALC_BUTTON_STYLE = """
-    QPushButton {
-        background-color: #3498db;
-        color: white;
-        border: none;
-        border-radius: 8px;
-        min-height: 50px;
-        font-size: 14px;
-        font-weight: bold;
-    }
-    QPushButton:hover:!checked {
-        background-color: #2980b9;
-    }
-"""
-
-# 清空按钮样式
-CLEAR_BUTTON_STYLE = """
-    QPushButton {
-        background-color: #95a5a6;
-        color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 10px 20px;
-        font-size: 13px;
-    }
-    QPushButton:hover:!checked {
-        background-color: #7f8c8d;
-    }
-"""
-
-# 下载TXT按钮样式
-TXT_BUTTON_STYLE = """
-    QPushButton {
-        background-color: #27ae60;
-        color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 8px;
-    }
-    QPushButton:hover:!checked {
-        background-color: #219653;
-    }
-"""
-
-# 下载PDF按钮样式
-PDF_BUTTON_STYLE = """
-    QPushButton {
-        background-color: #e74c3c;
-        color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 8px;
-    }
-    QPushButton:hover:!checked {
-        background-color: #c0392b;
-    }
-"""
 
 class LongDistanceSteamPipeCalculator(CalculatorBase):
     """长输蒸汽管道温降计算器"""
@@ -173,12 +73,8 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
 
         # ===== 左侧输入区 =====
         scroll_area = QScrollArea()
-        scroll_area.setStyleSheet(
-            "QScrollArea { border: none; background: transparent; }"
-            + SCROLLBAR_STYLE
-        )
+        scroll_area.setStyleSheet(SCROLL_AREA_STYLE)
         scroll_area.setWidgetResizable(True)
-        scroll_area.setMaximumWidth(900)
 
         scroll_content = QWidget()
         scroll_content.setStyleSheet("")
@@ -192,7 +88,7 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         scroll_layout.addWidget(desc_label)
 
         # --- 蒸汽参数组 ---
-        steam_group = QGroupBox("蒸汽参数")
+        steam_group = CalculatorBase.make_group_box("蒸汽参数")
         steam_layout = QGridLayout(steam_group)
         steam_layout.setVerticalSpacing(12)
         steam_layout.setHorizontalSpacing(10)
@@ -203,7 +99,7 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         row = 0
         lbl = QLabel("蒸汽类型:")
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        lbl.setStyleSheet("font-weight: bold; padding-right: 10px;")
+        lbl.setStyleSheet(INPUT_LABEL_STYLE)
         self.steam_type = QComboBox()
         self.steam_type.setStyleSheet(COMBOBOX_STYLE)
         self.steam_type.addItems(["饱和蒸汽", "过热蒸汽"])
@@ -215,7 +111,7 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         row = 1
         lbl = QLabel("流量:")
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        lbl.setStyleSheet("font-weight: bold; padding-right: 10px;")
+        lbl.setStyleSheet(INPUT_LABEL_STYLE)
         self.flow_rate_input = QLineEdit()
         self.flow_rate_input.setPlaceholderText("例如：10")
         self.flow_rate_input.setValidator(QDoubleValidator(0.1, 1000, 2))
@@ -231,7 +127,7 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         row = 2
         lbl = QLabel("入口温度:")
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        lbl.setStyleSheet("font-weight: bold; padding-right: 10px;")
+        lbl.setStyleSheet(INPUT_LABEL_STYLE)
         self.inlet_temp_input = QLineEdit()
         self.inlet_temp_input.setPlaceholderText("例如：200")
         self.inlet_temp_input.setValidator(QDoubleValidator(100, 600, 1))
@@ -244,7 +140,7 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         row = 3
         lbl = QLabel("入口压力:")
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        lbl.setStyleSheet("font-weight: bold; padding-right: 10px;")
+        lbl.setStyleSheet(INPUT_LABEL_STYLE)
         self.inlet_pressure_input = QLineEdit()
         self.inlet_pressure_input.setPlaceholderText("例如：1.0")
         self.inlet_pressure_input.setValidator(QDoubleValidator(0.1, 10, 2))
@@ -260,7 +156,7 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         scroll_layout.addWidget(steam_group)
 
         # --- 管道参数组 ---
-        pipe_group = QGroupBox("管道参数")
+        pipe_group = CalculatorBase.make_group_box("管道参数")
         pipe_layout = QGridLayout(pipe_group)
         pipe_layout.setVerticalSpacing(12)
         pipe_layout.setHorizontalSpacing(10)
@@ -271,7 +167,7 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         row = 0
         lbl = QLabel("管道长度:")
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        lbl.setStyleSheet("font-weight: bold; padding-right: 10px;")
+        lbl.setStyleSheet(INPUT_LABEL_STYLE)
         self.pipe_length_input = QLineEdit()
         self.pipe_length_input.setPlaceholderText("例如：1000")
         self.pipe_length_input.setValidator(QDoubleValidator(10, 50000, 0))
@@ -284,7 +180,7 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         row = 1
         lbl = QLabel("管道内径:")
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        lbl.setStyleSheet("font-weight: bold; padding-right: 10px;")
+        lbl.setStyleSheet(INPUT_LABEL_STYLE)
         self.pipe_diameter_input = QLineEdit()
         self.pipe_diameter_input.setPlaceholderText("例如：200")
         self.pipe_diameter_input.setValidator(QDoubleValidator(10, 2000, 1))
@@ -297,7 +193,7 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         row = 2
         lbl = QLabel("管道材料:")
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        lbl.setStyleSheet("font-weight: bold; padding-right: 10px;")
+        lbl.setStyleSheet(INPUT_LABEL_STYLE)
         self.pipe_material = QComboBox()
         self.pipe_material.setStyleSheet(COMBOBOX_STYLE)
         self.pipe_material.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -310,7 +206,7 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         row = 3
         lbl = QLabel("粗糙度:")
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        lbl.setStyleSheet("font-weight: bold; padding-right: 10px;")
+        lbl.setStyleSheet(INPUT_LABEL_STYLE)
         self.roughness_input = QLineEdit()
         self.roughness_input.setText("0.2")
         self.roughness_input.setValidator(QDoubleValidator(0.01, 5, 3))
@@ -323,7 +219,7 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         scroll_layout.addWidget(pipe_group)
 
         # --- 保温参数组 ---
-        insulation_group = QGroupBox("保温参数")
+        insulation_group = CalculatorBase.make_group_box("保温参数")
         insulation_layout = QGridLayout(insulation_group)
         insulation_layout.setVerticalSpacing(12)
         insulation_layout.setHorizontalSpacing(10)
@@ -334,7 +230,7 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         row = 0
         lbl = QLabel("保温厚度:")
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        lbl.setStyleSheet("font-weight: bold; padding-right: 10px;")
+        lbl.setStyleSheet(INPUT_LABEL_STYLE)
         self.insulation_thickness_input = QLineEdit()
         self.insulation_thickness_input.setPlaceholderText("例如：50")
         self.insulation_thickness_input.setValidator(QDoubleValidator(0, 500, 1))
@@ -347,7 +243,7 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         row = 1
         lbl = QLabel("保温材料:")
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        lbl.setStyleSheet("font-weight: bold; padding-right: 10px;")
+        lbl.setStyleSheet(INPUT_LABEL_STYLE)
         self.insulation_material = QComboBox()
         self.insulation_material.setStyleSheet(COMBOBOX_STYLE)
         self.insulation_material.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -360,7 +256,7 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         row = 2
         lbl = QLabel("导热系数:")
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        lbl.setStyleSheet("font-weight: bold; padding-right: 10px;")
+        lbl.setStyleSheet(INPUT_LABEL_STYLE)
         self.insulation_conductivity_input = QLineEdit()
         self.insulation_conductivity_input.setText("0.04")
         self.insulation_conductivity_input.setValidator(QDoubleValidator(0.01, 1, 3))
@@ -373,7 +269,7 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         row = 3
         lbl = QLabel("环境温度:")
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        lbl.setStyleSheet("font-weight: bold; padding-right: 10px;")
+        lbl.setStyleSheet(INPUT_LABEL_STYLE)
         self.ambient_temp_input = QLineEdit()
         self.ambient_temp_input.setText("20")
         self.ambient_temp_input.setValidator(QDoubleValidator(-50, 50, 1))
@@ -385,89 +281,6 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
 
         scroll_layout.addWidget(insulation_group)
 
-        # 计算按钮
-        self.calc_btn = QPushButton("计算")
-        self.calc_btn.setFont(QFont("Arial", 12, QFont.Bold))
-        self.calc_btn.setMinimumHeight(50)
-        self.calc_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.calc_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        self.calc_btn.clicked.connect(self.calculate)
-        scroll_layout.addWidget(self.calc_btn)
-
-        # 底部按钮行：清空 → Stretch → 下载TXT → 下载PDF
-        bottom_layout = QHBoxLayout()
-
-        # 清空按钮
-        self.clear_btn = QPushButton("清空")
-        self.clear_btn.clicked.connect(self.clear_inputs)
-        self.clear_btn.setMinimumHeight(50)
-        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.clear_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #95a5a6;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #7f8c8d;
-            } """)
-
-        # 下载TXT按钮
-        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
-        self.download_docx_btn.clicked.connect(self.download_docx_report)
-        self.download_docx_btn.setMinimumHeight(50)
-        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_docx_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            } """)
-
-        # 下载PDF按钮
-        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
-        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
-        self.download_pdf_btn.setMinimumHeight(50)
-        self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_pdf_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #c0392b;
-            } """)
-
-        bottom_layout.addWidget(self.clear_btn)
-        bottom_layout.addStretch()
-        bottom_layout.addWidget(self.download_docx_btn)
-        bottom_layout.addWidget(self.download_pdf_btn)
-
-        scroll_layout.addLayout(bottom_layout)
         scroll_layout.addStretch()
 
         scroll_area.setWidget(scroll_content)
@@ -476,26 +289,41 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         right_widget = QWidget()
         right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
-        right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(15)
 
-        self.result_group = QGroupBox("计算结果")
+        self.result_group = CalculatorBase.make_group_box("计算结果")
         result_inner = QVBoxLayout(self.result_group)
 
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(500)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.result_text.setStyleSheet(
-            "QTextEdit {"
-            "  /* bg via theme */"
-            "  border: 1px solid #ecf0f1;"
-            "  border-radius: 6px;"
-            "  padding: 8px;"
-            "}"
-        )
+        self.result_text.setMinimumHeight(300)
+        self.result_text.setStyleSheet("""
+            QTextEdit {
+                font-family: Consolas, 'Microsoft YaHei', monospace;
+                font-size: 13px;
+            } """)
+        self.result_text.setPlaceholderText("计算结果将在此显示……")
         result_inner.addWidget(self.result_text)
         right_layout.addWidget(self.result_group)
+
+        # 底部按钮行：清空 | DOCX | PDF
+        bottom_layout = QHBoxLayout()
+        for label, style, slot in [
+            ("清空", CLEAR_BTN_STYLE, self.clear_inputs),
+            ("DOCX", DOCX_BTN_STYLE, self.download_docx_report),
+            ("PDF", PDF_BTN_STYLE, self.download_pdf_report),
+        ]:
+            btn = QPushButton(label)
+            btn.setStyleSheet(style)
+            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            btn.clicked.connect(slot)
+            bottom_layout.addWidget(btn)
+        right_layout.addLayout(bottom_layout)
+
+        # 计算按钮
+        self.calc_btn = self.make_calc_button("计 算")
+        self.calc_btn.clicked.connect(self.calculate)
+        right_layout.addWidget(self.calc_btn)
 
         # 按比例添加到主布局
         main_layout.addWidget(scroll_area, 2)
@@ -613,85 +441,84 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         return {"inputs": inputs, "outputs": outputs}
 
     def get_project_info(self):
-        """获取项目信息"""
-        return {
-            "calculation_type": self.calculation_type,
-            "title": "长输蒸汽管道温降计算"
-        }
+        """获取工程信息 - 返回 dict"""
+        try:
+            saved_info = {}
+            if self.data_manager:
+                saved_info = self.data_manager.get_project_info()
+            return {
+                'company_name': saved_info.get('company_name', ''),
+                'project_number': saved_info.get('project_number', ''),
+                'project_name': saved_info.get('project_name', ''),
+                'subproject_name': saved_info.get('subproject_name', ''),
+                'report_number': ''
+            }
+        except Exception as e:
+            print(f"获取工程信息失败: {e}")
+            return {}
 
     def generate_report(self):
-        """生成报告文本"""
+        """生成计算书文本（str）"""
         try:
-            steam_type = self.steam_type.currentText()
-            flow_rate = float(self.flow_rate_input.text())
-            flow_unit = self.flow_rate_unit.currentText()
+            result_text = self.result_text.toPlainText()
+            if not result_text or "计算结果" not in result_text:
+                return None
 
-            inlet_temp = float(self.inlet_temp_input.text())
-            inlet_pressure = float(self.inlet_pressure_input.text())
-            pressure_unit = self.pressure_unit.currentText()
+            project_info = self.get_project_info()
+            report = f"""══════════════════════════════════════════
+          长输蒸汽管道温降计算计算书
+══════════════════════════════════════════
 
-            pipe_length = float(self.pipe_length_input.text())
-            pipe_diameter = float(self.pipe_diameter_input.text())
-            pipe_mat = self.pipe_material.currentText()
-            roughness = float(self.roughness_input.text())
+【输入参数】
+  蒸汽类型：{self.steam_type.currentText()}
+  蒸汽流量：{self.flow_rate_input.text()} {self.flow_rate_unit.currentText()}
+  入口温度：{self.inlet_temp_input.text()} °C
+  入口压力：{self.inlet_pressure_input.text()} {self.pressure_unit.currentText()}
+  管道长度：{self.pipe_length_input.text()} m
+  管道内径：{self.pipe_diameter_input.text()} mm
+  管道材料：{self.pipe_material.currentText()}
+  粗糙度：{self.roughness_input.text()} mm
+  保温厚度：{self.insulation_thickness_input.text()} mm
+  保温材料：{self.insulation_material.currentText()}
+  导热系数：{self.insulation_conductivity_input.text()} W/(m·K)
+  环境温度：{self.ambient_temp_input.text()} °C
 
-            insulation_thickness = float(self.insulation_thickness_input.text())
-            insulation_mat = self.insulation_material.currentText()
-            insulation_conductivity = float(self.insulation_conductivity_input.text())
-            ambient_temp = float(self.ambient_temp_input.text())
+【计算结果】
+{result_text}
 
-            # 执行计算获取结果
-            if flow_unit == "t/h":
-                mass_flow = flow_rate * 1000 / 3600
-            else:
-                mass_flow = flow_rate
-            inlet_pressure_mpa = inlet_pressure / 10 if pressure_unit == "bar" else inlet_pressure
-            results = self.calculate_steam_pipe_loss(
-                steam_type, mass_flow, inlet_temp, inlet_pressure_mpa,
-                pipe_length, pipe_diameter / 1000, roughness / 1000,
-                insulation_thickness / 1000, insulation_conductivity, ambient_temp
-            )
+══════════════════════════════════════════
+ 工程信息
+══════════════════════════════════════════
 
-            report = "=" * 60 + "\n"
-            report += "          长输蒸汽管道温降计算报告\n"
-            report += "=" * 60 + "\n\n"
+  公司名称: {project_info.get('company_name', '')}
+  工程编号: {project_info.get('project_number', '')}
+  工程名称: {project_info.get('project_name', '')}
+  子项名称: {project_info.get('subproject_name', '')}
+  计算日期: {__import__('datetime').datetime.now().strftime('%Y-%m-%d')}
 
-            report += "【输入参数】\n"
-            report += f"  蒸汽类型：{steam_type}\n"
-            report += f"  蒸汽流量：{flow_rate} {flow_unit}\n"
-            report += f"  入口温度：{inlet_temp} °C\n"
-            report += f"  入口压力：{inlet_pressure} {pressure_unit}\n"
-            report += f"  管道长度：{pipe_length} m\n"
-            report += f"  管道内径：{pipe_diameter} mm\n"
-            report += f"  管道材料：{pipe_mat}\n"
-            report += f"  粗糙度：{roughness} mm\n"
-            report += f"  保温厚度：{insulation_thickness} mm\n"
-            report += f"  保温材料：{insulation_mat}\n"
-            report += f"  导热系数：{insulation_conductivity} W/(m·K)\n"
-            report += f"  环境温度：{ambient_temp} °C\n\n"
+══════════════════════════════════════════
+备注说明
+══════════════════════════════════════════
 
-            report += "【计算结果】\n"
-            report += f"  出口温度：{results['outlet_temp']:.1f} °C\n"
-            report += f"  出口压力：{results['outlet_pressure']:.3f} MPa\n"
-            report += f"  温度降：{results['temp_drop']:.1f} °C\n"
-            report += f"  压力降：{results['pressure_drop']:.3f} MPa\n"
-            report += f"  总热损失：{results['heat_loss']:.1f} kW\n"
-            report += f"  蒸汽流速：{results['velocity']:.1f} m/s\n"
-            report += f"  雷诺数：{results['reynolds']:.0f}\n"
-            report += f"  流动状态：{results['flow_regime']}\n\n"
+  1. 本计算书基于能量平衡和动量平衡方程分段计算
+  2. 蒸汽物性采用 IAPWS-IF97 工业标准
+  3. 计算结果仅供参考，实际工程需经专业工程师审核确认
 
-            report += "=" * 60 + "\n"
+---
+生成于 ChemCal 工程计算模块
+"""
             return report
 
         except Exception as e:
-            return f"生成报告失败: {str(e)}"
+            print(f"生成计算书失败: {e}")
+            return None
 
     def download_docx_report(self):
         """生成DOCX格式计算书"""
-        ReportExporter.export_docx(self, "LongDistanceSteamPipeCalculator")
+        ReportExporter.export_docx(self, "长输蒸汽管道温降")
     def download_pdf_report(self):
         """生成PDF格式计算书"""
-        ReportExporter.export_pdf(self, "LongDistanceSteamPipeCalculator")
+        ReportExporter.export_pdf(self, "长输蒸汽管道温降")
     def calculate_steam_pipe_loss(self, steam_type, mass_flow, inlet_temp, inlet_pressure,
                                  pipe_length, pipe_diameter, roughness,
                                  insulation_thickness, insulation_conductivity, ambient_temp):
