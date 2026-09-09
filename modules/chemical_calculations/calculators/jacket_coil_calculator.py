@@ -242,36 +242,38 @@ class JacketCoilCalculator(CalculatorBase):
         row += 1
 
         # 夹套相关（默认显示）
-        grid.addWidget(QLabel("夹套高度占比"), row, 0)
+        self.jacket_height_ratio_label = QLabel("夹套高度占比")
+        grid.addWidget(self.jacket_height_ratio_label, row, 0)
         self.inputs["jacket_height_ratio"] = QLineEdit("0.75")
         self.inputs["jacket_height_ratio"].setValidator(QDoubleValidator(0.1, 1.0, 2))
         grid.addWidget(self.inputs["jacket_height_ratio"], row, 1)
-        grid.addWidget(QLabel("占筒体高"), row, 2)
+        self.jacket_height_ratio_unit = QLabel("占筒体高")
+        grid.addWidget(self.jacket_height_ratio_unit, row, 2)
         row += 1
 
         # 盘管相关（默认隐藏）
-        grid.addWidget(QLabel("盘管外径 do"), row, 0)
+        self.coil_od_label = QLabel("盘管外径 do")
+        grid.addWidget(self.coil_od_label, row, 0)
         self.inputs["coil_od"] = QLineEdit("0.057")
         self.inputs["coil_od"].setValidator(QDoubleValidator(0.01, 0.5, 3))
-        self.coil_od_label = QLabel("盘管外径 do")
         grid.addWidget(self.inputs["coil_od"], row, 1)
         self.coil_od_unit = QLabel("m")
         grid.addWidget(self.coil_od_unit, row, 2)
         row += 1
 
-        grid.addWidget(QLabel("盘管圈径 Dc"), row, 0)
+        self.coil_dc_label = QLabel("盘管圈径 Dc")
+        grid.addWidget(self.coil_dc_label, row, 0)
         self.inputs["coil_dc"] = QLineEdit("1.2")
         self.inputs["coil_dc"].setValidator(QDoubleValidator(0.1, 50, 3))
-        self.coil_dc_label = QLabel("盘管圈径 Dc")
         grid.addWidget(self.inputs["coil_dc"], row, 1)
         self.coil_dc_unit = QLabel("m")
         grid.addWidget(self.coil_dc_unit, row, 2)
         row += 1
 
-        grid.addWidget(QLabel("盘管螺距 p"), row, 0)
+        self.coil_pitch_label = QLabel("盘管螺距 p")
+        grid.addWidget(self.coil_pitch_label, row, 0)
         self.inputs["coil_pitch"] = QLineEdit("0.08")
         self.inputs["coil_pitch"].setValidator(QDoubleValidator(0.01, 1.0, 3))
-        self.coil_pitch_label = QLabel("盘管螺距 p")
         grid.addWidget(self.inputs["coil_pitch"], row, 1)
         self.coil_pitch_unit = QLabel("m")
         grid.addWidget(self.coil_pitch_unit, row, 2)
@@ -453,7 +455,7 @@ class JacketCoilCalculator(CalculatorBase):
     # ── 动态UI控制 ─────────────────────────────────────────
 
     def _update_input_visibility(self, *_):
-        """根据换热型式显示/隐藏对应参数"""
+        """根据换热型式显示/隐藏对应参数（输入框+标签+单位提示一并处理）"""
         is_jacket = self._get_mode() == "jacket"
 
         # 夹套参数：夹套模式显示，盘管模式隐藏
@@ -464,10 +466,17 @@ class JacketCoilCalculator(CalculatorBase):
             w = self.inputs.get(key)
             if w:
                 w.setVisible(is_jacket)
+        self.jacket_height_ratio_label.setVisible(is_jacket)
+        self.jacket_height_ratio_unit.setVisible(is_jacket)
+
         for key in coil_keys:
             w = self.inputs.get(key)
             if w:
                 w.setVisible(not is_jacket)
+        for lbl in (self.coil_od_label, self.coil_od_unit,
+                    self.coil_dc_label, self.coil_dc_unit,
+                    self.coil_pitch_label, self.coil_pitch_unit):
+            lbl.setVisible(not is_jacket)
 
 
     def _on_medium_changed(self, name):

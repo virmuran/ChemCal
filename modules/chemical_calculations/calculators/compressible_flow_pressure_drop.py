@@ -1,16 +1,15 @@
-import math, os
+import math
+from datetime import datetime
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
+    QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QPushButton, QComboBox,
     QTextEdit, QGridLayout, QTableWidget, QTableWidgetItem,
-    QHeaderView, QFileDialog, QMessageBox, QButtonGroup,
+    QHeaderView, QMessageBox, QButtonGroup,
     QRadioButton,
     QScrollArea, QSizePolicy,
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QDoubleValidator, QFont
-import sys
-from pathlib import Path
+from PySide6.QtGui import QDoubleValidator
 
 
 from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
@@ -19,8 +18,8 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
-from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
-# DOCX 报告导出
+from common_constants import C_TO_K
+from utils.docx_utils import ReportExporter  # DOCX 报告导出
 
 
 class CompressibleFlowPressureDrop(CalculatorBase):
@@ -83,7 +82,7 @@ class CompressibleFlowPressureDrop(CalculatorBase):
         def L(t):
             l = QLabel(t)
             l.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            l.setStyleSheet("font-weight: bold; padding-right: 10px;")
+            l.setStyleSheet(INPUT_LABEL_STYLE)
             return l
 
         def H(t):
@@ -92,7 +91,7 @@ class CompressibleFlowPressureDrop(CalculatorBase):
             return l
 
         # ---- 流体性质 ----
-        fg = QGroupBox("流体性质")
+        fg = CalculatorBase.make_group_box("流体性质")
         fgrid = QGridLayout(fg); fgrid.setHorizontalSpacing(10); fgrid.setVerticalSpacing(12)
         fgrid.setColumnStretch(0, 4)
         fgrid.setColumnStretch(1, 8)
@@ -137,7 +136,7 @@ class CompressibleFlowPressureDrop(CalculatorBase):
         ll.addWidget(fg)
 
         # ---- 管道参数 ----
-        pg = QGroupBox("管道参数")
+        pg = CalculatorBase.make_group_box("管道参数")
         pgrid = QGridLayout(pg); pgrid.setHorizontalSpacing(10); pgrid.setVerticalSpacing(12)
         pgrid.setColumnStretch(0, 4)
         pgrid.setColumnStretch(1, 8)
@@ -173,7 +172,7 @@ class CompressibleFlowPressureDrop(CalculatorBase):
         ll.addWidget(pg)
 
         # ---- 操作条件 ----
-        cg = QGroupBox("操作条件")
+        cg = CalculatorBase.make_group_box("操作条件")
         cgrid = QGridLayout(cg); cgrid.setHorizontalSpacing(10); cgrid.setVerticalSpacing(12)
         cgrid.setColumnStretch(0, 4)
         cgrid.setColumnStretch(1, 8)
@@ -209,7 +208,7 @@ class CompressibleFlowPressureDrop(CalculatorBase):
         ll.addWidget(cg)
 
         # ---- 计算方法 ----
-        mg = QGroupBox("计算方法")
+        mg = CalculatorBase.make_group_box("计算方法")
         mgrid = QGridLayout(mg)
         self.mbg = QButtonGroup(self)
         self.rb_darcy = QRadioButton("Darcy-Weisbach 等温积分（推荐）")
@@ -223,134 +222,75 @@ class CompressibleFlowPressureDrop(CalculatorBase):
         rb4 = QRadioButton("Panhandle A 公式（天然气）")
         self.mbg.addButton(rb4); mgrid.addWidget(rb4, 1, 1)
         ll.addWidget(mg)
-
-        # ---- 计算按钮 ----
-        bb = QHBoxLayout()
-        b_calc = QPushButton("计算")
-        calc_font = QFont("Arial", 12)
-        calc_font.setBold(True)
-        b_calc.setFont(calc_font)
-        b_calc.setMinimumHeight(50)
-        b_calc.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        b_calc.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        b_calc.clicked.connect(self.calculate_pressure_drop)
-        b_flow = QPushButton("反算流量")
-        b_flow.setMinimumHeight(50)
-        b_flow.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        b_flow.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        b_flow.clicked.connect(self.auto_calculate_flow)
-        bb.addWidget(b_calc); bb.addWidget(b_flow)
-        ll.addLayout(bb)
-
-        # ---- 详细参数表 ----
-        dg = QGroupBox("详细参数")
-        dv = QVBoxLayout(dg)
-        self.dtable = QTableWidget()
-        self.dtable.setColumnCount(3)
-        self.dtable.setHorizontalHeaderLabels(["参数", "数值", "单位"])
-        self.dtable.setMaximumHeight(180)
-        self.dtable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        dv.addWidget(self.dtable)
-        ll.addWidget(dg)
-
-        # ---- 底部按钮行 ----
-        bottom_layout = QHBoxLayout()
-        
-        # 清空按钮
-        self.clear_btn = QPushButton("清空")
-        self.clear_btn.clicked.connect(self.clear_inputs)
-        self.clear_btn.setMinimumHeight(50)
-        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.clear_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #95a5a6;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #7f8c8d;
-            } """)
-        
-        # 下载TXT按钮
-        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
-        self.download_docx_btn.clicked.connect(self.download_docx_report)
-        self.download_docx_btn.setMinimumHeight(50)
-        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_docx_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            } """)
-        
-        # 下载PDF按钮
-        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
-        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
-        self.download_pdf_btn.setMinimumHeight(50)
-        self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_pdf_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #c0392b;
-            } """)
-        
-        bottom_layout.addWidget(self.clear_btn)
-        bottom_layout.addStretch()
-        bottom_layout.addWidget(self.download_docx_btn)
-        bottom_layout.addWidget(self.download_pdf_btn)
-        ll.addLayout(bottom_layout)
+        ll.addStretch()
 
         # ---- 右侧结果区 ----
         right = QWidget(); right.setMinimumWidth(300)
         rl = QVBoxLayout(right); rl.setSpacing(15)
-        rg = QGroupBox("计算结果")
+        rg = CalculatorBase.make_group_box("计算结果")
         rv = QVBoxLayout(rg)
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(500)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.result_text.setStyleSheet("QTextEdit{/* bg via theme */border:1px solid #ecf0f1;border-radius:6px;padding:8px;}")
+        self.result_text.setMinimumHeight(300)
+        # 结果框统一标准：边框/背景/文字色交给主题系统，仅指定等宽字体
+        self.result_text.setStyleSheet("""
+            QTextEdit {
+                font-family: Consolas, 'Microsoft YaHei', monospace;
+                font-size: 13px;
+            } """)
         self.result_text.setPlaceholderText("计算结果将在此显示……")
         rv.addWidget(self.result_text)
         rl.addWidget(rg)
+
+        # ---- 详细参数表（移入右栏）----
+        dg = CalculatorBase.make_group_box("详细参数")
+        dv = QVBoxLayout(dg)
+        self.dtable = QTableWidget()
+        self.dtable.setColumnCount(3)
+        self.dtable.setHorizontalHeaderLabels(["参数", "数值", "单位"])
+        self.dtable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.dtable.verticalHeader().setVisible(False)
+        self.dtable.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.dtable.setFocusPolicy(Qt.NoFocus)
+        # 不写死高度：表格 Expanding 吃掉右栏富余空间，能显示几行就显示几行，窗口不被撑大
+        self.dtable.setMinimumHeight(120)
+        self.dtable.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        dv.addWidget(self.dtable)
+        rl.addWidget(dg, 1)
+
+        # ---- 底部按钮行：清空 | DOCX | PDF ----
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(8)
+        clear_btn = QPushButton("清空")
+        clear_btn.setStyleSheet(CLEAR_BTN_STYLE)
+        clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        clear_btn.clicked.connect(self.clear_inputs)
+        docx_btn = QPushButton("DOCX")
+        docx_btn.setStyleSheet(DOCX_BTN_STYLE)
+        docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        docx_btn.clicked.connect(self.download_docx_report)
+        pdf_btn = QPushButton("PDF")
+        pdf_btn.setStyleSheet(PDF_BTN_STYLE)
+        pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        pdf_btn.clicked.connect(self.download_pdf_report)
+        btn_layout.addWidget(clear_btn)
+        btn_layout.addWidget(docx_btn)
+        btn_layout.addWidget(pdf_btn)
+        rl.addLayout(btn_layout)
+
+        # ---- 计算按钮行（最底部）：反算流量 | 计算 ----
+        calc_layout = QHBoxLayout()
+        calc_layout.setSpacing(8)
+        b_flow = QPushButton("反算流量")
+        b_flow.setMinimumHeight(50)
+        b_flow.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        b_flow.setStyleSheet(CALC_BUTTON_STYLE)
+        b_flow.clicked.connect(self.auto_calculate_flow)
+        b_calc = self.make_calc_button("计 算")
+        b_calc.clicked.connect(self.calculate_pressure_drop)
+        calc_layout.addWidget(b_flow)
+        calc_layout.addWidget(b_calc)
+        rl.addLayout(calc_layout)
 
         scroll_left.setWidget(left)
         main.addWidget(scroll_left, 2)
@@ -548,7 +488,7 @@ class CompressibleFlowPressureDrop(CalculatorBase):
             "=" * 55,
             "       可压缩流体压降计算结果",
             "=" * 55, "",
-            f"  计算方法   : {results.get(chr(35746)+chr(31639)+chr(26041)+chr(27861), chr(45))}",
+            f"  计算方法   : {results.get('计算方法', '-')}",
             f"  压降        : {dp_kPa:.2f} kPa",
             f"  雷诺数      : {Re:.0f} ({flow_str})",
             f"  马赫数      : {Ma:.4f} ({comp_str})",
@@ -605,39 +545,112 @@ class CompressibleFlowPressureDrop(CalculatorBase):
         self._last_result = {}; self._last_params = {}
 
     # ---- 历史数据 ----
-    def _get_history(self):
+    def _get_history_data(self):
+        """提供历史记录所需的输入输出数据"""
         r = self._last_result
         p = self._last_params
-        return {
-            "inputs": {
-                "method": p.get("method", ""),
-                "diameter_mm": float(self.dia_in.text()),
-                "length_m": float(self.len_in.text()),
-                "P1_kPa": float(self.P1_in.text()),
-                "P2_kPa": float(self.P2_in.text()),
-                "temp_C": float(self.temp_in.text()),
-                "flow_kg_h": float(self.flow_in.text()),
-            },
-            "outputs": {
-                "dp_kPa": round(r.get("dp_kPa", 0), 2),
-                "Re": round(r.get("Re", 0), 0),
-                "Ma": round(r.get("Ma", 0), 4),
+        try:
+            inputs = {
+                "计算方法": p.get("method", ""),
+                "管道内径_mm": float(self.dia_in.text() or 0),
+                "管道长度_m": float(self.len_in.text() or 0),
+                "入口压力_kPa": float(self.P1_in.text() or 0),
+                "出口压力_kPa": float(self.P2_in.text() or 0),
+                "温度_C": float(self.temp_in.text() or 0),
+                "质量流量_kg_h": float(self.flow_in.text() or 0),
             }
+        except (ValueError, TypeError):
+            return {"inputs": {}, "outputs": {}}
+        outputs = {
+            "压降_kPa": round(r.get("dp_kPa", 0), 2),
+            "雷诺数": round(r.get("Re", 0), 0),
+            "马赫数": round(r.get("Ma", 0), 4),
         }
+        return {"inputs": inputs, "outputs": outputs}
 
     def get_project_info(self):
-        return {"calculator": "CompressibleFlowPressureDrop", "name": "可压缩流体压降"}
+        """获取工程信息 - 返回 dict"""
+        try:
+            saved_info = {}
+            if self.data_manager:
+                saved_info = self.data_manager.get_project_info()
+            return {
+                'company_name': saved_info.get('company_name', ''),
+                'project_number': saved_info.get('project_number', ''),
+                'project_name': saved_info.get('project_name', ''),
+                'subproject_name': saved_info.get('subproject_name', ''),
+                'report_number': ''
+            }
+        except Exception as e:
+            print(f"获取工程信息失败: {e}")
+            return {}
 
     def generate_report(self):
-        return self.result_text.toPlainText()
+        """生成计算书 - 返回纯文本"""
+        try:
+            # 获取当前结果文本
+            result_text = self.result_text.toPlainText()
+            
+            # 检查条件
+            if not result_text or "计算结果" not in result_text:
+                QMessageBox.warning(self, "生成失败", "请先进行计算再生成计算书")
+                return ""
+            
+            # 获取工程信息
+            project_info = self.get_project_info()
+            
+            # 添加报告头信息
+            report = f"""工程计算书 - 可压缩流体压降计算
+计算工具: ChemCal 工程计算模块
+========================================
+
+"""
+            report += result_text
+            
+            # 添加工程信息部分
+            report += f"""══════════
+ 工程信息
+══════════
+
+    公司名称: {project_info.get('company_name', '')}
+    工程编号: {project_info.get('project_number', '')}
+    工程名称: {project_info.get('project_name', '')}
+    子项名称: {project_info.get('subproject_name', '')}
+    计算日期: {datetime.now().strftime('%Y-%m-%d')}
+
+══════════
+计算书标识
+══════════
+
+    计算书编号: {project_info.get('report_number', '')}
+    版本: 1.0
+    状态: 正式计算书
+
+══════════
+备注说明
+══════════
+
+    1. 本计算书基于气体动力学及流体力学原理
+    2. 计算结果仅供参考，实际应用需考虑安全系数
+    3. 马赫数>0.8 时等温假设可能不成立，请选用绝热模型复核
+    4. 计算条件变更时应重新进行计算
+
+---
+生成于 ChemCal 工程计算模块
+"""
+            return report
+            
+        except Exception as e:
+            print(f"生成计算书失败: {e}")
+            return ""
 
     # ---- 下载报告 ----
     def download_docx_report(self):
         """生成DOCX格式计算书"""
-        ReportExporter.export_docx(self, "CompressibleFlowPressureDrop")
+        ReportExporter.export_docx(self, "可压缩流体压降")
     def download_pdf_report(self):
         """生成PDF格式计算书"""
-        ReportExporter.export_pdf(self, "CompressibleFlowPressureDrop")
+        ReportExporter.export_pdf(self, "可压缩流体压降")
 if __name__ == "__main__":
     import sys
     from PySide6.QtWidgets import QApplication

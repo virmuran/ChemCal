@@ -163,11 +163,16 @@ class AgitatorCalculator(CalculatorBase):
         r += 1
 
         self._aspect_custom_row = r
-        tg.addWidget(lbl("自定义 H/D:"), r, 0)
+        self.custom_aspect_label = lbl("自定义 H/D:")
+        self.custom_aspect_label.setVisible(False)
+        tg.addWidget(self.custom_aspect_label, r, 0)
         self.custom_aspect_input = inp("2.5", QDoubleValidator(1, 6, 1))
         self.custom_aspect_input.setVisible(False)
+        self.custom_aspect_input.textChanged.connect(self._apply_custom_aspect)
         tg.addWidget(self.custom_aspect_input, r, 1)
-        tg.addWidget(hint("输入自定义高径比"), r, 2)
+        self.custom_aspect_hint = hint("输入自定义高径比")
+        self.custom_aspect_hint.setVisible(False)
+        tg.addWidget(self.custom_aspect_hint, r, 2)
         r += 1
         self._row_count_tank = r
 
@@ -323,9 +328,27 @@ class AgitatorCalculator(CalculatorBase):
             except ValueError:
                 pass
         if text == "自定义高径比":
+            # 整行联动显示，并立即用自定义值换算液位高度
+            self.custom_aspect_label.setVisible(True)
             self.custom_aspect_input.setVisible(True)
+            self.custom_aspect_hint.setVisible(True)
+            self._apply_custom_aspect()
         else:
+            self.custom_aspect_label.setVisible(False)
             self.custom_aspect_input.setVisible(False)
+            self.custom_aspect_hint.setVisible(False)
+
+    def _apply_custom_aspect(self):
+        """自定义高径比 → 自动换算液位高度（使输入真正生效）"""
+        try:
+            d = float(self.diameter_input.text() or 0)
+            ratio = float(self.custom_aspect_input.text() or 0)
+            if d > 0 and ratio > 0:
+                h = d * ratio
+                self.liquid_height_input.setText(f"{h:.2f}")
+                self.aspect_hint.setText(f"已按自定义 H/D={ratio:g} 计算: {h:.2f} m")
+        except ValueError:
+            pass
 
     def _on_impeller_changed(self, text):
         info = IMPELLER_TYPES.get(text, ("", ""))

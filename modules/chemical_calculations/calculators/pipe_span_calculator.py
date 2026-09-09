@@ -1,15 +1,13 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
-    QGroupBox, QTextEdit, QComboBox, QGridLayout, QMessageBox, QDialog,
-    QFileDialog, QDialogButtonBox, QScrollArea, QSizePolicy
+    QGroupBox, QTextEdit, QComboBox, QGridLayout, QMessageBox,
+    QScrollArea, QSizePolicy
 )
-from PySide6.QtGui import QFont, QDoubleValidator
+from PySide6.QtGui import QDoubleValidator
 from PySide6.QtCore import Qt
 import math
 import re
 from datetime import datetime
-import sys
-from pathlib import Path
 
 
 from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
@@ -18,97 +16,9 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
-from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
-# DOCX 报告导出
+from common_constants import G
+from utils.docx_utils import ReportExporter
 
-
-class ProjectInfoDialog(QDialog):
-    """工程信息对话框 - 与压降计算模块保持一致"""
-    
-    def __init__(self, parent=None, default_info=None, report_number=""):
-        super().__init__(parent)
-        self.default_info = default_info or {}
-        self.report_number = report_number
-        self.setWindowTitle("工程信息")
-        self.setFixedSize(400, 350)
-        self.setup_ui()
-        
-    def setup_ui(self):
-        layout = QVBoxLayout(self)
-        
-        # 标题
-        title_label = QLabel("请输入工程信息")
-        title_label.setStyleSheet("font-weight: bold; font-size: 14px; margin: 10px;")
-        layout.addWidget(title_label)
-        
-        # 公司名称
-        company_layout = QHBoxLayout()
-        company_label = QLabel("公司名称:")
-        company_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.company_input = QLineEdit()
-        self.company_input.setPlaceholderText("例如：XX建筑工程有限公司")
-        self.company_input.setText(self.default_info.get('company_name', ''))
-        company_layout.addWidget(company_label)
-        company_layout.addWidget(self.company_input)
-        layout.addLayout(company_layout)
-        
-        # 工程编号
-        number_layout = QHBoxLayout()
-        number_label = QLabel("工程编号:")
-        number_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.project_number_input = QLineEdit()
-        self.project_number_input.setPlaceholderText("例如：2024-PD-001")
-        self.project_number_input.setText(self.default_info.get('project_number', ''))
-        number_layout.addWidget(number_label)
-        number_layout.addWidget(self.project_number_input)
-        layout.addLayout(number_layout)
-        
-        # 工程名称
-        project_layout = QHBoxLayout()
-        project_label = QLabel("工程名称:")
-        project_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.project_input = QLineEdit()
-        self.project_input.setPlaceholderText("例如：化工厂管道系统")
-        self.project_input.setText(self.default_info.get('project_name', ''))
-        project_layout.addWidget(project_label)
-        project_layout.addWidget(self.project_input)
-        layout.addLayout(project_layout)
-        
-        # 子项名称
-        subproject_layout = QHBoxLayout()
-        subproject_label = QLabel("子项名称:")
-        subproject_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.subproject_input = QLineEdit()
-        self.subproject_input.setPlaceholderText("例如：主生产区管道")
-        self.subproject_input.setText(self.default_info.get('subproject_name', ''))
-        subproject_layout.addWidget(subproject_label)
-        subproject_layout.addWidget(self.subproject_input)
-        layout.addLayout(subproject_layout)
-        
-        # 计算书编号
-        report_number_layout = QHBoxLayout()
-        report_number_label = QLabel("计算书编号:")
-        report_number_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.report_number_input = QLineEdit()
-        self.report_number_input.setText(self.report_number)
-        report_number_layout.addWidget(report_number_label)
-        report_number_layout.addWidget(self.report_number_input)
-        layout.addLayout(report_number_layout)
-        
-        # 按钮
-        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        button_box.accepted.connect(self.accept)
-        button_box.rejected.connect(self.reject)
-        layout.addWidget(button_box)
-        
-    def get_info(self):
-        return {
-            'company_name': self.company_input.text().strip(),
-            'project_number': self.project_number_input.text().strip(),
-            'project_name': self.project_input.text().strip(),
-            'subproject_name': self.subproject_input.text().strip(),
-            'report_number': self.report_number_input.text().strip()
-        }
 
 class 管道跨距(CalculatorBase):
     """管道跨距计算（按照压降计算模块UI风格重新设计）"""
@@ -166,7 +76,7 @@ class 管道跨距(CalculatorBase):
         left_layout.addWidget(description)
         
         # 2. 输入参数组 - 使用GridLayout实现整齐的布局
-        input_group = QGroupBox("输入参数")
+        input_group = CalculatorBase.make_group_box("输入参数")
         
         # 使用GridLayout确保整齐排列
         input_layout = QGridLayout(input_group)
@@ -176,16 +86,13 @@ class 管道跨距(CalculatorBase):
         input_layout.setColumnStretch(1, 8)
         input_layout.setColumnStretch(2, 5)
         
-        # 标签样式 - 右对齐
-        label_style = "font-weight: bold; padding-right: 10px;"
-        
         
         row = 0
         
         # 管道外径
         od_label = QLabel("管道外径 (mm):")
         od_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        od_label.setStyleSheet(label_style)
+        od_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(od_label, row, 0)
         
         self.od_input = QLineEdit()
@@ -206,7 +113,7 @@ class 管道跨距(CalculatorBase):
         # 管道壁厚
         thickness_label = QLabel("管道壁厚 (mm):")
         thickness_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        thickness_label.setStyleSheet(label_style)
+        thickness_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(thickness_label, row, 0)
         
         self.thickness_input = QLineEdit()
@@ -227,7 +134,7 @@ class 管道跨距(CalculatorBase):
         # 管道材料
         material_label = QLabel("管道材料:")
         material_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        material_label.setStyleSheet(label_style)
+        material_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(material_label, row, 0)
         
         self.material_combo = QComboBox()
@@ -248,7 +155,7 @@ class 管道跨距(CalculatorBase):
         # 流体密度
         fluid_label = QLabel("流体密度 (kg/m³):")
         fluid_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        fluid_label.setStyleSheet(label_style)
+        fluid_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(fluid_label, row, 0)
         
         self.fluid_density_input = QLineEdit()
@@ -269,7 +176,7 @@ class 管道跨距(CalculatorBase):
         # 保温层厚度
         insulation_label = QLabel("保温层厚度 (mm):")
         insulation_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        insulation_label.setStyleSheet(label_style)
+        insulation_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(insulation_label, row, 0)
         
         self.insulation_input = QLineEdit()
@@ -290,7 +197,7 @@ class 管道跨距(CalculatorBase):
         # 保温层密度
         insulation_density_label = QLabel("保温层密度 (kg/m³):")
         insulation_density_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        insulation_density_label.setStyleSheet(label_style)
+        insulation_density_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(insulation_density_label, row, 0)
         
         self.insulation_density_input = QLineEdit()
@@ -311,7 +218,7 @@ class 管道跨距(CalculatorBase):
         # 允许应力
         stress_label = QLabel("允许应力 (MPa):")
         stress_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        stress_label.setStyleSheet(label_style)
+        stress_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(stress_label, row, 0)
         
         self.stress_input = QLineEdit()
@@ -329,90 +236,7 @@ class 管道跨距(CalculatorBase):
         
         left_layout.addWidget(input_group)
         
-        # 3. 计算按钮
-        calculate_btn = QPushButton("计算")
-        calculate_btn.setFont(QFont("Arial", 12, QFont.Bold))
-        calculate_btn.clicked.connect(self.calculate_span)
-        calculate_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        calculate_btn.setMinimumHeight(50)
-        calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        left_layout.addWidget(calculate_btn)
-        
-        # 4. 底部按钮行
-        bottom_layout = QHBoxLayout()
-        
-        # 清空按钮
-        self.clear_btn = QPushButton("清空")
-        self.clear_btn.clicked.connect(self.clear_inputs)
-        self.clear_btn.setMinimumHeight(50)
-        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.clear_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #95a5a6;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #7f8c8d;
-            } """)
-        
-        # 下载TXT按钮
-        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
-        self.download_docx_btn.clicked.connect(self.download_docx_report)
-        self.download_docx_btn.setMinimumHeight(50)
-        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_docx_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            } """)
-        
-        # 下载PDF按钮
-        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
-        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
-        self.download_pdf_btn.setMinimumHeight(50)
-        self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_pdf_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #c0392b;
-            } """)
-        
-        bottom_layout.addWidget(self.clear_btn)
-        bottom_layout.addStretch()
-        bottom_layout.addWidget(self.download_docx_btn)
-        bottom_layout.addWidget(self.download_pdf_btn)
-        left_layout.addLayout(bottom_layout)
-        
-        # 5. 在底部添加拉伸因子
+        # 3. 在底部添加拉伸因子
         left_layout.addStretch()
         
         # 右侧：结果显示区域 (占1/3宽度)
@@ -422,22 +246,47 @@ class 管道跨距(CalculatorBase):
         right_layout.setSpacing(15)
         
         # 结果显示
-        self.result_group = QGroupBox("计算结果")
+        self.result_group = CalculatorBase.make_group_box("计算结果")
         result_layout = QVBoxLayout(self.result_group)
         
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
+        self.result_text.setMinimumHeight(300)
+        # 结果框统一标准：边框/背景/文字色交给主题系统，仅指定等宽字体
         self.result_text.setStyleSheet("""
             QTextEdit {
-                border: 1px solid #666;
-                border-radius: 6px;
-                padding: 8px;
-                /* bg via theme */min-height: 500px;
-            }
-        """)
+                font-family: Consolas, 'Microsoft YaHei', monospace;
+                font-size: 13px;
+            } """)
+        self.result_text.setPlaceholderText("计算结果将在此显示……")
         result_layout.addWidget(self.result_text)
         
         right_layout.addWidget(self.result_group)
+        
+        # 底部按钮行：清空 | DOCX | PDF
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(8)
+        clear_btn = QPushButton("清空")
+        clear_btn.setStyleSheet(CLEAR_BTN_STYLE)
+        clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        clear_btn.clicked.connect(self.clear_inputs)
+        docx_btn = QPushButton("DOCX")
+        docx_btn.setStyleSheet(DOCX_BTN_STYLE)
+        docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        docx_btn.clicked.connect(self.download_docx_report)
+        pdf_btn = QPushButton("PDF")
+        pdf_btn.setStyleSheet(PDF_BTN_STYLE)
+        pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        pdf_btn.clicked.connect(self.download_pdf_report)
+        btn_layout.addWidget(clear_btn)
+        btn_layout.addWidget(docx_btn)
+        btn_layout.addWidget(pdf_btn)
+        right_layout.addLayout(btn_layout)
+        
+        # 计算按钮（最底部）
+        calc_btn = CalculatorBase.make_calc_button()
+        calc_btn.clicked.connect(self.calculate_span)
+        right_layout.addWidget(calc_btn)
         
         # 将左右两部分添加到主布局
         scroll_left.setWidget(left_widget)
@@ -1007,48 +856,24 @@ class 管道跨距(CalculatorBase):
         return {"inputs": inputs, "outputs": outputs}
 
     def get_project_info(self):
-        """获取工程信息 - 与压降计算模块保持一致"""
+        """获取工程信息 - 返回 dict"""
         try:
-            # 从数据管理器获取共享的项目信息
             saved_info = {}
             if self.data_manager:
                 saved_info = self.data_manager.get_project_info()
-            
-            # 获取下一个报告编号
-            report_number = ""
-            if self.data_manager:
-                report_number = self.data_manager.get_next_report_number("SPAN")
-            
-            dialog = ProjectInfoDialog(self, saved_info, report_number)
-            if dialog.exec() == QDialog.Accepted:
-                info = dialog.get_info()
-                # 验证必填字段
-                if not info['project_name']:
-                    QMessageBox.warning(self, "输入错误", "工程名称不能为空")
-                    return self.get_project_info()  # 重新弹出对话框
-                
-                # 保存项目信息到数据管理器
-                if self.data_manager:
-                    # 保存所有项目信息（使用新版字段名）
-                    info_to_save = {
-                        'company_name': info['company_name'],
-                        'project_number': info['project_number'],
-                        'project_name': info['project_name'],
-                        'subproject_name': info['subproject_name']
-                    }
-                    self.data_manager.update_project_info(info_to_save)
-                    print("项目信息已保存")
-                
-                return info
-            else:
-                return None  # 用户取消了
-                    
+            return {
+                'company_name': saved_info.get('company_name', ''),
+                'project_number': saved_info.get('project_number', ''),
+                'project_name': saved_info.get('project_name', ''),
+                'subproject_name': saved_info.get('subproject_name', ''),
+                'report_number': ''
+            }
         except Exception as e:
             print(f"获取工程信息失败: {e}")
-            return None
+            return {}
     
     def generate_report(self):
-        """生成计算书"""
+        """生成计算书 - 返回纯文本"""
         try:
             # 获取当前结果文本
             result_text = self.result_text.toPlainText()
@@ -1056,16 +881,13 @@ class 管道跨距(CalculatorBase):
             # 检查条件
             if not result_text or ("计算结果" not in result_text and "跨距计算结果" not in result_text):
                 QMessageBox.warning(self, "生成失败", "请先进行计算再生成计算书")
-                return None
-                
+                return ""
+            
             # 获取工程信息
             project_info = self.get_project_info()
-            if not project_info:
-                return None  # 用户取消了输入
             
             # 添加报告头信息
             report = f"""工程计算书 - 管道跨距计算
-生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 计算工具: ChemCal 工程计算模块
 ========================================
 
@@ -1077,17 +899,17 @@ class 管道跨距(CalculatorBase):
  工程信息
 ══════════
 
-    公司名称: {project_info['company_name']}
-    工程编号: {project_info['project_number']}
-    工程名称: {project_info['project_name']}
-    子项名称: {project_info['subproject_name']}
+    公司名称: {project_info.get('company_name', '')}
+    工程编号: {project_info.get('project_number', '')}
+    工程名称: {project_info.get('project_name', '')}
+    子项名称: {project_info.get('subproject_name', '')}
     计算日期: {datetime.now().strftime('%Y-%m-%d')}
 
 ══════════
 计算书标识
 ══════════
 
-    计算书编号: {project_info['report_number']}
+    计算书编号: {project_info.get('report_number', '')}
     版本: 1.0
     状态: 正式计算书
 
@@ -1107,7 +929,7 @@ class 管道跨距(CalculatorBase):
             
         except Exception as e:
             print(f"生成计算书失败: {e}")
-            return None
+            return ""
 
     def download_docx_report(self):
         """生成DOCX格式计算书"""
@@ -1115,16 +937,6 @@ class 管道跨距(CalculatorBase):
     def download_pdf_report(self):
         """生成PDF格式计算书"""
         ReportExporter.export_pdf(self, "管道跨距")
-    def process_content_for_pdf(self, content):
-        """处理内容，使其适合PDF显示"""
-        # 清理bullet符号
-        content = content.replace("•", "")
-        
-        # 替换单位符号
-        content = content.replace("m³", "m3")
-        content = content.replace("kg/m³", "kg/m3")
-        
-        return content
 
 if __name__ == "__main__":
     # 测试代码

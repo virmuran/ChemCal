@@ -1,14 +1,12 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QGroupBox, QTextEdit, QComboBox, QGridLayout, QMessageBox,
-    QScrollArea, QSizePolicy, QFileDialog,
+    QScrollArea, QSizePolicy,
 )
-from PySide6.QtGui import QFont, QDoubleValidator
+from PySide6.QtGui import QDoubleValidator
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtCore import Qt
-import os
-import sys
-from pathlib import Path
+from datetime import datetime
 
 
 from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
@@ -17,8 +15,9 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
-from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
+from common_constants import G
 from svg_utils import svg_text
+from utils.docx_utils import ReportExporter
 
 
 class NPSHaCalculator(CalculatorBase):
@@ -72,8 +71,8 @@ class NPSHaCalculator(CalculatorBase):
         left_layout.addWidget(description)
         
         # 输入参数组 - 使用GridLayout实现整齐的布局
-        input_group = QGroupBox("输入参数")
-        
+        input_group = CalculatorBase.make_group_box("输入参数")
+
         # 使用GridLayout确保整齐排列
         input_layout = QGridLayout(input_group)
         input_layout.setVerticalSpacing(12)
@@ -81,22 +80,13 @@ class NPSHaCalculator(CalculatorBase):
         input_layout.setColumnStretch(0, 4)
         input_layout.setColumnStretch(1, 8)
         input_layout.setColumnStretch(2, 5)
-        
-        # 标签样式 - 右对齐
-        label_style = """
-            QLabel {
-                font-weight: bold;
-                padding-right: 10px;
-            }
-        """
-        
-        # 输入框和下拉菜单的固定宽度        
+
         row = 0
         
         # 液面压力（敞口容器为大气压，密闭容器为操作压力）
         surface_pressure_label = QLabel("液面压力 (kPaA):")
         surface_pressure_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        surface_pressure_label.setStyleSheet(label_style)
+        surface_pressure_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(surface_pressure_label, row, 0)
         
         self.surface_pressure_input = QLineEdit()
@@ -125,7 +115,7 @@ class NPSHaCalculator(CalculatorBase):
         # 液体饱和蒸汽压
         vapor_pressure_label = QLabel("液体饱和蒸汽压 (kPa):")
         vapor_pressure_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        vapor_pressure_label.setStyleSheet(label_style)
+        vapor_pressure_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(vapor_pressure_label, row, 0)
         
         self.vapor_pressure_input = QLineEdit()
@@ -159,7 +149,7 @@ class NPSHaCalculator(CalculatorBase):
         # 吸入液面高度
         static_head_label = QLabel("吸入液面高度 (m):")
         static_head_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        static_head_label.setStyleSheet(label_style)
+        static_head_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(static_head_label, row, 0)
         
         self.static_head_input = QLineEdit()
@@ -185,7 +175,7 @@ class NPSHaCalculator(CalculatorBase):
         # 吸入管路损失
         friction_loss_label = QLabel("吸入管路损失 (m):")
         friction_loss_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        friction_loss_label.setStyleSheet(label_style)
+        friction_loss_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(friction_loss_label, row, 0)
         
         self.friction_loss_input = QLineEdit()
@@ -212,7 +202,7 @@ class NPSHaCalculator(CalculatorBase):
         # 液体密度
         density_label = QLabel("液体密度 (kg/m³):")
         density_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        density_label.setStyleSheet(label_style)
+        density_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(density_label, row, 0)
         
         self.density_input = QLineEdit()
@@ -244,7 +234,7 @@ class NPSHaCalculator(CalculatorBase):
         # NPSHr (可选)
         npshr_label = QLabel("泵必需汽蚀余量NPSHr (m):")
         npshr_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        npshr_label.setStyleSheet(label_style)
+        npshr_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(npshr_label, row, 0)
         
         self.npshr_input = QLineEdit()
@@ -272,7 +262,7 @@ class NPSHaCalculator(CalculatorBase):
         # 安全裕量（泵型选择）
         safety_label = QLabel("安全裕量 (m):")
         safety_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        safety_label.setStyleSheet(label_style)
+        safety_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(safety_label, row, 0)
         
         self.safety_margin_input = QLineEdit()
@@ -303,90 +293,6 @@ class NPSHaCalculator(CalculatorBase):
         input_layout.addWidget(self.safety_margin_combo, row, 2)
         
         left_layout.addWidget(input_group)
-        
-        # 计算按钮
-        calculate_btn = QPushButton("计算")
-        calculate_btn.setFont(QFont("Arial", 12, QFont.Bold))
-        calculate_btn.setMinimumHeight(50)
-        calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        calculate_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        calculate_btn.clicked.connect(self.calculate_npsha)
-        left_layout.addWidget(calculate_btn)
-
-        # 底部按钮行
-        bottom_layout = QHBoxLayout()
-        
-        # 清空按钮
-        self.clear_btn = QPushButton("清空")
-        self.clear_btn.clicked.connect(self.clear_inputs)
-        self.clear_btn.setMinimumHeight(50)
-        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.clear_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #95a5a6;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #7f8c8d;
-            } """)
-        
-        # 下载TXT按钮
-        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
-        self.download_docx_btn.clicked.connect(self.download_docx_report)
-        self.download_docx_btn.setMinimumHeight(50)
-        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_docx_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            } """)
-        
-        # 下载PDF按钮
-        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
-        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
-        self.download_pdf_btn.setMinimumHeight(50)
-        self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_pdf_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #c0392b;
-            } """)
-        
-        bottom_layout.addWidget(self.clear_btn)
-        bottom_layout.addStretch()
-        bottom_layout.addWidget(self.download_docx_btn)
-        bottom_layout.addWidget(self.download_pdf_btn)
-        left_layout.addLayout(bottom_layout)
-
         left_layout.addStretch()
 
         # 右侧：结果显示区域 (占1/3宽度)
@@ -403,25 +309,48 @@ class NPSHaCalculator(CalculatorBase):
         self.svg_widget.renderer().setAspectRatioMode(Qt.KeepAspectRatio)
         
         # 结果显示
-        self.result_group = QGroupBox("计算结果")
+        self.result_group = CalculatorBase.make_group_box("计算结果")
         result_layout = QVBoxLayout(self.result_group)
-        
+
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(500)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.result_text.setMinimumHeight(300)
+        # 结果框统一标准：边框/背景/文字色交给主题系统，仅指定等宽字体
         self.result_text.setStyleSheet("""
             QTextEdit {
-                border: 1px solid #666;
-                border-radius: 6px;
-                padding: 8px;
-                /* bg via theme */min-height: 500px;
-            }
-        """)
+                font-family: Consolas, 'Microsoft YaHei', monospace;
+                font-size: 13px;
+            } """)
+        self.result_text.setPlaceholderText("计算结果将在此显示……")
         result_layout.addWidget(self.result_text)
-        
+
         right_layout.addWidget(self.result_group)
-        
+
+        # 底部按钮行：清空 | DOCX | PDF
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(8)
+        self.clear_btn = QPushButton("清空")
+        self.clear_btn.setStyleSheet(CLEAR_BTN_STYLE)
+        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.clear_btn.clicked.connect(self.clear_inputs)
+        docx_btn = QPushButton("DOCX")
+        docx_btn.setStyleSheet(DOCX_BTN_STYLE)
+        docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        docx_btn.clicked.connect(self.download_docx_report)
+        pdf_btn = QPushButton("PDF")
+        pdf_btn.setStyleSheet(PDF_BTN_STYLE)
+        pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        pdf_btn.clicked.connect(self.download_pdf_report)
+        btn_layout.addWidget(self.clear_btn)
+        btn_layout.addWidget(docx_btn)
+        btn_layout.addWidget(pdf_btn)
+        right_layout.addLayout(btn_layout)
+
+        # 计算按钮（最底部）
+        self.calculate_btn = self.make_calc_button("计 算")
+        self.calculate_btn.clicked.connect(self.calculate_npsha)
+        right_layout.addWidget(self.calculate_btn)
+
         # 将左右两部分添加到主布局
         scroll_left.setWidget(left_widget)
         main_layout.addWidget(scroll_left, 2)  # 左侧占2/3
@@ -902,16 +831,70 @@ H_f    = {friction_loss} m (吸入管路损失)
         return {"inputs": inputs, "outputs": outputs}
 
     def get_project_info(self):
-        """获取项目信息"""
-        return {"calculator": "NPSHaCalculator", "name": "NPSHa汽蚀余量计算"}
+        """获取工程信息 - 返回 dict"""
+        try:
+            saved_info = {}
+            if self.data_manager:
+                saved_info = self.data_manager.get_project_info()
+            return {
+                'company_name': saved_info.get('company_name', ''),
+                'project_number': saved_info.get('project_number', ''),
+                'project_name': saved_info.get('project_name', ''),
+                'subproject_name': saved_info.get('subproject_name', ''),
+                'report_number': ''
+            }
+        except Exception as e:
+            print(f"获取工程信息失败: {e}")
+            return {}
 
     def generate_report(self):
-        """生成报告"""
-        return self.result_text.toPlainText()
+        """生成计算书 - 返回纯文本"""
+        result_text = self.result_text.toPlainText()
+        if not result_text or "计算结果" not in result_text:
+            QMessageBox.warning(self, "生成失败", "请先进行计算再生成计算书")
+            return ""
+        project_info = self.get_project_info()
+        report = f"""工程计算书 - 离心泵NPSHa计算
+计算工具: ChemCal 工程计算模块
+========================================
+
+"""
+        report += result_text
+        report += f"""══════════
+ 工程信息
+══════════
+
+    公司名称: {project_info.get('company_name', '')}
+    工程编号: {project_info.get('project_number', '')}
+    工程名称: {project_info.get('project_name', '')}
+    子项名称: {project_info.get('subproject_name', '')}
+    计算日期: {datetime.now().strftime('%Y-%m-%d')}
+
+══════════
+计算书标识
+══════════
+
+    计算书编号: {project_info.get('report_number', '')}
+    版本: 1.0
+    状态: 正式计算书
+
+══════════
+备注说明
+══════════
+
+    1. 本计算书基于汽蚀余量原理及相关标准规范
+    2. 计算结果仅供参考，实际应用需考虑安全系数
+    3. 重要工程参数应经专业工程师审核确认
+    4. 计算条件变更时应重新进行计算
+
+---
+生成于 ChemCal 工程计算模块
+"""
+        return report
 
     def download_docx_report(self):
         """生成DOCX格式计算书"""
-        ReportExporter.export_docx(self, "NPSHaCalculator")
+        ReportExporter.export_docx(self, "离心泵NPSHa")
     def download_pdf_report(self):
         """生成PDF格式计算书"""
-        ReportExporter.export_pdf(self, "NPSHaCalculator")
+        ReportExporter.export_pdf(self, "离心泵NPSHa")

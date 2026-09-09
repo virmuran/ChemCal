@@ -1,26 +1,18 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QGroupBox, QTextEdit, QComboBox, QMessageBox, QGridLayout,
-    QFileDialog, QDialog, QDialogButtonBox, QTabWidget, QSpinBox,
-    QButtonGroup, QFrame, QScrollArea, QSizePolicy
+    QTabWidget, QScrollArea, QSizePolicy
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QDoubleValidator
+from PySide6.QtGui import QDoubleValidator
 import math
-import re
-from datetime import datetime
-import sys
-from pathlib import Path
 
-
-from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
-                        CALC_BUTTON_STYLE, MODE_BUTTON_STYLE,
-                        SCROLL_AREA_STYLE, INPUT_LABEL_STYLE,
+from utils.docx_utils import ReportExporter
+from app_styles import (COMBOBOX_STYLE, INPUT_LABEL_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
-from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
-# DOCX 报告导出
+
 
 class 篮式过滤器(CalculatorBase):
     """篮式过滤器设计与压降计算器"""
@@ -78,52 +70,48 @@ class 篮式过滤器(CalculatorBase):
         left_layout.addWidget(description)
         
         # 流体介质参数组
-        fluid_group = self.create_group_box("流体介质参数")
+        fluid_group = CalculatorBase.make_group_box("流体介质参数")
         fluid_layout = QGridLayout(fluid_group)
         self.setup_fluid_parameters(fluid_layout)
         left_layout.addWidget(fluid_group)
         
         # 系统工况参数组
-        system_group = self.create_group_box("系统工况参数")
+        system_group = CalculatorBase.make_group_box("系统工况参数")
         system_layout = QGridLayout(system_group)
         self.setup_system_parameters(system_layout)
         left_layout.addWidget(system_group)
         
         # 过滤核心参数组
-        filter_group = self.create_group_box("过滤核心参数")
+        filter_group = CalculatorBase.make_group_box("过滤核心参数")
         filter_layout = QGridLayout(filter_group)
         self.setup_filter_parameters(filter_layout)
         left_layout.addWidget(filter_group)
         
         # 结构与材料参数组
-        structure_group = self.create_group_box("结构与材料参数")
+        structure_group = CalculatorBase.make_group_box("结构与材料参数")
         structure_layout = QGridLayout(structure_group)
         self.setup_structure_parameters(structure_layout)
         left_layout.addWidget(structure_group)
         
         # 经济参数组
-        economic_group = self.create_group_box("经济参数")
+        economic_group = CalculatorBase.make_group_box("经济参数")
         economic_layout = QGridLayout(economic_group)
         self.setup_economic_parameters(economic_layout)
         left_layout.addWidget(economic_group)
-        
-        # 按钮区域
-        self.setup_buttons(left_layout)
         
         left_layout.addStretch()
         
         # 右侧：结果显示区域
         right_widget = QWidget()
-        right_widget.setMinimumWidth(400)
-        right_widget.setMaximumWidth(500)
+        right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
         
-        # 创建结果Tab
+        # 结果Tab（详细结果 / 选型结果）
         self.result_tabs = self.create_result_tabs()
         right_layout.addWidget(self.result_tabs)
         
-        # 复制按钮
+        # 复制按钮（复制当前Tab结果）
         copy_btn = QPushButton(" 复制结果")
         copy_btn.clicked.connect(self.copy_results_to_clipboard)
         copy_btn.setStyleSheet("""
@@ -131,38 +119,52 @@ class 篮式过滤器(CalculatorBase):
                 background-color: #9b59b6;
                 color: white;
                 border: none;
-                border-radius: 6px;
+                border-radius: 4px;
                 padding: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover:!checked {
+            QPushButton:hover {
                 background-color: #8e44ad;
-            }
-        """)
+            } """)
+        copy_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         right_layout.addWidget(copy_btn)
+        
+        # 底部按钮行：清空 | DOCX | PDF
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(8)
+        clear_btn = QPushButton("清空")
+        clear_btn.setStyleSheet(CLEAR_BTN_STYLE)
+        clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        clear_btn.clicked.connect(self.clear_inputs)
+        docx_btn = QPushButton("DOCX")
+        docx_btn.setStyleSheet(DOCX_BTN_STYLE)
+        docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        docx_btn.clicked.connect(self.download_docx_report)
+        pdf_btn = QPushButton("PDF")
+        pdf_btn.setStyleSheet(PDF_BTN_STYLE)
+        pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        pdf_btn.clicked.connect(self.download_pdf_report)
+        btn_layout.addWidget(clear_btn)
+        btn_layout.addWidget(docx_btn)
+        btn_layout.addWidget(pdf_btn)
+        right_layout.addLayout(btn_layout)
+        
+        # 计算按钮（最底部）
+        calc_btn = CalculatorBase.make_calc_button()
+        calc_btn.clicked.connect(self.perform_design_calculation)
+        right_layout.addWidget(calc_btn)
         
         # 将左右两部分添加到主布局
         scroll_left.setWidget(left_widget)
         main_layout.addWidget(scroll_left, 2)
         main_layout.addWidget(right_widget, 1)
     
-    def create_group_box(self, title):
-        """创建统一的GroupBox"""
-        group = QGroupBox(title)
-        return group
-    
-    def add_labeled_input(self, layout, row, col, label_text, widget, placeholder=None, validator=None, read_only=False):
-        """添加带标签的输入控件"""
+    def add_labeled_input(self, layout, row, label_text, widget, hint_text="", placeholder=None, validator=None, read_only=False):
+        """添加带标签的输入控件（标准三列：标签|输入框|提示）"""
         label = QLabel(label_text)
         label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        label.setStyleSheet("""
-            QLabel {
-                font-weight: bold;
-                padding-right: 10px;
-                min-width: 100px;
-            }
-        """)
-        layout.addWidget(label, row, col)
+        label.setStyleSheet(INPUT_LABEL_STYLE)
+        layout.addWidget(label, row, 0)
         
         # 根据widget类型设置属性
         if isinstance(widget, QLineEdit):
@@ -173,173 +175,109 @@ class 篮式过滤器(CalculatorBase):
             if read_only:
                 widget.setReadOnly(True)
         
-        widget.setFixedWidth(180)  # 统一宽度
-        layout.addWidget(widget, row, col + 1)
+        widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        layout.addWidget(widget, row, 1)
+        
+        hint = QLabel(hint_text)
+        hint.setStyleSheet("font-style: italic;")
+        layout.addWidget(hint, row, 2)
         return widget
     
     def setup_fluid_parameters(self, layout):
         """设置流体参数输入"""
         layout.setVerticalSpacing(12)
-        layout.setHorizontalSpacing(20)
+        layout.setHorizontalSpacing(10)
+        layout.setColumnStretch(0, 4)
+        layout.setColumnStretch(1, 8)
+        layout.setColumnStretch(2, 5)
         
-        # 第0行：介质名称和介质密度
-        self.fluid_name_input = self.add_labeled_input(layout, 0, 0, "介质名称:", QLineEdit(), "例如：循环水")
-        self.density_input = self.add_labeled_input(layout, 0, 2, "密度 (kg/m³):", QLineEdit(), "例如：992.0", QDoubleValidator(1, 3000, 3))
-        
-        # 第1行：动力粘度和介质腐蚀性
-        self.viscosity_input = self.add_labeled_input(layout, 1, 0, "动力粘度 (Pa·s):", QLineEdit(), "例如：0.001002", QDoubleValidator(1e-6, 10, 6))
-        
+        row = 0
+        self.fluid_name_input = self.add_labeled_input(layout, row, "介质名称:", QLineEdit(), "例如：循环水")
+        row += 1
+        self.density_input = self.add_labeled_input(layout, row, "密度 (kg/m³):", QLineEdit(), "例如：992.0", validator=QDoubleValidator(1, 3000, 3))
+        row += 1
+        self.viscosity_input = self.add_labeled_input(layout, row, "动力粘度 (Pa·s):", QLineEdit(), "例如：0.001002", validator=QDoubleValidator(1e-6, 10, 6))
+        row += 1
         # 介质腐蚀性下拉框
         self.corrosion_combo = QComboBox()
         self.corrosion_combo.setStyleSheet(COMBOBOX_STYLE)
         self.corrosion_combo.addItems(["无腐蚀", "弱腐蚀", "中等腐蚀", "强腐蚀", "特殊腐蚀性"])
-        self.add_labeled_input(layout, 1, 2, "介质腐蚀性:", self.corrosion_combo)
+        self.add_labeled_input(layout, row, "介质腐蚀性:", self.corrosion_combo)
     
     def setup_system_parameters(self, layout):
         """设置系统工况参数输入"""
         layout.setVerticalSpacing(12)
-        layout.setHorizontalSpacing(20)
+        layout.setHorizontalSpacing(10)
+        layout.setColumnStretch(0, 4)
+        layout.setColumnStretch(1, 8)
+        layout.setColumnStretch(2, 5)
         
-        # 第0行：设计流量和设计压力
-        self.flow_input = self.add_labeled_input(layout, 0, 0, "设计流量 (m³/h):", QLineEdit(), "例如：150.0", QDoubleValidator(0.1, 100000, 1))
-        self.pressure_input = self.add_labeled_input(layout, 0, 2, "设计压力 (MPa):", QLineEdit(), "例如：1.6", QDoubleValidator(0.01, 10, 2))
-        
-        # 第1行：设计温度和允许压降
-        self.temp_input = self.add_labeled_input(layout, 1, 0, "设计温度 (°C):", QLineEdit(), "例如：80.0", QDoubleValidator(-50, 500, 1))
-        self.max_pressure_drop_input = self.add_labeled_input(layout, 1, 2, "允许压降 (kPa):", QLineEdit(), "例如：50.0", QDoubleValidator(0.1, 1000, 1))
+        row = 0
+        self.flow_input = self.add_labeled_input(layout, row, "设计流量 (m³/h):", QLineEdit(), "例如：150.0", validator=QDoubleValidator(0.1, 100000, 1))
+        row += 1
+        self.pressure_input = self.add_labeled_input(layout, row, "设计压力 (MPa):", QLineEdit(), "例如：1.6", validator=QDoubleValidator(0.01, 10, 2))
+        row += 1
+        self.temp_input = self.add_labeled_input(layout, row, "设计温度 (°C):", QLineEdit(), "例如：80.0", validator=QDoubleValidator(-50, 500, 1))
+        row += 1
+        self.max_pressure_drop_input = self.add_labeled_input(layout, row, "允许压降 (kPa):", QLineEdit(), "例如：50.0", validator=QDoubleValidator(0.1, 1000, 1))
     
     def setup_filter_parameters(self, layout):
         """设置过滤核心参数输入"""
         layout.setVerticalSpacing(12)
-        layout.setHorizontalSpacing(20)
+        layout.setHorizontalSpacing(10)
+        layout.setColumnStretch(0, 4)
+        layout.setColumnStretch(1, 8)
+        layout.setColumnStretch(2, 5)
         
-        # 第0行：过滤精度和滤网材质
-        self.mesh_input = self.add_labeled_input(layout, 0, 0, "过滤精度 (μm):", QLineEdit(), "例如：3000.0", QDoubleValidator(1, 10000, 1))
-        
+        row = 0
+        self.mesh_input = self.add_labeled_input(layout, row, "过滤精度 (μm):", QLineEdit(), "例如：3000.0", validator=QDoubleValidator(1, 10000, 1))
+        row += 1
         # 滤网材质下拉框
         self.material_combo = QComboBox()
         self.material_combo.setStyleSheet(COMBOBOX_STYLE)
-        self.add_labeled_input(layout, 0, 2, "滤网材质:", self.material_combo)
-        
-        # 第1行：滤网开孔率和推荐过滤速度
-        self.porosity_input = self.add_labeled_input(layout, 1, 0, "滤网开孔率 (%):", QLineEdit(), "例如：35.0", QDoubleValidator(10, 80, 1))
-        self.velocity_input = self.add_labeled_input(layout, 1, 2, "过滤速度 (m/s):", QLineEdit(), "例如：0.1", QDoubleValidator(0.01, 5, 3))
+        self.add_labeled_input(layout, row, "滤网材质:", self.material_combo)
+        row += 1
+        self.porosity_input = self.add_labeled_input(layout, row, "滤网开孔率 (%):", QLineEdit(), "例如：35.0", validator=QDoubleValidator(10, 80, 1))
+        row += 1
+        self.velocity_input = self.add_labeled_input(layout, row, "过滤速度 (m/s):", QLineEdit(), "例如：0.1", validator=QDoubleValidator(0.01, 5, 3))
     
     def setup_structure_parameters(self, layout):
         """设置结构与材料参数输入"""
         layout.setVerticalSpacing(12)
-        layout.setHorizontalSpacing(20)
+        layout.setHorizontalSpacing(10)
+        layout.setColumnStretch(0, 4)
+        layout.setColumnStretch(1, 8)
+        layout.setColumnStretch(2, 5)
         
-        # 第0行：滤网丝径和支撑网厚度
+        row = 0
         self.wire_diameter_input = QLineEdit()
-        self.add_labeled_input(layout, 0, 0, "滤网丝径 (m):", self.wire_diameter_input, "自动计算", read_only=True)
-        
-        self.support_thickness_input = self.add_labeled_input(layout, 0, 2, "支撑网厚度 (m):", QLineEdit(), "例如：0.002", QDoubleValidator(0.001, 0.05, 4))
-        
-        # 第1行：材料许用应力和法兰口径
-        self.stress_input = self.add_labeled_input(layout, 1, 0, "材料许用应力 (MPa):", QLineEdit(), "例如：137.0", QDoubleValidator(50, 500, 1))
-        
+        self.add_labeled_input(layout, row, "滤网丝径 (m):", self.wire_diameter_input, "自动计算", read_only=True)
+        row += 1
+        self.support_thickness_input = self.add_labeled_input(layout, row, "支撑网厚度 (m):", QLineEdit(), "例如：0.002", validator=QDoubleValidator(0.001, 0.05, 4))
+        row += 1
+        self.stress_input = self.add_labeled_input(layout, row, "材料许用应力 (MPa):", QLineEdit(), "例如：137.0", validator=QDoubleValidator(50, 500, 1))
+        row += 1
         # 法兰口径下拉框
         self.flange_size_combo = QComboBox()
         self.flange_size_combo.setStyleSheet(COMBOBOX_STYLE)
-        self.add_labeled_input(layout, 1, 2, "法兰口径:", self.flange_size_combo)
+        self.add_labeled_input(layout, row, "法兰口径:", self.flange_size_combo)
     
     def setup_economic_parameters(self, layout):
         """设置经济参数输入"""
         layout.setVerticalSpacing(12)
-        layout.setHorizontalSpacing(20)
+        layout.setHorizontalSpacing(10)
+        layout.setColumnStretch(0, 4)
+        layout.setColumnStretch(1, 8)
+        layout.setColumnStretch(2, 5)
         
-        # 第0行：制作单价和税率
-        self.unit_price_input = self.add_labeled_input(layout, 0, 0, "制作单价 (元/kg):", QLineEdit(), "例如：20.0", QDoubleValidator(1, 1000, 2))
-        self.tax_rate_input = self.add_labeled_input(layout, 0, 2, "税率:", QLineEdit(), "例如：0.13", QDoubleValidator(0, 1, 3))
-        
-        # 第1行：企业所得税和利润
-        self.corporate_tax_input = self.add_labeled_input(layout, 1, 0, "企业所得税:", QLineEdit(), "例如：0.05", QDoubleValidator(0, 1, 3))
-        self.profit_input = self.add_labeled_input(layout, 1, 2, "利润:", QLineEdit(), "例如：0.2", QDoubleValidator(0, 1, 3))
-    
-    def setup_buttons(self, layout):
-        """设置按钮区域"""
-        # 计算按钮
-        calculate_btn = QPushButton("计算")
-        calculate_btn.setFont(QFont("Arial", 12, QFont.Bold))
-        calculate_btn.clicked.connect(self.perform_design_calculation)
-        calculate_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        calculate_btn.setMinimumHeight(50)
-        layout.addWidget(calculate_btn)
-        
-        # 底部按钮行
-        bottom_layout = QHBoxLayout()
-        
-        # 清空按钮
-        self.clear_btn = QPushButton("清空")
-        self.clear_btn.clicked.connect(self.clear_inputs)
-        self.clear_btn.setMinimumHeight(50)
-        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.clear_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #95a5a6;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #7f8c8d;
-            } """)
-        
-        # 下载TXT按钮
-        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
-        self.download_docx_btn.clicked.connect(self.download_docx_report)
-        self.download_docx_btn.setMinimumHeight(50)
-        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_docx_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            } """)
-        
-        # 下载PDF按钮
-        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
-        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
-        self.download_pdf_btn.setMinimumHeight(50)
-        self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_pdf_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #c0392b;
-            } """)
-        
-        bottom_layout.addWidget(self.clear_btn)
-        bottom_layout.addStretch()
-        bottom_layout.addWidget(self.download_docx_btn)
-        bottom_layout.addWidget(self.download_pdf_btn)
-        layout.addLayout(bottom_layout)
+        row = 0
+        self.unit_price_input = self.add_labeled_input(layout, row, "制作单价 (元/kg):", QLineEdit(), "例如：20.0", validator=QDoubleValidator(1, 1000, 2))
+        row += 1
+        self.tax_rate_input = self.add_labeled_input(layout, row, "税率:", QLineEdit(), "例如：0.13", validator=QDoubleValidator(0, 1, 3))
+        row += 1
+        self.corporate_tax_input = self.add_labeled_input(layout, row, "企业所得税:", QLineEdit(), "例如：0.05", validator=QDoubleValidator(0, 1, 3))
+        row += 1
+        self.profit_input = self.add_labeled_input(layout, row, "利润:", QLineEdit(), "例如：0.2", validator=QDoubleValidator(0, 1, 3))
     
     def clear_inputs(self):
         """清空输入"""
@@ -351,24 +289,13 @@ class 篮式过滤器(CalculatorBase):
         """创建结果TabWidget"""
         tabs = QTabWidget()
         tabs.setStyleSheet("""
-            QTabWidget::pane {
-                border: 1px solid #666;
-                border-radius: 8px;
-                /* background via theme */
-            }
             QTabBar::tab {
-                /* bg via theme */
                 padding: 8px 16px;
                 margin-right: 2px;
                 border-radius: 4px;
             }
             QTabBar::tab:selected {
-                /* bg via theme */
-                /* color via theme */
                 font-weight: bold;
-            }
-            QTabBar::tab:hover:!selected {
-                /* bg via theme */
             }
         """)
         
@@ -378,14 +305,14 @@ class 篮式过滤器(CalculatorBase):
         detailed_layout.setContentsMargins(5, 5, 5, 5)
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
+        # 结果框统一标准：边框/背景/文字色交给主题系统，仅指定等宽字体
         self.result_text.setStyleSheet("""
             QTextEdit {
-                border: 1px solid #666;
-                border-radius: 6px;
-                padding: 8px;
-                /* bg via theme */}
-        """)
-        self.result_text.setMaximumHeight(700)
+                font-family: Consolas, 'Microsoft YaHei', monospace;
+                font-size: 13px;
+            } """)
+        self.result_text.setMinimumHeight(300)
+        self.result_text.setPlaceholderText("计算结果将在此显示……")
         detailed_layout.addWidget(self.result_text)
         
         # 选型结果Tab
@@ -396,12 +323,11 @@ class 篮式过滤器(CalculatorBase):
         self.selection_text.setReadOnly(True)
         self.selection_text.setStyleSheet("""
             QTextEdit {
-                border: 1px solid #666;
-                border-radius: 6px;
-                padding: 8px;
-                /* bg via theme */}
-        """)
-        self.selection_text.setMaximumHeight(700)
+                font-family: Consolas, 'Microsoft YaHei', monospace;
+                font-size: 13px;
+            } """)
+        self.selection_text.setMinimumHeight(300)
+        self.selection_text.setPlaceholderText("选型结果将在此显示……")
         selection_layout.addWidget(self.selection_text)
         
         tabs.addTab(detailed_result_widget, "详细结果")
@@ -982,220 +908,26 @@ class 篮式过滤器(CalculatorBase):
             QMessageBox.warning(self, "复制失败", f"复制时发生错误: {str(e)}")
     
     def get_project_info(self):
-        """获取工程信息 - 使用共享的项目信息"""
-        try:
-            class ProjectInfoDialog(QDialog):
-                def __init__(self, parent=None, default_info=None, report_number=""):
-                    super().__init__(parent)
-                    self.default_info = default_info or {}
-                    self.report_number = report_number
-                    self.setWindowTitle("工程信息")
-                    self.setFixedSize(400, 350)
-                    self.setup_ui()
-                    
-                def setup_ui(self):
-                    layout = QVBoxLayout(self)
-                    
-                    # 标题
-                    title_label = QLabel("请输入工程信息")
-                    title_label.setStyleSheet("font-weight: bold; font-size: 14px; margin: 10px;")
-                    layout.addWidget(title_label)
-                    
-                    # 公司名称
-                    company_layout = QHBoxLayout()
-                    company_label = QLabel("公司名称:")
-                    company_label.setFixedWidth(80)
-                    self.company_input = QLineEdit()
-                    self.company_input.setPlaceholderText("例如：XX建筑工程有限公司")
-                    self.company_input.setText(self.default_info.get('company_name', ''))
-                    company_layout.addWidget(company_label)
-                    company_layout.addWidget(self.company_input)
-                    layout.addLayout(company_layout)
-                    
-                    # 工程编号
-                    number_layout = QHBoxLayout()
-                    number_label = QLabel("工程编号:")
-                    number_label.setFixedWidth(80)
-                    self.project_number_input = QLineEdit()
-                    self.project_number_input.setPlaceholderText("例如：2024-FILTER-001")
-                    self.project_number_input.setText(self.default_info.get('project_number', ''))
-                    number_layout.addWidget(number_label)
-                    number_layout.addWidget(self.project_number_input)
-                    layout.addLayout(number_layout)
-                    
-                    # 工程名称
-                    project_layout = QHBoxLayout()
-                    project_label = QLabel("工程名称:")
-                    project_label.setFixedWidth(80)
-                    self.project_input = QLineEdit()
-                    self.project_input.setPlaceholderText("例如：化工厂过滤器系统")
-                    self.project_input.setText(self.default_info.get('project_name', ''))
-                    project_layout.addWidget(project_label)
-                    project_layout.addWidget(self.project_input)
-                    layout.addLayout(project_layout)
-                    
-                    # 子项名称
-                    subproject_layout = QHBoxLayout()
-                    subproject_label = QLabel("子项名称:")
-                    subproject_label.setFixedWidth(80)
-                    self.subproject_input = QLineEdit()
-                    self.subproject_input.setPlaceholderText("例如：主生产区过滤器")
-                    self.subproject_input.setText(self.default_info.get('subproject_name', ''))
-                    subproject_layout.addWidget(subproject_label)
-                    subproject_layout.addWidget(self.subproject_input)
-                    layout.addLayout(subproject_layout)
-                    
-                    # 计算书编号
-                    report_number_layout = QHBoxLayout()
-                    report_number_label = QLabel("计算书编号:")
-                    report_number_label.setFixedWidth(80)
-                    self.report_number_input = QLineEdit()
-                    self.report_number_input.setText(self.report_number)
-                    report_number_layout.addWidget(report_number_label)
-                    report_number_layout.addWidget(self.report_number_input)
-                    layout.addLayout(report_number_layout)
-                    
-                    # 按钮
-                    button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-                    button_box.accepted.connect(self.accept)
-                    button_box.rejected.connect(self.reject)
-                    layout.addWidget(button_box)
-                    
-                def get_info(self):
-                    return {
-                        'company_name': self.company_input.text().strip(),
-                        'project_number': self.project_number_input.text().strip(),
-                        'project_name': self.project_input.text().strip(),
-                        'subproject_name': self.subproject_input.text().strip(),
-                        'report_number': self.report_number_input.text().strip()
-                    }
-            
-            # 从数据管理器获取共享的项目信息
-            saved_info = {}
-            if self.data_manager:
-                saved_info = self.data_manager.get_project_info()
-            
-            # 获取下一个报告编号
-            report_number = ""
-            if self.data_manager:
-                report_number = self.data_manager.get_next_report_number("FILTER")
-            
-            dialog = ProjectInfoDialog(self, saved_info, report_number)
-            if dialog.exec() == QDialog.Accepted:
-                info = dialog.get_info()
-                # 验证必填字段
-                if not info['project_name']:
-                    QMessageBox.warning(self, "输入错误", "工程名称不能为空")
-                    return self.get_project_info()  # 重新弹出对话框
-                
-                # 保存项目信息到数据管理器
-                if self.data_manager:
-                    info_to_save = {
-                        'company_name': info['company_name'],
-                        'project_number': info['project_number'],
-                        'project_name': info['project_name'],
-                        'subproject_name': info['subproject_name']
-                    }
-                    self.data_manager.update_project_info(info_to_save)
-                    print("项目信息已保存")
-                
-                return info
-            else:
-                return None  # 用户取消了
-                    
-        except Exception as e:
-            print(f"获取工程信息失败: {e}")
-            return None
-    
+        return {
+            "project_name": "篮式过滤器设计计算",
+            "calculator_name": "篮式过滤器设计计算器",
+            "version": "1.0",
+            "description": "根据流体参数、工况条件和过滤要求，进行篮式过滤器设计和压降计算"
+        }
+
     def generate_report(self):
-        """生成计算书"""
-        try:
-            # 获取当前结果文本
-            result_text = self.result_text.toPlainText()
-            selection_text = self.selection_text.toPlainText()
-            
-            # 检查是否已经计算
-            if not result_text or not selection_text or ("计算结果" not in result_text and "设计参数" not in result_text):
-                QMessageBox.warning(self, "生成失败", "请先进行设计计算再生成计算书")
-                return None
-                
-            # 获取工程信息
-            project_info = self.get_project_info()
-            if not project_info:
-                return None  # 用户取消了输入
-            
-            # 添加报告头信息
-            report = f"""工程计算书 - 篮式过滤器设计计算
-生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-计算工具: ChemCal 工程计算模块
-========================================
+        content = self.result_text.toPlainText().strip()
+        if not content:
+            return "尚未进行计算。"
+        lines = ["篮式过滤器设计计算报告", "=" * 50, "", content]
+        return "\n".join(lines)
 
-"""
-            report += result_text
-            report += "\n\n"
-            report += selection_text
-            
-            # 添加工程信息部分
-            report += f"""
-══════════
- 工程信息
-══════════
-
-    公司名称: {project_info['company_name']}
-    工程编号: {project_info['project_number']}
-    工程名称: {project_info['project_name']}
-    子项名称: {project_info['subproject_name']}
-    计算日期: {datetime.now().strftime('%Y-%m-%d')}
-
-══════════
-计算书标识
-══════════
-
-    计算书编号: {project_info['report_number']}
-    版本: 1.0
-    状态: 正式计算书
-
-══════════
-备注说明
-══════════
-
-    1. 本计算书基于流体力学原理及相关标准规范
-    2. 计算结果仅供参考，实际应用需考虑安全系数
-    3. 重要工程参数应经专业工程师审核确认
-    4. 计算条件变更时应重新进行计算
-
----
-生成于 ChemCal 工程计算模块
-"""
-            return report
-            
-        except Exception as e:
-            print(f"生成计算书失败: {e}")
-            return None
-    
     def download_docx_report(self):
         """生成DOCX格式计算书"""
         ReportExporter.export_docx(self, "篮式过滤器")
     def download_pdf_report(self):
         """生成PDF格式计算书"""
         ReportExporter.export_pdf(self, "篮式过滤器")
-    def process_content_for_pdf(self, content):
-        """处理内容，使其适合PDF显示"""
-        # 清理bullet符号
-        content = content.replace("•", "")
-        
-        # 替换单位符号
-        content = content.replace("m³", "m3")
-        content = content.replace("g/100g", "g/100g")
-        content = content.replace("kg/m³", "kg/m3")
-        content = content.replace("Nm³/h", "Nm3/h")
-        content = content.replace("Pa·s", "Pa.s")
-        content = content.replace("m²", "m2")
-        content = content.replace("0²", "02")
-        content = content.replace("dₚ", "dp")
-        content = content.replace("vₚ", "vp")
-        
-        return content
 
 if __name__ == "__main__":
     import sys

@@ -1,28 +1,19 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
-    QGroupBox, QTextEdit, QComboBox, QMessageBox, QButtonGroup,
-    QGridLayout, QFileDialog, QDialog, QDialogButtonBox,
-    QScrollArea, QSizePolicy,
-
+    QGroupBox, QTextEdit, QComboBox, QMessageBox,
+    QGridLayout, QScrollArea, QSizePolicy,
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QDoubleValidator
+from PySide6.QtGui import QDoubleValidator
 import math
-from datetime import datetime
-import sys
-from pathlib import Path
 
-
-from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
-                        CALC_BUTTON_STYLE, MODE_BUTTON_STYLE,
-                        SCROLL_AREA_STYLE, INPUT_LABEL_STYLE,
+from utils.docx_utils import ReportExporter
+from app_styles import (COMBOBOX_STYLE, INPUT_LABEL_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
-from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
-# DOCX 报告导出
+from common_constants import C_TO_K
 
-# 标准 QGroupBox 样式
 
 class FanPowerCalculator(CalculatorBase):
     """风机功率计算器（统一UI风格版）"""
@@ -77,13 +68,12 @@ class FanPowerCalculator(CalculatorBase):
         left_layout.addWidget(desc)
 
         # ── 输入参数 GroupBox ─────────────────────────────────────
-        input_group = QGroupBox("输入参数")
+        input_group = CalculatorBase.make_group_box("输入参数")
         grid = QGridLayout(input_group)
         grid.setVerticalSpacing(12)
         grid.setHorizontalSpacing(10)
 
-        lbl = "QLabel { font-weight: bold; padding-right: 10px; }"
-        
+        lbl = INPUT_LABEL_STYLE
 
         grid.setColumnStretch(0, 4)
         grid.setColumnStretch(1, 8)
@@ -210,89 +200,6 @@ class FanPowerCalculator(CalculatorBase):
         grid.addWidget(self._hint("用于费用估算（可选）"), row, 2)
 
         left_layout.addWidget(input_group)
-
-        # ── 计算按钮 ──────────────────────────────────────────────
-        calc_btn = QPushButton("计算")
-        calc_btn.setFont(QFont("Arial", 12, QFont.Bold))
-        calc_btn.setMinimumHeight(50)
-        calc_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        calc_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        calc_btn.clicked.connect(self.calculate)
-        left_layout.addWidget(calc_btn)
-
-        # ── 底部按钮行 ────────────────────────────────────────────
-        bottom_layout = QHBoxLayout()
-        
-        # 清空按钮
-        self.clear_btn = QPushButton("清空")
-        self.clear_btn.clicked.connect(self.clear_inputs)
-        self.clear_btn.setMinimumHeight(50)
-        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.clear_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #95a5a6;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #7f8c8d;
-            } """)
-        
-        # 下载TXT按钮
-        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
-        self.download_docx_btn.clicked.connect(self.download_docx_report)
-        self.download_docx_btn.setMinimumHeight(50)
-        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_docx_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            } """)
-        
-        # 下载PDF按钮
-        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
-        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
-        self.download_pdf_btn.setMinimumHeight(50)
-        self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_pdf_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #c0392b;
-            } """)
-        
-        bottom_layout.addWidget(self.clear_btn)
-        bottom_layout.addStretch()
-        bottom_layout.addWidget(self.download_docx_btn)
-        bottom_layout.addWidget(self.download_pdf_btn)
-        left_layout.addLayout(bottom_layout)
         left_layout.addStretch()
 
         # ── 右侧：结果区 ──────────────────────────────────────────
@@ -301,23 +208,46 @@ class FanPowerCalculator(CalculatorBase):
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
 
-        result_group = QGroupBox("计算结果")
+        result_group = CalculatorBase.make_group_box("计算结果")
         rlayout = QVBoxLayout(result_group)
 
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(500)
-        self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.result_text.setMinimumHeight(300)
+        # 结果框统一标准：边框/背景/文字色交给主题系统，仅指定等宽字体
         self.result_text.setStyleSheet("""
             QTextEdit {
-                border: 1px solid #666;
-                border-radius: 6px;
-                padding: 8px;
-                /* bg via theme */min-height: 500px;
-            }
-        """)
+                font-family: Consolas, 'Microsoft YaHei', monospace;
+                font-size: 13px;
+            } """)
+        self.result_text.setPlaceholderText("计算结果将在此显示……")
         rlayout.addWidget(self.result_text)
         right_layout.addWidget(result_group)
+
+        # 底部按钮行：清空 | DOCX | PDF
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(8)
+        clear_btn = QPushButton("清空")
+        clear_btn.setStyleSheet(CLEAR_BTN_STYLE)
+        clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        clear_btn.clicked.connect(self.clear_inputs)
+        docx_btn = QPushButton("DOCX")
+        docx_btn.setStyleSheet(DOCX_BTN_STYLE)
+        docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        docx_btn.clicked.connect(self.download_docx_report)
+        pdf_btn = QPushButton("PDF")
+        pdf_btn.setStyleSheet(PDF_BTN_STYLE)
+        pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        pdf_btn.clicked.connect(self.download_pdf_report)
+        btn_layout.addWidget(clear_btn)
+        btn_layout.addWidget(docx_btn)
+        btn_layout.addWidget(pdf_btn)
+        right_layout.addLayout(btn_layout)
+
+        # 计算按钮（最底部）
+        calc_btn = CalculatorBase.make_calc_button()
+        calc_btn.clicked.connect(self.calculate)
+        right_layout.addWidget(calc_btn)
 
         # ── 组装主布局 ────────────────────────────────────────────
         scroll_left.setWidget(left_widget)
@@ -569,117 +499,27 @@ class FanPowerCalculator(CalculatorBase):
     # 工程信息 & 报告
     # ────────────────────────────────────────────────────────────
     def get_project_info(self):
-        try:
-            class _Dialog(QDialog):
-                def __init__(self, parent, saved, report_number):
-                    super().__init__(parent)
-                    self.setWindowTitle("工程信息")
-                    self.setFixedSize(400, 350)
-                    lay = QVBoxLayout(self)
-                    title = QLabel("请输入工程信息")
-                    title.setStyleSheet("font-weight: bold; font-size: 14px; margin: 10px;")
-                    lay.addWidget(title)
-
-                    def row(label, placeholder, default=""):
-                        h = QHBoxLayout()
-                        l = QLabel(label); l.setFixedWidth(80); h.addWidget(l)
-                        e = QLineEdit(); e.setPlaceholderText(placeholder); e.setText(default)
-                        h.addWidget(e); lay.addLayout(h); return e
-
-                    self.company  = row("公司名称:", "XX建筑工程有限公司",   saved.get("company_name", ""))
-                    self.proj_no  = row("工程编号:", "2024-FAN-001",         saved.get("project_number", ""))
-                    self.proj_name= row("工程名称:", "化工厂风机系统",        saved.get("project_name", ""))
-                    self.sub_name = row("子项名称:", "主生产区通风",          saved.get("subproject_name", ""))
-                    self.rpt_no   = row("计算书编号:", "",                   report_number)
-
-                    bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-                    bb.accepted.connect(self.accept); bb.rejected.connect(self.reject)
-                    lay.addWidget(bb)
-
-                def get_info(self):
-                    return {
-                        "company_name":    self.company.text().strip(),
-                        "project_number":  self.proj_no.text().strip(),
-                        "project_name":    self.proj_name.text().strip(),
-                        "subproject_name": self.sub_name.text().strip(),
-                        "report_number":   self.rpt_no.text().strip(),
-                    }
-
-            saved  = self.data_manager.get_project_info() if self.data_manager else {}
-            rpt_no = self.data_manager.get_next_report_number("FAN") if self.data_manager else ""
-
-            dlg = _Dialog(self, saved, rpt_no)
-            if dlg.exec() == QDialog.Accepted:
-                info = dlg.get_info()
-                if not info["company_name"]:
-                    QMessageBox.warning(self, "输入错误", "公司名称不能为空")
-                    return self.get_project_info()
-                if self.data_manager:
-                    self.data_manager.update_project_info({
-                        k: info[k] for k in ("company_name", "project_number",
-                                              "project_name", "subproject_name")
-                    })
-                return info
-        except Exception as e:
-            print(f"获取工程信息失败: {e}")
-        return None
+        return {
+            "project_name": "风机功率计算",
+            "calculator_name": "风机功率计算器",
+            "version": "1.0",
+            "description": "根据风量、风压、效率参数计算风机轴功率和电机功率，并估算能耗与运行成本"
+        }
 
     def generate_report(self):
-        result_text = self.result_text.toPlainText()
-        if not result_text or "计算结果" not in result_text:
-            QMessageBox.warning(self, "生成失败", "请先进行计算再生成计算书")
-            return None
-        info = self.get_project_info()
-        if not info:
-            return None
-
-        report = (
-            f"工程计算书 - 风机功率计算\n"
-            f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-            f"计算工具: ChemCal 工程计算模块\n"
-            f"{'='*40}\n\n"
-            + result_text
-            + f"""
-
-══════════
- 工程信息
-══════════
-
-    公司名称: {info['company_name']}
-    工程编号: {info['project_number']}
-    工程名称: {info['project_name']}
-    子项名称: {info['subproject_name']}
-    计算日期: {datetime.now().strftime('%Y-%m-%d')}
-
-══════════
-计算书标识
-══════════
-
-    计算书编号: {info['report_number']}
-    版本: 1.0
-    状态: 正式计算书
-
-══════════
-备注说明
-══════════
-
-    1. 本计算书基于流体力学基本原理
-    2. 空气密度按 ISA 标准大气幂律公式修正
-    3. 计算结果仅供参考，实际选型应结合厂家特性曲线
-    4. 重要工程参数应经专业工程师审核确认
-
----
-生成于 ChemCal 工程计算模块
-"""
-        )
-        return report
+        content = self.result_text.toPlainText().strip()
+        if not content:
+            return "尚未进行计算。"
+        lines = ["风机功率计算报告", "=" * 50, "", content]
+        return "\n".join(lines)
 
     def download_docx_report(self):
         """生成DOCX格式计算书"""
-        ReportExporter.export_docx(self, "FanPowerCalculator")
+        ReportExporter.export_docx(self, "风机功率")
     def download_pdf_report(self):
         """生成PDF格式计算书"""
-        ReportExporter.export_pdf(self, "FanPowerCalculator")
+        ReportExporter.export_pdf(self, "风机功率")
+
 if __name__ == "__main__":
     import sys
     from PySide6.QtWidgets import QApplication

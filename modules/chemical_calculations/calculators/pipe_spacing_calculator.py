@@ -7,13 +7,11 @@
 from PySide6.QtWidgets import (
     QSizePolicy, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, 
     QLineEdit, QGroupBox, QFormLayout, QPushButton, 
-    QGridLayout, QFrame, QMessageBox, QCheckBox
+    QGridLayout, QMessageBox, QCheckBox, QScrollArea
 )
-from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QFont, QDoubleValidator, QIntValidator
-import math
-import sys
-from pathlib import Path
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QDoubleValidator
+from datetime import datetime
 
 
 from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
@@ -22,8 +20,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
-from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
-# DOCX 报告导出
+from utils.docx_utils import ReportExporter
 
 class 管道间距(CalculatorBase):
     """专业的管道间距计算器 - 依据化工部标准"""
@@ -51,107 +48,129 @@ class 管道间距(CalculatorBase):
         }
         
     def setup_ui(self):
-        """设置UI界面"""
-        main_layout = QVBoxLayout(self)
+        """设置UI界面 - 统一标准左右分栏布局"""
+        main_layout = QHBoxLayout(self)
         main_layout.setSpacing(15)
-        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setContentsMargins(10, 10, 10, 10)
         
-        # 创建两列布局
-        content_layout = QHBoxLayout()
-        content_layout.setSpacing(20)
+        # 左侧：输入参数区域 (占2/3宽度)
+        scroll_left = QScrollArea()
+        scroll_left.setStyleSheet("QScrollArea { border: none; background: transparent; } QScrollBar:vertical { background: transparent; width: 8px; margin: 0; } QScrollBar::handle:vertical { background: #c0c0c0; border-radius: 4px; min-height: 30px; } QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }")
+        scroll_left.setWidgetResizable(True)
+        scroll_left.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         
-        # 左侧：输入参数
+        left_widget = QWidget()
+        left_widget.setStyleSheet("")
+        left_layout = QVBoxLayout(left_widget)
+        left_layout.setSpacing(15)
+        
+        # 输入参数区（管道参数/布置参数/特殊要求 3 组）
         input_widget = self.create_input_section()
-        content_layout.addWidget(input_widget, 1)
+        left_layout.addWidget(input_widget)
         
-        # 右侧：结果和示意图
-        output_widget = self.create_output_section()
-        content_layout.addWidget(output_widget, 1)
+        # 标准间距要求组
+        table_group = CalculatorBase.make_group_box("标准间距要求")
+        table_layout = QVBoxLayout(table_group)
+        table_text = QLabel(
+            "根据SH3012-2011标准要求：\n\n"
+            "• 管廊上布置的管道（不论有无保温）：\n"
+            "   管道间净距 ≥ 50mm\n\n"
+            "• 法兰外缘与相邻管道：\n"
+            "   最小净距 ≥ 25mm\n\n"
+            "• 管道与结构/设备：\n"
+            "   最小净距 ≥ 100mm\n\n"
+            "• 含阀门的管道：\n"
+            "   需增加操作空间 ≥ 300mm"
+        )
+        table_text.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 10px;")
+        table_text.setWordWrap(True)
+        table_layout.addWidget(table_text)
+        left_layout.addWidget(table_group)
         
-        main_layout.addLayout(content_layout)
+        # 计算原理说明组
+        principle_group = CalculatorBase.make_group_box("计算原理")
+        principle_layout = QVBoxLayout(principle_group)
+        principle_text = QLabel(
+            "计算步骤：\n"
+            "1. 根据DN/NPS和法兰等级查取法兰外径\n"
+            "2. 计算基础间距 = 管道外径/2 + 相邻管道外径/2 + 50mm\n"
+            "3. 计算法兰间距 = 法兰外径/2 + 相邻法兰外径/2 + 25mm\n"
+            "4. 最终间距取两者较大值\n"
+            "5. 考虑保温层、热位移、阀门等附加要求"
+        )
+        principle_text.setStyleSheet("color: #34495e; font-size: 12px; padding: 10px;")
+        principle_text.setWordWrap(True)
+        principle_layout.addWidget(principle_text)
+        left_layout.addWidget(principle_group)
         
-        # 计算按钮
-        self.calculate_btn = QPushButton("计算")
-        self.calculate_btn.setFont(QFont("Arial", 12, QFont.Weight.Bold))
-        self.calculate_btn.clicked.connect(self.calculate_spacing)
-        self.calculate_btn.setMinimumHeight(50)
-        self.calculate_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.calculate_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        main_layout.addWidget(self.calculate_btn)
+        # 在底部添加拉伸因子
+        left_layout.addStretch()
         
-        # 底部按钮
-        bottom_layout = QHBoxLayout()
+        # 右侧：结果显示区域 (占1/3宽度)
+        right_widget = QWidget()
+        right_widget.setMinimumWidth(300)
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setSpacing(15)
         
-        # 清空按钮
-        self.clear_btn = QPushButton("清空")
-        self.clear_btn.clicked.connect(self.clear_inputs)
-        self.clear_btn.setMinimumHeight(50)
-        self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.clear_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #95a5a6;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #7f8c8d;
-            } """)
+        # 结果显示组
+        result_group = CalculatorBase.make_group_box("计算结果")
+        result_layout = QVBoxLayout(result_group)
         
-        # 下载TXT按钮
-        self.download_docx_btn = QPushButton("下载计算书(DOCX)")
-        self.download_docx_btn.clicked.connect(self.download_docx_report)
-        self.download_docx_btn.setMinimumHeight(50)
-        self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_docx_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            } """)
+        # 主要结果
+        self.result_main_label = QLabel("点击计算按钮开始计算")
+        self.result_main_label.setAlignment(Qt.AlignCenter)
+        self.result_main_label.setStyleSheet("""
+            /* color via theme */
+            /* bg via theme */
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 16px;
+        """)
+        result_layout.addWidget(self.result_main_label)
         
-        # 下载PDF按钮
-        self.download_pdf_btn = QPushButton("下载计算书(PDF)")
-        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
-        self.download_pdf_btn.setMinimumHeight(50)
-        self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_pdf_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #c0392b;
-            } """)
+        # 详细结果
+        self.result_detail_label = QLabel("")
+        self.result_detail_label.setStyleSheet("""
+            /* color via theme */
+            font-size: 13px;
+            padding: 10px;
+            /* bg via theme */
+            border-radius: 5px;
+        """)
+        self.result_detail_label.setWordWrap(True)
+        result_layout.addWidget(self.result_detail_label)
         
-        bottom_layout.addWidget(self.clear_btn)
-        bottom_layout.addStretch()
-        bottom_layout.addWidget(self.download_docx_btn)
-        bottom_layout.addWidget(self.download_pdf_btn)
-        main_layout.addLayout(bottom_layout)
+        right_layout.addWidget(result_group)
+        
+        # 底部按钮行：清空 | DOCX | PDF
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(8)
+        clear_btn = QPushButton("清空")
+        clear_btn.setStyleSheet(CLEAR_BTN_STYLE)
+        clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        clear_btn.clicked.connect(self.clear_inputs)
+        docx_btn = QPushButton("DOCX")
+        docx_btn.setStyleSheet(DOCX_BTN_STYLE)
+        docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        docx_btn.clicked.connect(self.download_docx_report)
+        pdf_btn = QPushButton("PDF")
+        pdf_btn.setStyleSheet(PDF_BTN_STYLE)
+        pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        pdf_btn.clicked.connect(self.download_pdf_report)
+        btn_layout.addWidget(clear_btn)
+        btn_layout.addWidget(docx_btn)
+        btn_layout.addWidget(pdf_btn)
+        right_layout.addLayout(btn_layout)
+        
+        # 计算按钮（最底部）
+        calc_btn = CalculatorBase.make_calc_button()
+        calc_btn.clicked.connect(self.calculate_spacing)
+        right_layout.addWidget(calc_btn)
+        
+        # 将左右两部分添加到主布局
+        scroll_left.setWidget(left_widget)
+        main_layout.addWidget(scroll_left, 2)  # 左侧占2/3
+        main_layout.addWidget(right_widget, 1)  # 右侧占1/3
         
     def create_input_section(self):
         """创建输入参数区域"""
@@ -160,7 +179,7 @@ class 管道间距(CalculatorBase):
         layout.setSpacing(10)
         
         # 创建管道参数组（双列）
-        pipes_group = QGroupBox("管道参数")
+        pipes_group = CalculatorBase.make_group_box("管道参数")
         pipes_layout = QGridLayout()
         pipes_layout.setVerticalSpacing(10)
         pipes_layout.setHorizontalSpacing(15)
@@ -216,8 +235,7 @@ class 管道间距(CalculatorBase):
         layout.addWidget(pipes_group)
         
         # 布置参数组
-        layout_group = QGroupBox("布置参数")
-        layout_group
+        layout_group = CalculatorBase.make_group_box("布置参数")
         layout_form = QFormLayout()
         layout_form.setVerticalSpacing(10)
         layout_form.setHorizontalSpacing(15)
@@ -248,8 +266,7 @@ class 管道间距(CalculatorBase):
         layout.addWidget(layout_group)
         
         # 特殊要求组
-        special_group = QGroupBox("特殊要求")
-        special_group
+        special_group = CalculatorBase.make_group_box("特殊要求")
         special_form = QFormLayout()
         
         # 法兰面对面布置
@@ -274,97 +291,105 @@ class 管道间距(CalculatorBase):
         
         return widget
     
-    def create_output_section(self):
-        """创建输出结果区域"""
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
-        layout.setSpacing(15)
-        
-        # 计算结果组
-        result_group = QGroupBox("计算结果")
-        result_group
-        result_layout = QVBoxLayout()
-        
-        # 主要结果
-        self.result_main_label = QLabel("点击计算按钮开始计算")
-        self.result_main_label.setFont(QFont("Arial", 14, QFont.Bold))
-        self.result_main_label.setAlignment(Qt.AlignCenter)
-        self.result_main_label.setStyleSheet("""
-            /* color via theme */
-            /* bg via theme */
-            padding: 15px;
-            border-radius: 8px;
-            border: 2px solid #27ae60;
-        """)
-        result_layout.addWidget(self.result_main_label)
-        
-        # 详细结果
-        self.result_detail_label = QLabel("")
-        self.result_detail_label.setStyleSheet("""
-            /* color via theme */
-            font-size: 13px;
-            padding: 10px;
-            /* bg via theme */
-            border-radius: 5px;
-        """)
-        self.result_detail_label.setWordWrap(True)
-        result_layout.addWidget(self.result_detail_label)
-        
-        result_group.setLayout(result_layout)
-        layout.addWidget(result_group)
-        
-        # 标准间距表组
-        table_group = QGroupBox("标准间距要求")
-        table_group
-        table_layout = QVBoxLayout()
-        
-        table_text = QLabel(
-            "根据SH3012-2011标准要求：\n\n"
-            "• 管廊上布置的管道（不论有无保温）：\n"
-            "   管道间净距 ≥ 50mm\n\n"
-            "• 法兰外缘与相邻管道：\n"
-            "   最小净距 ≥ 25mm\n\n"
-            "• 管道与结构/设备：\n"
-            "   最小净距 ≥ 100mm\n\n"
-            "• 含阀门的管道：\n"
-            "   需增加操作空间 ≥ 300mm"
-        )
-        table_text.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 10px;")
-        table_text.setWordWrap(True)
-        table_layout.addWidget(table_text)
-        
-        table_group.setLayout(table_layout)
-        layout.addWidget(table_group)
-        
-        # 计算原理说明
-        principle_group = QGroupBox("计算原理")
-        principle_group
-        principle_layout = QVBoxLayout()
-        
-        principle_text = QLabel(
-            "计算步骤：\n"
-            "1. 根据DN/NPS和法兰等级查取法兰外径\n"
-            "2. 计算基础间距 = 管道外径/2 + 相邻管道外径/2 + 50mm\n"
-            "3. 计算法兰间距 = 法兰外径/2 + 相邻法兰外径/2 + 25mm\n"
-            "4. 最终间距取两者较大值\n"
-            "5. 考虑保温层、热位移、阀门等附加要求"
-        )
-        principle_text.setStyleSheet("color: #34495e; font-size: 12px; padding: 10px;")
-        principle_text.setWordWrap(True)
-        principle_layout.addWidget(principle_text)
-        
-        principle_group.setLayout(principle_layout)
-        layout.addWidget(principle_group)
-        
-        return widget
-    
     def clear_inputs(self):
         """清空所有输入参数"""
-        for widget in self.findChildren((QLineEdit, QComboBox)):
-            if isinstance(widget, QLineEdit):
-                widget.clear()
-            elif isinstance(widget, QComboBox):
-                widget.setCurrentIndex(0)
+        for widget in self.findChildren(QLineEdit):
+            widget.clear()
+        for widget in self.findChildren(QComboBox):
+            widget.setCurrentIndex(0)
+        # 重置结果显示
+        self.result_main_label.setText("点击计算按钮开始计算")
+        self.result_detail_label.setText("")
+        # 重置结果数据
+        self.results = {
+            'spacing_basic': 0,
+            'spacing_flange': 0,
+            'spacing_final': 0,
+            'flange_od1': 0,
+            'flange_od2': 0,
+            'pipe_od1': 0,
+            'pipe_od2': 0
+        }
+
+    def get_project_info(self):
+        """获取工程信息 - 返回 dict"""
+        try:
+            saved_info = {}
+            if self.data_manager:
+                saved_info = self.data_manager.get_project_info()
+            return {
+                'company_name': saved_info.get('company_name', ''),
+                'project_number': saved_info.get('project_number', ''),
+                'project_name': saved_info.get('project_name', ''),
+                'subproject_name': saved_info.get('subproject_name', ''),
+                'report_number': ''
+            }
+        except Exception as e:
+            print(f"获取工程信息失败: {e}")
+            return {}
+
+    def generate_report(self):
+        """生成计算书 - 返回纯文本"""
+        try:
+            # 检查是否有计算结果
+            if not self.results.get('spacing_final', 0):
+                QMessageBox.warning(self, "生成失败", "请先进行计算再生成计算书")
+                return ""
+
+            project_info = self.get_project_info()
+            r = self.results
+
+            report = f"""工程计算书 - 管道间距计算
+计算工具: ChemCal 工程计算模块
+========================================
+
+══════════
+ 工程信息
+══════════
+
+    公司名称: {project_info.get('company_name', '')}
+    工程编号: {project_info.get('project_number', '')}
+    工程名称: {project_info.get('project_name', '')}
+    子项名称: {project_info.get('subproject_name', '')}
+    计算日期: {datetime.now().strftime('%Y-%m-%d')}
+
+══════════
+输入参数
+══════════
+
+    管道1: DN={self.dn_input1.currentText()}, 法兰等级={self.flange_combo1.currentText()}
+    管道2: DN={self.dn_input2.currentText()}, 法兰等级={self.flange_combo2.currentText()}
+    保温厚度: {self.insulation_input1.text()}mm / {self.insulation_input2.text()}mm
+    布置方式: {self.layout_combo.currentText()}
+    支承类型: {self.rack_type_combo.currentText()}
+    热位移: {self.thermal_input.text()}mm
+
+══════════
+计算结果
+══════════
+
+    法兰外径: {r['flange_od1']:.1f}mm / {r['flange_od2']:.1f}mm
+    管道外径: {r['pipe_od1']:.1f}mm / {r['pipe_od2']:.1f}mm
+    基础间距（管廊净距）: {r['spacing_basic']:.1f}mm
+    法兰间距（法兰外缘）: {r['spacing_flange']:.1f}mm
+    最终最小中心距: {r['spacing_final']:.1f}mm
+
+══════════
+备注说明
+══════════
+
+    1. 本计算书依据化工部标准HG/T20592~20623-2009，参照GB50316和SH3012
+    2. 计算结果仅供参考，实际应用需考虑安全系数
+    3. 重要工程参数应经专业工程师审核确认
+    4. 计算条件变更时应重新进行计算
+
+---
+生成于 ChemCal 工程计算模块
+"""
+            return report
+        except Exception as e:
+            print(f"生成计算书失败: {e}")
+            return ""
 
     def download_docx_report(self):
         """生成DOCX格式计算书"""
@@ -683,46 +708,8 @@ class 管道间距(CalculatorBase):
         }
     
     def export_results(self):
-        """导出计算结果"""
-        if self.results['spacing_final'] == 0:
-            QMessageBox.warning(self, "提示", "请先进行计算后再导出结果")
-            return
-        
-        try:
-            # 这里可以添加导出到文件的功能
-            # 目前先显示在消息框中
-            report = (
-                f"=== 管道间距计算报告 ===\n\n"
-                f"计算时间: {self.get_current_time()}\n"
-                f"参考标准: HG/T20592~20623-2009, GB50316, SH3012\n\n"
-                f"--- 输入参数 ---\n"
-                f"管道1: DN={self.dn_input1.currentText()}, "
-                f"法兰等级={self.flange_combo1.currentText()}\n"
-                f"管道2: DN={self.dn_input2.currentText()}, "
-                f"法兰等级={self.flange_combo2.currentText()}\n"
-                f"保温厚度: {self.insulation_input1.text()}mm / {self.insulation_input2.text()}mm\n"
-                f"布置方式: {self.layout_combo.currentText()}\n"
-                f"支承类型: {self.rack_type_combo.currentText()}\n\n"
-                f"--- 计算结果 ---\n"
-                f"法兰外径: {self.results['flange_od1']:.1f}mm / {self.results['flange_od2']:.1f}mm\n"
-                f"管道外径: {self.results['pipe_od1']:.1f}mm / {self.results['pipe_od2']:.1f}mm\n"
-                f"基础间距（管廊）: {self.results['spacing_basic']:.1f}mm\n"
-                f"法兰间距（外缘）: {self.results['spacing_flange']:.1f}mm\n"
-                f"最终最小中心距: {self.results['spacing_final']:.1f}mm\n\n"
-                f"--- 设计建议 ---\n"
-                f"推荐采用中心距: {math.ceil(self.results['spacing_final']/10)*10}mm\n"
-                f"（向上取整到10mm的倍数）"
-            )
-            
-            QMessageBox.information(self, "计算结果报告", report)
-            
-        except Exception as e:
-            QMessageBox.warning(self, "导出错误", f"导出过程中发生错误:\n{str(e)}")
-    
-    def get_current_time(self):
-        """获取当前时间字符串"""
-        from datetime import datetime
-        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        """导出计算结果 - 已由报告导出功能替代"""
+        self.download_docx_report()
 
 if __name__ == "__main__":
     # 测试代码
