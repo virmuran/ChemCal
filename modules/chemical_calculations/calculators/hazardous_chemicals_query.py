@@ -5,28 +5,19 @@
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
-    QGroupBox, QTextEdit, QComboBox, QMessageBox, QFrame,
-    QScrollArea, QDialog, QSpinBox, QButtonGroup, QGridLayout,
-    QTableWidget, QTableWidgetItem, QHeaderView, QTabWidget,
-    QListWidget, QListWidgetItem, QProgressBar, QSizePolicy
+    QGroupBox, QTextEdit, QComboBox, QMessageBox,
+    QScrollArea, QDialog, QGridLayout,
+    QTabWidget, QListWidget, QListWidgetItem, QSizePolicy
 )
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QFont, QDoubleValidator, QColor
-import json
-import re
-import os
-import sys
-from pathlib import Path
+from PySide6.QtGui import QColor
+import datetime
 
-
-from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
-                        CALC_BUTTON_STYLE, MODE_BUTTON_STYLE,
-                        SCROLL_AREA_STYLE, INPUT_LABEL_STYLE,
+from app_styles import (COMBOBOX_STYLE, INPUT_LABEL_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
-from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
-# DOCX 报告导出
+from utils.docx_utils import ReportExporter
 
 # QGroupBox统一样式
 
@@ -360,7 +351,7 @@ class ChemicalDetailDialog(QDialog):
 
 class HazardousChemicalsQuery(CalculatorBase):
     """危险化学品查询系统 - Tab式查询计算器"""
-    calculation_type = "hazardous_chemicals_query"
+    calculation_type = "危险化学品查询"
 
     def __init__(self, parent=None, data_manager=None):
         super().__init__(parent)
@@ -406,12 +397,13 @@ class HazardousChemicalsQuery(CalculatorBase):
         left_widget = QWidget()
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
-        left_layout.setContentsMargins(0, 0, 10, 0)
         left_widget.setStyleSheet("background: transparent;")
 
         # 搜索类型
         type_layout = QHBoxLayout()
-        type_layout.addWidget(QLabel("搜索类型:"))
+        type_label = QLabel("搜索类型:")
+        type_label.setStyleSheet(INPUT_LABEL_STYLE)
+        type_layout.addWidget(type_label)
 
         self.search_type_combo = QComboBox()
         self.search_type_combo.setStyleSheet(COMBOBOX_STYLE)
@@ -432,7 +424,9 @@ class HazardousChemicalsQuery(CalculatorBase):
 
         # 危险性筛选
         hazard_layout = QHBoxLayout()
-        hazard_layout.addWidget(QLabel("危险性筛选:"))
+        hazard_label = QLabel("危险性筛选:")
+        hazard_label.setStyleSheet(INPUT_LABEL_STYLE)
+        hazard_layout.addWidget(hazard_label)
 
         self.hazard_filter_combo = QComboBox()
         self.hazard_filter_combo.setStyleSheet(COMBOBOX_STYLE)
@@ -490,22 +484,22 @@ class HazardousChemicalsQuery(CalculatorBase):
         right_layout.setSpacing(15)
 
         # 结果详情GroupBox
-        result_group = QGroupBox("查询结果")
+        result_group = CalculatorBase.make_group_box("查询结果")
         result_layout = QVBoxLayout(result_group)
 
-        # 右侧QTextEdit：readOnly=True，背景#f8f9fa，圆角6px，minHeight=500px
+        # 结果框统一标准：边框/背景/文字色交给主题系统，仅指定等宽字体
         self.detail_text = QTextEdit()
         self.detail_text.setReadOnly(True)
+        self.detail_text.setMinimumHeight(300)
         self.detail_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.detail_text.setStyleSheet(f"""
             QTextEdit {{
-                border: 1px solid #ecf0f1;
-                border-radius: 6px;
-                padding: 8px;
-                /* bg via theme */min-height: 500px;
+                font-family: Consolas, 'Microsoft YaHei', monospace;
+                font-size: 13px;
             }}
             {SCROLLBAR_STYLE}
         """)
+        self.detail_text.setPlaceholderText("计算结果将在此显示……")
         result_layout.addWidget(self.detail_text)
 
         # result_text 属性别名，用于模板兼容
@@ -542,58 +536,22 @@ class HazardousChemicalsQuery(CalculatorBase):
         
         # 清空按钮
         self.clear_btn = QPushButton("清空")
-        self.clear_btn.clicked.connect(self.clear_search)
-        self.clear_btn.setMinimumHeight(50)
+        self.clear_btn.setStyleSheet(CLEAR_BTN_STYLE)
         self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.clear_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #95a5a6;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #7f8c8d;
-            } """)
+        self.clear_btn.clicked.connect(self.clear_search)
         
         # 下载TXT按钮
         self.download_docx_btn = QPushButton("下载计算书(DOCX)")
-        self.download_docx_btn.clicked.connect(self.download_docx_report)
-        self.download_docx_btn.setMinimumHeight(50)
+        self.download_docx_btn.setStyleSheet(DOCX_BTN_STYLE)
         self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_docx_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            } """)
+        self.download_docx_btn.clicked.connect(self.download_docx_report)
         self.download_docx_btn.setEnabled(False)
         
         # 下载PDF按钮
         self.download_pdf_btn = QPushButton("下载计算书(PDF)")
-        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
-        self.download_pdf_btn.setMinimumHeight(50)
+        self.download_pdf_btn.setStyleSheet(PDF_BTN_STYLE)
         self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_pdf_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #c0392b;
-            } """)
+        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
         self.download_pdf_btn.setEnabled(False)
         
         bottom_layout.addWidget(self.clear_btn)
@@ -955,10 +913,12 @@ class HazardousChemicalsQuery(CalculatorBase):
         return {"inputs": inputs, "outputs": outputs}
 
     def get_project_info(self):
-        """获取项目信息"""
+        """获取项目信息（报告生成用，返回 dict）"""
         info = {
+            "project_name": "危险化学品查询",
             "calculation_type": self.calculation_type,
-            "title": "危险化学品查询报告"
+            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "operator": "用户",
         }
         if hasattr(self, 'current_chemical') and self.current_chemical:
             chem = self.current_chemical
@@ -967,9 +927,9 @@ class HazardousChemicalsQuery(CalculatorBase):
         return info
 
     def generate_report(self):
-        """生成报告内容"""
+        """生成报告内容（返回 str；未选择化学品时返回 None，不生成空文件）"""
         if not hasattr(self, 'current_chemical') or not self.current_chemical:
-            return "请先选择一种化学品进行查询"
+            return None
 
         chem = self.current_chemical
         report = f"""

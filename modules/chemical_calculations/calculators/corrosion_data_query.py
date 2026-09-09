@@ -2,26 +2,16 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, Q
                               QLabel, QLineEdit, QComboBox, QPushButton,
                               QTextEdit, QTableWidget, QTableWidgetItem,
                               QHeaderView, QMessageBox, QTabWidget,
-                              QScrollArea, QFileDialog, QSizePolicy)
+                              QScrollArea, QSizePolicy)
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QDoubleValidator
-from fpdf import FPDF
-import os
+from PySide6.QtGui import QDoubleValidator
 import datetime
-import sys
-from pathlib import Path
 
-
-from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
-                        CALC_BUTTON_STYLE, MODE_BUTTON_STYLE,
-                        SCROLL_AREA_STYLE, INPUT_LABEL_STYLE,
+from app_styles import (COMBOBOX_STYLE, SCROLL_AREA_STYLE, INPUT_LABEL_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
-from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
-# DOCX 报告导出
-
-# 统一GroupBox样式
+from utils.docx_utils import ReportExporter
 
 class CorrosionDataQuery(CalculatorBase):
     """腐蚀数据查询计算器"""
@@ -77,7 +67,6 @@ class CorrosionDataQuery(CalculatorBase):
         left_widget.setStyleSheet("")
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(15)
-        left_layout.setContentsMargins(0, 0, 0, 0)
 
         # 顶部说明文字
         desc_label = QLabel("查询工程材料和腐蚀介质的组合腐蚀数据，提供腐蚀速率、耐蚀评级和使用建议。支持多种材料和介质的腐蚀性能查询。")
@@ -86,7 +75,7 @@ class CorrosionDataQuery(CalculatorBase):
         left_layout.addWidget(desc_label)
 
         # 查询条件组 — QGridLayout 三列 stretch(4,8,5)
-        query_group = QGroupBox("查询条件")
+        query_group = CalculatorBase.make_group_box("查询条件")
         query_grid = QGridLayout(query_group)
         query_grid.setSpacing(12)
         query_grid.setHorizontalSpacing(10)
@@ -94,13 +83,12 @@ class CorrosionDataQuery(CalculatorBase):
         query_grid.setColumnStretch(1, 8)
         query_grid.setColumnStretch(2, 5)
 
-        label_style = "font-weight: bold; padding-right: 10px;"
         hint_style = "font-style: italic;"
 
         def make_lbl(text, row, col):
             lbl = QLabel(text)
             lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            lbl.setStyleSheet(label_style)
+            lbl.setStyleSheet(INPUT_LABEL_STYLE)
             query_grid.addWidget(lbl, row, col)
             return lbl
 
@@ -185,28 +173,8 @@ class CorrosionDataQuery(CalculatorBase):
 
         left_layout.addWidget(query_group)
 
-        # 查询按钮（绿色 #27ae60）
-        self.query_btn = QPushButton("查询")
-        self.query_btn.clicked.connect(self.calculate)
-        self.query_btn.setFont(QFont("Arial", 12))
-        self.query_btn.setMinimumHeight(50)
-        self.query_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.query_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                min-height: 50px; padding: 0px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #219955;
-            } """)
-        left_layout.addWidget(self.query_btn)
-
         # 搜索功能
-        search_group = QGroupBox("快速搜索")
+        search_group = CalculatorBase.make_group_box("快速搜索")
         search_layout = QHBoxLayout(search_group)
 
         search_label = QLabel("搜索关键词:")
@@ -234,32 +202,8 @@ class CorrosionDataQuery(CalculatorBase):
         search_layout.addWidget(self.search_btn)
         left_layout.addWidget(search_group)
 
-        # 标签页组件（材料库、腐蚀类型）
+        # 标签页组件（材料库、腐蚀类型）——样式交给主题系统
         self.tab_widget = QTabWidget()
-        self.tab_widget.setStyleSheet(
-            "QTabWidget::pane { "
-            "border: 1px solid #888; "
-            "border-radius: 6px; "
-            "top: -1px; "
-            "}"
-            "QTabBar::tab { "
-            "background: #ecf0f1; "
-            "border: 1px solid #888; "
-            "border-bottom: none; "
-            "border-top-left-radius: 6px; "
-            "border-top-right-radius: 6px; "
-            "padding: 8px 16px; "
-            "margin-right: 2px; "
-            "font-weight: bold; "
-            "}"
-            "QTabBar::tab:selected { "
-            "background: #ffffff; "
-            "color: #2980b9; "
-            "}"
-            "QTabBar::tab:hover:!selected { "
-            "background: #d5dbdb; "
-            "}"
-        )
 
         # 添加材料库标签页
         self.material_tab = self.create_material_tab()
@@ -281,90 +225,54 @@ class CorrosionDataQuery(CalculatorBase):
         right_widget.setMinimumWidth(300)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(15)
-        right_layout.setContentsMargins(0, 0, 0, 0)
 
-        result_group = QGroupBox("查询结果")
+        result_group = CalculatorBase.make_group_box("查询结果")
         result_vbox = QVBoxLayout(result_group)
 
-        # 右侧 QTextEdit：只读、浅灰背景、圆角、最小高度500px
+        # 结果框统一标准：边框/背景/文字色交给主题系统，仅指定等宽字体
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setMinimumHeight(500)
+        self.result_text.setMinimumHeight(300)
         self.result_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.result_text.setStyleSheet(
-            "QTextEdit { "
-            "/* bg via theme */"
-            "border: 1px solid #ecf0f1; "
-            "border-radius: 6px; "
-            "padding: 8px; "
-            "font-size: 13px; "
-            "}"
-        )
-        self.result_text.setPlaceholderText("查询结果将在此处显示...")
+        self.result_text.setStyleSheet("""
+            QTextEdit {
+                font-family: Consolas, 'Microsoft YaHei', monospace;
+                font-size: 13px;
+            } """)
+        self.result_text.setPlaceholderText("计算结果将在此显示……")
         result_vbox.addWidget(self.result_text)
         right_layout.addWidget(result_group)
 
-        # 底部按钮行（右侧）：清空（灰）→ Stretch → 下载TXT（蓝）→ 下载PDF（红）
+        # 底部按钮行（右侧）：清空（灰）→ 下载DOCX（蓝）→ 下载PDF（红）→ 查询按钮
         bottom_layout = QHBoxLayout()
-        
+
         # 清空按钮
         self.clear_btn = QPushButton("清空")
-        self.clear_btn.clicked.connect(self.clear_inputs)
-        self.clear_btn.setMinimumHeight(50)
+        self.clear_btn.setStyleSheet(CLEAR_BTN_STYLE)
         self.clear_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.clear_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #95a5a6;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #7f8c8d;
-            } """)
-        
-        # 下载TXT按钮
+        self.clear_btn.clicked.connect(self.clear_inputs)
+
+        # 下载DOCX按钮
         self.download_docx_btn = QPushButton("下载计算书(DOCX)")
-        self.download_docx_btn.clicked.connect(self.download_docx_report)
-        self.download_docx_btn.setMinimumHeight(50)
+        self.download_docx_btn.setStyleSheet(DOCX_BTN_STYLE)
         self.download_docx_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_docx_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            } """)
-        
+        self.download_docx_btn.clicked.connect(self.download_docx_report)
+
         # 下载PDF按钮
         self.download_pdf_btn = QPushButton("下载计算书(PDF)")
-        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
-        self.download_pdf_btn.setMinimumHeight(50)
+        self.download_pdf_btn.setStyleSheet(PDF_BTN_STYLE)
         self.download_pdf_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.download_pdf_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #c0392b;
-            } """)
-        
+        self.download_pdf_btn.clicked.connect(self.download_pdf_report)
+
         bottom_layout.addWidget(self.clear_btn)
         bottom_layout.addWidget(self.download_docx_btn)
         bottom_layout.addWidget(self.download_pdf_btn)
         right_layout.addLayout(bottom_layout)
+
+        # 查询按钮（绿色，置底）
+        self.query_btn = self.make_calc_button("查 询")
+        self.query_btn.clicked.connect(self.calculate)
+        right_layout.addWidget(self.query_btn)
 
         # ========= 按比例添加到主布局 =========
         main_layout.addWidget(left_scroll, 2)   # 左侧占2份
@@ -496,14 +404,6 @@ class CorrosionDataQuery(CalculatorBase):
         corrosion_text = QTextEdit()
         corrosion_text.setReadOnly(True)
         corrosion_text.setPlainText(self.get_corrosion_types_text())
-        corrosion_text.setStyleSheet(
-            "QTextEdit { "
-            "background-color: #ffffff; "
-            "border: 1px solid #888; "
-            "border-radius: 4px; "
-            "padding: 8px; "
-            "}"
-        )
         group_layout.addWidget(corrosion_text)
         layout.addWidget(corrosion_group)
 
@@ -629,21 +529,8 @@ class CorrosionDataQuery(CalculatorBase):
         else:
             self.result_text.setPlainText(f"未找到包含「{material}」和「{medium}」的相关腐蚀数据。")
 
-    def get_rate_color(self, rate):
-        """根据腐蚀速率返回对应的颜色标记"""
-        if rate < 0.025:
-            return "green"
-        elif rate < 0.05:
-            return "blue"
-        elif rate < 0.125:
-            return "orange"
-        else:
-            return "red"
-
     def display_results(self, data, material, medium, temperature, concentration):
         """显示精确匹配的查询结果"""
-        rate_color = self.get_rate_color(data["rate"])
-
         result = f"=== 腐蚀数据查询结果 ===\n\n"
         result += f"材料-介质: {material} - {medium}\n"
         result += f"腐蚀速率: {data['rate']} mm/年\n"
@@ -814,10 +701,10 @@ class CorrosionDataQuery(CalculatorBase):
 
     def download_docx_report(self):
         """生成DOCX格式计算书"""
-        ReportExporter.export_docx(self, "CorrosionDataQuery")
+        ReportExporter.export_docx(self, "腐蚀数据查询")
     def download_pdf_report(self):
         """生成PDF格式计算书"""
-        ReportExporter.export_pdf(self, "CorrosionDataQuery")
+        ReportExporter.export_pdf(self, "腐蚀数据查询")
 if __name__ == "__main__":
     # 测试代码
     import sys

@@ -6,17 +6,16 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QGroupBox, QTextEdit, QComboBox, QMessageBox, QScrollArea,
-    QButtonGroup, QGridLayout, QSizePolicy, QTableWidget, QTableWidgetItem,
-    QHeaderView
+    QButtonGroup, QGridLayout, QSizePolicy
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
 import math
+import datetime
 
 from calculator_base import CalculatorBase
 from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
-from app_styles import (COMBOBOX_STYLE, MODE_BUTTON_STYLE,
-                        CALC_BUTTON_STYLE, SCROLL_AREA_STYLE,
+from app_styles import (SCROLL_AREA_STYLE,
                         INPUT_LABEL_STYLE, CLEAR_BTN_STYLE,
                         DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
@@ -64,9 +63,19 @@ PRODUCT_PRESETS = {
     "自定义": None,
 }
 
+# ── 物料衡算法原料清单（静态网格行，与其他计算器风格一致）──
+# (名称, 默认值)；默认值对应典型氨基酸发酵配方
+MAT_LIST = [
+    ("葡萄糖", "100"), ("蔗糖", ""), ("淀粉(可溶)", ""), ("甘油", ""), ("糖蜜", ""),
+    ("玉米浆", "15"), ("酵母浸粉", "5"), ("豆粕水解液", ""), ("蛋白胨", ""),
+    ("乙酸", ""), ("乳酸", ""), ("柠檬酸", ""), ("琥珀酸", ""), ("乙醇", ""),
+]
+
 
 class CODEstimator(CalculatorBase):
     """发酵废水 COD 估算器"""
+
+    calculation_type = "废水COD估算"
 
     def __init__(self, parent=None, data_manager=None):
         super().__init__(parent, data_manager)
@@ -90,7 +99,9 @@ class CODEstimator(CalculatorBase):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setStyleSheet(SCROLL_AREA_STYLE)
         left = QWidget()
+        left.setStyleSheet("")
         left_layout = QVBoxLayout(left)
         left_layout.setSpacing(15)
 
@@ -116,7 +127,6 @@ class CODEstimator(CalculatorBase):
             mode_layout.addWidget(btn)
             self.mode_btns[name] = btn
         self.mode_btns["物料衡算法"].setChecked(True)
-        mode_layout.addStretch()
         left_layout.addWidget(mode_group)
 
         self.mode_btn_group.buttonClicked.connect(self._on_mode_clicked)
@@ -131,10 +141,8 @@ class CODEstimator(CalculatorBase):
         self.input_layout.setColumnStretch(2, 5)
         left_layout.addWidget(self.input_group)
 
-        # 计算按钮
-        calc_btn = CalculatorBase.make_calc_button()
-        calc_btn.clicked.connect(self.calculate)
-        left_layout.addWidget(calc_btn)
+        # 收尾弹性空间：组框保持自然高度，多余空间留在底部（否则组框被撑开、内容下沉）
+        left_layout.addStretch()
 
         scroll.setWidget(left)
 
@@ -142,13 +150,20 @@ class CODEstimator(CalculatorBase):
         right = QWidget()
         right.setMinimumWidth(300)
         right_layout = QVBoxLayout(right)
-        right_layout.setSpacing(10)
+        right_layout.setSpacing(15)
 
-        result_group = QGroupBox("计算结果")
+        result_group = CalculatorBase.make_group_box("计算结果")
         result_inner = QVBoxLayout(result_group)
+        # 结果框统一标准：边框/背景/文字色交给主题系统，仅指定等宽字体
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setStyleSheet("font-size: 13px;")
+        self.result_text.setMinimumHeight(300)
+        self.result_text.setStyleSheet("""
+            QTextEdit {
+                font-family: Consolas, 'Microsoft YaHei', monospace;
+                font-size: 13px;
+            } """)
+        self.result_text.setPlaceholderText("计算结果将在此显示……")
         result_inner.addWidget(self.result_text)
         right_layout.addWidget(result_group)
 
@@ -162,6 +177,11 @@ class CODEstimator(CalculatorBase):
             b.clicked.connect(callback)
             btn_layout.addWidget(b)
         right_layout.addLayout(btn_layout)
+
+        # 计算按钮（绿色，置底）
+        calc_btn = CalculatorBase.make_calc_button()
+        calc_btn.clicked.connect(self.calculate)
+        right_layout.addWidget(calc_btn)
 
         main_layout.addWidget(scroll, 2)
         main_layout.addWidget(right, 1)
@@ -201,7 +221,7 @@ class CODEstimator(CalculatorBase):
     # ═══════════════════════════════════════
 
     def _setup_mass_balance(self):
-        ls = "font-weight: bold; padding-right: 10px;"
+        ls = INPUT_LABEL_STYLE
         row = 0
 
         # ── 基础参数 ──
@@ -226,7 +246,7 @@ class CODEstimator(CalculatorBase):
                 self.input_widgets[key] = combo
                 # 说明
                 hint = QLabel("COD当量由产品决定")
-                hint.setStyleSheet("color: #666; font-size: 11px;")
+                hint.setStyleSheet("font-style: italic;")
                 self.input_layout.addWidget(hint, row, 2)
             else:
                 le = QLineEdit()
@@ -239,43 +259,36 @@ class CODEstimator(CalculatorBase):
                 self.input_widgets[key] = le
             row += 1
 
-        # ── 物料投加表 ──
-        mat_label = QLabel("▼ 原料投加量 (g/L)：可在下方表格中增加/减少行")
-        mat_label.setStyleSheet("font-weight: bold; color: #2c3e50; padding-top: 10px;")
+        # ── 原料投加量（静态网格，留空或0表示未添加）──
+        mat_label = QLabel("▼ 原料投加量 (g/L)，留空或 0 表示未添加")
+        mat_label.setStyleSheet("font-weight: bold; padding-top: 10px;")
         self.input_layout.addWidget(mat_label, row, 0, 1, 3)
         row += 1
 
-        # 物料表：名称 | 投加量(g/L) | 操作
-        self.mat_table = QTableWidget(0, 3)
-        self.mat_table.setHorizontalHeaderLabels(["物料名称", "投加量 (g/L)", "操作"])
-        self.mat_table.horizontalHeader().setStretchLastSection(False)
-        self.mat_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        self.mat_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        self.mat_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        self.mat_table.setMaximumHeight(200)
-        self.mat_table.verticalHeader().setVisible(False)
+        for name, default in MAT_LIST:
+            lbl = QLabel(f"{name}:")
+            lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            lbl.setStyleSheet(ls)
+            self.input_layout.addWidget(lbl, row, 0)
 
-        # 添加默认行
-        default_mats = [("葡萄糖", "100"), ("玉米浆", "15"), ("酵母浸粉", "5")]
-        for name, val in default_mats:
-            self._add_mat_row(name, val)
+            le = QLineEdit()
+            if default:
+                le.setText(default)
+            else:
+                le.setPlaceholderText("0")
+            le.setValidator(QDoubleValidator(0, 100000, 2))
+            self.input_layout.addWidget(le, row, 1)
+            self.input_widgets["mat_" + name] = le
 
-        self.input_layout.addWidget(self.mat_table, row, 0, 1, 3)
-        row += 1
-
-        # 添加/删除物料按钮
-        btn_row = QHBoxLayout()
-        add_btn = QPushButton("+ 添加物料")
-        add_btn.clicked.connect(self._add_mat_row_dialog)
-        add_btn.setStyleSheet("QPushButton { color: #27ae60; font-weight: bold; padding: 4px 12px; }")
-        btn_row.addWidget(add_btn)
-        btn_row.addStretch()
-        self.input_layout.addLayout(btn_row, row, 0, 1, 3)
-        row += 1
+            eq, cat = COD_DB[name]
+            hint = QLabel(f"COD当量 {eq}（{cat}）")
+            hint.setStyleSheet("font-style: italic;")
+            self.input_layout.addWidget(hint, row, 2)
+            row += 1
 
         # ── 废水参数 ──
         lbl = QLabel("废水参数")
-        lbl.setStyleSheet("font-weight: bold; color: #2c3e50; padding-top: 10px;")
+        lbl.setStyleSheet("font-weight: bold; padding-top: 10px;")
         self.input_layout.addWidget(lbl, row, 0, 1, 3)
         row += 1
 
@@ -299,7 +312,7 @@ class CODEstimator(CalculatorBase):
                 self.input_layout.addWidget(combo, row, 1)
                 self.input_widgets[key] = combo
                 hint = QLabel("不同来源COD差异大")
-                hint.setStyleSheet("color: #666; font-size: 11px;")
+                hint.setStyleSheet("font-style: italic;")
                 self.input_layout.addWidget(hint, row, 2)
             else:
                 le = QLineEdit()
@@ -309,54 +322,16 @@ class CODEstimator(CalculatorBase):
                 self.input_widgets[key] = le
             row += 1
 
-    def _add_mat_row(self, name="", value=""):
-        row_idx = self.mat_table.rowCount()
-        self.mat_table.insertRow(row_idx)
-
-        # 物料名下拉
-        combo = QComboBox()
-        combo.setStyleSheet(COMBOBOX_STYLE)
-        # 排除产品和菌体类
-        mat_names = [k for k, v in COD_DB.items() if v[1] in ("碳源", "氮源", "有机酸", "醇类")]
-        combo.addItems([""] + mat_names)
-        if name:
-            idx = combo.findText(name)
-            if idx >= 0:
-                combo.setCurrentIndex(idx)
-        combo.setEditable(True)
-        self.mat_table.setCellWidget(row_idx, 0, combo)
-
-        # 投加量
-        val_item = QTableWidgetItem(value)
-        self.mat_table.setItem(row_idx, 1, val_item)
-
-        # 删除按钮
-        del_btn = QPushButton("✕")
-        del_btn.setFixedSize(30, 30)
-        del_btn.setStyleSheet("QPushButton { color: #e74c3c; font-weight: bold; }")
-        del_btn.clicked.connect(lambda: self.mat_table.removeRow(row_idx))
-        self.mat_table.setCellWidget(row_idx, 2, del_btn)
-
-    def _add_mat_row_dialog(self):
-        self._add_mat_row()
-
-    def _read_mat_table(self):
-        """从物料表读取数据，返回 [(name, conc_g_L), ...]"""
+    def _read_materials(self):
+        """读取原料投加量（input_widgets 中 mat_* 键），返回 [(name, conc_g_L), ...]"""
         rows = []
-        for r in range(self.mat_table.rowCount()):
-            combo = self.mat_table.cellWidget(r, 0)
-            val_item = self.mat_table.item(r, 1)
-            if not combo or not val_item:
+        for name, _ in MAT_LIST:
+            key = "mat_" + name
+            if key not in self.input_widgets:
                 continue
-            name = combo.currentText().strip()
-            val_text = val_item.text().strip()
-            if name and val_text:
-                try:
-                    val = float(val_text)
-                    if val > 0:
-                        rows.append((name, val))
-                except ValueError:
-                    pass
+            val = self._get(key, 0)
+            if val > 0:
+                rows.append((name, val))
         return rows
 
     # ═══════════════════════════════════════
@@ -364,7 +339,7 @@ class CODEstimator(CalculatorBase):
     # ═══════════════════════════════════════
 
     def _setup_analogy(self):
-        ls = "font-weight: bold; padding-right: 10px;"
+        ls = INPUT_LABEL_STYLE
         row = 0
         pairs = [
             # (label, key, placeholder, default)
@@ -382,7 +357,7 @@ class CODEstimator(CalculatorBase):
         for label, key, placeholder, default in pairs:
             if not key:
                 lbl = QLabel(label)
-                lbl.setStyleSheet("font-weight: bold; color: #2c3e50; padding: 5px 0;")
+                lbl.setStyleSheet("font-weight: bold; padding: 5px 0;")
                 self.input_layout.addWidget(lbl, row, 0, 1, 3)
                 row += 1
                 continue
@@ -452,7 +427,7 @@ class CODEstimator(CalculatorBase):
             product_cod_eq = 1.0  # 自定义默认值
 
         # 读取物料表
-        mat_rows = self._read_mat_table()
+        mat_rows = self._read_materials()
 
         # ── COD 贡献 ──
         contrib_cod = {}
@@ -497,10 +472,7 @@ class CODEstimator(CalculatorBase):
         total_waste_vol += wash_water  # 洗涤水排入
 
         # ── COD 浓度 ──
-        cod_load = liquid_cod * vol / 1000  # kg O₂/批 (从g/L×m³ → 需除以1000)
-        # 注意: liquid_cod 是 g O₂/L, vol 是 m³ = 1000L
-        # cod_load = liquid_cod (g/L) * vol (m³) * 1000 (L/m³) / 1000 (g/kg) = liquid_cod * vol
-        cod_load = liquid_cod * vol  # kg/批
+        cod_load = liquid_cod * vol  # kg O₂/批（g/L × m³ = kg）
 
         if total_waste_vol > 0:
             cod_conc = cod_load / total_waste_vol  # mg/L (= g/m³, kg/m³ × 1000 = mg/L)
@@ -665,7 +637,102 @@ class CODEstimator(CalculatorBase):
         self.setup_calculation_mode(idx)
 
     def _get_history_data(self):
-        return {"inputs": {}, "outputs": {"COD_浓度_mg_L": round(self._last_results.get("cod_conc", self._last_results.get("cod_est", 0)), 0)}}
+        """提供历史记录数据"""
+        mode = self._get_mode()
+        inputs = {"计算模式": mode}
+        outputs = {}
+        if "物料" in mode:
+            for key, label in [("batch_vol", "发酵体积_m3"), ("product_type", "产品类型"),
+                               ("product_yield", "产品产量_g_L"), ("residual_sugar", "残糖_g_L"),
+                               ("biomass", "菌体浓度_g_L"), ("waste_volume", "废水量_m3"),
+                               ("wash_water", "洗涤水_m3")]:
+                if key in self.input_widgets:
+                    inputs[label] = self._get(key, "" if key == "product_type" else 0)
+            # 非零原料投加量逐项记录
+            for name, _ in MAT_LIST:
+                key = "mat_" + name
+                if key in self.input_widgets:
+                    v = self._get(key, 0)
+                    if v > 0:
+                        inputs[f"原料_{name}_g_L"] = v
+            outputs["COD_浓度_mg_L"] = round(self._last_results.get("cod_conc", 0), 0)
+            outputs["COD_负荷_kg_批"] = round(self._last_results.get("cod_load", 0), 1)
+        else:
+            for key, label in [("ref_cod", "参考COD_mg_L"), ("new_sugar", "新项目投糖_g_L"),
+                               ("new_yield", "新项目产量_g_L")]:
+                if key in self.input_widgets:
+                    inputs[label] = self._get(key, 0)
+            outputs["COD_浓度_mg_L"] = round(self._last_results.get("cod_est", 0), 0)
+        return {"inputs": inputs, "outputs": outputs}
+
+    def get_project_info(self):
+        """获取项目信息（报告生成用，返回 dict）"""
+        return {
+            "project_name": "废水COD估算",
+            "calculation_type": self.calculation_type,
+            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "operator": "用户",
+        }
+
+    def generate_report(self):
+        """生成报告内容（返回 str；未计算时返回 None，不生成空文件）"""
+        if not self._last_results:
+            return None
+        r = self._last_results
+        lines = [
+            "=" * 60,
+            "              废水COD估算报告",
+            "=" * 60,
+            "",
+            f"生成时间：{self.get_project_info()['timestamp']}",
+            f"计算模式：{r['mode']}",
+            "",
+        ]
+        if r["mode"] == "物料衡算法":
+            lines.extend([
+                "-" * 40,
+                "【发酵参数】",
+                "-" * 40,
+                f"  发酵体积: {r['vol']:.1f} m³",
+                f"  产品类型: {r['product_type']}（COD当量 {r['product_cod_eq']:.3f} g O₂/g）",
+                f"  产品产量: {r['product_yield']:.1f} g/L",
+                f"  残糖: {r['residual_sugar']:.1f} g/L",
+                f"  菌体浓度: {r['biomass']:.1f} g DCW/L",
+                "",
+                "-" * 40,
+                "【COD 平衡】",
+                "-" * 40,
+                f"  投入总COD: {r['input_cod_total']:.1f} g O₂/L",
+                f"  - 产品带走: {r['product_cod']:.1f} g O₂/L",
+                f"  + 残糖残留: {r['residual_cod']:.1f} g O₂/L",
+                f"  + 菌体贡献: {r['biomass_cod']:.1f} g O₂/L",
+                f"  发酵液COD: {r['liquid_cod']:.1f} g O₂/L",
+                f"  废水来源: {r['waste_source']}",
+                "",
+                "-" * 40,
+                "【废水排放估算】",
+                "-" * 40,
+                f"  废水产生量: {r['waste_vol']:.1f} m³/批",
+                f"  COD负荷: {r['cod_load']:.1f} kg O₂/批",
+                f"  COD浓度: {r['cod_conc']:.0f} mg/L",
+            ])
+        else:
+            lines.extend([
+                "-" * 40,
+                "【参考项目】",
+                "-" * 40,
+                f"  实测 COD: {r['ref_cod']:.0f} mg/L",
+                f"  投糖量: {r['ref_sugar']:.1f} g/L  产品产量: {r['ref_yield']:.1f} g/L  残糖: {r['ref_residual']:.1f} g/L",
+                "",
+                "-" * 40,
+                "【新项目估算】",
+                "-" * 40,
+                f"  投糖量: {r['new_sugar']:.1f} g/L  产品产量: {r['new_yield']:.1f} g/L  残糖: {r['new_residual']:.1f} g/L",
+                f"  缩放系数: {r['scale']:.3f}",
+                f"  估算 COD: {r['cod_est']:.0f} mg/L",
+            ])
+        lines.extend(["", "=" * 60, "                     报告结束", "=" * 60])
+        return "\n".join(lines)
 
 
 if __name__ == "__main__":

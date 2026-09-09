@@ -318,8 +318,7 @@ class ChemicalCalculationsWidget(QWidget):
         self.pages.append(widget)
 
     def _is_calculate_button(self, btn):
-        text = btn.text().strip()
-        # 匹配计算和查询类按钮
+        text = ''.join(btn.text().split())  # 移除所有空白字符（"计 算"/"查 询"均可匹配）
         return text in ("计算", "查询")
 
     def _connect_calculate_buttons(self, widget):
