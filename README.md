@@ -13,14 +13,14 @@
     <img alt="license" src="https://img.shields.io/badge/license-MIT-blue">
 </div>
 <div>
-    <img alt="version" src="https://img.shields.io/badge/version-1.5.0-green">
+    <img alt="version" src="https://img.shields.io/badge/version-1.5.50-green">
     <img alt="stars" src="https://img.shields.io/github/stars/virmuran/ChemCal?style=social">
 </div>
 <br>
 
 化工工程师的桌面生产力工具
 
-基于 Python + PySide6，集成 44 种工程计算器、参考资料库、单位换算、计算历史与可视化倒计时。
+基于 Python + PySide6，集成 45 种工程计算器、参考资料库、单位换算、计算历史与可视化倒计时。
 
 </div>
 
@@ -39,12 +39,12 @@ python main.py
 
 ## 亮点功能
 
-- 🧪 **44 种工程计算器** — 覆盖物性查询、管道系统、换热设备、容器设计、安全消防、制冷热工六大类，每个计算器均支持 DOCX / PDF 计算书一键导出
+- 🧪 **45 种工程计算器** — 覆盖物性查询、管道系统、换热设备、容器设计、安全消防、制冷热工六大类，每个计算器均支持 DOCX / PDF 计算书一键导出，公式均对照 GB / HG / NB/T 等标准逐项核对并固化回归测试
 - 📚 **内置参考资料库** — 化工设计常用规范数据电子化，全文搜索，6 大类 26 条数据，告别翻书查表
 - 🔄 **14 类单位换算** — 长度、重量、温度、压力、流量、粘度等，即输即算
 - 📝 **自动计算历史** — SQLite 数据库全程记录，支持按模块筛选和关键词搜索
 - 🎨 **三套主题配色** — 亮色 / 暗色 / 蓝色，白天办公不刺眼，夜间低光不伤眼
-- 🔒 **数据本地存储** — 不联网、不上传、不收集任何隐私信息，所有数据仅保存在 `%APPDATA%/ChemCal/`
+- 🔒 **数据本地存储** — 不联网、不上传、不收集任何隐私信息，所有数据仅保存在用户目录 `.ChemCal/` 下
 
 <!-- markdownlint-disable -->
 
@@ -120,6 +120,15 @@ python main.py
 
 ## 更新日志
 
+### v1.5.50 (2026-09-14)
+
+- ✅ **全量公式核对收官**：45 个计算器的公式、单位、默认值逐批对照 GB 150 / GB 50341 / GB/T 20801 / HG/T 20592 / IAPWS-IF97 / GB 30000 (GHS) 等标准核对修正，19 个回归测试文件固化手算锚点
+- ➕ **恢复「常压储罐壁厚」计算器**（工艺设备类）：GB 50341 一英尺法逐圈计算 + NB/T 47003，固定顶/浮顶/内浮顶，底板顶板厚度
+- ➖ **移除「法兰查询」演示模块**：原数据仅 4 条 DN100 且与管道间距计算器重复，法兰外径权威数据（PN10~100 × DN10~500）保留于管道间距计算器
+- 🛠 **安全阀**：修复 Kd 阀型映射错位（"不带调节圈微启式"误填 0.45，正确 0.30）及初始化顺序异常
+- 🛠 **查询类修正**：危险化学品 GHS 分类按 GB 30000 核对（硫酸不再标"毒性物质"，补全 H 语句）；腐蚀速率等级由速率唯一派生（左景伊 4 级制）；发酵废水 COD 物料平衡重复计入修复；L-蛋氨酸 COD 当量 1.073→1.609（含硫氨基酸）
+- 🛠 水蒸气物性 steam_iapws 对照 IAPWS-IF97 官方验证表全网格校验（偏差 ≤0.04%），高压区判域修正
+
 ### v1.5.0 (2026-07-14)
 
 - 新增自动更新系统（GitHub Releases API + 静默检测 + 一键下载安装）
@@ -179,7 +188,7 @@ ChemCal/
 │
 ├── modules/
 │   ├── chemical_calculations/
-│   │   ├── calculators/        # 44 个计算器
+│   │   ├── calculators/        # 45 个计算器
 │   │   │   ├── steam_property_calculator.py
 │   │   │   ├── pressure_drop_calculator.py
 │   │   │   ├── heat_exchanger_area_calculator.py
