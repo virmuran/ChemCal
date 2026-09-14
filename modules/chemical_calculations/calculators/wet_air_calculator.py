@@ -21,6 +21,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
 from calculator_base import CalculatorBase
 from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
 # DOCX 报告导出
+from utils.docx_utils import ReportExporter
 
 
 LINEEDIT_STYLE = "padding: 6px 10px; border: 1px solid #888; border-radius: 4px;"
@@ -99,7 +100,7 @@ class WetAirCalculator(CalculatorBase):
             return lbl
 
         # 行0：干球温度 + 大气压力
-        self.temp_input = QLineEdit()
+        self.temp_input = QLineEdit("25")
         self.temp_input.setPlaceholderText("例如：25")
         self.temp_input.setValidator(QDoubleValidator(-50, 200, 2))
         self.temp_input.setStyleSheet(LINEEDIT_STYLE)
@@ -128,7 +129,7 @@ class WetAirCalculator(CalculatorBase):
         grid.addWidget(hint, 2, 0, 1, 3)
 
         # 行3：相对湿度
-        self.rh_input = QLineEdit()
+        self.rh_input = QLineEdit("60")
         self.rh_input.setPlaceholderText("例如：60（0~100）")
         self.rh_input.setValidator(QDoubleValidator(0, 100, 2))
         self.rh_input.setStyleSheet(LINEEDIT_STYLE)
@@ -138,7 +139,7 @@ class WetAirCalculator(CalculatorBase):
         grid.addWidget(hint_rh, 3, 2)
 
         # 行4：绝对湿度
-        self.humidity_input = QLineEdit()
+        self.humidity_input = QLineEdit("0.012")
         self.humidity_input.setPlaceholderText("例如：0.012 或 12")
         self.humidity_input.setValidator(QDoubleValidator(0, 9999, 6))
         self.humidity_input.setStyleSheet(LINEEDIT_STYLE)
@@ -150,7 +151,7 @@ class WetAirCalculator(CalculatorBase):
         grid.addWidget(self.humidity_unit, 4, 2)
 
         # 行5：湿球温度
-        self.wet_bulb_input = QLineEdit()
+        self.wet_bulb_input = QLineEdit("20")
         self.wet_bulb_input.setPlaceholderText("例如：20")
         self.wet_bulb_input.setValidator(QDoubleValidator(-50, 200, 2))
         self.wet_bulb_input.setStyleSheet(LINEEDIT_STYLE)
@@ -160,7 +161,7 @@ class WetAirCalculator(CalculatorBase):
         grid.addWidget(hint_wb, 5, 2)
 
         # 行6：露点温度
-        self.dew_point_input = QLineEdit()
+        self.dew_point_input = QLineEdit("15")
         self.dew_point_input.setPlaceholderText("例如：15")
         self.dew_point_input.setValidator(QDoubleValidator(-50, 200, 2))
         self.dew_point_input.setStyleSheet(LINEEDIT_STYLE)
@@ -271,6 +272,11 @@ class WetAirCalculator(CalculatorBase):
             self._last_pressure = pressure
             self._last_pressure_unit = pu
             self._last_known = known
+            # 记录实际采用的基准（优先级: RH > 绝对湿度 > 露点 > 湿球）
+            self._last_basis = ("rh" if "rh" in known else
+                                "abs_humidity" if "abs_humidity" in known else
+                                "dew_point" if "dew_point" in known else
+                                "wet_bulb")
 
             # 保存历史
 
@@ -355,7 +361,7 @@ class WetAirCalculator(CalculatorBase):
             p_vs_w2 = psat(wb + dt)
             W_s_w2 = 0.622 * p_vs_w2 / (pressure - p_vs_w2)
             f2 = (W_s_w2 - W) * lv_j - (temp - wb - dt) * (1006.0 + W * 1860.0)
-            df = (f - f2) / dt
+            df = (f2 - f) / dt  # 正向差分（f 随 wb 单调增），保证牛顿方向正确
             if abs(df) < 1e-10:
                 break
             wb_new = wb - f / df
@@ -389,6 +395,11 @@ class WetAirCalculator(CalculatorBase):
             known_items.append(f"露点温度 = {known['dew_point']:.2f} °C")
         known_str = "  ".join(known_items)
 
+        basis_name = {"rh": "相对湿度", "abs_humidity": "绝对湿度",
+                      "dew_point": "露点温度", "wet_bulb": "湿球温度"}.get(
+            getattr(self, "_last_basis", "rh"), "相对湿度")
+        extra_known = f"（多个参数已填时按优先级采用：以【{basis_name}】为基准）" if len(known) > 1 else ""
+
         lines = [
             "=" * 50,
             "         湿空气计算结果",
@@ -398,6 +409,10 @@ class WetAirCalculator(CalculatorBase):
             f"  干球温度              : {temp:.2f} °C",
             f"  大气压力              : {pressure_kpa:.3f} kPa",
             f"  已知条件              : {known_str}",
+        ]
+        if extra_known:
+            lines.append(f"  基准说明              : {extra_known}")
+        lines += [
             "",
             "【计算结果】",
             f"  相对湿度              : {r['rh']:.2f} %",
@@ -478,6 +493,9 @@ class WetAirCalculator(CalculatorBase):
 
     # ──────────────────────── 报告 ─────────────────────────────────
     def generate_report(self):
+        if not self.result_text.toPlainText().strip() or not self._last_results:
+            QMessageBox.warning(self, "生成失败", "请先进行计算再生成计算书")
+            return None
         return self.result_text.toPlainText()
 
     def download_docx_report(self):

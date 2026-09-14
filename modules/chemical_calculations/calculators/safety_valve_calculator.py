@@ -22,7 +22,7 @@ from app_styles import (COMBOBOX_STYLE, SCROLL_AREA_STYLE, INPUT_LABEL_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
-from common_constants import C_TO_K
+from common_constants import C_TO_K, get_steam_props
 from utils.docx_utils import ReportExporter
 from svg_utils import svg_text
 
@@ -159,9 +159,15 @@ class SafetyValveCalculator(CalculatorBase):
             "带调节圈微启式 (0.45)",
             "不带调节圈微启式 (0.30)",
         ])
-        self.kd_type_combo.currentTextChanged.connect(self._on_kd_type_changed)
+        # ⚠ 顺序不可调换：kd_input 必须先创建，再连接信号、再 setCurrentIndex。
+        # setCurrentIndex() 会立即发出 currentTextChanged，若此时 kd_input 尚未创建，
+        # 槽函数访问 self.kd_input 抛 AttributeError（每次实例化必抛，被 Qt 吞进
+        # stderr 不弹窗），默认 Kd 的自动填充静默失效。
         self.kd_input = QLineEdit("0.65")
         self.kd_input.setValidator(QDoubleValidator(0.1, 1.0, 3))
+        self.kd_type_combo.currentTextChanged.connect(self._on_kd_type_changed)
+        # 默认全启式（与 Kd 默认值 0.65 一致）
+        self.kd_type_combo.setCurrentIndex(1)
         g1g.addWidget(lbl("流量系数 Kd:"), r, 0)
         g1g.addWidget(self.kd_input, r, 1)
         g1g.addWidget(self.kd_type_combo, r, 2); r += 1
@@ -382,6 +388,17 @@ class SafetyValveCalculator(CalculatorBase):
         else:
             self.overpressure_input.setText("10")
 
+        # 饱和水蒸汽：温度输入框隐藏，自动按泄放压力取饱和温度（IAPWS-IF97）
+        if cfg.get("auto_temp"):
+            try:
+                mawp_g = float(self.mawp_input.text() or 1.0)
+                over = float(self.overpressure_input.text() or 10)
+                p_gauge = mawp_g * (1 + over / 100.0)   # 表压，get_steam_props 入参
+                props = get_steam_props(p_gauge)
+                self.temp_input.setText(f"{props['sat_temp']:.1f}")
+            except Exception:
+                pass
+
         # 介质参数可见性
         fluid_widgets = [self._lbl_mw, self.mw_input, self._hint_mw,
                         self._lbl_gamma, self.gamma_input, self._hint_gamma,
@@ -456,12 +473,20 @@ class SafetyValveCalculator(CalculatorBase):
             w.setVisible(is_fire and not known_area)
 
     def _on_kd_type_changed(self, text):
-        mapping = {"全启式": "0.65", "带调节圈微启式": "0.45", "不带调节圈微启式": "0.30"}
-        for key, val in mapping.items():
-            if key in text:
-                self.kd_input.setText(val)
-                return
-        # "请选择"不改变
+        """按阀型自动填 Kd。必须用下拉项全文精确映射（见下方注释）。"""
+        # ⚠ 禁止改用 `key in text` 子串判断：
+        #   "不带调节圈微启式" 本身包含 "带调节圈微启式" 这一子串，
+        #   子串匹配会先命中后者，把 Kd 从 0.30 误填成 0.45。
+        #   Kd 高估 50% → 泄放面积 A ∝ 1/Kd 偏小约 33% → 安全阀选型偏小。
+        mapping = {
+            "全启式 (0.65)": "0.65",
+            "带调节圈微启式 (0.45)": "0.45",
+            "不带调节圈微启式 (0.30)": "0.30",
+        }
+        val = mapping.get(text)
+        if val is not None:
+            self.kd_input.setText(val)
+        # "请选择阀型" 不在 mapping 中，不改变 Kd
 
     # ═══════════════════════════ 计算 ═══════════════════════════
     def calculate(self):
@@ -532,6 +557,12 @@ class SafetyValveCalculator(CalculatorBase):
             gamma = float(self.gamma_input.text())
             z = float(self.z_input.text())
             t_c = float(self.temp_input.text() or 150)
+            # 饱和水蒸汽：温度始终按泄放压力取饱和温度（IAPWS-IF97），不使用隐藏输入框
+            if cfg.get("auto_temp"):
+                try:
+                    t_c = get_steam_props(mawp_g * (1 + over_pct / 100.0))['sat_temp']
+                except Exception:
+                    pass
             t_k = t_c + C_TO_K
 
             # ── 临界流判断 ──
@@ -541,18 +572,24 @@ class SafetyValveCalculator(CalculatorBase):
             actual_ratio = back_pa / relief_p_pa if relief_p_pa > 0 else 1
             is_choked = actual_ratio <= critical_ratio
 
-            # ── 泄放面积计算 (ASME VIII / API 520) ──
+            # ── 泄放面积计算 (API 520 Part I §5.6, SI 单位制) ──
+            # C = 0.03948·√(γ·(2/(γ+1))^((γ+1)/(γ-1)))，专用于 W[kg/h] + P1[kPaa] + A[mm²]
+            # 临界流: A = W/(C·Kd·P1)·√(T·Z/M)
+            # 亚临界: A = 17.9·W·√(T·Z/M)/(F·Kd·P1)，F=√((γ/(γ-1))·(r^(2/γ)−r^((γ+1)/γ)))
+            #   （等价于 Kb=F/17.9 的背压修正，Kb=1 于临界压比处与临界流连续）
             C = 0.03948 * math.sqrt(gamma * (2 / (gamma + 1)) ** ((gamma + 1) / (gamma - 1)))
-            sqrt_term = math.sqrt(mw / (t_k * z))
+            w_kgh = relief_rate_kgh
+            p1_kpaa = relief_p_mpaa * 1000.0        # kPaa
+            tz_m = math.sqrt(t_k * z / mw)
 
             if is_choked:
-                area_m2 = relief_rate_kgs / (C * kd * relief_p_pa * sqrt_term)
+                kb = 1.0
+                area_mm2 = w_kgh * tz_m / (C * kd * p1_kpaa)
             else:
                 r = actual_ratio
                 F = math.sqrt((gamma / (gamma - 1)) * (r ** (2 / gamma) - r ** ((gamma + 1) / gamma)))
-                area_m2 = relief_rate_kgs / (C * kd * relief_p_pa * F * sqrt_term)
-
-            area_mm2 = area_m2 * 1e6
+                kb = F / 17.9                        # 亚临界背压修正系数
+                area_mm2 = 17.9 * w_kgh * tz_m / (F * kd * p1_kpaa)
             diameter_mm = math.sqrt(4 * area_mm2 / math.pi)
 
             # ── 推荐标准喉径 ──
@@ -572,6 +609,7 @@ class SafetyValveCalculator(CalculatorBase):
                 "mw": mw,
                 "kd": kd,
                 "C": C,
+                "kb": kb,
             }
             self._last_params = {
                 "mode": mode,
@@ -643,10 +681,12 @@ class SafetyValveCalculator(CalculatorBase):
         lines += [
             "",
             "【计算公式】",
-            "  ASME VIII / API 520 气体泄放面积公式：",
-            "  A = W / (C × Kd × P1 × √(M/(T×Z)))",
+            "  API 520 Part I §5.6（SI 单位制：W[kg/h]，P1[kPaa]，A[mm²]）：",
+            "  临界流  A = W / (C × Kd × P1) × √(T×Z/M)",
+            "  亚临界  A = 17.9 × W × √(T×Z/M) / (F × Kd × P1)",
+            "       F = √((γ/(γ-1))×(r^(2/γ) − r^((γ+1)/γ)))，等效 Kb = F/17.9",
             "  C = 0.03948 × √(γ×(2/(γ+1))^((γ+1)/(γ-1)))",
-            f"  计算 C = {r['C']:.4f}",
+            f"  计算 C = {r['C']:.4f}，Kb = {r.get('kb', 1.0):.4f}",
             "",
             "【选型建议】",
             f"  1. 选择喉径不低于 {r['diameter_mm']:.1f} mm 的安全阀",
@@ -682,7 +722,9 @@ class SafetyValveCalculator(CalculatorBase):
         self.relief_source_combo.setCurrentIndex(0)
         self.ps_input.setText("1.0")
         self.mawp_input.setText("1.1")
-        self.kd_type_combo.setCurrentIndex(0)
+        # 回默认工况：全启式 + Kd=0.65。不可设 index 0（"请选择阀型"）——
+        # 那会出现下拉显示"未选择"而 Kd 已有 0.65 的矛盾，用户会误以为流量系数尚未确定。
+        self.kd_type_combo.setCurrentIndex(1)
         self.kd_input.setText("0.65")
         self.relief_flow_input.setText("1000")
         self.pipe_d_input.setText("50")

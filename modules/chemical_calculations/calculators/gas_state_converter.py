@@ -107,7 +107,7 @@ class 气体标态转压缩态(CalculatorBase):
         flow_label.setStyleSheet(label_style)
         input_layout.addWidget(flow_label, row, 0)
         
-        self.flow_input = QLineEdit()
+        self.flow_input = QLineEdit("1000")
         self.flow_input.setPlaceholderText("例如: 1000")
         self.flow_input.setValidator(QDoubleValidator(0.1, 1000000.0, 6))
         self.flow_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -158,7 +158,7 @@ class 气体标态转压缩态(CalculatorBase):
         std_temp_label.setStyleSheet(label_style)
         custom_layout.addWidget(std_temp_label, 0, 0)
         
-        self.std_temp_input = QLineEdit()
+        self.std_temp_input = QLineEdit("0")
         self.std_temp_input.setPlaceholderText("例如: 0")
         self.std_temp_input.setValidator(QDoubleValidator(-50.0, 100.0, 6))
         self.std_temp_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -176,7 +176,7 @@ class 气体标态转压缩态(CalculatorBase):
         std_pressure_label.setStyleSheet(label_style)
         custom_layout.addWidget(std_pressure_label, 1, 0)
         
-        self.std_pressure_input = QLineEdit()
+        self.std_pressure_input = QLineEdit("101.325")
         self.std_pressure_input.setPlaceholderText("例如: 101.325")
         self.std_pressure_input.setValidator(QDoubleValidator(50.0, 200.0, 6))
         self.std_pressure_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -202,18 +202,19 @@ class 气体标态转压缩态(CalculatorBase):
         actual_pressure_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         actual_pressure_label.setStyleSheet(label_style)
         input_layout.addWidget(actual_pressure_label, row, 0)
-        
-        self.actual_pressure_input = QLineEdit()
+
+        self.actual_pressure_input = QLineEdit("500")
         self.actual_pressure_input.setPlaceholderText("例如: 500")
         self.actual_pressure_input.setValidator(QDoubleValidator(0.1, 10000.0, 6))
         self.actual_pressure_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.actual_pressure_input, row, 1)
-        
-        # 压力输入不需要下拉，替换为提示标签
-        self.pressure_hint = QLabel("直接输入实际压力值")
-        self.pressure_hint.setStyleSheet("font-style: italic;")
-        self.pressure_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        input_layout.addWidget(self.pressure_hint, row, 2)
+
+        # 压力制式：绝压/表压（表压自动 +101.325 kPa）
+        self.pressure_type_combo = QComboBox()
+        self.pressure_type_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.pressure_type_combo.addItems(["绝压", "表压"])
+        self.pressure_type_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        input_layout.addWidget(self.pressure_type_combo, row, 2)
         
         row += 1
         
@@ -223,7 +224,7 @@ class 气体标态转压缩态(CalculatorBase):
         actual_temp_label.setStyleSheet(label_style)
         input_layout.addWidget(actual_temp_label, row, 0)
         
-        self.actual_temp_input = QLineEdit()
+        self.actual_temp_input = QLineEdit("20")
         self.actual_temp_input.setPlaceholderText("例如: 20")
         self.actual_temp_input.setValidator(QDoubleValidator(-50.0, 500.0, 6))
         self.actual_temp_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -333,9 +334,9 @@ class 气体标态转压缩态(CalculatorBase):
         """处理压缩因子选择变化"""
         # 检查是否选择了空值选项
         if text.startswith("-") or not text.strip():
-            self.compress_input.clear()
-            self.compress_input.setReadOnly(True)
-            self.compress_input.setPlaceholderText("请选择压缩因子")
+            # 恢复可编辑，避免永久只读
+            self.compress_input.setReadOnly(False)
+            self.compress_input.setPlaceholderText("输入压缩因子，如 0.95")
             return
             
         if "自定义" in text:
@@ -387,7 +388,8 @@ class 气体标态转压缩态(CalculatorBase):
         self.actual_temp_input.clear()
         self.compress_combo.setCurrentIndex(0)
         self.compress_input.setText("1.0")
-        self.compress_input.setReadOnly(True)
+        self.compress_input.setReadOnly(False)
+        self.compress_input.setPlaceholderText("输入压缩因子，如 0.95")
         self.custom_standard_group.setVisible(False)
         self.result_text.clear()
     
@@ -406,16 +408,23 @@ class 气体标态转压缩态(CalculatorBase):
             std_temp_k = std_temp + C_TO_K
             actual_temp_k = actual_temp + C_TO_K
             if std_flow <= 0 or actual_pressure <= 0 or std_temp_k <= 0 or actual_temp_k <= 0:
-                QMessageBox.warning(self, "输入错误", "请填写有效的参数（流量和压力必须大于0，温度不能低于-C_TO_K°C）")
+                QMessageBox.warning(self, "输入错误", f"请填写有效的参数（流量和压力必须大于0，温度不能低于{-273.15:.2f}°C）")
                 return
             if compress_factor <= 0:
                 QMessageBox.warning(self, "输入错误", "压缩因子必须大于0")
                 return
 
-            # 转换为绝对压力
-            
+            # 压力制式：表压自动换算为绝压（+101.325 kPa）
+            pressure_type = self.pressure_type_combo.currentText()
+            if pressure_type == "表压":
+                actual_pressure_abs = actual_pressure + 101.325
+            else:
+                actual_pressure_abs = actual_pressure
+            if actual_pressure_abs <= 0:
+                QMessageBox.warning(self, "输入错误", "换算后的绝对压力必须大于0")
+                return
+
             std_pressure_abs = std_pressure
-            actual_pressure_abs = actual_pressure
             
             # 计算实际状态流量
             # 使用理想气体状态方程: P1·V1/T1 = P2·V2/T2 (考虑压缩因子)
@@ -437,7 +446,8 @@ class 气体标态转压缩态(CalculatorBase):
 • 压力: {std_pressure} kPa
 
 实际状态:
-• 压力: {actual_pressure} kPa
+• 压力: {actual_pressure} kPa ({pressure_type})
+• 绝对压力: {actual_pressure_abs:.3f} kPa
 • 温度: {actual_temp} °C ({actual_temp_k:.2f} K)
 • 压缩因子 Z: {compress_factor}
 
@@ -503,12 +513,18 @@ Q_actual = Q_std × (P_std / P_actual) × (T_actual / T_std) × Z
         actual_temp = float(self.actual_temp_input.text() or 0)
         compress_factor = float(self.compress_input.text() or 0)
         std_temp, std_pressure = self.get_standard_conditions()
+        pressure_type = self.pressure_type_combo.currentText()
+        if pressure_type == "表压":
+            actual_pressure_abs = actual_pressure + 101.325
+        else:
+            actual_pressure_abs = actual_pressure
 
         inputs = {
             "标况流量_Nm3_h": std_flow,
             "标况温度_C": std_temp,
             "标况压力_kPa": std_pressure,
             "实际压力_kPa": actual_pressure,
+            "压力制式": pressure_type,
             "实际温度_C": actual_temp,
             "压缩因子Z": compress_factor
         }
@@ -517,140 +533,39 @@ Q_actual = Q_std × (P_std / P_actual) × (T_actual / T_std) × Z
         try:
             std_temp_k = std_temp + C_TO_K
             actual_temp_k = actual_temp + C_TO_K
-            actual_flow = std_flow * (std_pressure / actual_pressure) * (actual_temp_k / std_temp_k) * compress_factor
-            actual_density_factor = (actual_pressure / std_pressure) * (std_temp_k / actual_temp_k) / compress_factor
-            outputs = {
-                "实际流量_m3_h": round(actual_flow, 2),
-                "实际流量_m3_min": round(actual_flow / 60, 4),
-                "密度变化倍数": round(actual_density_factor, 4)
-            }
+            if actual_pressure_abs > 0 and actual_pressure > 0:
+                actual_flow = std_flow * (std_pressure / actual_pressure_abs) * (actual_temp_k / std_temp_k) * compress_factor
+                actual_density_factor = (actual_pressure_abs / std_pressure) * (std_temp_k / actual_temp_k) / compress_factor
+                outputs = {
+                    "绝对压力_kPa": round(actual_pressure_abs, 3),
+                    "实际流量_m3_h": round(actual_flow, 2),
+                    "实际流量_m3_min": round(actual_flow / 60, 4),
+                    "密度变化倍数": round(actual_density_factor, 4)
+                }
         except Exception as e:
             outputs["计算错误"] = str(e)
 
         return {"inputs": inputs, "outputs": outputs}
 
     def get_project_info(self):
-        """获取工程信息 - 使用共享的项目信息"""
+        """获取工程信息 - 返回 dict（标准写法，无模态弹窗）"""
         try:
-            class ProjectInfoDialog(QDialog):
-                def __init__(self, parent=None, default_info=None, report_number=""):
-                    super().__init__(parent)
-                    self.default_info = default_info or {}
-                    self.report_number = report_number
-                    self.setWindowTitle("工程信息")
-                    self.setFixedSize(400, 350)
-                    self.setup_ui()
-                    
-                def setup_ui(self):
-                    layout = QVBoxLayout(self)
-                    
-                    # 标题
-                    title_label = QLabel("请输入工程信息")
-                    title_label.setStyleSheet("font-weight: bold; font-size: 14px; margin: 10px;")
-                    layout.addWidget(title_label)
-                    
-                    # 公司名称
-                    company_layout = QHBoxLayout()
-                    company_label = QLabel("公司名称:")
-                    self.company_input = QLineEdit()
-                    self.company_input.setPlaceholderText("例如：XX建筑工程有限公司")
-                    self.company_input.setText(self.default_info.get('company_name', ''))
-                    company_layout.addWidget(company_label)
-                    company_layout.addWidget(self.company_input)
-                    layout.addLayout(company_layout)
-                    
-                    # 工程编号
-                    number_layout = QHBoxLayout()
-                    number_label = QLabel("工程编号:")
-                    self.project_number_input = QLineEdit()
-                    self.project_number_input.setPlaceholderText("例如：2024-PD-001")
-                    self.project_number_input.setText(self.default_info.get('project_number', ''))
-                    number_layout.addWidget(number_label)
-                    number_layout.addWidget(self.project_number_input)
-                    layout.addLayout(number_layout)
-                    
-                    # 工程名称
-                    project_layout = QHBoxLayout()
-                    project_label = QLabel("工程名称:")
-                    self.project_input = QLineEdit()
-                    self.project_input.setPlaceholderText("例如：化工厂管道系统")
-                    self.project_input.setText(self.default_info.get('project_name', ''))
-                    project_layout.addWidget(project_label)
-                    project_layout.addWidget(self.project_input)
-                    layout.addLayout(project_layout)
-                    
-                    # 子项名称
-                    subproject_layout = QHBoxLayout()
-                    subproject_label = QLabel("子项名称:")
-                    self.subproject_input = QLineEdit()
-                    self.subproject_input.setPlaceholderText("例如：主生产区管道")
-                    self.subproject_input.setText(self.default_info.get('subproject_name', ''))
-                    subproject_layout.addWidget(subproject_label)
-                    subproject_layout.addWidget(self.subproject_input)
-                    layout.addLayout(subproject_layout)
-                    
-                    # 计算书编号
-                    report_number_layout = QHBoxLayout()
-                    report_number_label = QLabel("计算书编号:")
-                    self.report_number_input = QLineEdit()
-                    self.report_number_input.setText(self.report_number)
-                    report_number_layout.addWidget(report_number_label)
-                    report_number_layout.addWidget(self.report_number_input)
-                    layout.addLayout(report_number_layout)
-                    
-                    # 按钮
-                    button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-                    button_box.accepted.connect(self.accept)
-                    button_box.rejected.connect(self.reject)
-                    layout.addWidget(button_box)
-                    
-                def get_info(self):
-                    return {
-                        'company_name': self.company_input.text().strip(),
-                        'project_number': self.project_number_input.text().strip(),
-                        'project_name': self.project_input.text().strip(),
-                        'subproject_name': self.subproject_input.text().strip(),
-                        'report_number': self.report_number_input.text().strip()
-                    }
-            
-            # 从数据管理器获取共享的项目信息
             saved_info = {}
             if self.data_manager:
                 saved_info = self.data_manager.get_project_info()
-            
-            # 获取下一个报告编号
-            report_number = ""
-            if self.data_manager:
-                report_number = self.data_manager.get_next_report_number("GASC")
-            
-            dialog = ProjectInfoDialog(self, saved_info, report_number)
-            if dialog.exec() == QDialog.Accepted:
-                info = dialog.get_info()
-                # 验证必填字段
-                if not info['project_name']:
-                    QMessageBox.warning(self, "输入错误", "工程名称不能为空")
-                    return self.get_project_info()  # 重新弹出对话框
-                
-                # 保存项目信息到数据管理器
-                if self.data_manager:
-                    # 保存所有项目信息
-                    info_to_save = {
-                        'company_name': info['company_name'],
-                        'project_number': info['project_number'],
-                        'project_name': info['project_name'],
-                        'subproject_name': info['subproject_name']
-                    }
-                    self.data_manager.update_project_info(info_to_save)
-                    print("项目信息已保存")
-                
-                return info
-            else:
-                return None  # 用户取消了
-                    
-        except Exception as e:
-            print(f"获取工程信息失败: {e}")
-            return None
-    
+            return {
+                'company_name': saved_info.get('company_name', ''),
+                'project_number': saved_info.get('project_number', ''),
+                'project_name': saved_info.get('project_name', ''),
+                'subproject_name': saved_info.get('subproject_name', ''),
+                'report_number': ''
+            }
+        except Exception:
+            return {
+                'company_name': '', 'project_number': '',
+                'project_name': '', 'subproject_name': '', 'report_number': ''
+            }
+
     def generate_report(self):
         """生成计算书"""
         try:

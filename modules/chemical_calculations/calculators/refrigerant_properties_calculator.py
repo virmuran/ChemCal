@@ -36,6 +36,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
 from calculator_base import CalculatorBase
 from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
 # DOCX 报告导出
+from utils.docx_utils import ReportExporter
 
 # ---------------------------------------------------------------------------
 #  QGroupBox 统一样式
@@ -202,7 +203,7 @@ class RefrigerantPropertiesCalculator(CalculatorBase):
         temp_label.setStyleSheet(label_style)
         condition_layout.addWidget(temp_label, 1, 0)
 
-        self.temperature_input = QLineEdit()
+        self.temperature_input = QLineEdit("25")
         self.temperature_input.setPlaceholderText("例如：25")
         self.temperature_input.setValidator(QDoubleValidator(-200, 300, 2))
         self.temperature_input.setStyleSheet(LINEEDIT_STYLE)
@@ -219,7 +220,7 @@ class RefrigerantPropertiesCalculator(CalculatorBase):
         pres_label.setStyleSheet(label_style)
         condition_layout.addWidget(pres_label, 2, 0)
 
-        self.pressure_input = QLineEdit()
+        self.pressure_input = QLineEdit("666")
         self.pressure_input.setPlaceholderText("例如：666")
         self.pressure_input.setValidator(QDoubleValidator(0.1, 10000, 1))
         self.pressure_input.setStyleSheet(LINEEDIT_STYLE)
@@ -236,7 +237,7 @@ class RefrigerantPropertiesCalculator(CalculatorBase):
         quality_label.setStyleSheet(label_style)
         condition_layout.addWidget(quality_label, 3, 0)
 
-        self.quality_input = QLineEdit()
+        self.quality_input = QLineEdit("0.5")
         self.quality_input.setPlaceholderText("例如：0.5")
         self.quality_input.setValidator(QDoubleValidator(0, 1, 3))
         self.quality_input.setStyleSheet(LINEEDIT_STYLE)
@@ -254,7 +255,7 @@ class RefrigerantPropertiesCalculator(CalculatorBase):
         self.cond_temp_label.setVisible(False)
         condition_layout.addWidget(self.cond_temp_label, 4, 0)
 
-        self.cond_temp_input = QLineEdit()
+        self.cond_temp_input = QLineEdit("40")
         self.cond_temp_input.setPlaceholderText("例如：40")
         self.cond_temp_input.setValidator(QDoubleValidator(-100, 200, 2))
         self.cond_temp_input.setStyleSheet(LINEEDIT_STYLE)
@@ -399,7 +400,12 @@ class RefrigerantPropertiesCalculator(CalculatorBase):
             self.result_text.setPlainText(f"⚠ 计算错误: {str(e)}")
 
     def calculate_refrigerant_properties(self, refrigerant, info, calc_type, T, P, x):
-        T_k = T + C_TO_K if T else None
+        T_k = T + C_TO_K if T is not None else None
+
+        # 参数替代警示：部分混合物/HFO 用近似参数计算
+        ref_name = _REF_MAP.get(refrigerant, "R134a")
+        self._ref_substituted = (ref_name != refrigerant.replace(" (氨)", "").replace(" (水)", "")
+                                 .replace(" (丙烷)", "").replace(" (异丁烷)", ""))
 
         if calc_type == "饱和性质计算":
             if T is not None:
@@ -436,6 +442,20 @@ class RefrigerantPropertiesCalculator(CalculatorBase):
                 results = self._analyze_cycle(refrigerant, T, T_cond)
             else:
                 raise ValueError("热力循环分析需要蒸发温度")
+
+        # 干度（湿蒸汽区混合物性质）：0<x<1 时给出两相混合物参数
+        if calc_type == "饱和性质计算" and x is not None and 0.0 < x < 1.0 and T is not None:
+            if USE_INDUSTRIAL_EOS and ref_name in getattr(refrigerant_eos, 'REFRIGERANTS', {}):
+                try:
+                    wet = refrigerant_eos.wet_vapor_properties(
+                        T_C=T, dryness=x, ref_name=ref_name)
+                    results['quality'] = x
+                    results['mixture_h'] = wet['h']
+                    results['mixture_s'] = wet['s']
+                    results['mixture_rho'] = wet['rho']
+                    results['mixture_v'] = wet['v']
+                except Exception:
+                    pass
 
         # 传输性质补充
         if calc_type in ("过冷性质计算", "饱和性质计算"):
@@ -627,7 +647,7 @@ class RefrigerantPropertiesCalculator(CalculatorBase):
                 'glide': 0.0, 'density': 20-0.1*T_evap}
 
     def _liquid_sound_speed(self, refrigerant, T, P, results):
-        if not USE_INDUSTRIAL_EOS or not T:
+        if not USE_INDUSTRIAL_EOS or T is None:
             return {'sound_speed': 0}
         ref_name = _REF_MAP.get(refrigerant, "R134a")
         if ref_name not in getattr(refrigerant_eos, 'REFRIGERANTS', {}):
@@ -648,7 +668,7 @@ class RefrigerantPropertiesCalculator(CalculatorBase):
 
     def _calc_transport_props(self, refrigerant, T, P, density):
         """简化的气相传输性质计算"""
-        if not T or density <= 0:
+        if T is None or density <= 0:
             return {'viscosity': 0, 'thermal_cond': 0, 'prandtl': 0, 'sound_speed': 0}
         # 简化 Chapman-Enskog 估算
         T_K = T + C_TO_K
@@ -675,6 +695,9 @@ class RefrigerantPropertiesCalculator(CalculatorBase):
         if 'pressure' in r:
             lines.append(f"压力: {r['pressure']:.2f} kPa")
         lines.append(f"")
+        if getattr(self, '_ref_substituted', False) and ref:
+            lines.append(f"⚠ 注意: {ref} 无专用参数，借用相近工质参数近似计算，结果仅供参考")
+            lines.append(f"")
 
         if calc_type == "饱和性质计算":
             lines.append(f"─── 饱和性质 ───")
@@ -686,6 +709,13 @@ class RefrigerantPropertiesCalculator(CalculatorBase):
             lines.append(f"  汽化熵变 sfg: {r.get('sfg', 0):.4f} kJ/(kg·K)")
             lines.append(f"  液相密度:     {r.get('density_f', 0):.2f} kg/m³")
             lines.append(f"  气相密度:     {r.get('density_g', 0):.4f} kg/m³")
+            if 'quality' in r:
+                lines.append(f"")
+                lines.append(f"  ─── 湿蒸汽混合物 (干度 x={r['quality']:.3f}) ───")
+                lines.append(f"  混合比焓 h:   {r.get('mixture_h', 0):.2f} kJ/kg")
+                lines.append(f"  混合比熵 s:   {r.get('mixture_s', 0):.4f} kJ/(kg·K)")
+                lines.append(f"  混合密度:     {r.get('mixture_rho', 0):.4f} kg/m³")
+                lines.append(f"  比容:         {r.get('mixture_v', 0):.6f} m³/kg")
         elif calc_type == "热力循环分析":
             lines.append(f"─── 循环分析 ───")
             lines.append(f"  蒸发压力:       {r.get('P_evap', 0):.2f} kPa")

@@ -84,12 +84,13 @@ class CentrifugalPumpCalculator(CalculatorBase):
             self.data_manager = None
     
     # ── 泵型效率数据库 ──
+    # 每型独立分档：(流量上限 m³/h, 效率)，依 GB/T 5656 及泵行业经验值
     PUMP_EFFICIENCY = {
-        "IS 单级单吸":  {"Q<50m3h":0.55, "Q50-150":0.70, "Q150-300":0.78, "Q>300":0.84},
-        "S/SH 双吸":   {"Q<200m3h":0.65, "Q200-800":0.75, "Q800-2000":0.82, "Q>2000":0.87},
-        "D/DG 多级":   {"Q<50m3h":0.50, "Q50-150":0.63, "Q150-300":0.72, "Q>300":0.78},
-        "IH 化工流程": {"Q<50m3h":0.50, "Q50-150":0.62, "Q150-300":0.70, "Q>300":0.76},
-        "AY 油泵":     {"Q<50m3h":0.48, "Q50-150":0.60, "Q150-300":0.68, "Q>300":0.75},
+        "IS 单级单吸":  [(50, 0.55), (150, 0.70), (300, 0.78), (float("inf"), 0.84)],
+        "S/SH 单级双吸": [(200, 0.65), (800, 0.75), (2000, 0.82), (float("inf"), 0.87)],
+        "D/DG 多级":   [(50, 0.50), (150, 0.63), (300, 0.72), (float("inf"), 0.78)],
+        "IH 化工流程": [(50, 0.50), (150, 0.62), (300, 0.70), (float("inf"), 0.76)],
+        "AY 油泵":     [(50, 0.48), (150, 0.60), (300, 0.68), (float("inf"), 0.75)],
     }
 
     def _mk_label(self, text):
@@ -101,12 +102,29 @@ class CentrifugalPumpCalculator(CalculatorBase):
         return lbl
 
     def _on_pump_type_changed(self, text):
-        """泵型变化→自动估算泵效率"""
-        for key, table in self.PUMP_EFFICIENCY.items():
+        """泵型变化→自动估算泵效率（效率下拉未选择时）"""
+        for key in self.PUMP_EFFICIENCY:
             if text.startswith(key):
                 self._pump_type = key
+                self._refresh_auto_efficiency()
                 return
         self._pump_type = None
+
+    def _refresh_auto_efficiency(self):
+        """泵型已选且效率下拉未选择时，按当前流量刷新估算效率"""
+        if not getattr(self, "_pump_type", None):
+            return
+        if self.efficiency_combo.currentIndex() != 0:
+            return  # 用户已从下拉选择/自定义效率，不打扰
+        try:
+            q = float(self.flow_input.text() or 0)
+        except ValueError:
+            return
+        if q <= 0:
+            return
+        est = self._estimate_pump_efficiency(self._pump_type, q)
+        if est:
+            self.efficiency_input.setText(f"{est * 100:.0f}")
 
     def _on_drive_changed(self, text):
         """传动方式变化→更新传动效率"""
@@ -222,7 +240,7 @@ class CentrifugalPumpCalculator(CalculatorBase):
         flow_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(flow_label, row, 0)
 
-        self.flow_input = QLineEdit()
+        self.flow_input = QLineEdit("100")
         self.flow_input.setPlaceholderText("例如: 100")
         self.flow_input.setValidator(QDoubleValidator(0.1, 10000.0, 6))
         self.flow_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -251,7 +269,7 @@ class CentrifugalPumpCalculator(CalculatorBase):
         head_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(head_label, row, 0)
 
-        self.head_input = QLineEdit()
+        self.head_input = QLineEdit("50")
         self.head_input.setPlaceholderText("例如: 50")
         self.head_input.setValidator(QDoubleValidator(0.1, 1000.0, 6))
         self.head_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -280,7 +298,7 @@ class CentrifugalPumpCalculator(CalculatorBase):
         density_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(density_label, row, 0)
 
-        self.density_input = QLineEdit()
+        self.density_input = QLineEdit("1000")
         self.density_input.setPlaceholderText("例如: 1000 (水)")
         self.density_input.setValidator(QDoubleValidator(1.0, 2000.0, 6))
         self.density_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -313,7 +331,7 @@ class CentrifugalPumpCalculator(CalculatorBase):
         efficiency_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(efficiency_label, row, 0)
 
-        self.efficiency_input = QLineEdit()
+        self.efficiency_input = QLineEdit("75")
         self.efficiency_input.setPlaceholderText("例如: 75")
         self.efficiency_input.setValidator(QDoubleValidator(10.0, 95.0, 6))
         self.efficiency_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -343,7 +361,7 @@ class CentrifugalPumpCalculator(CalculatorBase):
         input_layout.addWidget(motor_efficiency_label, row, 0)
 
         self.motor_efficiency_input = QLineEdit()
-        self.motor_efficiency_input.setPlaceholderText("例如: 92")
+        self.motor_efficiency_input.setPlaceholderText("留空自动按电机容量估算")
         self.motor_efficiency_input.setValidator(QDoubleValidator(50.0, 98.0, 6))
         self.motor_efficiency_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.motor_efficiency_input, row, 1)
@@ -463,6 +481,7 @@ class CentrifugalPumpCalculator(CalculatorBase):
                 max_val = float(match.group(2))
                 avg_val = (min_val + max_val) / 2
                 self.flow_input.setText(f"{avg_val:.1f}")
+        self._refresh_auto_efficiency()
     
     def on_head_changed(self, text):
         """处理扬程选择变化"""
@@ -539,18 +558,11 @@ class CentrifugalPumpCalculator(CalculatorBase):
         if m and not text.startswith("-"):
             self.safety_input.setText(m.group(1))
     def _estimate_pump_efficiency(self, pump_type, flow_rate):
-        """根据泵型和流量估算泵效率"""
-        if pump_type not in self.PUMP_EFFICIENCY:
-            return None
-        table = self.PUMP_EFFICIENCY[pump_type]
-        if flow_rate <= 50:
-            return table["Q<50m3h"]
-        elif flow_rate <= 150:
-            return table["Q50-150"]
-        elif flow_rate <= 300:
-            return table["Q150-300"]
-        else:
-            return table["Q>300"]
+        """根据泵型和流量估算泵效率（每型独立分档）"""
+        for upper, eff in self.PUMP_EFFICIENCY.get(pump_type, []):
+            if flow_rate <= upper:
+                return eff
+        return None
 
     def _get_drive_efficiency(self):
         """从传动方式下拉框提取效率值"""
@@ -607,12 +619,23 @@ class CentrifugalPumpCalculator(CalculatorBase):
             matched = min((m for m in self.STANDARD_MOTORS if m >= p_motor_raw),
                          default=self.STANDARD_MOTORS[-1])
 
-            # 5. 电机效率（按匹配功率查表）
-            m_eff = 0.90  # default
+            # 5. 电机效率：用户填写优先，否则按匹配电机容量查表估算 (GB 18613)
+            motor_eff_text = self.motor_efficiency_input.text().strip()
+            motor_eff_input = None
+            if motor_eff_text:
+                try:
+                    motor_eff_input = float(motor_eff_text)
+                except ValueError:
+                    motor_eff_input = None
+            m_eff = None  # default
             for kw, eff in sorted(self.MOTOR_EFF_TABLE.items()):
                 if kw >= matched:
                     m_eff = eff
                     break
+            if m_eff is None:
+                m_eff = 0.90
+            if motor_eff_input is not None:
+                m_eff = motor_eff_input / 100
 
             # 6. 实际输入功率 = 轴功率 / η_drive / η_motor × K
             p_input = p_shaft / drive_eff / m_eff * safety_factor
@@ -635,7 +658,7 @@ class CentrifugalPumpCalculator(CalculatorBase):
 效率参数:
 • 泵效率 η_pump: {efficiency:.1f} %{'  (自动估算)' if pump_eff_auto and efficiency == pump_eff_auto*100 else ''}
 • 传动效率 η_drive: {drive_eff:.2f}
-• 电机效率 η_motor: {m_eff*100:.0f} %  (基于{matched} kW级)
+• 电机效率 η_motor: {m_eff*100:.1f} %  {'(用户输入)' if motor_eff_input is not None else f'(按{matched} kW级电机估算)'}
 • 安全系数 K: {safety_factor}
 
 ═══════════════════════════════════════════════════
@@ -700,6 +723,9 @@ P_电机 = P_轴 / (η_drive × η_motor) × K
         self.density_input.clear()
         self.efficiency_input.clear()
         self.motor_efficiency_input.clear()
+        self.speed_input.clear()
+        self.pump_type_combo.setCurrentIndex(0)
+        self.drive_combo.setCurrentIndex(0)
         self.flow_combo.setCurrentIndex(0)
         self.head_combo.setCurrentIndex(0)
         self.density_combo.setCurrentIndex(0)
@@ -724,11 +750,10 @@ P_电机 = P_轴 / (η_drive × η_motor) × K
             outputs = {}
             text = self.result_text.toPlainText()
             for key, pattern in [
-                ("有效功率 (kW)", r"有效功率:\s*([\d.]+)\s*kW"),
-                ("轴功率 (kW)", r"轴功率:\s*([\d.]+)\s*kW"),
-                ("电机功率 (kW)", r"电机功率:\s*([\d.]+)\s*kW"),
-                ("总效率 (%)", r"总效率:\s*([\d.]+)\s*%"),
-                ("推荐电机 (kW)", r"推荐电机功率:\s*([\d.]+)\s*kW"),
+                ("有效功率 (kW)", r"有效功率 Pe:\s*([\d.]+)"),
+                ("轴功率 (kW)", r"轴功率 P:\s*([\d.]+)"),
+                ("电机输入功率 (kW)", r"电机输入功率 P_in:\s*([\d.]+)"),
+                ("配套电机功率 (kW)", r"配套电机功率:\s*([\d.]+)"),
             ]:
                 m = re.search(pattern, text)
                 if m:

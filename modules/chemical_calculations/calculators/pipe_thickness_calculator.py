@@ -33,8 +33,8 @@ class 管道壁厚(CalculatorBase):
         self.material_database = {}
         self.setup_material_database()  # 先调用这个
         self.setup_ui()  # 然后调用 setup_ui
-        # 默认选 20# 碳钢，许用应力自动填入
-        self.material_combo.setCurrentIndex(10)  # "20# (20°C) - GB/T699"
+        # 默认选 20# 碳钢（200°C 档，与默认设计温度 180°C 匹配），许用应力自动填入
+        self.material_combo.setCurrentIndex(11)  # "20# (200°C) - GB/T699"
         self._update_svg_diagram()
 
         # 禁止未展开时鼠标滚轮切换下拉菜单
@@ -71,7 +71,8 @@ class 管道壁厚(CalculatorBase):
         
         # 1. 首先添加说明文本
         description = QLabel(
-            "依据 ASME B31.3 工艺管道规范计算管道壁厚。输入设计压力、温度、材质后，自动匹配标准管表(Sch)推荐壁厚。"
+            "依据 GB/T 20801.3-2020《压力管道规范 工业管道 第3部分：设计和计算》式(10)（同 ASME B31.3 §304.1.2）计算内压直管壁厚，"
+            "并按 ASME B36.10/B36.19 匹配标准管表(Sch)推荐壁厚。适用条件：t≤D/6 且 P/(S·Φ)≤0.385。"
         )
         description.setWordWrap(True)
         description.setStyleSheet("font-size: 12px; padding: 5px;")
@@ -161,6 +162,8 @@ class 管道壁厚(CalculatorBase):
         self.setup_diameter_options()
         self.diameter_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.diameter_combo.currentTextChanged.connect(self.on_diameter_changed)
+        # connect 之后再设默认 DN100，触发外径自动填入 114.3
+        self.diameter_combo.setCurrentIndex(9)
         input_layout.addWidget(self.diameter_combo, row, 2)
         
         row += 1
@@ -442,36 +445,41 @@ class 管道壁厚(CalculatorBase):
             "610.0 mm - DN600 [24\"]",
         ]
         self.diameter_combo.addItems(diameter_options)
-        # 默认显示"请选择"提示
+        # 默认保持"请选择"；connect 后在 setup_ui 中设为 DN100 触发外径填充
         self.diameter_combo.setCurrentIndex(0)
         
     def setup_weld_factor_options(self):
-        """设置焊接接头系数选项"""
+        """设置焊接接头系数选项 — GB/T 20801.3-2020 表3（纵向焊接接头系数 Φ）"""
         weld_options = [
             "- 请选择焊接接头系数 -",
-            "1.0 - 电熔焊 100%无损检测 双面对接焊",
-            "0.9 - 电熔焊 100%无损检测 单面对接焊",
-            "0.85 - 电熔焊 局部无损检测 双面对接焊",
-            "0.8 - 电熔焊 局部无损检测 单面对接焊",
-            "0.8 - 螺旋缝自动焊",
-            "0.7 - 电熔焊 不作无损检测 双面对接焊",
-            "0.6 - 电熔焊 不作无损检测 单面对接焊",
+            "1.0 - 电熔焊 双面对接焊 100%无损检测",
+            "1.0 - 电熔焊 单面对接焊 100%无损检测",
+            "0.9 - 电熔焊 双面对接焊 10%无损检测",
+            "0.9 - 电熔焊 单面对接焊 10%无损检测",
+            "0.85 - 电熔焊 双面对接焊 不作无损检测",
+            "0.8 - 电熔焊 单面对接焊 不作无损检测",
             "0.85 - 电阻焊 100%涡流检测",
             "0.65 - 电阻焊 不作无损检测",
+            "0.8 - 螺旋缝自动焊",
             "0.6 - 加热炉焊 不作无损检测"
         ]
         self.weld_combo.addItems(weld_options)
         # 设置默认值
         self.weld_combo.setCurrentIndex(1)  # Ej=1.0
-    
+
     def setup_y_factor_options(self):
-        """设置系数Y选项"""
+        """设置系数Y选项 — GB/T 20801.3-2020 表16（同 ASME B31.3 表304.1.1）
+        铁素体钢: ≤482°C→0.4; 510°C→0.5; ≥538°C→0.7
+        奥氏体钢: ≤566°C→0.4; 593°C→0.5; ≥621°C→0.7
+        中间温度可线性内插，此处按离散档位取值"""
         y_options = [
             "- 请选择系数Y -",
             "0.4 - 铁素体钢 (温度≤482°C)",
-            "0.5 - 铁素体钢 (温度>482°C)",
-            "0.4 - 奥氏体钢 (温度≤482°C)",
-            "0.7 - 奥氏体钢 (温度>482°C)",
+            "0.5 - 铁素体钢 (482°C<温度<538°C)",
+            "0.7 - 铁素体钢 (温度≥538°C)",
+            "0.4 - 奥氏体钢 (温度≤566°C)",
+            "0.5 - 奥氏体钢 (566°C<温度<621°C)",
+            "0.7 - 奥氏体钢 (温度≥621°C)",
             "0.4 - 其他金属材料"
         ]
         self.y_combo.addItems(y_options)
@@ -531,24 +539,24 @@ class 管道壁厚(CalculatorBase):
             stress = self.material_database[material_key]["stress"]
             self.stress_input.setText(f"{stress}")
             
-            # 根据材料类型自动设置系数Y
+            # 根据材料类型自动设置系数Y（GB/T 20801.3-2020 表16）
             material_type = self.material_database[material_key]["type"]
             design_temp = float(self.temp_input.text() or "20")
-            
+
             if "奥氏体" in material_type:
-                if design_temp <= 482:
-                    y_value = 0.4
-                    y_text = "0.4 - 奥氏体钢 (温度≤482°C)"
+                if design_temp <= 566:
+                    y_value, y_text = 0.4, "0.4 - 奥氏体钢 (温度≤566°C)"
+                elif design_temp < 621:
+                    y_value, y_text = 0.5, "0.5 - 奥氏体钢 (566°C<温度<621°C)"
                 else:
-                    y_value = 0.7
-                    y_text = "0.7 - 奥氏体钢 (温度>482°C)"
+                    y_value, y_text = 0.7, "0.7 - 奥氏体钢 (温度≥621°C)"
             else:  # 铁素体钢和其他
                 if design_temp <= 482:
-                    y_value = 0.4
-                    y_text = "0.4 - 铁素体钢 (温度≤482°C)"
+                    y_value, y_text = 0.4, "0.4 - 铁素体钢 (温度≤482°C)"
+                elif design_temp < 538:
+                    y_value, y_text = 0.5, "0.5 - 铁素体钢 (482°C<温度<538°C)"
                 else:
-                    y_value = 0.5
-                    y_text = "0.5 - 铁素体钢 (温度>482°C)"
+                    y_value, y_text = 0.7, "0.7 - 铁素体钢 (温度≥538°C)"
             
             self.y_input.setText(f"{y_value}")
             # 查找并设置对应的Y系数选项
@@ -948,6 +956,7 @@ class 管道壁厚(CalculatorBase):
     • 实际计算应力: {actual_stress:.1f} MPa
     • 安全系数: {safety_factor:.2f}
     • 强度状态: {'安全 (安全系数≥1.0)' if safety_factor >= 1.0 else '需重新设计 (安全系数<1.0)'}
+    • 薄壁适用条件: {'满足 (t≤D/6 且 P/(S·Φ)≤0.385)' if (theoretical_thickness <= outer_diameter/6 and design_pressure/(allowable_stress*weld_factor) <= 0.385) else '⚠ 不满足！超出薄壁管适用范围 (t≤D/6 且 P/(S·Φ)≤0.385)，需按厚壁管另行计算'}
 
 ══════════
 经济性分析
@@ -960,10 +969,12 @@ class 管道壁厚(CalculatorBase):
 计算说明
 ══════════
 
-    • 采用标准壁厚计算公式: t = P×D / (2×S×E + 2×P×Y) + C
+    • 采用 GB/T 20801.3-2020 式(10)（同 ASME B31.3 §304.1.2）: t = P×D / (2×S×Φ + 2×P×Y)
+    • 焊接接头系数 Φ 按 GB/T 20801.3-2020 表3 选取（无缝管 Φ=1.0）
+    • Y 系数按 GB/T 20801.3-2020 表16 选取（铁素体: ≤482°C→0.4、≥538°C→0.7；奥氏体: ≤566°C→0.4、≥621°C→0.7）
     • 管表壁厚基于 ASME B36.10/B36.19 标准 Sch 系列
-    • Y系数根据材料类型和设计温度确定
     • 腐蚀裕量C₂建议取值: 碳钢 1.5~3mm, 不锈钢 0~1mm
+    • 减薄量C₁含壁厚负偏差（无缝钢管通常按 12.5% 计）与加工减薄
     • 建议安全系数不小于1.0，重要管道建议1.5以上
     • 计算结果仅供参考，实际应用需经专业工程师审核"""
     
@@ -972,7 +983,7 @@ class 管道壁厚(CalculatorBase):
             "project_name": "管道壁厚计算",
             "calculator_name": "管道壁厚计算器",
             "version": "1.0",
-            "description": "依据 ASME B31.3 工艺管道规范计算管道壁厚并匹配标准管表(Sch)"
+            "description": "依据 GB/T 20801.3-2020 式(10)（同 ASME B31.3）计算内压直管壁厚并匹配标准管表(Sch)"
         }
 
     def generate_report(self):

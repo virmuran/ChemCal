@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import (
+﻿from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QGroupBox, QTextEdit, QComboBox, QMessageBox,
     QScrollArea, QButtonGroup, QGridLayout, QSizePolicy
@@ -122,11 +122,11 @@ class 罐体重量(CalculatorBase):
         diameter_label.setStyleSheet(label_style)
         self.input_layout.addWidget(diameter_label, row, 0)
         
-        self.diameter_input = QLineEdit()
+        self.diameter_input = QLineEdit("3000")
         self.diameter_input.setPlaceholderText("例如: 3000")
         self.diameter_input.setValidator(QDoubleValidator(0.1, 50000.0, 2))
         self.diameter_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.diameter_input.setText("")
+        
         self.input_layout.addWidget(self.diameter_input, row, 1)
         
         self.diameter_hint = QLabel("直接输入直径值")
@@ -141,11 +141,11 @@ class 罐体重量(CalculatorBase):
         self.height_label.setStyleSheet(label_style)
         self.input_layout.addWidget(self.height_label, row, 0)
         
-        self.height_input = QLineEdit()
+        self.height_input = QLineEdit("5000")
         self.height_input.setPlaceholderText("例如: 5000")
         self.height_input.setValidator(QDoubleValidator(0.1, 50000.0, 2))
         self.height_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.height_input.setText("")
+        
         self.input_layout.addWidget(self.height_input, row, 1)
         
         self.height_hint = QLabel("直接输入高度值")
@@ -160,11 +160,11 @@ class 罐体重量(CalculatorBase):
         self.shell_thickness_label.setStyleSheet(label_style)
         self.input_layout.addWidget(self.shell_thickness_label, row, 0)
         
-        self.shell_thickness_input = QLineEdit()
+        self.shell_thickness_input = QLineEdit("6.0")
         self.shell_thickness_input.setPlaceholderText("例如: 6.0")
         self.shell_thickness_input.setValidator(QDoubleValidator(1.0, 100.0, 1))
         self.shell_thickness_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.shell_thickness_input.setText("")
+        
         self.input_layout.addWidget(self.shell_thickness_input, row, 1)
         
         self.shell_thickness_hint = QLabel("直接输入壁厚值")
@@ -179,11 +179,11 @@ class 罐体重量(CalculatorBase):
         self.cone_height_label.setStyleSheet(label_style)
         self.input_layout.addWidget(self.cone_height_label, row, 0)
         
-        self.cone_height_input = QLineEdit()
+        self.cone_height_input = QLineEdit("1200")
         self.cone_height_input.setPlaceholderText("例如: 1200")
         self.cone_height_input.setValidator(QDoubleValidator(0.1, 10000.0, 2))
         self.cone_height_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.cone_height_input.setText("")
+        
         self.input_layout.addWidget(self.cone_height_input, row, 1)
         
         self.cone_height_hint = QLabel("直接输入锥体高度")
@@ -198,11 +198,11 @@ class 罐体重量(CalculatorBase):
         self.nozzle_diameter_label.setStyleSheet(label_style)
         self.input_layout.addWidget(self.nozzle_diameter_label, row, 0)
         
-        self.nozzle_diameter_input = QLineEdit()
+        self.nozzle_diameter_input = QLineEdit("100")
         self.nozzle_diameter_input.setPlaceholderText("例如: 100")
         self.nozzle_diameter_input.setValidator(QDoubleValidator(0.01, 50000.0, 3))
         self.nozzle_diameter_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.nozzle_diameter_input.setText("")
+        
         self.input_layout.addWidget(self.nozzle_diameter_input, row, 1)
         
         self.nozzle_diameter_hint = QLabel("直接输入锥口直径")
@@ -217,11 +217,11 @@ class 罐体重量(CalculatorBase):
         self.length_label.setStyleSheet(label_style)
         self.input_layout.addWidget(self.length_label, row, 0)
         
-        self.length_input = QLineEdit()
+        self.length_input = QLineEdit("5000")
         self.length_input.setPlaceholderText("例如: 5000")
-        self.length_input.setValidator(QDoubleValidator(0.1, 50.0, 2))
+        self.length_input.setValidator(QDoubleValidator(0.1, 50000.0, 2))
         self.length_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.length_input.setText("")
+        
         self.input_layout.addWidget(self.length_input, row, 1)
         
         self.length_hint = QLabel("直接输入长度值")
@@ -236,11 +236,11 @@ class 罐体重量(CalculatorBase):
         self.liquid_level_label.setStyleSheet(label_style)
         self.input_layout.addWidget(self.liquid_level_label, row, 0)
         
-        self.liquid_level_input = QLineEdit()
+        self.liquid_level_input = QLineEdit("1000")
         self.liquid_level_input.setPlaceholderText("例如: 1000")
-        self.liquid_level_input.setValidator(QDoubleValidator(0.0, 50.0, 2))
+        self.liquid_level_input.setValidator(QDoubleValidator(0.0, 50000.0, 2))
         self.liquid_level_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.liquid_level_input.setText("")
+        
         self.input_layout.addWidget(self.liquid_level_input, row, 1)
         
         self.liquid_level_hint = QLabel("直接输入液位高度")
@@ -255,11 +255,11 @@ class 罐体重量(CalculatorBase):
         self.sphere_thickness_label.setStyleSheet(label_style)
         self.input_layout.addWidget(self.sphere_thickness_label, row, 0)
         
-        self.sphere_thickness_input = QLineEdit()
+        self.sphere_thickness_input = QLineEdit("6.0")
         self.sphere_thickness_input.setPlaceholderText("例如: 6.0")
         self.sphere_thickness_input.setValidator(QDoubleValidator(1.0, 100.0, 1))
         self.sphere_thickness_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.sphere_thickness_input.setText("")
+        
         self.input_layout.addWidget(self.sphere_thickness_input, row, 1)
         
         self.sphere_thickness_hint = QLabel("直接输入壁厚值")
@@ -288,11 +288,11 @@ class 罐体重量(CalculatorBase):
         density_label.setStyleSheet(label_style)
         material_layout.addWidget(density_label, row, 0)
         
-        self.density_input = QLineEdit()
+        self.density_input = QLineEdit("7930")
         self.density_input.setPlaceholderText("例如: 7930")
         self.density_input.setValidator(QDoubleValidator(100, 20000, 2))
         self.density_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.density_input.setText("")
+        
         material_layout.addWidget(self.density_input, row, 1)
         
         self.material_combo = QComboBox()
@@ -321,11 +321,11 @@ class 罐体重量(CalculatorBase):
         liquid_density_label.setStyleSheet(label_style)
         material_layout.addWidget(liquid_density_label, row, 0)
         
-        self.liquid_density_input = QLineEdit()
+        self.liquid_density_input = QLineEdit("1000")
         self.liquid_density_input.setPlaceholderText("例如: 1000")
         self.liquid_density_input.setValidator(QDoubleValidator(0, 2000, 0))
         self.liquid_density_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.liquid_density_input.setText("")
+        
         material_layout.addWidget(self.liquid_density_input, row, 1)
         
         self.liquid_density_hint = QLabel("水: 1000 kg/m³")
@@ -540,7 +540,7 @@ class 罐体重量(CalculatorBase):
                 
                 # 计算液体重量
                 liquid_weight = self.calculate_cone_liquid_weight(
-                    diameter, height, cone_height, liquid_density
+                    diameter, height, cone_height, nozzle_diameter, liquid_density
                 )
                 
             elif tank_type == "平底罐":
@@ -636,7 +636,7 @@ class 罐体重量(CalculatorBase):
                 inputs["壁厚_mm"] = t * 1000
                 inputs["锥高_mm"] = h_cone * 1000
                 tank_weight = self.calculate_cone_tank_weight(D, H, t, h_cone, d, material_density)
-                liquid_weight = self.calculate_cone_liquid_weight(D, H, h_cone, liquid_density)
+                liquid_weight = self.calculate_cone_liquid_weight(D, H, h_cone, d, liquid_density)
             elif tank_type == "平底罐":
                 H = float(self.height_input.text() or 0) / 1000
                 t = float(self.shell_thickness_input.text() or 0) / 1000
@@ -661,7 +661,7 @@ class 罐体重量(CalculatorBase):
                 tank_weight = self.calculate_horizontal_tank_weight(D, L, t, material_density)
                 liquid_weight = self.calculate_horizontal_liquid_weight(D, L, h, liquid_density)
             elif tank_type == "球罐":
-                t = float(self.shell_thickness_input.text() or 0) / 1000
+                t = float(self.sphere_thickness_input.text() or 0) / 1000
                 h = float(self.liquid_level_input.text() or 0) / 1000
                 inputs["壁厚_mm"] = t * 1000
                 inputs["液位_mm"] = h * 1000
@@ -695,7 +695,7 @@ class 罐体重量(CalculatorBase):
         cone_area = math.pi * (R_large + r_small) * cone_slant_height
         cone_volume = cone_area * t
         
-        # 罐底面积 (平的)
+        # 顶盖平板（锥底罐底部为锥体，平板为顶部封盖）
         bottom_area = math.pi * (R_large**2)
         bottom_volume = bottom_area * t
         
@@ -705,17 +705,19 @@ class 罐体重量(CalculatorBase):
         
         return total_weight
     
-    def calculate_cone_liquid_weight(self, D, H, h_cone, liquid_density):
-        """计算锥体罐液体重量"""
+    def calculate_cone_liquid_weight(self, D, H, h_cone, d, liquid_density):
+        """计算锥体罐液体重量（满罐：筒体 + 锥台）"""
         # 筒体部分液体体积
         cylinder_volume = math.pi * (D/2)**2 * H
-        
-        # 锥体部分液体体积
-        cone_volume = (1/3) * math.pi * (D/2)**2 * h_cone
-        
+
+        # 锥体部分为圆台（大端 R、小端 r=d/2）: V = (π·h/3)·(R² + R·r + r²)
+        R = D / 2
+        r = d / 2
+        cone_volume = (math.pi * h_cone / 3.0) * (R**2 + R*r + r**2)
+
         total_volume = cylinder_volume + cone_volume
         liquid_weight = total_volume * liquid_density
-        
+
         return liquid_weight
     
     def calculate_flat_tank_weight(self, D, H, t, density):
@@ -888,14 +890,14 @@ class 罐体重量(CalculatorBase):
         self.type_button_group.button(0).setChecked(True)
         self.on_tank_type_changed(self.type_button_group.button(0))
         
-        # 尺寸参数
-        self.diameter_input.setText("3.0")
-        self.height_input.setText("5.0")
+        # 尺寸参数（输入框单位为 mm，恢复出厂默认值）
+        self.diameter_input.setText("3000")
+        self.height_input.setText("5000")
         self.shell_thickness_input.setText("6.0")
-        self.cone_height_input.setText("1.2")
-        self.nozzle_diameter_input.setText("0.1")
-        self.length_input.setText("5.0")
-        self.liquid_level_input.setText("1.0")
+        self.cone_height_input.setText("1200")
+        self.nozzle_diameter_input.setText("100")
+        self.length_input.setText("5000")
+        self.liquid_level_input.setText("1000")
         self.sphere_thickness_input.setText("6.0")
         
         # 材料参数

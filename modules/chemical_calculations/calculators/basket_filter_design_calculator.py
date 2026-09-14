@@ -360,23 +360,25 @@ class 篮式过滤器(CalculatorBase):
         for widget, value in defaults:
             widget.setText(value)
         
-        # 下拉框选项
-        materials = [
-            "304不锈钢", "316不锈钢", "316L不锈钢", "碳钢",
-            "双相钢2205", "哈氏合金C276", "钛合金", "聚丙烯(PP)", "聚四氟乙烯(PTFE)"
-        ]
-        self.material_combo.addItems(materials)
+        # 下拉框选项（本方法会被"清空"再次调用，仅在无选项时填充，避免条目重复累加）
+        if self.material_combo.count() == 0:
+            materials = [
+                "304不锈钢", "316不锈钢", "316L不锈钢", "碳钢",
+                "双相钢2205", "哈氏合金C276", "钛合金", "聚丙烯(PP)", "聚四氟乙烯(PTFE)"
+            ]
+            self.material_combo.addItems(materials)
         self.material_combo.setCurrentText("304不锈钢")
-        
+
         # 法兰口径选项 - 与压降计算模块保持一致
-        flange_options = [
-            "DN10 [10mm]", "DN15 [15mm]", "DN20 [20mm]", "DN25 [25mm]",
-            "DN32 [32mm]", "DN40 [40mm]", "DN50 [50mm]", "DN65 [65mm]", 
-            "DN80 [80mm]", "DN100 [100mm]", "DN125 [125mm]", "DN150 [150mm]",
-            "DN200 [200mm]", "DN250 [250mm]", "DN300 [300mm]", "DN350 [350mm]",
-            "DN400 [400mm]", "DN450 [450mm]", "DN500 [500mm]"
-        ]
-        self.flange_size_combo.addItems(flange_options)
+        if self.flange_size_combo.count() == 0:
+            flange_options = [
+                "DN10 [10mm]", "DN15 [15mm]", "DN20 [20mm]", "DN25 [25mm]",
+                "DN32 [32mm]", "DN40 [40mm]", "DN50 [50mm]", "DN65 [65mm]", 
+                "DN80 [80mm]", "DN100 [100mm]", "DN125 [125mm]", "DN150 [150mm]",
+                "DN200 [200mm]", "DN250 [250mm]", "DN300 [300mm]", "DN350 [350mm]",
+                "DN400 [400mm]", "DN450 [450mm]", "DN500 [500mm]"
+            ]
+            self.flange_size_combo.addItems(flange_options)
         self.flange_size_combo.setCurrentText("DN100 [100mm]")
     
     # ==================== 核心计算方法 ====================
@@ -511,7 +513,8 @@ class 篮式过滤器(CalculatorBase):
         
         # 4. 过滤篮筐重量
         part1 = math.pi * filter_diameter/1000 * filter_height/1000 * 0.003 * 8 * 1000
-        part2 = (filter_diameter/1000/2)**2 * math.pi * 0.003 * 8
+        # 篮筐底板：体积(m³)×钢密度 8000 kg/m³（原式漏乘 1000，底板重量偏小 1000 倍）
+        part2 = (filter_diameter/1000/2)**2 * math.pi * 0.003 * 8 * 1000
         basket_weight = part1 + part2
         basket_weight_rounded = self.round_value(basket_weight, 'weight')
         
@@ -634,14 +637,16 @@ class 篮式过滤器(CalculatorBase):
             screen_diameter_rounded = self.round_value(screen_diameter, 'dimension')
             filter_diameter_rounded = self.get_filter_diameter_value(screen_diameter_rounded)
 
+            # 注意：screen_diameter / screen_height / pipe_diameter 三个函数返回的已是 mm，
+            # 不能再 ×1000（历史记录曾因此放大 1000 倍）
             outputs = {
                 "丝径_mm": round(wire_diameter * 1000, 4),
                 "有效面积_m2": round(effective_area, 4),
-                "筛网直径_mm": round(screen_diameter * 1000, 1),
-                "筛网高度_mm": round(screen_height * 1000, 1),
+                "筛网直径_mm": round(screen_diameter, 1),
+                "筛网高度_mm": round(screen_height, 1),
                 "压降_kPa": round(pressure_drop, 2),
                 "应力因子": round(stress_factor, 3),
-                "管道直径_mm": round(pipe_diameter * 1000, 1),
+                "管道直径_mm": round(pipe_diameter, 1),
                 "过滤器直径_mm": filter_diameter_rounded
             }
         except Exception as e:
@@ -758,7 +763,7 @@ class 篮式过滤器(CalculatorBase):
     • 过滤速度: {inputs['velocity']:.3f} m/s
 
     结构与材料参数:
-    • 滤网丝径: {float(self.wire_diameter_input.text()):.6f} m
+    • 滤网丝径: {self.calculate_wire_diameter(inputs['mesh_size']):.6f} m
     • 支撑网厚度: {inputs['support_thickness']:.4f} m
     • 材料许用应力: {inputs['stress']:.1f} MPa
     • 法兰口径: {flange_dn}
@@ -833,6 +838,8 @@ class 篮式过滤器(CalculatorBase):
 
     注意:
     • 压降应小于允许压降，应力系数应小于1.0
+    • 压降式为等效毛细通道估算（特征尺寸取滤网丝径），用于方案阶段比较，
+      精确压降应以滤网厂家提供的流量-压降曲线为准
     • 实际设计应考虑安全系数和制造工艺
     • 计算结果仅供参考，最终设计需经专业工程师审核"""
     
@@ -908,17 +915,28 @@ class 篮式过滤器(CalculatorBase):
             QMessageBox.warning(self, "复制失败", f"复制时发生错误: {str(e)}")
     
     def get_project_info(self):
-        return {
-            "project_name": "篮式过滤器设计计算",
-            "calculator_name": "篮式过滤器设计计算器",
-            "version": "1.0",
-            "description": "根据流体参数、工况条件和过滤要求，进行篮式过滤器设计和压降计算"
-        }
+        """获取工程信息 - 返回 dict（导出契约：与其它计算器统一键名）"""
+        try:
+            saved_info = {}
+            if getattr(self, "data_manager", None):
+                saved_info = self.data_manager.get_project_info()
+            return {
+                'company_name': saved_info.get('company_name', ''),
+                'project_number': saved_info.get('project_number', ''),
+                'project_name': saved_info.get('project_name', ''),
+                'subproject_name': saved_info.get('subproject_name', ''),
+                'report_number': ''
+            }
+        except Exception as e:
+            print(f"获取工程信息失败: {e}")
+            return {}
 
     def generate_report(self):
+        """生成计算书 - 返回纯文本；未计算返回 None（不生成空文件）"""
         content = self.result_text.toPlainText().strip()
         if not content:
-            return "尚未进行计算。"
+            QMessageBox.warning(self, "生成失败", "请先进行计算再生成计算书")
+            return None
         lines = ["篮式过滤器设计计算报告", "=" * 50, "", content]
         return "\n".join(lines)
 

@@ -40,7 +40,7 @@ SUBSTANCE_DB = {
     "氯仿":   {"antoine": [6.95465, 1170.97, 226.23], "mw": 119.38, "r": 2.8700, "q": 2.4100},
     "二氯甲烷": {"antoine": [7.08030, 1138.91, 231.45], "mw": 84.93, "r": 2.8980, "q": 2.3220},
     "1-丙醇": {"antoine": [8.37895, 1788.02, 227.44], "mw": 60.10, "r": 2.7799, "q": 2.5080},
-    "2-丁醇": {"antoine": [7.36366, 1305.20, 173.40], "mw": 74.12, "r": 3.3520, "q": 2.8880},
+    "2-丁醇": {"antoine": [7.20455, 1158.67, 168.47], "mw": 74.12, "r": 3.9241, "q": 3.6640},
 }
 
 # 预设二元交互参数数据库
@@ -48,6 +48,17 @@ SUBSTANCE_DB = {
 # Wilson: Δλ12 (J/mol), Δλ21 (J/mol)
 # NRTL: Δg12 (J/mol), Δg21 (J/mol), α12
 # UNIQUAC: Δu12 (J/mol), Δu21 (J/mol)
+#
+# ⚠ 单位约定说明（2026-09-13 对照文献数值实验核实）：
+# 原始来源单位不统一，已逐对换算为 J/mol。判定依据（1 atm 泡点/共沸点）：
+#   - 乙醇-水、乙醇-苯、丙酮-水、甲醇-丙酮 的 Wilson/NRTL 原为 cal/mol（×4.184 换算）——
+#     仅按 cal 解释才能复现乙醇-水共沸 78.15°C@x=0.894、乙醇-苯共沸 68.2°C、
+#     丙酮-水 x=0.1→68.76°C/y=0.731（Lange's）等文献锚点；
+#   - 其余参数按 J/mol 使用：甲醇-水 NRTL 与 DECHEMA 数据偏差 <0.3°C，
+#     苯-甲苯/乙酸-水/甲醇-丙酮(UNIQUAC/Wilson) 均以 J/mol 吻合；
+#   - UNIQUAC 参数全部为 J/mol（按 cal 解释会出现 y>1 的非物理解）。
+#   - 已知局限：甲醇-水 Wilson/UNIQUAC、乙酸-水 UNIQUAC、乙醇-苯 UNIQUAC
+#     与文献偏差 2~7°C（参数集精度有限），结果仅供参考。
 BINARY_PARAMS_DB = {
     ("甲醇", "水"): {
         "Wilson":  {"lambda12": 122.6, "lambda21": 658.3},
@@ -55,13 +66,13 @@ BINARY_PARAMS_DB = {
         "UNIQUAC": {"u12": -255.6, "u21": 1287.0},
     },
     ("乙醇", "水"): {
-        "Wilson":  {"lambda12": 181.0, "lambda21": 511.5},
-        "NRTL":    {"g12": -118.3, "g21": 1636.6, "alpha": 0.2974},
+        "Wilson":  {"lambda12": 757.3, "lambda21": 2140.1},   # 原 181.0/511.5 cal/mol ×4.184
+        "NRTL":    {"g12": -495.0, "g21": 6847.5, "alpha": 0.2974},  # 原 -118.3/1636.6 cal/mol ×4.184
         "UNIQUAC": {"u12": 66.57, "u21": 1704.5},
     },
     ("丙酮", "水"): {
-        "Wilson":  {"lambda12": 221.3, "lambda21": 1319.2},
-        "NRTL":    {"g12": 335.4, "g21": 1337.4, "alpha": 0.3083},
+        "Wilson":  {"lambda12": 925.9, "lambda21": 5519.2},   # 原 221.3/1319.2 cal/mol ×4.184
+        "NRTL":    {"g12": 1403.3, "g21": 5595.2, "alpha": 0.3083},  # 原 335.4/1337.4 cal/mol ×4.184
         "UNIQUAC": {"u12": 695.0, "u21": 924.9},
     },
     ("苯", "甲苯"): {
@@ -70,13 +81,13 @@ BINARY_PARAMS_DB = {
         "UNIQUAC": {"u12": 144.6, "u21": -55.7},
     },
     ("乙醇", "苯"): {
-        "Wilson":  {"lambda12": 1415.7, "lambda21": 231.8},
-        "NRTL":    {"g12": 1510.7, "g21": 262.6, "alpha": 0.3008},
+        "Wilson":  {"lambda12": 5923.3, "lambda21": 969.9},   # 原 1415.7/231.8 cal/mol ×4.184
+        "NRTL":    {"g12": 6320.8, "g21": 1098.7, "alpha": 0.3008},  # 原 1510.7/262.6 cal/mol ×4.184
         "UNIQUAC": {"u12": 1246.6, "u21": 166.5},
     },
     ("甲醇", "丙酮"): {
         "Wilson":  {"lambda12": 561.8, "lambda21": 458.7},
-        "NRTL":    {"g12": 212.1, "g21": 366.7, "alpha": 0.3084},
+        "NRTL":    {"g12": 887.4, "g21": 1534.3, "alpha": 0.3084},  # 原 212.1/366.7 cal/mol ×4.184
         "UNIQUAC": {"u12": 67.87, "u21": -321.3},
     },
     ("乙酸", "水"): {
@@ -315,7 +326,7 @@ class VLEActivityCoefficientCalculator(CalculatorBase):
         temp_label.setStyleSheet(label_style)
         condition_layout.addWidget(temp_label, 0, 0)
 
-        self.temperature_input = QLineEdit()
+        self.temperature_input = QLineEdit("78.3")
         self.temperature_input.setPlaceholderText("例如：78.3")
         self.temperature_input.setValidator(QDoubleValidator(-100, 500, 2))
         self.temperature_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -753,6 +764,18 @@ class VLEActivityCoefficientCalculator(CalculatorBase):
             binary_params = self.get_binary_params(components)
             T_K = T_C + C_TO_K
 
+            # 无预设参数的组分对提示（全 0 参数 = 理想溶液假设）
+            zero_pairs = []
+            for (i, j), p in binary_params.items():
+                vals = [v for k, v in p.items() if k != "alpha"]
+                if all(abs(v) < 1e-9 for v in vals):
+                    zero_pairs.append(f"{components[i]['name']}—{components[j]['name']}")
+            zero_note = ""
+            if zero_pairs:
+                zero_note = ("\n\n⚠ 注意: 组分对 " + "、".join(zero_pairs) +
+                             " 无预设交互参数（按 0 处理，即理想溶液假设），"
+                             "请查文献后手动填入二元参数再计算。")
+
             # 保存计算结果用于报告
             self._last_calc_results = {
                 "T_C": T_C, "P": P, "model": model, "calc_type": calc_type,
@@ -767,6 +790,8 @@ class VLEActivityCoefficientCalculator(CalculatorBase):
                     "gamma": gamma, "Psat": Psat, "K": K, "iters": iters
                 })
                 self._format_bubble_result(components, x, y, gamma, K, T_bub, iters, model, P)
+                if zero_note:
+                    self.result_text.setPlainText(self.result_text.toPlainText() + zero_note)
 
             elif calc_type == "露点计算":
                 y_input = x.copy()  # 输入为气相组成
@@ -777,6 +802,8 @@ class VLEActivityCoefficientCalculator(CalculatorBase):
                     "gamma": gamma, "Psat": Psat, "K": K, "iters": iters
                 })
                 self._format_dew_result(components, x_calc, y_input, gamma, K, T_dew, iters, model, P)
+                if zero_note:
+                    self.result_text.setPlainText(self.result_text.toPlainText() + zero_note)
 
             else:  # 等温闪蒸
                 z = x.copy()
@@ -792,6 +819,8 @@ class VLEActivityCoefficientCalculator(CalculatorBase):
                     "gamma": gamma, "Psat": Psat, "K": K, "V": V
                 })
                 self._format_flash_result(components, z, x_flash, y_flash, gamma, K, V, T_C, model, P)
+                if zero_note:
+                    self.result_text.setPlainText(self.result_text.toPlainText() + zero_note)
 
         except ValueError:
             self.result_text.setPlainText("⚠ 输入参数格式错误，请检查输入值。")
@@ -1008,10 +1037,11 @@ class VLEActivityCoefficientCalculator(CalculatorBase):
         }
 
     def generate_report(self):
-        """生成文本报告内容"""
+        """生成文本报告内容 - 返回 str/None（None 表示尚未计算，不生成空文件）"""
         r = self._last_calc_results
-        if not r:
-            return "尚未进行计算。"
+        if not r or "计算结果" not in self.result_text.toPlainText():
+            QMessageBox.warning(self, "生成失败", "请先进行计算再生成计算书")
+            return None
         lines = []
         lines.append("气液平衡计算报告（活度系数法）")
         lines.append("=" * 50)

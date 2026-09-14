@@ -421,13 +421,13 @@ class 管道跨距(CalculatorBase):
     def setup_default_values(self):
         """设置默认值"""
         # 不预先填入数值，只设置下拉框默认选项
-        self.od_combo.setCurrentIndex(8)  # DN100
+        self.od_combo.setCurrentIndex(9)  # DN100 (114.3 mm，配 SCH40 壁厚 6.02 mm)
         self.thickness_combo.setCurrentIndex(3)  # SCH 40
         self.material_combo.setCurrentIndex(1)  # 碳钢
         self.fluid_combo.setCurrentIndex(2)  # 水
-        self.insulation_combo.setCurrentIndex(3)  # 标准保温
-        self.insulation_density_combo.setCurrentIndex(2)  # 硅酸铝
-        self.stress_combo.setCurrentIndex(1)  # 碳钢
+        self.insulation_combo.setCurrentIndex(3)  # 标准保温 50mm
+        self.insulation_density_combo.setCurrentIndex(3)  # 硅酸铝 200 kg/m³
+        self.stress_combo.setCurrentIndex(1)  # 碳钢(A53) 137.9 MPa
     
     def on_od_changed(self, text):
         """处理外径选择变化"""
@@ -750,7 +750,7 @@ class 管道跨距(CalculatorBase):
 
     安全评估:
     • 应力利用率: {total_weight * recommended_span**2 / (8 * Z) / allowable_stress * 100:.1f}%
-    • 挠度利用率: {total_weight * recommended_span**4 / (384 * elastic_modulus * I) / max_deflection * 100:.1f}%
+    • 挠度利用率: {5 * total_weight * recommended_span**4 / (384 * elastic_modulus * I) / max_deflection * 100:.1f}%
 
 ══════════
 计算公式
@@ -786,14 +786,7 @@ class 管道跨距(CalculatorBase):
             QMessageBox.critical(self, "计算错误", f"计算过程中发生错误: {str(e)}")
 
     def clear_inputs(self):
-        """清空所有输入"""
-        self.od_combo.setCurrentIndex(0)
-        self.thickness_combo.setCurrentIndex(0)
-        self.material_combo.setCurrentIndex(0)
-        self.fluid_combo.setCurrentIndex(0)
-        self.insulation_combo.setCurrentIndex(0)
-        self.insulation_density_combo.setCurrentIndex(0)
-        self.stress_combo.setCurrentIndex(0)
+        """清空所有输入并恢复出厂默认值（含下拉框联动回填）"""
         self.od_input.clear()
         self.thickness_input.clear()
         self.fluid_density_input.clear()
@@ -801,6 +794,15 @@ class 管道跨距(CalculatorBase):
         self.insulation_density_input.clear()
         self.stress_input.clear()
         self.result_text.clear()
+        # 恢复默认选项；若索引未变化不会触发信号，故显式回填一次
+        self.setup_default_values()
+        self.on_od_changed(self.od_combo.currentText())
+        self.on_thickness_changed(self.thickness_combo.currentText())
+        self.on_material_changed(self.material_combo.currentText())
+        self.on_fluid_changed(self.fluid_combo.currentText())
+        self.on_insulation_changed(self.insulation_combo.currentText())
+        self.on_insulation_density_changed(self.insulation_density_combo.currentText())
+        self.on_stress_changed(self.stress_combo.currentText())
 
     def _get_history_data(self):
         """提供历史记录数据"""
@@ -881,7 +883,7 @@ class 管道跨距(CalculatorBase):
             # 检查条件
             if not result_text or ("计算结果" not in result_text and "跨距计算结果" not in result_text):
                 QMessageBox.warning(self, "生成失败", "请先进行计算再生成计算书")
-                return ""
+                return None
             
             # 获取工程信息
             project_info = self.get_project_info()
@@ -929,7 +931,7 @@ class 管道跨距(CalculatorBase):
             
         except Exception as e:
             print(f"生成计算书失败: {e}")
-            return ""
+            return None
 
     def download_docx_report(self):
         """生成DOCX格式计算书"""

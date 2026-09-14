@@ -508,7 +508,7 @@ class 管径计算(CalculatorBase):
         self.temp_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.temp_label.setStyleSheet(label_style)
 
-        self.temp_input = QLineEdit()
+        self.temp_input = QLineEdit("20")
         self.temp_input.setPlaceholderText("例如: 350")
         self.temp_input.setValidator(QDoubleValidator(100.0, 600.0, 1))
         self.temp_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -729,6 +729,8 @@ class 管径计算(CalculatorBase):
         
         self.fluid_combo.clear()
         self.fluid_combo.addItems(fluid_options)
+        # 默认选"水及粘度相似的液体"，自动填充推荐流速/温度/流量
+        self.fluid_combo.setCurrentIndex(2)
         
         # 设置流体数据字典（密度值）
         self.fluid_data = {

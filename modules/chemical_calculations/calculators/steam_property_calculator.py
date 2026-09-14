@@ -498,15 +498,17 @@ class SteamPropertyCalculator(CalculatorBase):
             "自定义压力"
         ]
         combo_box.addItems(options)
-        combo_box.setCurrentIndex(0)
-    
+        # 默认选中典型工况 0.6 MPa 中压蒸汽
+        combo_box.setCurrentIndex(4)
+
     def setup_temperature_options(self, combo_box):
         """设置温度选项"""
         options = [ "- 请选择温度 -", "100 °C - 饱和蒸汽", "120 °C - 饱和蒸汽", "150 °C - 饱和蒸汽", "165 °C - 饱和蒸汽", "180 °C - 饱和蒸汽", "200 °C - 过热蒸汽", "250 °C - 过热蒸汽", "300 °C - 过热蒸汽", "400 °C - 高温蒸汽", "500 °C - 高温蒸汽", "600 °C - 超高温蒸汽",
             "自定义温度"
         ]
         combo_box.addItems(options)
-        combo_box.setCurrentIndex(0)
+        # 默认选中典型工况 165 °C 饱和蒸汽
+        combo_box.setCurrentIndex(4)
     
     def on_mode_button_clicked(self, button):
         """处理计算模式按钮点击"""
@@ -592,6 +594,8 @@ class SteamPropertyCalculator(CalculatorBase):
                 "自定义比焓"
             ]
             self.other_param2_combo.addItems(enthalpy_options)
+            # 默认选中典型值 2800 kJ/kg 过热蒸汽
+            self.other_param2_combo.setCurrentIndex(5)
             self.other_param2_input.setValidator(QDoubleValidator(0.1, 5000.0, 6))
             self.other_param2_input.setPlaceholderText("例如: 2800")
             
@@ -609,6 +613,8 @@ class SteamPropertyCalculator(CalculatorBase):
                 "自定义比熵"
             ]
             self.other_param2_combo.addItems(entropy_options)
+            # 默认选中典型值 7.0 kJ/(kg·K) 过热蒸汽
+            self.other_param2_combo.setCurrentIndex(5)
             self.other_param2_input.setValidator(QDoubleValidator(0.1, 10.0, 6))
             self.other_param2_input.setPlaceholderText("例如: 7.0")
     

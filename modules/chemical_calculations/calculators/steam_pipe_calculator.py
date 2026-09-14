@@ -18,7 +18,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
                         CLEAR_BTN_STYLE, DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
 from calculator_base import CalculatorBase
-from common_constants import C_TO_K
+from common_constants import C_TO_K, ATM_PRESSURE_MPA
 from utils.docx_utils import ReportExporter
 # DOCX 报告导出
 
@@ -159,12 +159,12 @@ class 蒸汽管径流量(CalculatorBase):
         row = 0
         
         # 蒸汽压力
-        pressure_label = QLabel("蒸汽压力 (MPa):")
+        pressure_label = QLabel("蒸汽压力 (MPa, 表压):")
         pressure_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         pressure_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(pressure_label, row, 0)
         
-        self.pressure_input = QLineEdit()
+        self.pressure_input = QLineEdit("1.0")
         self.pressure_input.setPlaceholderText("例如: 1.0")
         self.pressure_input.setValidator(QDoubleValidator(0.01, 20.0, 6))
         self.pressure_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -185,7 +185,7 @@ class 蒸汽管径流量(CalculatorBase):
         temperature_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(temperature_label, row, 0)
         
-        self.temperature_input = QLineEdit()
+        self.temperature_input = QLineEdit("200")
         self.temperature_input.setPlaceholderText("例如: 200")
         self.temperature_input.setValidator(QDoubleValidator(100.0, 600.0, 6))
         self.temperature_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -206,7 +206,7 @@ class 蒸汽管径流量(CalculatorBase):
         self.flow_label_widget.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(self.flow_label_widget, row, 0)
         
-        self.flow_input = QLineEdit()
+        self.flow_input = QLineEdit("1000")
         self.flow_input.setPlaceholderText("例如: 1000")
         self.flow_input.setValidator(QDoubleValidator(1.0, 100000.0, 6))
         self.flow_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -228,7 +228,7 @@ class 蒸汽管径流量(CalculatorBase):
         self.diameter_label_widget.setVisible(False)
         input_layout.addWidget(self.diameter_label_widget, row, 0)
         
-        self.diameter_input = QLineEdit()
+        self.diameter_input = QLineEdit("50")
         self.diameter_input.setPlaceholderText("例如: 50")
         self.diameter_input.setValidator(QDoubleValidator(10.0, 1000.0, 6))
         self.diameter_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -344,7 +344,7 @@ class 蒸汽管径流量(CalculatorBase):
             "1.0 MPa - 中压蒸汽",
             "1.6 MPa - 高压蒸汽",
             "2.5 MPa - 高压蒸汽",
-            "4.0 MPa - 超高压蒸汽",
+            "4.0 MPa - 高压蒸汽",
             "自定义压力"
         ]
         self.pressure_combo.addItems(pressure_options)
@@ -502,11 +502,17 @@ class 蒸汽管径流量(CalculatorBase):
                 pass
     
     def clear_inputs(self):
-        """清空所有输入参数"""
-        for widget in self.findChildren(QLineEdit):
-            widget.clear()
-        for widget in self.findChildren(QComboBox):
-            widget.setCurrentIndex(0)
+        """清空所有输入参数（恢复出厂默认值）"""
+        # 先复位下拉框（触发联动清空输入框），再恢复默认值
+        self.pressure_combo.setCurrentIndex(0)
+        self.temperature_combo.setCurrentIndex(0)
+        self.flow_combo.setCurrentIndex(0)
+        self.diameter_combo.setCurrentIndex(0)
+        self.pressure_input.setText("1.0")
+        self.temperature_input.setText("200")
+        self.flow_input.setText("1000")
+        self.diameter_input.setText("50")
+        self.result_text.clear()
 
     def calculate_steam_pipe(self):
         """计算蒸汽管径或流量"""
@@ -521,9 +527,12 @@ class 蒸汽管径流量(CalculatorBase):
                 QMessageBox.warning(self, "输入错误", "请填写蒸汽压力和温度")
                 return
             
-            # 计算蒸汽密度
+            # 计算蒸汽密度（入参表压）
             steam_density = self.calculate_steam_density(pressure, temperature)
-            specific_volume = 1 / steam_density if steam_density > 0 else 0
+            if steam_density <= 0:
+                QMessageBox.warning(self, "计算错误", "蒸汽密度计算失败，请检查压力/温度输入")
+                return
+            specific_volume = 1 / steam_density
             
             if "根据流量计算管径" in mode:
                 flow_rate = float(self.flow_input.text() or 0)
@@ -541,9 +550,11 @@ class 蒸汽管径流量(CalculatorBase):
                 required_area = volume_flow / recommended_velocity
                 required_diameter = math.sqrt(4 * required_area / math.pi) * 1000  # mm
                 
-                # 推荐标准管径
+                # 推荐标准管径（向上取整，保证实际流速不超过推荐值）
                 standard_diameters = [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300]
-                recommended_diameter = min(standard_diameters, key=lambda x: abs(x - required_diameter))
+                recommended_diameter = next(
+                    (d for d in standard_diameters if d >= required_diameter),
+                    standard_diameters[-1])
                 
                 # 计算实际流速
                 actual_area = math.pi * (recommended_diameter / 1000 / 2) ** 2
@@ -609,7 +620,9 @@ class 蒸汽管径流量(CalculatorBase):
                 required_area = volume_flow / 25.0
                 required_diameter = math.sqrt(4 * required_area / math.pi) * 1000
                 standard_diameters = [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300]
-                recommended_diameter = min(standard_diameters, key=lambda x: abs(x - required_diameter))
+                recommended_diameter = next(
+                    (d for d in standard_diameters if d >= required_diameter),
+                    standard_diameters[-1])
                 actual_area = math.pi * (recommended_diameter / 1000 / 2) ** 2
                 actual_velocity = volume_flow / actual_area
                 outputs = {
@@ -642,7 +655,7 @@ class 蒸汽管径流量(CalculatorBase):
 ══════════
 
     计算模式: {mode}
-    蒸汽压力: {pressure} MPa
+    蒸汽压力: {pressure} MPa (表压) / {pressure + ATM_PRESSURE_MPA:.3f} MPa (绝压)
     蒸汽温度: {temperature} °C
     蒸汽密度: {steam_density:.4f} kg/m³
     蒸汽比容: {specific_volume:.4f} m³/kg
@@ -688,7 +701,7 @@ class 蒸汽管径流量(CalculatorBase):
 ══════════
 
     计算模式: {mode}
-    蒸汽压力: {pressure} MPa
+    蒸汽压力: {pressure} MPa (表压) / {pressure + ATM_PRESSURE_MPA:.3f} MPa (绝压)
     蒸汽温度: {temperature} °C
     蒸汽密度: {steam_density:.4f} kg/m³
     蒸汽比容: {specific_volume:.4f} m³/kg
@@ -722,35 +735,28 @@ class 蒸汽管径流量(CalculatorBase):
     • 对于重要应用，建议进行详细的水力计算
     • 计算结果仅供参考，实际应用请考虑具体工况"""
     
-    def calculate_steam_density(self, pressure_mpa, temperature_c):
-        """计算蒸汽密度（优先 IAPWS-IF97，失败则简化公式）"""
+    def calculate_steam_density(self, pressure_gauge_mpa, temperature_c):
+        """计算蒸汽密度（优先 IAPWS-IF97，失败则理想气体公式）
+
+        入参为表压 MPa，内部自动加标准大气压转绝压后查物性。
+        """
+        p_abs = pressure_gauge_mpa + ATM_PRESSURE_MPA
         temperature_k = temperature_c + C_TO_K
 
-        # 优先使用 IAPWS-IF97
+        # 优先使用 IAPWS-IF97（steam_properties 内部自动判饱和/过热区域）
         if _IAPWS_MODULE is not None:
             try:
-                # 判断是饱和还是过热：查饱和温度
-                T_sat = _IAPWS_MODULE.tsat_p(pressure_mpa)  # 饱和温度 °C
-                if temperature_c <= T_sat:
-                    # 饱和蒸汽 → Region 4 饱和气体密度
-                    props = _IAPWS_MODULE.region4_saturation(pressure_mpa)
-                    vg = props['vg']  # 比容 m³/kg
-                    return 1.0 / vg if vg > 0 else 0.1
-                else:
-                    # 过热蒸汽 → Region 2
-                    props = _IAPWS_MODULE.region2(pressure_mpa, temperature_c)
-                    v = props['v']  # 比容 m³/kg
-                    return 1.0 / v if v > 0 else 0.1
+                props = _IAPWS_MODULE.steam_properties(p_abs, temperature_c)
+                v = props['v']  # 比容 m³/kg
+                if v > 0:
+                    return 1.0 / v
             except Exception:
                 pass
 
-        # Fallback: 简化经验公式（误差较大，仅供参考）
-        pressure_bar = pressure_mpa * 10
-        if temperature_c < 200:
-            density = 0.6 * pressure_bar / (temperature_c + 100)
-        else:
-            density = 0.5 * pressure_bar / (temperature_c + 150)
-        return max(density, 0.1)
+        # Fallback: 理想气体状态方程 rho = P/(R·T)（过热区误差 ~1%）
+        if temperature_k <= 0 or p_abs <= 0:
+            return 0.1
+        return max(p_abs * 1000 / (0.4615 * temperature_k), 0.1)
     
     def get_project_info(self):
         """获取工程信息 - 返回 dict"""

@@ -9,6 +9,7 @@ from PySide6.QtGui import QDoubleValidator
 from PySide6.QtSvgWidgets import QSvgWidget
 import math
 import re
+import re
 from datetime import datetime
 from enum import Enum
 
@@ -527,11 +528,12 @@ class 换热器面积(CalculatorBase):
                 T_cold_in = kwargs.get('cold_in')
                 T_cold_out = kwargs.get('cold_out')
                 if all(v is not None for v in [T_hot_in, T_hot_out, T_cold_in, T_cold_out, heat_load, K]):
-                    delta_hot = abs(float(T_hot_in) - float(T_hot_out))
-                    delta_cold = abs(float(T_cold_out) - float(T_cold_in))
-                    if delta_hot > 0 and delta_cold > 0 and delta_hot != delta_cold:
+                    # 逆流端部温差（示意图按逆流估算）
+                    dT1 = abs(float(T_hot_in) - float(T_cold_out))
+                    dT2 = abs(float(T_hot_out) - float(T_cold_in))
+                    if dT1 > 0 and dT2 > 0:
                         import math
-                        lmtd = (delta_hot - delta_cold) / math.log(delta_hot / delta_cold)
+                        lmtd = dT1 if abs(dT1 - dT2) < 1e-10 else (dT1 - dT2) / math.log(dT1 / dT2)
                         area = (float(heat_load) * 1000) / (float(K) * lmtd)
                         kwargs['area'] = round(area, 1)
             except Exception:
@@ -975,6 +977,10 @@ class 换热器面积(CalculatorBase):
         
         self.input_widgets[key] = QLineEdit()
         self.input_widgets[key].setPlaceholderText(placeholder)
+        # 占位符形如"例如：X"时，自动以 X 作为默认值
+        m = re.match(r"^例如[:：]\s*([0-9.]+)", placeholder)
+        if m:
+            self.input_widgets[key].setText(m.group(1))
         self.input_widgets[key].setValidator(validator)
         self.input_widgets[key].setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.input_layout.addWidget(self.input_widgets[key], row, 1)
@@ -1106,6 +1112,13 @@ class 换热器面积(CalculatorBase):
                     return default
             return default
         return default
+
+    def _effective_k(self, K):
+        """计入污垢热阻后的有效传热系数: 1/K_eff = 1/K + Rf（Rf 单位 m²·K/W）"""
+        Rf = self.get_advanced_value("fouling_factor", 0.0) or 0.0
+        if K and K > 0 and Rf > 0:
+            return 1.0 / (1.0 / K + Rf)
+        return K
     
     def validate_inputs(self, inputs, required_fields):
         """验证输入参数是否完整"""
@@ -1255,7 +1268,7 @@ class 换热器面积(CalculatorBase):
 
                 if dT1 > 0 and dT2 > 0 and K and Q_W > 0:
                     lmtd = (dT1 - dT2) / math.log(dT1 / dT2) if dT1 != dT2 else dT1
-                    A_theo = Q_W / (K * lmtd)
+                    A_theo = Q_W / (self._effective_k(K) * lmtd)
                     A_design = A_theo * safety_factor
                     outputs.update({
                         "LMTD_C": round(lmtd, 1),
@@ -1314,10 +1327,12 @@ class 换热器面积(CalculatorBase):
             else:
                 ΔT_m = (ΔT1 - ΔT2) / math.log(ΔT1 / ΔT2)
             
-            # 传热面积
-            A_theoretical = Q / (K * ΔT_m)
+            # 传热面积（计入污垢热阻）
+            Rf = self.get_advanced_value("fouling_factor", 0.0) or 0.0
+            K_eff = self._effective_k(K)
+            A_theoretical = Q / (K_eff * ΔT_m)
             A_design = A_theoretical * safety_factor
-            
+
             # 计算面积裕度
             margin_percent = ((A_design / A_theoretical) - 1) * 100
             
@@ -1348,6 +1363,7 @@ class 换热器面积(CalculatorBase):
     • 设计传热面积: {A_design:.3f} m²
     • 面积裕量: {A_design - A_theoretical:.3f} m²
     • 面积裕度: {margin_percent:.1f}%
+{f"    • 计入污垢热阻 {Rf:.4f} m²·K/W 后 K_eff = {K_eff:.0f} W/(m²·K)" if Rf > 0 else ""}
 
     单位换算:
     • 理论面积: {A_theoretical * 10.7639:.1f} ft²
@@ -1450,8 +1466,10 @@ class 换热器面积(CalculatorBase):
             else:
                 ΔT_m = (ΔT1 - ΔT2) / math.log(ΔT1 / ΔT2)
             
-            # 传热面积
-            A_theoretical = Q_design / (K * ΔT_m)
+            # 传热面积（计入污垢热阻）
+            Rf = self.get_advanced_value("fouling_factor", 0.0) or 0.0
+            K_eff = self._effective_k(K)
+            A_theoretical = Q_design / (K_eff * ΔT_m)
             A_design = A_theoretical * safety_factor
             
             # 准备结果
@@ -1489,6 +1507,7 @@ class 换热器面积(CalculatorBase):
     • 理论传热面积: {A_theoretical:.3f} m²
     • 设计传热面积: {A_design:.3f} m²
     • 面积裕量: {A_design - A_theoretical:.3f} m²
+{f"    • 计入污垢热阻 {Rf:.4f} m²·K/W 后 K_eff = {K_eff:.0f} W/(m²·K)" if Rf > 0 else ""}
 
 ══════════
 计算说明
@@ -1603,8 +1622,10 @@ class 换热器面积(CalculatorBase):
             else:
                 ΔT_m = (ΔT1 - ΔT2) / math.log(ΔT1 / ΔT2)
             
-            # 6. 传热面积计算
-            A_theoretical = design_q / (K * ΔT_m)
+            # 6. 传热面积计算（计入污垢热阻）
+            Rf = self.get_advanced_value("fouling_factor", 0.0) or 0.0
+            K_eff = self._effective_k(K)
+            A_theoretical = design_q / (K_eff * ΔT_m)
             A_design = A_theoretical * safety_factor
             
             # 7. 准备结果
@@ -1651,6 +1672,7 @@ class 换热器面积(CalculatorBase):
     • 设计传热面积: {A_design:.3f} m²
     • 面积裕量: {A_design - A_theoretical:.3f} m²
     • 面积裕度: {((A_design/A_theoretical)-1)*100:.1f}%
+{f"    • 计入污垢热阻 {Rf:.4f} m²·K/W 后 K_eff = {K_eff:.0f} W/(m²·K)" if Rf > 0 else ""}
 
 ══════════
 计算说明
@@ -1931,8 +1953,10 @@ class 换热器面积(CalculatorBase):
             else:
                 dT_m = (dT1 - dT2) / math.log(dT1 / dT2)
 
-            # ── 面积 ──
-            A_theo = Q_design_W / (K * dT_m)
+            # ── 面积（计入污垢热阻） ──
+            Rf = self.get_advanced_value("fouling_factor", 0.0) or 0.0
+            K_eff = self._effective_k(K)
+            A_theo = Q_design_W / (K_eff * dT_m)
             A_design = A_theo * safety_factor
 
             # ── 结果输出 ──
@@ -1982,6 +2006,7 @@ class 换热器面积(CalculatorBase):
     • 理论面积: {A_theo:.3f} m²
     • 设计面积: {A_design:.3f} m²
     • 裕量: {A_design - A_theo:.3f} m²
+{f"    • 计入污垢热阻 {Rf:.4f} m²·K/W 后 K_eff = {K_eff:.0f} W/(m²·K)" if Rf > 0 else ""}
 
 ══════════
   计算说明

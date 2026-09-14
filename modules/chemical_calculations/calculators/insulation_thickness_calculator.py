@@ -405,8 +405,11 @@ class InsulationThicknessCalculator(CalculatorBase):
     # ──────────────────── 计算核心 ──────────────────────────────
     @staticmethod
     def _surface_htc(wind_speed, delta_t=None):
-        """表面传热系数 (W/m²·K)，GB/T 8175 近似"""
-        h_out = 11.63 + 7.12 * (wind_speed ** 0.6)
+        """表面传热系数 (W/m²·K)。
+        GB/T 8175-2008 §5.3.2：经济厚度/热损失计算 α 取常数 11.63（风速=0 时本式退化为此值）；
+        校核表面温度 α = 1.163·(6+3√ω)，化工设计手册室外式 α = 11.63 + 7.12·√ω。
+        """
+        h_out = 11.63 + 7.12 * (wind_speed ** 0.5) if wind_speed > 0 else 11.63
         h_in = 9.1 + 0.052 * (delta_t or 20)
         return max(h_out, h_in)
 
@@ -517,28 +520,44 @@ class InsulationThicknessCalculator(CalculatorBase):
 
         return best * 1000.0
 
+    @staticmethod
+    def _bisect_thickness(g, lo=0.0005, hi=1.0, tol=0.02):
+        """在 [lo, hi] (m) 上对单调函数 g(t) 二分求根。
+        g 应关于 t 单调且两端异号；无异号时返回偏差较小的端点。"""
+        glo, ghi = g(lo), g(hi)
+        if glo * ghi > 0:
+            return (lo if abs(glo) < abs(ghi) else hi) * 1000.0
+        best = (lo + hi) / 2
+        for _ in range(80):
+            mid = (lo + hi) / 2
+            gm = g(mid)
+            best = mid
+            if abs(gm) < tol:
+                break
+            if glo * gm <= 0:
+                hi = mid
+                ghi = gm
+            else:
+                lo = mid
+                glo = gm
+        return best * 1000.0
+
     def _surface_temp_method(self, equip_type, d1, lam, h,
                              ambient, equip_t, t_surf):
-        """表面温度法求厚度（Newton-Raphson）"""
-        t_guess = 0.010
-        for _ in range(80):
+        """表面温度法求厚度：解 t_calc(δ) = t_surf（二分法）"""
+        def g(t):
             if equip_type == "管道或圆筒形设备":
-                d2 = d1 + 2 * t_guess
+                d2 = d1 + 2 * t
                 r_ins = math.log(d2 / d1) / (2 * math.pi * lam)
                 heat = (equip_t - ambient) / (r_ins + 1 / (h * math.pi * d2))
                 t_calc = ambient + heat * (1 / (h * math.pi * d2))
             else:
-                r_ins = t_guess / lam
+                r_ins = t / lam
                 heat = (equip_t - ambient) / (r_ins + 1 / h)
                 t_calc = ambient + heat / h
+            return t_calc - t_surf
 
-            f = t_calc - t_surf
-            if abs(f) < 0.05:
-                break
-            t_guess += -f * 0.001 if f > 0 else 0.001
-            t_guess = max(t_guess, 0.001)
-
-        return t_guess * 1000.0
+        return self._bisect_thickness(g, tol=0.02)
 
     def _anti_condensation(self, equip_type, d1, lam,
                            ambient, equip_t, dew_point):
@@ -550,26 +569,20 @@ class InsulationThicknessCalculator(CalculatorBase):
 
     def _heat_loss_method(self, equip_type, d1, lam, h,
                           delta_t, q_limit):
-        """允许热损失法求厚度"""
-        t_guess = 0.010
-        for _ in range(80):
+        """允许热损失法求厚度：解 q_area(δ) = q_limit（二分法）"""
+        def g(t):
             if equip_type == "管道或圆筒形设备":
-                d2 = d1 + 2 * t_guess
+                d2 = d1 + 2 * t
                 r_ins = math.log(d2 / d1) / (2 * math.pi * lam)
                 r_surf = 1 / (h * math.pi * d2)
                 q = delta_t / (r_ins + r_surf)        # W/m
                 q_area = q / (math.pi * d2)           # W/m²
             else:
-                r_ins = t_guess / lam
+                r_ins = t / lam
                 q_area = delta_t / (r_ins + 1 / h)   # W/m²
+            return q_area - q_limit
 
-            f = q_area - q_limit
-            if abs(f) < 0.1:
-                break
-            t_guess += -f * 0.0001 if f > 0 else 0.0001
-            t_guess = max(t_guess, 0.001)
-
-        return t_guess * 1000.0
+        return self._bisect_thickness(g, tol=0.05)
 
     # ──────────────────── 结果显示 ──────────────────────────────
     def _display_result(self, thk_mm, calc_type, method_name, params):
@@ -630,9 +643,8 @@ class InsulationThicknessCalculator(CalculatorBase):
             f"                       ({thk_mm / 1000:.3f} m)",
             "",
             "【标准依据】",
-            "  GB/T 4272-2008   设备绝热技术通则",
-            "  GB/T 8175-2008   设备及管道绝热设计导则",
-            "  ASHRAE Fundamentals Handbook",
+            "  GB/T 8175        设备及管道绝热设计导则（公式按 2008 版核对；2025 新版已发布代替）",
+            "  GB/T 4272-2024   设备及管道绝热技术通则",
             "",
             "【工程建议】",
         ]

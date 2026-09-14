@@ -17,6 +17,17 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE,
 
 from calculator_base import CalculatorBase
 from utils.docx_utils import ReportExporter
+
+# ── TSG D0001-2009《压力管道安全技术监察规程—工业管道》压力管道定义 ──
+# 判据：最高工作压力 ≥ 0.1 MPa（表压）且公称直径 > 25 mm，且介质属于下列之一：
+#   ① 气体、液化气体、蒸汽；
+#   ② 可燃、易爆、有毒、有腐蚀性的液体介质；
+#   ③ 最高工作温度 ≥ 标准沸点的液体介质。
+# 注意：判据用的是【最高工作压力 / 最高工作温度】，不是设计压力 / 设计温度。
+GASEOUS_MEDIA = {"气体", "可燃气体", "液化气体", "蒸汽"}
+HAZARDOUS_LIQUID_MEDIA = {"可燃液体", "有毒介质", "腐蚀性液体"}
+
+
 class 压力管道定义(CalculatorBase):
     """压力管道定义计算器"""
     
@@ -92,13 +103,13 @@ class 压力管道定义(CalculatorBase):
         pressure_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(pressure_label, row, 0)
         
-        self.pressure_input = QLineEdit()
+        self.pressure_input = QLineEdit("1.6")
         self.pressure_input.setPlaceholderText("请输入设计压力")
         self.pressure_input.setValidator(QDoubleValidator(0.0, 100.0, 2))
         self.pressure_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.pressure_input, row, 1)
         
-        pressure_hint = QLabel("表压")
+        pressure_hint = QLabel("表压｜仅用于类别判定")
         pressure_hint.setStyleSheet("font-style: italic;")
         input_layout.addWidget(pressure_hint, row, 2)
         
@@ -110,13 +121,13 @@ class 压力管道定义(CalculatorBase):
         wp_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(wp_label, row, 0)
         
-        self.working_pressure_input = QLineEdit()
+        self.working_pressure_input = QLineEdit("1.2")
         self.working_pressure_input.setPlaceholderText("请输入工作压力")
         self.working_pressure_input.setValidator(QDoubleValidator(0.0, 100.0, 2))
         self.working_pressure_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.working_pressure_input, row, 1)
         
-        wp_hint = QLabel("表压")
+        wp_hint = QLabel("表压｜压力管道判定依据")
         wp_hint.setStyleSheet("font-style: italic;")
         input_layout.addWidget(wp_hint, row, 2)
         
@@ -128,7 +139,7 @@ class 压力管道定义(CalculatorBase):
         dt_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(dt_label, row, 0)
         
-        self.temp_input = QLineEdit()
+        self.temp_input = QLineEdit("200")
         self.temp_input.setPlaceholderText("请输入设计温度")
         self.temp_input.setValidator(QDoubleValidator(-200.0, 1000.0, 1))
         self.temp_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -141,18 +152,18 @@ class 压力管道定义(CalculatorBase):
         row += 1
         
         # 工作温度
-        wt_label = QLabel("工作温度 (°C):")
+        wt_label = QLabel("最高工作温度 (°C):")
         wt_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         wt_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(wt_label, row, 0)
         
-        self.working_temp_input = QLineEdit()
+        self.working_temp_input = QLineEdit("180")
         self.working_temp_input.setPlaceholderText("请输入工作温度")
         self.working_temp_input.setValidator(QDoubleValidator(-200.0, 1000.0, 1))
         self.working_temp_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.working_temp_input, row, 1)
         
-        wt_hint = QLabel("用于压力管道判定")
+        wt_hint = QLabel("最高工作温度｜判定依据")
         wt_hint.setStyleSheet("font-style: italic;")
         input_layout.addWidget(wt_hint, row, 2)
         
@@ -166,13 +177,32 @@ class 压力管道定义(CalculatorBase):
         
         self.media_combo = QComboBox()
         self.media_combo.setStyleSheet(COMBOBOX_STYLE)
-        self.media_combo.addItems(["气体", "液化气体", "蒸汽", "可燃液体", "有毒介质", "一般液体"])
+        self.media_combo.addItems(["气体", "可燃气体", "液化气体", "蒸汽",
+                                   "可燃液体", "有毒介质", "腐蚀性液体", "一般液体"])
         self.media_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         input_layout.addWidget(self.media_combo, row, 1)
         
-        media_hint = QLabel("选择介质分类")
+        media_hint = QLabel("按规程介质分类")
         media_hint.setStyleSheet("font-style: italic;")
         input_layout.addWidget(media_hint, row, 2)
+        
+        row += 1
+        
+        # 标准沸点（液体介质判定用）
+        bp_label = QLabel("标准沸点 (°C):")
+        bp_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        bp_label.setStyleSheet(INPUT_LABEL_STYLE)
+        input_layout.addWidget(bp_label, row, 0)
+        
+        self.boiling_point_input = QLineEdit("100")
+        self.boiling_point_input.setPlaceholderText("请输入介质标准沸点")
+        self.boiling_point_input.setValidator(QDoubleValidator(-273.0, 1000.0, 1))
+        self.boiling_point_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        input_layout.addWidget(self.boiling_point_input, row, 1)
+        
+        bp_hint = QLabel("仅液体介质用")
+        bp_hint.setStyleSheet("font-style: italic;")
+        input_layout.addWidget(bp_hint, row, 2)
         
         row += 1
         
@@ -182,7 +212,7 @@ class 压力管道定义(CalculatorBase):
         dia_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(dia_label, row, 0)
         
-        self.diameter_input = QLineEdit()
+        self.diameter_input = QLineEdit("100")
         self.diameter_input.setPlaceholderText("请输入公称直径")
         self.diameter_input.setValidator(QDoubleValidator(0.0, 5000.0, 1))
         self.diameter_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -265,13 +295,13 @@ class 压力管道定义(CalculatorBase):
     def setup_classification_table(self):
         """设置分类表数据"""
         classifications = [
-            ["GA类", "GA1", "长输管道", "输送有毒、可燃、易爆气体，设计压力>1.6MPa"],
+            ["GA类", "GA1", "长输管道", "输送有毒/可燃/易爆气体，设计压力>1.6MPa；或液体输送距离≥200km 且 DN≥300mm"],
             ["GA类", "GA2", "长输管道", "GA1以外的长输管道"],
             ["GB类", "GB1", "公用管道", "城镇燃气管道"],
             ["GB类", "GB2", "公用管道", "城镇热力管道"],
-            ["GC类", "GC1", "工业管道", "输送极度危害、高度危害介质，或设计压力≥4.0MPa"],
+            ["GC类", "GC1", "工业管道", "极度/高度危害介质；甲乙类可燃气体或甲类液体(含液化烃)且P≥4.0MPa；P≥10.0MPa；或P≥4.0MPa且T≥400℃"],
             ["GC类", "GC2", "工业管道", "除GC3外的其他工业管道"],
-            ["GC类", "GC3", "工业管道", "输送无毒、非可燃介质，设计压力≤1.0MPa"]
+            ["GC类", "GC3", "工业管道", "无毒、非可燃流体，设计压力≤1.0MPa 且 −20℃<T≤185℃"]
         ]
         
         self.classification_table.setRowCount(len(classifications))
@@ -366,61 +396,87 @@ class 压力管道定义(CalculatorBase):
             media_type = self.media_combo.currentText()
             
             # 验证输入
-            if design_pressure <= 0 or diameter <= 0:
-                QMessageBox.warning(self, "输入错误", "请填写设计压力和公称直径！")
+            if diameter <= 0 or (design_pressure <= 0 and working_pressure <= 0):
+                QMessageBox.warning(self, "输入错误", "请填写最高工作压力、设计压力和公称直径！")
                 return
+
+            boiling_point = float(self.boiling_point_input.text() or 100.0)
+
+            # 判断是否为压力管道（规程判据：最高工作压力 + 最高工作温度）
+            is_pressure_pipe = self.is_pressure_pipe(
+                working_pressure, diameter, media_type, working_temp, boiling_point)
             
-            # 判断是否为压力管道
-            is_pressure_pipe = self.is_pressure_pipe(design_pressure, diameter, media_type, working_temp)
-            
-            # 确定管道类别
+            # 确定管道类别（规程判据：设计压力 + 设计温度 + 介质）
             pipe_class = self.determine_pipe_class(design_pressure, design_temp, media_type, diameter)
             
             # 显示结果
-            self.display_results(is_pressure_pipe, pipe_class, design_pressure, diameter, media_type)
+            self.display_results(is_pressure_pipe, pipe_class, design_pressure, diameter,
+                                 media_type, working_pressure, working_temp, boiling_point)
             
         except ValueError:
             QMessageBox.warning(self, "输入错误", "请输入有效的数值！")
     
-    def is_pressure_pipe(self, pressure, diameter, media_type, temp):
-        """判断是否为压力管道"""
-        # 基本条件：压力≥0.1MPa且直径>25mm
-        if pressure < 0.1 or diameter <= 25:
+    def is_pressure_pipe(self, working_pressure, diameter, media_type, working_temp,
+                         boiling_point=100.0):
+        """按 TSG D0001-2009 判定是否为压力管道
+
+        判据：最高工作压力 ≥ 0.1 MPa（表压）**且** 公称直径 > 25 mm，且介质为
+              ① 气体、液化气体、蒸汽；或
+              ② 可燃、易爆、有毒、有腐蚀性的液体介质；或
+              ③ 最高工作温度 ≥ 标准沸点的液体介质。
+
+        ⚠ 用的是【最高工作压力】与【最高工作温度】，不是设计压力/设计温度。
+        """
+        # 压力 + 管径条件
+        if working_pressure < 0.1 or diameter <= 25:
             return False
-        
+
         # 介质条件
-        gaseous_media = ["气体", "液化气体", "蒸汽"]
-        hazardous_liquid = ["可燃液体", "有毒介质"]
-        
-        if media_type in gaseous_media:
+        if media_type in GASEOUS_MEDIA:
             return True
-        elif media_type in hazardous_liquid:
+        if media_type in HAZARDOUS_LIQUID_MEDIA:
             return True
-        elif media_type == "一般液体" and temp >= 100:  # 假设标准沸点为100°C
-            return True
-        
+        if media_type == "一般液体":
+            # 最高工作温度 ≥ 标准沸点 → 汽化后按气体介质管理
+            return working_temp >= boiling_point
+
         return False
     
     def determine_pipe_class(self, pressure, temp, media_type, diameter):
-        """确定管道类别（简化算法）"""
-        hazardous_media = ["有毒介质", "可燃液体"]
-        
-        # GC1级条件
-        if (media_type == "有毒介质" and pressure >= 0.1) or \
-           (media_type == "可燃液体" and pressure >= 4.0) or \
-           (pressure >= 10.0) or \
-           (pressure >= 4.0 and temp >= 400):
+        """确定工业管道类别（GC1/GC2/GC3，按 TSG D0001-2009 简化判定）
+
+        ⚠ 本工具不细分毒性程度与火灾危险性类别（甲/乙类），
+          对可燃 / 有毒介质一律按最不利情形**从严**判定为 GC1，
+          实际项目应按介质危险特性表复核。
+        """
+        # ── GC1 ──
+        # ① 极度危害 / 高度危害介质（工具不细分，凡有毒介质从严）
+        if media_type == "有毒介质" and pressure >= 0.1:
             return "GC1"
-        
-        # GC3级条件
+        # ② 甲、乙类可燃气体 或 甲类液体（含液化烃），设计压力 ≥ 4.0 MPa
+        if media_type in ("可燃气体", "可燃液体", "液化气体") and pressure >= 4.0:
+            return "GC1"
+        # ③ 设计压力 ≥ 10.0 MPa
+        if pressure >= 10.0:
+            return "GC1"
+        # ④ 设计压力 ≥ 4.0 MPa 且设计温度 ≥ 400 °C
+        if pressure >= 4.0 and temp >= 400:
+            return "GC1"
+
+        # ── GC3 ── 无毒、非可燃流体，P ≤ 1.0 MPa，−20 < T ≤ 185 °C
         if media_type == "一般液体" and pressure <= 1.0 and -20 < temp <= 185:
             return "GC3"
-        
-        # 默认GC2级
+
+        # ── 其余为 GC2 ──
         return "GC2"
     
-    def display_results(self, is_pressure_pipe, pipe_class, pressure, diameter, media_type):
+    def display_results(self, is_pressure_pipe, pipe_class, pressure, diameter, media_type,
+                        working_pressure=None, working_temp=None, boiling_point=100.0):
         """显示计算结果"""
+        wp = working_pressure if working_pressure is not None else pressure
+        wt = working_temp if working_temp is not None else 0.0
+        # 压力管道需按规范监管 → 红色警示；非压力管道 → 绿色
+        color = "#e74c3c" if is_pressure_pipe else "#27ae60"
         result_text = f"""
         <h3>计算结果</h3>
         
@@ -431,7 +487,7 @@ class 压力管道定义(CalculatorBase):
         </tr>
         <tr>
             <td style="padding: 8px; font-weight: bold;">是否为压力管道</td>
-            <td style="padding: 8px; {'color: green;' if is_pressure_pipe else 'color: red;'}">
+            <td style="padding: 8px; color: {color}; font-weight: bold;">
                 {'是压力管道' if is_pressure_pipe else '不是压力管道'}
             </td>
         </tr>
@@ -443,9 +499,20 @@ class 压力管道定义(CalculatorBase):
             <td style="padding: 8px; font-weight: bold;">管道类别</td>
             <td style="padding: 8px; color: #e74c3c; font-weight: bold;">{pipe_class}级</td>
         </tr>
+        """
+        
+        result_text += f"""
+        <tr>
+            <td style="padding: 8px; font-weight: bold;">最高工作压力</td>
+            <td style="padding: 8px;">{wp} MPa（表压）｜判定依据</td>
+        </tr>
         <tr>
             <td style="padding: 8px; font-weight: bold;">设计压力</td>
-            <td style="padding: 8px;">{pressure} MPa</td>
+            <td style="padding: 8px;">{pressure} MPa（表压）｜仅类别判定用</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px; font-weight: bold;">最高工作温度</td>
+            <td style="padding: 8px;">{wt} °C｜判定依据</td>
         </tr>
         <tr>
             <td style="padding: 8px; font-weight: bold;">公称直径</td>
@@ -454,6 +521,13 @@ class 压力管道定义(CalculatorBase):
         <tr>
             <td style="padding: 8px; font-weight: bold;">介质类型</td>
             <td style="padding: 8px;">{media_type}</td>
+        </tr>
+        """
+        if media_type == "一般液体":
+            result_text += f"""
+        <tr>
+            <td style="padding: 8px; font-weight: bold;">标准沸点</td>
+            <td style="padding: 8px;">{boiling_point} °C</td>
         </tr>
         """
         
@@ -471,6 +545,12 @@ class 压力管道定义(CalculatorBase):
                 <li>定期进行安全检查和维护</li>
             </ul>
             """
+        else:
+            result_text += """
+            <h4>判定说明</h4>
+            <p>未同时满足「最高工作压力 ≥ 0.1 MPa（表压）且公称直径 > 25 mm」及介质条件，
+            按 TSG D0001-2009 不属于压力管道监察范围；仍应按普通工业管道规范（如 GB/T 20801）设计。</p>
+            """
         
         self.result_text.setHtml(result_text)
     
@@ -484,12 +564,13 @@ class 压力管道定义(CalculatorBase):
         return descriptions.get(pipe_class, "未知类别")
     
     def clear_inputs(self):
-        """清空输入"""
-        self.pressure_input.clear()
-        self.working_pressure_input.clear()
-        self.temp_input.clear()
-        self.working_temp_input.clear()
-        self.diameter_input.clear()
+        """恢复出厂默认（清空为空值会导致再次计算时判据全为 0，结果无意义）"""
+        self.pressure_input.setText("1.6")
+        self.working_pressure_input.setText("1.2")
+        self.temp_input.setText("200")
+        self.working_temp_input.setText("180")
+        self.diameter_input.setText("100")
+        self.boiling_point_input.setText("100")
         self.media_combo.setCurrentIndex(0)
         self.result_text.clear()
 
@@ -511,26 +592,69 @@ class 压力管道定义(CalculatorBase):
             return {}
 
     def generate_report(self):
-        """生成计算书 - 返回纯文本"""
+        """生成计算书 - 返回纯文本（返回 None 表示尚未计算，不生成空文件）"""
         try:
             # 获取当前结果文本
-            result_text = self.result_text.toPlainText()
+            result_text = self.result_text.toPlainText().strip()
             
             # 检查条件
-            if not result_text or ("计算结果" not in result_text and "压力管道" not in result_text):
+            if not result_text or "计算结果" not in result_text:
                 QMessageBox.warning(self, "生成失败", "请先进行计算再生成计算书")
-                return ""
+                return None
             
             # 获取工程信息
             project_info = self.get_project_info()
+
+            # 判定摘要（直接读当前输入，保证与界面一致）
+            design_pressure = float(self.pressure_input.text() or 0)
+            working_pressure = float(self.working_pressure_input.text() or 0)
+            design_temp = float(self.temp_input.text() or 0)
+            working_temp = float(self.working_temp_input.text() or 0)
+            diameter = float(self.diameter_input.text() or 0)
+            boiling_point = float(self.boiling_point_input.text() or 100.0)
+            media_type = self.media_combo.currentText()
+            is_pp = self.is_pressure_pipe(working_pressure, diameter, media_type,
+                                         working_temp, boiling_point)
+            pipe_class = (self.determine_pipe_class(design_pressure, design_temp,
+                                                   media_type, diameter)
+                          if is_pp else "—")
             
             # 添加报告头信息
             report = f"""工程计算书 - 压力管道定义
 计算工具: ChemCal 工程计算模块
 ========================================
 
+──────────
+一、输入条件
+──────────
+
+    最高工作压力: {working_pressure} MPa (表压)
+    设计压力    : {design_pressure} MPa (表压)
+    最高工作温度: {working_temp} °C
+    设计温度    : {design_temp} °C
+    公称直径    : {diameter} mm
+    介质类型    : {media_type}
+    标准沸点    : {boiling_point} °C
+
+──────────
+二、判定结论
+──────────
+
+    是否为压力管道: {'是' if is_pp else '否'}
+    工业管道类别  : {pipe_class}{'级' if is_pp else ''}
+
+    判定依据: TSG D0001-2009《压力管道安全技术监察规程—工业管道》
+    最高工作压力 ≥ 0.1 MPa(表压) 且公称直径 > 25 mm，且介质为
+    气体/液化气体/蒸汽，或可燃、易爆、有毒、有腐蚀性液体，
+    或最高工作温度 ≥ 标准沸点的液体介质。
+
+──────────
+三、计算过程输出
+──────────
+
+{result_text}
+
 """
-            report += result_text
             
             # 添加工程信息部分
             report += f"""══════════
@@ -567,7 +691,7 @@ class 压力管道定义(CalculatorBase):
             
         except Exception as e:
             print(f"生成计算书失败: {e}")
-            return ""
+            return None
 
     def download_docx_report(self):
         """生成DOCX格式计算书"""
@@ -583,20 +707,24 @@ class 压力管道定义(CalculatorBase):
         design_temp = float(self.temp_input.text() or 0)
         working_temp = float(self.working_temp_input.text() or 0)
         diameter = float(self.diameter_input.text() or 0)
+        boiling_point = float(self.boiling_point_input.text() or 100.0)
         media_type = self.media_combo.currentText()
 
         inputs = {
+            "最高工作压力_MPa": working_pressure,
             "设计压力_MPa": design_pressure,
-            "工作压力_MPa": working_pressure,
+            "最高工作温度_C": working_temp,
             "设计温度_C": design_temp,
-            "工作温度_C": working_temp,
             "公称直径_mm": diameter,
-            "介质类型": media_type
+            "介质类型": media_type,
+            "标准沸点_C": boiling_point
         }
 
         outputs = {}
         result_text = self.result_text.toPlainText()
-        if "管道类别" in result_text or "GC" in result_text:
+        if "是否为压力管道" in result_text:
+            outputs["是否压力管道"] = "是" if "不是压力管道" not in result_text else "否"
+        if "GC" in result_text:
             import re
             class_match = re.search(r'(GC[123])', result_text)
             if class_match:

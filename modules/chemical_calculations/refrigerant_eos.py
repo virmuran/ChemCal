@@ -74,6 +74,7 @@ REFRIGERANTS = {
         'antoine': {'A': 6.60588, 'B': 971.2731, 'C': -28.6808, 'T_min': 195.0, 'T_max': 420.0},
         'cp_ideal': 2.19,
         'L_f': 1369.0,
+        'L_ref_T': 239.82,  # 潜热基准温度(K)=常压沸点
         'T_boil': 239.82,
     },
     'R718': {  # 水
@@ -87,6 +88,7 @@ REFRIGERANTS = {
         'antoine': {'A': 7.19200, 'B': 1729.3646, 'C': -39.6689, 'T_min': 274.0, 'T_max': 373.0},
         'cp_ideal': 1.86,
         'L_f': 2257.0,
+        'L_ref_T': 373.15,  # 潜热基准温度(K)=常压沸点
         'T_boil': 373.15,
     },
     'R290': {  # 丙烷
@@ -304,6 +306,23 @@ def _pr_z_factor(T, P_MPa, ref_data):
 
 # ==================== 饱和物性计算 ====================
 
+def _latent_heat(ref, T_K):
+    """Watson 温度关联式求汽化潜热 [kJ/kg]（Tc 处趋于 0）
+
+    ref['L_f'] 为基准温度下的潜热值；基准温度默认 0°C (273.15K)，
+    R717/R718 通过 'L_ref_T' 指定为常压沸点。
+    """
+    L_ref = ref.get('L_f', 200.0)
+    T_ref_L = ref.get('L_ref_T', 273.15)
+    Tc = ref['Tc']
+    Tr_now = T_K / Tc
+    Tr_ref = T_ref_L / Tc
+    if Tr_now >= 1.0:
+        return 0.0
+    L = L_ref * ((1.0 - Tr_now) / max(1e-6, 1.0 - Tr_ref)) ** 0.38
+    return max(0.0, L)
+
+
 def saturation_properties(T_K=None, P_MPa=None, ref_name='R134a'):
     """饱和液 + 饱和蒸汽物性
 
@@ -340,8 +359,8 @@ def saturation_properties(T_K=None, P_MPa=None, ref_name='R134a'):
     v_g = Z_g * R_spec * T / (P * 1e6)  # R[J/(kg·K)] * T[K] / P[Pa]
     rho_g = 1.0 / v_g
 
-    # --- 汽化潜热 ---
-    L_f = ref['L_f']  # kJ/kg
+    # --- 汽化潜热（Watson 温度关联式，随温度变化，Tc 处趋于 0）---
+    L_f = _latent_heat(ref, T)
 
     # --- 饱和液体焓 (近似：0°C 时为 200 kJ/kg 基准，液相比热 ~cp_f) ---
     cp_f_liquid = ref['cp_ideal'] * 1.5  # 液体 cp ≈ 1.5×气体 cp
@@ -403,7 +422,7 @@ def vapor_properties(P_MPa, T_C, ref_name='R134a'):
     # 焓（近似：hf + cp*(T-T_sat) + 潜热）
     T_sat = _antoine_tsat(P_MPa, ref)
     h_f_approx = 200.0 + ref['cp_ideal'] * 1.5 * (T_sat - 273.15)
-    h = h_f_approx + ref['L_f'] + cp * (T_C - (T_sat - 273.15))
+    h = h_f_approx + _latent_heat(ref, T_sat) + cp * (T_C - (T_sat - 273.15))
 
     # 熵（基于饱和熵基准，避免理想气体近似的基准偏移）
     # s(T,P) = s_sat(P) + cp * ln(T/T_sat(P))

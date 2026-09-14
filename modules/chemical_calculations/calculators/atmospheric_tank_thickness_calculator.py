@@ -33,14 +33,17 @@ STANDARDS = {
 }
 
 # ── 材料数据库 ──
-# (密度 kg/m³, S_d 设计许用应力 MPa, S_t 水压试验许用应力 MPa)
+# (密度 kg/m³, S_d 设计许用应力 MPa, S_t 静水压试验许用应力 MPa)
+# 取值原则（GB 50341-2014 §4.2.2 条文说明，参照 API 650）：
+#   ReL ≤ 390MPa：S_d = min(2/3·ReL, 2/5·Rm)，S_t = min(3/4·ReL, 3/7·Rm)
+#   Q235 系列 ReL 取 ReH − 10（GB/T 150.2 附录 D）
 MATERIAL_DB = {
-    "Q235B":    (7850, 157, 171),
-    "Q245R":    (7850, 148, 163),
-    "Q345R":    (7850, 208, 227),
-    "Q370R":    (7850, 218, 238),
-    "S30408 (304)":  (7930, 137, 137),
-    "S31603 (316L)": (8000, 115, 115),
+    "Q235B":    (7850, 148, 159),   # ReL=225, Rm=370
+    "Q245R":    (7850, 160, 171),   # ReL=245, Rm=400
+    "Q345R":    (7850, 204, 219),   # ReL=345, Rm=510
+    "Q370R":    (7850, 212, 227),   # ReL=370, Rm=530
+    "S30408 (304)":  (7930, 137, 137),   # GB/T 150.2-2011
+    "S31603 (316L)": (8000, 137, 137),   # GB/T 150.2-2011（不锈钢罐超出 GB 50341 适用范围，供参考）
     "自定义":    (7850, None, None),
 }
 
@@ -52,15 +55,12 @@ WELD_EFF = {
     "单面焊 不带垫板":          0.70,
 }
 
-# ── 最小壁厚 — GB 50341 (D < 6m 参考 NB/T 47003) ──
-# (罐径上限 m, 最小厚度 mm, 标准名)
+# ── 最小壁厚 — GB 50341-2014 表 6.3.4 罐壁板最小名义厚度（mm，不含腐蚀裕量）──
+# (罐径上限 m, 最小厚度 mm)
 GB50341_MIN_THICKNESS = [
-    (6,   4),    # D < 6m → 参照压力容器规范，取 4mm
-    (15,  5),
-    (36,  6),
-    (60,  7),
-    (75,  8),
-    (90,  9),
+    (12,  5),
+    (24,  6),
+    (60,  8),
     (float("inf"), 10),
 ]
 
@@ -96,6 +96,8 @@ class AtmosphericTankThicknessCalculator(CalculatorBase):
         self.setup_wheel_blocker()
         # 初始：GB 50341 默认 → 隐藏 NB 专属字段
         self._on_standard_changed("GB 50341-2014  (常压储罐·一英尺法)")
+        # 初始填充许用应力（材质下拉 addItems 早于信号连接，需手动触发一次）
+        self._on_material_changed(self._input_widgets["material_grade"].currentText())
 
     # ═════════════════════════════════════════════════════════
     #  UI 搭建
@@ -456,6 +458,9 @@ class AtmosphericTankThicknessCalculator(CalculatorBase):
             # 液压试验压力
             p_test = max(1.25 * Pc, Pc + 0.1)
             lines.append(f"  液压试验压力 p_T ≥ {p_test:.4f} MPa")
+            lines.append("  ⚠ NB/T 47003 模式：上方 [σ] 沿用储罐数据表常温值，")
+            lines.append("    正式设计应按 GB/T 150.2 依板厚档与设计温度选取并复核")
+        lines.append("  注：[σ]/S_t 为常温取值，设计温度高于常温时应按标准温度档修正")
         lines.append("─" * 60)
 
         lines.append(f"  {'圈号':>4s} │{'液柱(m)':>9s} │{'p_calc(MPa)':>12s} │{'计算(mm)':>9s} │{'须用(mm)':>9s} │{'名义(mm)':>9s} │  校核")
@@ -683,4 +688,20 @@ class AtmosphericTankThicknessCalculator(CalculatorBase):
             },
             "notes": "",
         }
-        parent.addWidget(group)
+
+    def get_project_info(self):
+        return {
+            "project_name": "储罐壁厚计算",
+            "calculator_name": "储罐壁厚计算器",
+            "version": "1.1",
+            "description": "GB 50341 一英尺法 / NB/T 47003 圆筒公式双标准储罐罐壁厚度计算"
+        }
+
+    def generate_report(self):
+        """生成计算书文本（供 ReportExporter 使用）"""
+        if self._last_results is None:
+            return "尚未进行计算。"
+        lines = []
+        for ln in self._build_report_lines():
+            lines.append(ln[0] if isinstance(ln, tuple) else str(ln))
+        return "\n".join(lines)

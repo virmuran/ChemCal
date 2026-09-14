@@ -154,6 +154,7 @@ class ChemicalCalculationsWidget(QWidget):
             ("设备尺寸计算", "设备尺寸计算", "vessel_sizing_calculator", True),
             ("罐体重量", "罐体重量", "tank_weight_calculator", True),
             ("容器设计计算", "VesselDesignCalculator", "vessel_design_calculator", True),
+            ("常压储罐壁厚", "AtmosphericTankThicknessCalculator", "atmospheric_tank_thickness_calculator", True),
             ("篮式过滤器", "篮式过滤器", "basket_filter_design_calculator", True),
             ("风机功率计算", "FanPowerCalculator", "fan_power_calculator", True),
             #
@@ -611,6 +612,7 @@ class ChemicalCalculationsWidget(QWidget):
         "vessel_sizing_calculator": "工艺设备",
         "tank_weight_calculator": "工艺设备",
         "vessel_design_calculator": "工艺设备",
+        "atmospheric_tank_thickness_calculator": "工艺设备",
         "basket_filter_design_calculator": "工艺设备",
         "fan_power_calculator": "工艺设备",
         # 三、流体输送
@@ -639,8 +641,6 @@ class ChemicalCalculationsWidget(QWidget):
         "corrosion_data_query": "安全环保",
         "hazardous_chemicals_query": "安全环保",
         "cod_estimator": "安全环保",
-        # 遗留（存量兼容）
-        "flange_size_calculator": "其他",
     }
 
     def _get_category_from_module(self, module_name):

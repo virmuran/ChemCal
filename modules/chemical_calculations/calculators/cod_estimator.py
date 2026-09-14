@@ -9,49 +9,73 @@ from PySide6.QtWidgets import (
     QButtonGroup, QGridLayout, QSizePolicy
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QDoubleValidator
-import math
+from PySide6.QtGui import QDoubleValidator
 import datetime
 
 from calculator_base import CalculatorBase
-from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_CP, load_steam_iapws, get_steam_props
 from app_styles import (SCROLL_AREA_STYLE,
                         INPUT_LABEL_STYLE, CLEAR_BTN_STYLE,
                         DOCX_BTN_STYLE, PDF_BTN_STYLE)
 
+
+def thod_from_formula(n_c, n_h, n_n=0, n_o=0, n_s=0, mw=None):
+    """理论需氧量 ThOD，g O₂/g 物质。
+
+    氧化终态约定（与重铬酸钾法 COD 的口径一致，不计硝化）：
+        C → CO₂,  H → H₂O,  N → NH₃（不继续氧化为硝酸盐）,  S → SO₄²⁻
+
+    电子守恒推导（O₂ 每 mol 接受 4 个电子）：
+        n(O₂) = (4·C + H + 6·S − 3·N − 2·O) / 4
+        ThOD  = n(O₂) · 32 / M
+
+    说明：N 按 NH₃ 计（−3 价）会扣除 3 个电子/mol；若按硝化计至硝酸盐，
+    需再加 2 mol O₂/mol N，数值会明显偏大。本模块统一采用「不计硝化」。
+    """
+    n_o2 = (4 * n_c + n_h + 6 * n_s - 3 * n_n - 2 * n_o) / 4.0
+    if mw is None:
+        raise ValueError("需提供分子量 mw")
+    return n_o2 * 32.0 / mw
+
+
 # ── COD 当量数据库 ──
+# 标「理论值」者由 thod_from_formula 按上述约定算出，可用 tests 直接复核；
+# 标「经验值」者为工业发酵统计值，无唯一理论解，仅供估算。
+#
+# ⚠ 数据勘误（2026-09-14）：原 "L-蛋氨酸" 填 1.073，与 L-苏氨酸(1.075) 几乎相同，
+#   系误抄；含硫氨基酸的 S 须氧化到 SO₄²⁻，理论值应为 1.609（偏小 33%）。
 COD_DB = {
     # 碳源
-    "葡萄糖": (1.067, "碳源"),
-    "蔗糖": (1.122, "碳源"),
-    "淀粉(可溶)": (1.185, "碳源"),
-    "甘油": (1.217, "碳源"),
-    "糖蜜": (0.90, "碳源"),  # 经验值，约50%糖分
+    "葡萄糖": (1.066, "碳源"),        # 理论值 C6H12O6
+    "蔗糖": (1.122, "碳源"),          # 理论值 C12H22O11
+    "淀粉(可溶)": (1.184, "碳源"),    # 理论值，按 (C6H10O5)n 单体
+    "甘油": (1.216, "碳源"),          # 理论值 C3H8O3
+    "糖蜜": (0.90, "碳源"),           # 经验值（甘蔗/甜菜糖蜜实测统计）
     # 有机氮源
-    "玉米浆": (0.85, "氮源"),
-    "酵母浸粉": (0.95, "氮源"),
-    "豆粕水解液": (0.80, "氮源"),
-    "蛋白胨": (0.90, "氮源"),
-    "(NH₄)₂SO₄": (0.00, "无机氮"),  # 无机，不贡献COD
-    "尿素": (0.00, "无机氮"),        # 无机
+    "玉米浆": (0.85, "氮源"),         # 经验值
+    "酵母浸粉": (0.95, "氮源"),       # 经验值
+    "豆粕水解液": (0.80, "氮源"),     # 经验值
+    "蛋白胨": (0.90, "氮源"),         # 经验值
+    "(NH₄)₂SO₄": (0.00, "无机氮"),    # 无机，不计硝化时无 COD
+    "尿素": (0.00, "无机氮"),         # 无机；重铬酸钾法不氧化尿素，实测 COD 近 0
     # 有机酸/中间代谢物
-    "乙酸": (1.067, "有机酸"),
-    "乳酸": (1.067, "有机酸"),
-    "柠檬酸": (0.75, "有机酸"),
-    "琥珀酸": (0.95, "有机酸"),
-    "乙醇": (2.087, "醇类"),
+    "乙酸": (1.066, "有机酸"),        # 理论值 C2H4O2
+    "乳酸": (1.066, "有机酸"),        # 理论值 C3H6O3
+    "柠檬酸": (0.750, "有机酸"),      # 理论值，按无水柠檬酸 C6H8O7
+    "琥珀酸": (0.948, "有机酸"),      # 理论值 C4H6O4
+    "乙醇": (2.084, "醇类"),          # 理论值 C2H6O
     # 氨基酸产品
-    "L-缬氨酸": (1.638, "产品"),
-    "L-赖氨酸": (1.532, "产品"),
-    "L-苏氨酸": (1.075, "产品"),
-    "L-谷氨酸": (0.979, "产品"),
-    "L-亮氨酸": (1.830, "产品"),
-    "L-异亮氨酸": (1.830, "产品"),
-    "L-蛋氨酸": (1.073, "产品"),
+    "L-缬氨酸": (1.639, "产品"),      # 理论值 C5H11NO2
+    "L-赖氨酸": (1.532, "产品"),      # 理论值 C6H14N2O2
+    "L-苏氨酸": (1.075, "产品"),      # 理论值 C4H9NO3
+    "L-谷氨酸": (0.979, "产品"),      # 理论值 C5H9NO4
+    "L-亮氨酸": (1.830, "产品"),      # 理论值 C6H13NO2
+    "L-异亮氨酸": (1.830, "产品"),    # 理论值 C6H13NO2（与亮氨酸同分异构）
+    "L-蛋氨酸": (1.609, "产品"),      # 理论值 C5H11NO2S（S→SO₄²⁻；原误填 1.073）
     # 菌体
-    "菌体干重(DCW)": (1.42, "菌体"),
-    "菌体(湿重×20%)": (0.284, "菌体"),
+    "菌体干重(DCW)": (1.42, "菌体"),  # 经验值，近似按 C5H7O2N 计（理论 1.415）
+    "菌体(湿重×20%)": (0.284, "菌体"),  # = 1.42 × 20% 干重比
 }
+
 
 # ── 产品类型预设 ──
 # (产品名, 默认COD当量, 典型副产物说明)
@@ -61,6 +85,14 @@ PRODUCT_PRESETS = {
     "L-苏氨酸": "L-苏氨酸",
     "L-谷氨酸钠(MSG)": "L-谷氨酸",
     "自定义": None,
+}
+
+# ── 废水来源 → (产品是否仍留在废水中, 菌体在废水中的残留比例) ──
+WASTE_SOURCE_RETENTION = {
+    "发酵废液（离心后上清液）": (True, 0.15),   # 菌体已离心分离，产品尚未提取
+    "全发酵液（含菌体）": (True, 1.0),          # 整罐排放，产品与菌体全在
+    "提取废液（离子交换/膜分离）": (False, 0.15),  # 产品已被回收，不计入废水 COD
+    "综合废水（工艺+清洗）": (True, 1.0),
 }
 
 # ── 物料衡算法原料清单（静态网格行，与其他计算器风格一致）──
@@ -276,6 +308,7 @@ class CODEstimator(CalculatorBase):
                 le.setText(default)
             else:
                 le.setPlaceholderText("0")
+                le.setText("0")  # 0 = 未添加
             le.setValidator(QDoubleValidator(0, 100000, 2))
             self.input_layout.addWidget(le, row, 1)
             self.input_widgets["mat_" + name] = le
@@ -344,15 +377,15 @@ class CODEstimator(CalculatorBase):
         pairs = [
             # (label, key, placeholder, default)
             ("─ 参考项目（已知数据）─", None, None, None),
-            ("参考项目 COD (mg/L):", "ref_cod", "例如：1800", ""),
-            ("参考项目 投糖量 (g/L):", "ref_sugar", "例如：120", ""),
-            ("参考项目 产品产量 (g/L):", "ref_yield", "例如：60", ""),
-            ("参考项目 残糖 (g/L):", "ref_residual", "例如：5", ""),
+            ("参考项目 COD (mg/L):", "ref_cod", "例如：1800", "1800"),
+            ("参考项目 投糖量 (g/L):", "ref_sugar", "例如：120", "120"),
+            ("参考项目 产品产量 (g/L):", "ref_yield", "例如：60", "60"),
+            ("参考项目 残糖 (g/L):", "ref_residual", "例如：5", "5"),
             ("", None, None, None),
             ("─ 新项目（待估算）─", None, None, None),
-            ("新项目 投糖量 (g/L):", "new_sugar", "例如：130", ""),
-            ("新项目 产品产量 (g/L):", "new_yield", "例如：65", ""),
-            ("新项目 残糖 (g/L):", "new_residual", "例如：4", ""),
+            ("新项目 投糖量 (g/L):", "new_sugar", "例如：130", "130"),
+            ("新项目 产品产量 (g/L):", "new_yield", "例如：65", "65"),
+            ("新项目 残糖 (g/L):", "new_residual", "例如：4", "4"),
         ]
         for label, key, placeholder, default in pairs:
             if not key:
@@ -448,16 +481,29 @@ class CODEstimator(CalculatorBase):
         # ── 菌体贡献COD ──
         biomass_cod = biomass * COD_DB["菌体干重(DCW)"][0]
 
-        # ── 废水COD总量 ──
-        # 发酵液COD = 输入 - 产品 + 残糖 + 菌体(根据废水来源决定是否包含)
+        # ── 废水中各来源的保留规则 ──
+        # (产品是否仍在废水中, 菌体在废水中的残留比例)
+        # 全发酵液/综合废水：产品未提取、菌体全在；上清液：产品在、菌体离心去除；
+        # 提取废液：产品已由离交/膜分离回收，故其 COD 不算进废水。
         waste_source = self._get("waste_source", "发酵废液（离心后上清液）")
+        product_in_waste, biomass_retention = WASTE_SOURCE_RETENTION.get(
+            waste_source, (True, 1.0))
 
-        if "含菌体" in waste_source:
-            liquid_cod = input_cod_total - product_cod + residual_cod + biomass_cod
-        elif "上清液" in waste_source or "提取" in waste_source:
-            liquid_cod = input_cod_total - product_cod + residual_cod + biomass_cod * 0.15  # 少量菌体残留
-        else:
-            liquid_cod = input_cod_total - product_cod + residual_cod + biomass_cod
+        # ── 废水（液相）COD ──
+        # COD 守恒：投入COD = 产品COD + 菌体COD + 未消耗碳源COD + 呼吸氧化为CO₂的COD。
+        # 因 CO₂ 的需氧量为 0，最后一项即"真正被氧化掉"的部分。故液相残存 COD 只能由
+        # 仍留在液相的那几项构成 —— 这正是下面三行相加的含义。
+        #
+        # ⚠ 原实现写作「投入总COD − 产品 + 残糖 + 菌体」，而残糖与菌体的 COD 本来就
+        #   包含在投入总COD里（菌体由消耗掉的糖转化而来，属再分配而非新增），
+        #   属重复计入：默认参数下把结果高估了约 25%；
+        #   且原实现对四种废水来源一律扣减产品COD，与"全发酵液"的语义矛盾。
+        liquid_cod = (residual_cod
+                      + biomass_cod * biomass_retention
+                      + (product_cod if product_in_waste else 0.0))
+
+        # 被呼吸氧化掉的 COD（用于校验物料口径是否自洽）
+        mineralized_cod = input_cod_total - (product_cod + biomass_cod + residual_cod)
 
         # 限制最小值为0（不能为负）
         liquid_cod = max(liquid_cod, 0)
@@ -472,15 +518,10 @@ class CODEstimator(CalculatorBase):
         total_waste_vol += wash_water  # 洗涤水排入
 
         # ── COD 浓度 ──
-        cod_load = liquid_cod * vol  # kg O₂/批（g/L × m³ = kg）
-
-        if total_waste_vol > 0:
-            cod_conc = cod_load / total_waste_vol  # mg/L (= g/m³, kg/m³ × 1000 = mg/L)
-            # cod_load in kg, total_waste_vol in m³
-            # cod_conc = cod_load * 1000 (g/kg) / total_waste_vol (m³) = mg/L
-            cod_conc = cod_load * 1000 / total_waste_vol  # mg/L
-        else:
-            cod_conc = 0
+        # liquid_cod: g O₂/L；× vol(m³) → kg O₂/批（g/L × 1000 L/m³ = 1000 g/m³ = 1 kg/m³）
+        cod_load = liquid_cod * vol                        # kg O₂/批
+        # kg/批 ÷ m³/批 × 1000 → g/m³ = mg/L
+        cod_conc = cod_load * 1000 / total_waste_vol if total_waste_vol > 0 else 0.0
 
         # ── 存储 ──
         self._last_results = {
@@ -497,6 +538,9 @@ class CODEstimator(CalculatorBase):
             "contrib_cod": contrib_cod,
             "input_cod_total": input_cod_total,
             "liquid_cod": liquid_cod,
+            "mineralized_cod": mineralized_cod,
+            "product_in_waste": product_in_waste,
+            "biomass_retention": biomass_retention,
             "waste_source": waste_source,
             "waste_vol": total_waste_vol,
             "wash_water": wash_water,
@@ -519,15 +563,18 @@ class CODEstimator(CalculatorBase):
         if ref_cod <= 0 or ref_sugar <= 0:
             raise ValueError("请输入有效的参考项目数据")
 
-        # 缩放因子：COD ∝ (投糖 - 产量修正 + 残糖差)
-        # 简单缩放：按投糖量比例 × 产率修正
-        sugar_ratio = new_sugar / ref_sugar if ref_sugar > 0 else 1
-        yield_effect = (ref_sugar - ref_yield * 0.2) / (new_sugar - new_yield * 0.2) if (new_sugar - new_yield * 0.2) > 0 else 1
-
-        # 综合缩放
-        scale = (new_sugar - new_yield * 0.18 + new_residual * 1.067) / \
-                (ref_sugar - ref_yield * 0.18 + ref_residual * 1.067) \
-                if (ref_sugar - ref_yield * 0.18 + ref_residual * 1.067) > 0 else 1
+        # 缩放因子：COD ∝ (投糖 − 0.18×产量 + 1.066×残糖)
+        # 0.18 为产量对糖耗的近似折减系数（产品 COD 当量已单独赋值，此处只做糖基折算）；
+        # 残糖按葡萄糖 COD 当量折算。
+        sugar_eq = COD_DB["葡萄糖"][0]
+        ref_base = ref_sugar - ref_yield * 0.18 + ref_residual * sugar_eq
+        new_base = new_sugar - new_yield * 0.18 + new_residual * sugar_eq
+        if ref_base <= 0:
+            raise ValueError(
+                "参考项目数据不自洽：投糖量 − 0.18×产品产量 + COD当量×残糖 ≤ 0，请检查输入")
+        scale = new_base / ref_base
+        if scale <= 0:
+            raise ValueError("新项目数据不自洽：折算糖基 ≤ 0，请检查投糖量/产量/残糖")
 
         cod_est = ref_cod * scale
 
@@ -571,29 +618,52 @@ class CODEstimator(CalculatorBase):
         residual_cod = r["residual_cod"]
         biomass_cod = r["biomass_cod"]
 
+        sugar_eq = COD_DB["葡萄糖"][0]
+        dcw_eq = COD_DB["菌体干重(DCW)"][0]
         lines.append(f"  {'物料名称':<16} {'投加量':>8} {'COD当量':>8} {'贡献COD':>8} {'类别':<8}")
         lines.append(f"  {'─'*54}")
         for name, c in r["contrib_cod"].items():
             lines.append(f"  {name:<16} {c['conc']:>8.1f} {c['eq']:>8.3f} {c['cod']:>8.1f} {c['cat']:<8}")
         if r["residual_sugar"] > 0:
-            lines.append(f"  {'残糖(葡萄糖)':<16} {r['residual_sugar']:>8.1f} {1.067:>8.3f} {residual_cod:>8.1f} {'残糖':<8}")
+            lines.append(f"  {'残糖(葡萄糖)':<16} {r['residual_sugar']:>8.1f} {sugar_eq:>8.3f} {residual_cod:>8.1f} {'残糖':<8}")
         if r["biomass"] > 0:
-            lines.append(f"  {'菌体':<16} {r['biomass']:>8.1f} {1.42:>8.3f} {biomass_cod:>8.1f} {'菌体':<8}")
+            lines.append(f"  {'菌体':<16} {r['biomass']:>8.1f} {dcw_eq:>8.3f} {biomass_cod:>8.1f} {'菌体':<8}")
 
+        # ── COD 平衡（投入口径 → 液相残留口径）──
+        in_waste = "是" if r["product_in_waste"] else "否（已提取回收）"
+        ret_pct = r["biomass_retention"] * 100
         lines.append("")
         lines.append("【COD 平衡】")
-        lines.append(f"  投入总COD: {total_input:>8.1f} g O₂/L")
-        lines.append(f"  - 产品带走: {product_cod:>8.1f} g O₂/L (产量×{r['product_cod_eq']:.3f})")
-        lines.append(f"  + 残糖残留: {residual_cod:>8.1f} g O₂/L")
-        lines.append(f"  + 菌体贡献: {biomass_cod:>8.1f} g O₂/L")
+        lines.append(f"  投入总COD:      {total_input:>8.1f} g O₂/L  （各原料之和）")
+        lines.append(f"   ├ 产品COD:     {product_cod:>8.1f} g O₂/L  （{r['product_yield']:.1f} × {r['product_cod_eq']:.3f}）")
+        lines.append(f"   ├ 菌体COD:     {biomass_cod:>8.1f} g O₂/L  （{r['biomass']:.1f} × {dcw_eq:.3f}）")
+        lines.append(f"   └ 残糖COD:     {residual_cod:>8.1f} g O₂/L  （{r['residual_sugar']:.1f} × {sugar_eq:.3f}）")
         lines.append(f"  ─────────────────────────")
-        lines.append(f"  发酵液COD: {r['liquid_cod']:>8.1f} g O₂/L")
+        lines.append(f"  呼吸氧化为CO₂:  {max(r['mineralized_cod'], 0.0):>8.1f} g O₂/L  （投入 − 上述三项）")
+        lines.append(f"  废水（液相）COD:{r['liquid_cod']:>8.1f} g O₂/L")
         lines.append(f"  废水来源: {r['waste_source']}")
+        lines.append(f"  产品是否留在废水中: {in_waste}；菌体残留率: {ret_pct:.0f}%")
+        if r["mineralized_cod"] < 0:
+            lines.append("")
+            lines.append("  ⚠ 物料口径不自洽：产品+菌体+残糖的 COD 已超过投入总 COD，")
+            lines.append("     说明产品产量/残糖/当量与投料量组合在 COD 守恒上不可行。")
+            lines.append("     请核对投糖量与产品产量（产率不可能超过 COD 收率 100%）。")
+        if r["product_in_waste"] and r["liquid_cod"] > 0 \
+                and r["product_cod"] / r["liquid_cod"] > 0.3:
+            lines.append("")
+            lines.append("  提示：产品 COD 占废水 COD 的 30% 以上。若该产品经离子交换/膜分离")
+            lines.append("        回收，废水应改选「提取废液（离子交换/膜分离）」，否则会把产品")
+            lines.append("        当作污染物算进废水，显著高估 COD。")
         lines.append("")
         lines.append("【废水排放估算】")
         lines.append(f"  废水产生量: {r['waste_vol']:.1f} m³/批")
         lines.append(f"  COD负荷: {r['cod_load']:.1f} kg O₂/批")
         lines.append(f"  ★ COD浓度: {r['cod_conc']:.0f} mg/L")
+        lines.append("")
+        lines.append("【数据来源与口径】")
+        lines.append("  • 有机物料 COD 当量 = 理论需氧量 ThOD：C→CO₂、H→H₂O、N→NH₃（不计硝化）、S→SO₄²⁻")
+        lines.append("  • 糖蜜/玉米浆/酵母浸粉/蛋白胨/豆粕水解液/菌体为工业经验值，无唯一理论解")
+        lines.append("  • 结果为估算值，设计前请以实测 COD 校核")
 
         self.result_text.setText("\n".join(lines))
 
@@ -645,7 +715,7 @@ class CODEstimator(CalculatorBase):
             for key, label in [("batch_vol", "发酵体积_m3"), ("product_type", "产品类型"),
                                ("product_yield", "产品产量_g_L"), ("residual_sugar", "残糖_g_L"),
                                ("biomass", "菌体浓度_g_L"), ("waste_volume", "废水量_m3"),
-                               ("wash_water", "洗涤水_m3")]:
+                               ("waste_source", "废水来源"), ("wash_water", "洗涤水_m3")]:
                 if key in self.input_widgets:
                     inputs[label] = self._get(key, "" if key == "product_type" else 0)
             # 非零原料投加量逐项记录
@@ -666,12 +736,20 @@ class CODEstimator(CalculatorBase):
         return {"inputs": inputs, "outputs": outputs}
 
     def get_project_info(self):
-        """获取项目信息（报告生成用，返回 dict）"""
+        """获取项目信息（报告生成用，返回标准工程信息 dict）"""
+        saved = {}
+        try:
+            if self.data_manager:
+                saved = self.data_manager.get_project_info() or {}
+        except Exception:
+            saved = {}
         return {
-            "project_name": "废水COD估算",
+            "company_name": saved.get("company_name", ""),
+            "project_number": saved.get("project_number", ""),
+            "project_name": saved.get("project_name", "废水COD估算"),
+            "subproject_name": saved.get("subproject_name", ""),
             "calculation_type": self.calculation_type,
             "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "operator": "用户",
         }
 
     def generate_report(self):
@@ -702,12 +780,15 @@ class CODEstimator(CalculatorBase):
                 "-" * 40,
                 "【COD 平衡】",
                 "-" * 40,
-                f"  投入总COD: {r['input_cod_total']:.1f} g O₂/L",
-                f"  - 产品带走: {r['product_cod']:.1f} g O₂/L",
-                f"  + 残糖残留: {r['residual_cod']:.1f} g O₂/L",
-                f"  + 菌体贡献: {r['biomass_cod']:.1f} g O₂/L",
-                f"  发酵液COD: {r['liquid_cod']:.1f} g O₂/L",
+                f"  投入总COD: {r['input_cod_total']:.1f} g O₂/L（各原料之和）",
+                f"   ├ 产品COD: {r['product_cod']:.1f} g O₂/L",
+                f"   ├ 菌体COD: {r['biomass_cod']:.1f} g O₂/L",
+                f"   └ 残糖COD: {r['residual_cod']:.1f} g O₂/L",
+                f"  呼吸氧化为CO₂: {max(r['mineralized_cod'], 0.0):.1f} g O₂/L（投入 − 上述三项）",
+                f"  废水（液相）COD: {r['liquid_cod']:.1f} g O₂/L",
                 f"  废水来源: {r['waste_source']}",
+                f"  产品留在废水中: {'是' if r['product_in_waste'] else '否（已提取回收）'}"
+                f"；菌体残留率: {r['biomass_retention']*100:.0f}%",
                 "",
                 "-" * 40,
                 "【废水排放估算】",
@@ -716,6 +797,12 @@ class CODEstimator(CalculatorBase):
                 f"  COD负荷: {r['cod_load']:.1f} kg O₂/批",
                 f"  COD浓度: {r['cod_conc']:.0f} mg/L",
             ])
+            if r["mineralized_cod"] < 0:
+                lines.extend([
+                    "",
+                    "  ⚠ 物料口径不自洽：产品+菌体+残糖 COD 超过投入总 COD，",
+                    "     该产量/残糖/当量组合在 COD 守恒上不可行，请核对投糖量与产品产量。",
+                ])
         else:
             lines.extend([
                 "-" * 40,
@@ -731,7 +818,31 @@ class CODEstimator(CalculatorBase):
                 f"  缩放系数: {r['scale']:.3f}",
                 f"  估算 COD: {r['cod_est']:.0f} mg/L",
             ])
-        lines.extend(["", "=" * 60, "                     报告结束", "=" * 60])
+        pi = self.get_project_info()
+        lines.extend([
+            "",
+            "-" * 40,
+            "【数据来源与口径】",
+            "-" * 40,
+            "  有机物料 COD 当量 = 理论需氧量 ThOD：C→CO₂、H→H₂O、N→NH₃（不计硝化）、S→SO₄²⁻",
+            "  理论值可复核：n(O₂) = (4C + H + 6S − 3N − 2O)/4，ThOD = n(O₂)·32/M",
+            "  糖蜜/玉米浆/酵母浸粉/蛋白胨/豆粕水解液/菌体 为工业经验值，无唯一理论解",
+            "  COD 平衡按守恒式核算：投入COD = 产品 + 菌体 + 残糖 + 呼吸氧化为CO₂",
+            "  本结果为估算值，工程设计前请以实测 COD 校核。",
+            "",
+            "=" * 60,
+            "                      工程信息",
+            "=" * 60,
+            f"    公司名称: {pi.get('company_name', '')}",
+            f"    工程编号: {pi.get('project_number', '')}",
+            f"    工程名称: {pi.get('project_name', '')}",
+            f"    子项名称: {pi.get('subproject_name', '')}",
+            f"    计算日期: {datetime.datetime.now().strftime('%Y-%m-%d')}",
+            "",
+            "=" * 60,
+            "                     报告结束",
+            "=" * 60,
+        ])
         return "\n".join(lines)
 
 

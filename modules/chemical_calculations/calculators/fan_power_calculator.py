@@ -87,12 +87,13 @@ class FanPowerCalculator(CalculatorBase):
         self.fan_type.setStyleSheet(COMBOBOX_STYLE)
         self.fan_type.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.fan_type.addItems(["离心风机", "轴流风机", "混流风机", "罗茨风机"])
+        self.fan_type.currentTextChanged.connect(self._on_fan_type_changed)
         grid.addWidget(self.fan_type, row, 1)
         row += 1
 
         # 风量
         self._add_label(grid, row, "风量:", lbl)
-        self.flow_rate_input = QLineEdit()
+        self.flow_rate_input = QLineEdit("10000")
         self.flow_rate_input.setPlaceholderText("例如：10000")
         self.flow_rate_input.setValidator(QDoubleValidator(1, 1000000, 1))
         grid.addWidget(self.flow_rate_input, row, 1)
@@ -105,7 +106,7 @@ class FanPowerCalculator(CalculatorBase):
 
         # 全压
         self._add_label(grid, row, "全压:", lbl)
-        self.pressure_input = QLineEdit()
+        self.pressure_input = QLineEdit("1000")
         self.pressure_input.setPlaceholderText("例如：1000")
         self.pressure_input.setValidator(QDoubleValidator(10, 50000, 1))
         grid.addWidget(self.pressure_input, row, 1)
@@ -138,17 +139,18 @@ class FanPowerCalculator(CalculatorBase):
 
         # 风机效率
         self._add_label(grid, row, "风机效率 (%):", lbl)
-        self.fan_efficiency_input = QLineEdit()
+        self.fan_efficiency_input = QLineEdit("75")
         self.fan_efficiency_input.setPlaceholderText("例如：75")
         self.fan_efficiency_input.setValidator(QDoubleValidator(10, 95, 1))
         self.fan_efficiency_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         grid.addWidget(self.fan_efficiency_input, row, 1)
-        grid.addWidget(self._hint("离心风机典型：70~85 %"), row, 2)
+        self.fan_efficiency_hint = self._hint("离心风机典型：70~85 %")
+        grid.addWidget(self.fan_efficiency_hint, row, 2)
         row += 1
 
         # 电机效率
         self._add_label(grid, row, "电机效率 (%):", lbl)
-        self.motor_efficiency_input = QLineEdit()
+        self.motor_efficiency_input = QLineEdit("92")
         self.motor_efficiency_input.setPlaceholderText("例如：92")
         self.motor_efficiency_input.setValidator(QDoubleValidator(50, 98, 1))
         self.motor_efficiency_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -167,12 +169,13 @@ class FanPowerCalculator(CalculatorBase):
         self.transmission_type.setStyleSheet(COMBOBOX_STYLE)
         self.transmission_type.addItems(["直联", "皮带传动", "联轴器"])
         self.transmission_type.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.transmission_type.currentTextChanged.connect(self._on_transmission_changed)
         grid.addWidget(self.transmission_type, row, 2)
         row += 1
 
         # 日运行时间
         self._add_label(grid, row, "日运行时间 (h/天):", lbl)
-        self.operation_hours_input = QLineEdit()
+        self.operation_hours_input = QLineEdit("24")
         self.operation_hours_input.setPlaceholderText("例如：24")
         self.operation_hours_input.setValidator(QDoubleValidator(1, 24, 1))
         self.operation_hours_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -182,7 +185,7 @@ class FanPowerCalculator(CalculatorBase):
 
         # 年运行天数
         self._add_label(grid, row, "年运行天数 (天/年):", lbl)
-        self.days_per_year_input = QLineEdit()
+        self.days_per_year_input = QLineEdit("330")
         self.days_per_year_input.setPlaceholderText("例如：330")
         self.days_per_year_input.setValidator(QDoubleValidator(1, 365, 0))
         self.days_per_year_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -192,7 +195,7 @@ class FanPowerCalculator(CalculatorBase):
 
         # 电价
         self._add_label(grid, row, "电价 (元/kWh):", lbl)
-        self.electricity_price_input = QLineEdit()
+        self.electricity_price_input = QLineEdit("0.8")
         self.electricity_price_input.setPlaceholderText("例如：0.8")
         self.electricity_price_input.setValidator(QDoubleValidator(0.1, 10, 3))
         self.electricity_price_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -265,6 +268,28 @@ class FanPowerCalculator(CalculatorBase):
         lbl = QLabel(text)
         lbl.setStyleSheet("font-style: italic;")
         return lbl
+
+    # 传动方式典型效率（手册值）：直联 100%、联轴器 98%、皮带 95%
+    TRANSMISSION_EFFICIENCY = {"直联": "100", "联轴器": "98", "皮带传动": "95"}
+    # 风机类型典型效率提示
+    FAN_EFFICIENCY_HINTS = {
+        "离心风机": "离心风机典型：70~85 %",
+        "轴流风机": "轴流风机典型：55~75 %",
+        "混流风机": "混流风机典型：60~80 %",
+        "罗茨风机": "罗茨风机（容积式）典型：50~70 %",
+    }
+
+    def _on_transmission_changed(self, text):
+        """传动方式变化→自动填充典型传动效率"""
+        eff = self.TRANSMISSION_EFFICIENCY.get(text)
+        if eff:
+            self.transmission_efficiency_input.setText(eff)
+
+    def _on_fan_type_changed(self, text):
+        """风机类型变化→更新效率提示"""
+        hint = self.FAN_EFFICIENCY_HINTS.get(text)
+        if hint:
+            self.fan_efficiency_hint.setText(hint)
 
     # ────────────────────────────────────────────────────────────
     # 清空
@@ -343,6 +368,7 @@ class FanPowerCalculator(CalculatorBase):
 
             # ── 计算 ──────────────────────────────────────────────
             rho   = self._calc_air_density(T, alt)
+            rho_alt = (1 - alt / 44300) ** 5.255 if alt < 44300 else 0.01
             Q_m3s = Q_m3h / 3600
 
             # 轴功率 = Q × p / η_fan  (W → kW)
@@ -429,7 +455,7 @@ class FanPowerCalculator(CalculatorBase):
            = {shaft_kW:.2f} / ({eta_t:.3f} × {eta_m:.3f})
            = {motor_kW:.2f} kW
 
-    空气密度 ρ = 1.293 × (C_TO_K/T_K) × (1 - H/44300)^5.255
+    空气密度 ρ = 1.293 × ({C_TO_K:.2f}/{T + C_TO_K:.2f}) × ({rho_alt:.4f})
            = {rho:.4f} kg/m³{energy_lines}
 
 ══════════
@@ -438,6 +464,7 @@ class FanPowerCalculator(CalculatorBase):
 
     • 推荐选用 {selected} kW 电机（已含 1.15 安全系数）
     • 高温或高海拔工况下，密度修正对轴功率有显著影响
+    • 风量与全压应按实际工况状态输入（非标准状态换算值）
     • 计算结果仅供参考，实际选型应结合厂家特性曲线"""
 
             self.result_text.setText(result)
@@ -507,9 +534,11 @@ class FanPowerCalculator(CalculatorBase):
         }
 
     def generate_report(self):
+        """生成计算书 - 返回 str/None（None 表示尚未计算，不生成空文件）"""
         content = self.result_text.toPlainText().strip()
-        if not content:
-            return "尚未进行计算。"
+        if not content or "计算结果" not in content:
+            QMessageBox.warning(self, "生成失败", "请先进行计算再生成计算书")
+            return None
         lines = ["风机功率计算报告", "=" * 50, "", content]
         return "\n".join(lines)
 

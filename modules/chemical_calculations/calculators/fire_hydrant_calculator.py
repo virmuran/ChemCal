@@ -385,20 +385,25 @@ class 消火栓计算(CalculatorBase):
             # 计算管径和流速
             pipe_results = self.calculate_pipe_parameters(total_flow, main_diameter)
 
-            # 计算水泵参数
-            pump_results = self.calculate_pump_parameters(pump_head, total_flow, building_height)
+            # 计算水泵参数（用栓口压力 + 管路水头损失）
+            pump_results = self.calculate_pump_parameters(
+                pump_head, total_flow, building_height,
+                min_pressure, pipe_results["head_loss"])
 
-            # 计算水箱容量
-            tank_capacity = self.calculate_tank_capacity(total_flow, building_type, danger_level)
+            # 计算高位消防水箱容积与火灾延续时间储水量
+            tank_capacity, storage_capacity, fire_duration = self.calculate_tank_capacity(
+                total_flow, building_type, building_height)
 
             # 计算消火栓数量
             hydrant_count = self.calculate_hydrant_count(building_area, building_type)
 
             # 显示结果
-            self.display_results(total_flow, pipe_results, pump_results, tank_capacity, hydrant_count)
+            self.display_results(total_flow, pipe_results, pump_results,
+                                 tank_capacity, storage_capacity, fire_duration, hydrant_count)
 
             # 更新配置表
-            self.update_config_table(total_flow, pipe_results, pump_results, tank_capacity, hydrant_count)
+            self.update_config_table(total_flow, pipe_results, pump_results,
+                                     tank_capacity, storage_capacity, hydrant_count)
 
             self._last_results = {
                 "building_type": building_type,
@@ -412,6 +417,8 @@ class 消火栓计算(CalculatorBase):
                 "pipe_results": pipe_results,
                 "pump_results": pump_results,
                 "tank_capacity": tank_capacity,
+                "storage_capacity": storage_capacity,
+                "fire_duration": fire_duration,
                 "hydrant_count": hydrant_count,
             }
 
@@ -436,10 +443,11 @@ class 消火栓计算(CalculatorBase):
         pr = r.get("pipe_results", {})
         pm = r.get("pump_results", {})
         outputs = {
-            "消防总流量_L_s": round(r.get("total_flow", 0), 1),
+            "室内消火栓设计流量_L_s": round(r.get("total_flow", 0), 1),
             "管道流速_m_s": round(pr.get("velocity", 0), 2),
-            "水泵流量_L_s": round(pm.get("flow", 0), 1),
-            "水箱容量_m3": round(r.get("tank_capacity", 0), 1),
+            "水泵所需扬程_m": round(pm.get("required_head", 0), 1),
+            "高位水箱最小容积_m3": round(r.get("tank_capacity", 0), 1),
+            "消防储水量_m3": round(r.get("storage_capacity", 0), 1),
             "消火栓数量": r.get("hydrant_count", 0)
         }
         return {"inputs": inputs, "outputs": outputs}
@@ -467,40 +475,23 @@ class 消火栓计算(CalculatorBase):
             self.min_pressure_input.setValue(0.35)
 
     def calculate_total_flow(self, gun_count, gun_flow, building_type, danger_level):
-        """计算总消防用水量"""
+        """计算室内消火栓设计流量
+        规范逻辑（GB 50974-2014 表3.5.2）：设计流量 = 同时使用水枪数 × 每支水枪流量，
+        且不应小于表3.5.2 规定的该类别最小设计流量。
+        """
         base_flow = gun_count * gun_flow
 
-        # 根据建筑类型和危险等级调整
-        flow_factors = {
-            "民用建筑": 1.0,
-            "工业建筑": 1.2,
-            "仓库": 1.5,
-            "高层建筑": 1.3,
-            "超高层建筑": 1.5,
-            "地下建筑": 1.2
-        }
-
-        danger_factors = {
-            "轻危险级": 0.8,
-            "中危险级Ⅰ级": 1.0,
-            "中危险级Ⅱ级": 1.2,
-            "严重危险级": 1.5
-        }
-
-        factor = flow_factors.get(building_type, 1.0) * danger_factors.get(danger_level, 1.0)
-        total_flow = base_flow * factor
-
-        # 最小流量限制
+        # 表3.5.2 最小室内消火栓设计流量（简化取值）
         min_flows = {
             "民用建筑": 10,
             "工业建筑": 15,
-            "仓库": 20,
+            "仓库": 15,
             "高层建筑": 20,
             "超高层建筑": 30,
             "地下建筑": 15
         }
 
-        return max(total_flow, min_flows.get(building_type, 15))
+        return max(base_flow, min_flows.get(building_type, 15))
 
     def calculate_pipe_parameters(self, total_flow, main_diameter):
         """计算管道参数"""
@@ -532,10 +523,15 @@ class 消火栓计算(CalculatorBase):
         else:
             return 200
 
-    def calculate_pump_parameters(self, pump_head, total_flow, building_height):
-        """计算水泵参数"""
-        # 计算所需扬程
-        required_head = building_height + 10 + 5  # 建筑高度 + 最不利点高度 + 余量
+    def calculate_pump_parameters(self, pump_head, total_flow, building_height,
+                                  min_pressure=0.35, head_loss=0.0):
+        """计算水泵参数
+        规范口径（GB 50974-2014）：
+        水泵扬程 H = 最不利点标高差 + 最不利栓口所需压力（水柱） + 管路总水头损失
+        """
+        # 栓口压力 MPa → m 水柱
+        pressure_head = min_pressure * 1e6 / (1000 * G)
+        required_head = building_height + pressure_head + head_loss
 
         # 计算水泵功率 P = ρ·g·Q·H/η，ρ_水=1000 kg/m³
         efficiency = 0.75
@@ -545,39 +541,41 @@ class 消火栓计算(CalculatorBase):
         return {
             "required_head": required_head,
             "actual_head": pump_head,
+            "pressure_head": pressure_head,
             "power": power_kw,
             "flow": total_flow,
             "efficiency": efficiency
         }
 
-    def calculate_tank_capacity(self, total_flow, building_type, danger_level):
-        """计算消防水箱容量"""
-        # 火灾延续时间 (小时)
+    def calculate_tank_capacity(self, total_flow, building_type, building_height):
+        """高位消防水箱与消防储水量
+
+        1) 高位消防水箱最小有效容积：GB 50974-2014 表5.2.1
+        2) 火灾延续时间消防储水量（即消防水池规模口径）：Q × 3.6 × t
+        """
+        # ── 高位消防水箱（表5.2.1）──
+        if building_type == "超高层建筑":
+            min_tank = 100 if building_height > 150 else 50
+        elif building_type == "高层建筑":
+            min_tank = 50 if building_height > 100 else 36
+        elif building_type in ("民用建筑", "地下建筑"):
+            min_tank = 18  # 多层公共、二类高层公共、一类高层住宅
+        else:  # 工业建筑 / 仓库：室内流量 ≤25 → 12, >25 → 18
+            min_tank = 18 if total_flow > 25 else 12
+
+        # ── 火灾延续时间消防储水量（表3.6.2，属消防水池口径）──
         duration_factors = {
             "民用建筑": 2,
-            "工业建筑": 2,
-            "仓库": 3,
+            "工业建筑": 3,   # 甲/乙/丙类厂房 3h，丁/戊类 2h，此处按危险等级较高取值
+            "仓库": 3,       # 甲/乙/丙类仓库 3h，丁/戊类 2h
             "高层建筑": 2,
-            "超高层建筑": 3,
+            "超高层建筑": 3,  # 商业/展览/综合楼等 3h
             "地下建筑": 2
         }
-
         duration = duration_factors.get(building_type, 2)
+        storage = total_flow * 3.6 * duration  # L/s × 3.6 = m³/h
 
-        # 容量计算 (m³)
-        capacity = total_flow * 3.6 * duration  # L/s * 3.6 = m³/h
-
-        # 最小容量限制
-        min_capacities = {
-            "民用建筑": 12,
-            "工业建筑": 18,
-            "仓库": 36,
-            "高层建筑": 18,
-            "超高层建筑": 36,
-            "地下建筑": 12
-        }
-
-        return max(capacity, min_capacities.get(building_type, 12))
+        return min_tank, storage, duration
 
     def calculate_hydrant_count(self, building_area, building_type):
         """计算消火栓数量"""
@@ -606,17 +604,19 @@ class 消火栓计算(CalculatorBase):
 
         return max(count, min_counts.get(building_type, 2))
 
-    def display_results(self, total_flow, pipe_results, pump_results, tank_capacity, hydrant_count):
+    def display_results(self, total_flow, pipe_results, pump_results,
+                        tank_capacity, storage_capacity, fire_duration, hydrant_count):
         """显示计算结果"""
         vel_ok = pipe_results['velocity'] <= 2.5
+        head_ok = pump_results['actual_head'] >= pump_results['required_head']
         lines = [
             "=" * 44,
             "        消火栓系统计算结果",
             "=" * 44,
             "",
             "【消防用水量】",
-            f"  总消防用水量   : {total_flow:.1f} L/s",
-            f"                   （同时使用水枪的总流量）",
+            f"  室内消火栓设计流量: {total_flow:.1f} L/s",
+            f"                     （水枪数×每枪流量，且≥表3.5.2最小值）",
             "",
             "【管道参数】",
             f"  主管道直径     : DN{pipe_results['diameter']}（推荐 DN{pipe_results['recommended_diameter']}）",
@@ -624,33 +624,40 @@ class 消火栓计算(CalculatorBase):
             f"  沿程水头损失   : {pipe_results['head_loss']:.2f} m（100m 管长估算）",
             "",
             "【水泵参数】",
-            f"  水泵扬程       : {pump_results['actual_head']:.0f} m（需求 {pump_results['required_head']:.0f} m）",
+            f"  所需扬程       : {pump_results['required_head']:.1f} m",
+            f"    （= 标高差 {pump_results['required_head'] - pump_results['pressure_head'] - pipe_results['head_loss']:.1f}"
+            f" + 栓口压力 {pump_results['pressure_head']:.1f} + 管损 {pipe_results['head_loss']:.1f} m）",
+            f"  输入水泵扬程   : {pump_results['actual_head']:.0f} m {'✓ 满足' if head_ok else '⚠ 低于所需扬程，应重新选泵'}",
             f"  水泵轴功率     : {pump_results['power']:.1f} kW（效率 {pump_results['efficiency']*100:.0f}%）",
             "",
             "【储存与布置】",
-            f"  消防水箱容量   : {tank_capacity:.0f} m³（火灾延续时间用水量）",
-            f"  消火栓数量     : {hydrant_count} 个（按保护半径计算）",
+            f"  高位消防水箱   : ≥ {tank_capacity:.0f} m³（GB 50974 表5.2.1 最小有效容积）",
+            f"  消防储水量     : {storage_capacity:.0f} m³（火灾延续 {fire_duration}h 用水量，",
+            f"                   即消防水池规模，详消防水池容积计算器）",
+            f"  消火栓数量     : {hydrant_count} 个（按保护面积估算）",
             "",
             "【设计建议】",
             f"  1. 主管道建议采用 DN{pipe_results['recommended_diameter']} 管道",
-            f"  2. 水泵选型应满足 {pump_results['required_head']:.0f} m 扬程和 {total_flow:.1f} L/s 流量要求",
-            f"  3. 消防水箱容量不应小于 {tank_capacity:.0f} m³",
-            "  4. 消火栓布置间距应符合规范要求",
+            f"  2. 水泵选型应满足 {pump_results['required_head']:.0f} m 扬程和 {total_flow:.1f} L/s 流量要求（宜留1~2m余量）",
+            f"  3. 高位消防水箱有效容积不应小于 {tank_capacity:.0f} m³",
+            "  4. 消火栓布置间距应符合规范要求（高层≤30m，其他≤50m）",
             "=" * 44,
         ]
 
         self.result_text.setPlainText("\n".join(lines))
 
-    def update_config_table(self, total_flow, pipe_results, pump_results, tank_capacity, hydrant_count):
+    def update_config_table(self, total_flow, pipe_results, pump_results,
+                            tank_capacity, storage_capacity, hydrant_count):
         """更新配置表"""
         config_data = [
-            ["消防用水量", f"{total_flow:.1f} L/s", "总设计流量"],
+            ["消防用水量", f"{total_flow:.1f} L/s", "室内消火栓设计流量"],
             ["主管道直径", f"DN{pipe_results['recommended_diameter']}", "推荐主管直径"],
             ["管道流速", f"{pipe_results['velocity']:.2f} m/s", "经济流速范围: 1.5-2.5 m/s"],
             ["水泵扬程", f"{pump_results['required_head']:.0f} m", "最小需求扬程"],
             ["水泵流量", f"{pump_results['flow']:.1f} L/s", "设计流量"],
-            ["水箱容量", f"{tank_capacity:.0f} m³", "消防储水量"],
-            ["消火栓数量", f"{hydrant_count} 个", "按保护面积计算"],
+            ["高位消防水箱", f"≥ {tank_capacity:.0f} m³", "GB 50974 表5.2.1 最小容积"],
+            ["消防储水量", f"{storage_capacity:.0f} m³", "火灾延续时间用水量（消防水池）"],
+            ["消火栓数量", f"{hydrant_count} 个", "按保护面积估算"],
             ["充实水柱", f"{self.water_column_input.value()} m", "有效灭火长度"]
         ]
 

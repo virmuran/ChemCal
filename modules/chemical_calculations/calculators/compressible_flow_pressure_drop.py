@@ -369,12 +369,14 @@ class CompressibleFlowPressureDrop(CalculatorBase):
             method = self._method()
             results = {}
             dp_kPa = 0.0
+            P2_eff = P2   # 实际下游压力（等温积分法用反算值）
 
             if method == "darcy_integral":
                 dp_sq = (f * L_eq / d) * (m_kg / A) ** 2 * R * T_K
                 P2_calc = math.sqrt(max(0, P1 ** 2 - dp_sq))
                 dp_kPa = (P1 - P2_calc) / 1000.0
                 choked = P2_calc < P_crit
+                P2_eff = P2_calc
                 results = {
                     "计算方法": "Darcy-Weisbach（等温积分）",
                     "摩擦系数 f": f,
@@ -394,35 +396,46 @@ class CompressibleFlowPressureDrop(CalculatorBase):
                     "摩擦系数 f": f,
                     "平均密度 (kg/m3)": rho_avg,
                 }
-            elif method == "weymouth":
-                L_km = L / 1000.0
+            elif method in ("weymouth", "panhandle"):
+                # ── 天然气输配经验公式（SI 制，基准状态 20 °C / 101.325 kPa）──
+                # 来源：Gas Pipeline Hydraulics（Menon）式(2.32)/(2.35)：
+                #   Weymouth  : Q[m³/d]=3.7435e-3·(Tb/Pb)·[(P1²-P2²)/(G·T·Le·Z)]^0.5·D^2.667·E
+                #   PanhandleA: Q[m³/d]=4.5965e-3·(Tb/Pb)^1.0788
+                #                       ·[(P1²-P2²)/(G^0.8539·T·Le·Z)]^0.5394·D^2.6182·E
+                #   其中 P:kPa  D:mm  Le:km  T:K  G:相对密度(空气=1)  Z:压缩因子
+                # 原实现系数 0.0330/0.0280 且缺 G、T、Z 归一化，结果偏大约 3 个数量级
+                # （100 mm 管 100 m 会算出数百万 m³/h），此处按标准 SI 式重写。
                 D_mm = d * 1000.0
-                dp_sq = (P1/1000.0) ** 2 - (P2/1000.0) ** 2
-                Q = 0.0330 * math.sqrt(max(0, dp_sq / L_km)) * D_mm ** (8.0/3.0) if L_km > 0 else 0
+                Le_km = L_eq / 1000.0
+                dp_sq = max(0.0, (P1 / 1000.0) ** 2 - (P2 / 1000.0) ** 2)   # kPa²
+                G_gas = mw / 28.97            # 气体相对密度（空气=1）
+                Z = 1.0                       # 压缩因子按理想气体取 1
+                Tb_Pb = 293.15 / 101.325
+                rho_std = self._rho(101325.0, 293.15, R)
                 dp_kPa = (P1 - P2) / 1000.0
-                rho_std = self._rho(101325, 288.15, R)
+                if Le_km <= 0 or G_gas <= 0:
+                    Q_m3d = 0.0
+                elif method == "weymouth":
+                    E = 1.0
+                    Q_m3d = (3.7435e-3 * Tb_Pb
+                             * math.sqrt(dp_sq / (G_gas * T_K * Le_km * Z))
+                             * D_mm ** 2.667 * E)
+                else:
+                    E = 0.92
+                    Q_m3d = (4.5965e-3 * Tb_Pb ** 1.0788
+                             * (dp_sq / (G_gas ** 0.8539 * T_K * Le_km * Z)) ** 0.5394
+                             * D_mm ** 2.6182 * E)
+                Q_m3h = Q_m3d / 24.0
                 results = {
-                    "计算方法": "Weymouth 公式",
-                    "标准体积流量 (m3/h)": Q * 3600,
-                    "等效质量流量 (kg/h)": Q * rho_std * 3600,
-                }
-            elif method == "panhandle":
-                L_km = L / 1000.0
-                D_mm = d * 1000.0
-                dp_sq = (P1/1000.0) ** 2 - (P2/1000.0) ** 2
-                E = 0.92
-                Q = 0.0280 * E * (dp_sq / L_km) ** 0.5394 * D_mm ** 2.6182 if L_km > 0 else 0
-                dp_kPa = (P1 - P2) / 1000.0
-                rho_std = self._rho(101325, 288.15, R)
-                results = {
-                    "计算方法": "Panhandle A 公式",
-                    "标准体积流量 (m3/h)": Q * 3600,
+                    "计算方法": "Weymouth 公式" if method == "weymouth" else "Panhandle A 公式",
+                    "气体相对密度 G": G_gas,
+                    "标准体积流量 (m3/h)": Q_m3h,
+                    "等效质量流量 (kg/h)": Q_m3h * rho_std,
                     "效率因子 E": E,
-                    "等效质量流量 (kg/h)": Q * rho_std * 3600,
                 }
 
             self._last_result = {"dp_kPa": dp_kPa, "Re": Re1, "f": f, "Ma": Ma,
-                              "is_choked": P2 < P_crit, "P_crit": P_crit / 1000.0}
+                              "is_choked": P2_eff < P_crit, "P_crit": P_crit / 1000.0}
             self._last_params = {"method": method, "mw": mw, "gamma": gamma, "R": R}
             self._display(dp_kPa, results, Re1, Ma, f)
             self._update_table(results, Re1, Ma, f)
@@ -499,6 +512,9 @@ class CompressibleFlowPressureDrop(CalculatorBase):
             lines.append(f"  {k}  : {v:.4f}" if isinstance(v, float) else f"  {k}  : {v}")
         if Ma > 0.8:
             lines += ["", "  警告：马赫数>0.8，等温假设可能不成立！"]
+        if str(results.get("计算方法", "")).startswith(("Weymouth", "Panhandle")):
+            lines += ["", "  说明：经验公式基准状态 20 °C / 101.325 kPa，压缩因子 Z=1（理想气体），",
+                      "        适用于大直径、中高压天然气长输管道；短管/低压工况结果仅供参考。"]
         lines += ["", "=" * 55]
         self.result_text.setPlainText("\n".join(lines))
 
@@ -512,7 +528,8 @@ class CompressibleFlowPressureDrop(CalculatorBase):
         unit_map = {
             "当量长度 Leq (m)": "m", "入口密度 (kg/m3)": "kg/m3",
             "出口压力 (kPa)": "kPa", "平均密度 (kg/m3)": "kg/m3",
-            "标准体积流量 (m3/h)": "m3/h", "等效质量流量 (kg/h)": "kg/h", "效率因子 E": "-",
+            "标准体积流量 (m3/h)": "m3/h", "等效质量流量 (kg/h)": "kg/h",
+            "效率因子 E": "-", "气体相对密度 G": "-",
         }
         for k, v in results.items():
             if k == "计算方法": continue
@@ -594,7 +611,7 @@ class CompressibleFlowPressureDrop(CalculatorBase):
             # 检查条件
             if not result_text or "计算结果" not in result_text:
                 QMessageBox.warning(self, "生成失败", "请先进行计算再生成计算书")
-                return ""
+                return None
             
             # 获取工程信息
             project_info = self.get_project_info()
@@ -642,7 +659,7 @@ class CompressibleFlowPressureDrop(CalculatorBase):
             
         except Exception as e:
             print(f"生成计算书失败: {e}")
-            return ""
+            return None
 
     # ---- 下载报告 ----
     def download_docx_report(self):

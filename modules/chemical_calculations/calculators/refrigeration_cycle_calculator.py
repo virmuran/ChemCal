@@ -472,8 +472,14 @@ class RefrigerationCycleCalculator(CalculatorBase):
                 "R410A": "R410A",
                 "R32": "R32",
                 "R717 (氨)": "R717",
-                "R744 (CO₂)": "R410A",  # CO2 无 Antoine 系数，近似使用 R410A
             }
+            if refrigerant == "R744 (CO₂)":
+                QMessageBox.warning(
+                    self, "暂不支持",
+                    "CO₂ (R744) 的临界温度仅 31.1°C，常规冷凝温度（如 40°C）下已进入\n"
+                    "跨临界循环区域，需要专门的跨临界循环模型（气体冷却器）计算。\n"
+                    "本计算器暂不支持 CO₂，请选用其他制冷剂。")
+                return
             ref_name = ref_map.get(refrigerant, "R134a")
 
             # 尝试使用工业级精度计算
@@ -528,7 +534,6 @@ class RefrigerationCycleCalculator(CalculatorBase):
         ref_data = eos.REFRIGERANTS[ref_name]
 
         # --- 状态1: 压缩机进口 (蒸发器出口) ---
-        T1_K = evap_temp + C_TO_K + superheat
         sat_ev = eos.saturation_properties(T_K=evap_temp + C_TO_K, ref_name=ref_name)
         P_evap_MPa = sat_ev['P_MPa']
 
@@ -539,19 +544,34 @@ class RefrigerationCycleCalculator(CalculatorBase):
         s1 = prop1['s']
         T1 = T1_C
 
-        # --- 状态2: 压缩机出口 (等熵压缩) ---
+        # --- 状态2: 压缩机出口 (等熵压缩: s2s = s1, 二分迭代) ---
         sat_cd = eos.saturation_properties(T_K=cond_temp + C_TO_K, ref_name=ref_name)
         P_cond_MPa = sat_cd['P_MPa']
 
-        # 等熵压缩温度近似（理想气体）
-        cp_g = ref_data['cp_ideal']
-        R_spec = 8.314 / (ref_data['M'] / 1000.0)  # J/(kg·K)
-        gamma = (cp_g * 1000.0 + R_spec) / R_spec
-
-        T2_ideal_K = T1_K * (P_cond_MPa / P_evap_MPa) ** ((gamma - 1.0) / gamma)
-        h2s = h1 + cp_g * (T2_ideal_K - T1_K)
+        T2s_lo = max(evap_temp, cond_temp)
+        T2s_hi = T2s_lo + 250.0
+        for _ in range(80):
+            T2s_mid = 0.5 * (T2s_lo + T2s_hi)
+            s_mid = eos.vapor_properties(P_cond_MPa, T2s_mid, ref_name=ref_name)['s']
+            if s_mid > s1:
+                T2s_hi = T2s_mid
+            else:
+                T2s_lo = T2s_mid
+        T2s_C = 0.5 * (T2s_lo + T2s_hi)
+        v2s = eos.vapor_properties(P_cond_MPa, T2s_C, ref_name=ref_name)
+        h2s = v2s['h']
         h2 = h1 + (h2s - h1) / comp_efficiency
-        T2_C = T2_ideal_K - C_TO_K + (1.0 / comp_efficiency - 1.0) * 20  # 近似排气温度
+
+        # 实际排气温度: 由 h2 在过热区反查 (焓随温度单调)
+        T2_lo, T2_hi = T2s_C, T2s_C + 200.0
+        for _ in range(80):
+            T2_mid = 0.5 * (T2_lo + T2_hi)
+            h_mid = eos.vapor_properties(P_cond_MPa, T2_mid, ref_name=ref_name)['h']
+            if h_mid > h2:
+                T2_hi = T2_mid
+            else:
+                T2_lo = T2_mid
+        T2_C = 0.5 * (T2_lo + T2_hi)
 
         # --- 状态3: 冷凝器出口 (过冷液体) ---
         T3_C = cond_temp - subcool
@@ -658,8 +678,7 @@ class RefrigerationCycleCalculator(CalculatorBase):
                         计算说明
 ═══════════════════════════════════════════════════
 
-• 基于 Peng-Robinson 状态方程 + Antoine 方程 + Rackett 方程
-• 压缩过程: 理想气体等熵近似 + 效率修正
+• 压缩过程: 等熵迭代 (s2s = s1, EOS 焓熵) + 等熵效率修正
 • 膨胀过程: 等焓节流
 • 饱和性质精度: ±2%, P-V-T 精度: ±3%
 • 结果适用于工程初步设计和方案比选"""
@@ -729,6 +748,10 @@ class RefrigerationCycleCalculator(CalculatorBase):
             格式化后的字符串
         """
         return f"""═══════════════════════════════════════════════════
+⚠⚠⚠  物性库 refrigerant_eos 加载失败  ⚠⚠⚠
+以下结果由粗略估算公式产生（误差可达 ±30% 以上），
+不可用于工程设计，请检查程序安装后重新计算。
+═══════════════════════════════════════════════════
                          输入参数
 ═══════════════════════════════════════════════════
 
@@ -907,8 +930,10 @@ class RefrigerationCycleCalculator(CalculatorBase):
 
             ref_map = {
                 "R134a": "R134a", "R22": "R22", "R410A": "R410A",
-                "R32": "R32", "R717 (氨)": "R717", "R744 (CO₂)": "R410A",
+                "R32": "R32", "R717 (氨)": "R717",
             }
+            if refrigerant == "R744 (CO₂)":
+                return {"inputs": inputs, "outputs": {"说明": "CO₂ 跨临界循环暂不支持"}}
             ref_name = ref_map.get(refrigerant, "R134a")
 
             if USE_INDUSTRIAL_CYCLE and ref_name in getattr(_refrigerant_eos, 'REFRIGERANTS', {}):
@@ -918,14 +943,20 @@ class RefrigerationCycleCalculator(CalculatorBase):
                 T1_C = evap_temp + superheat
                 prop1 = _refrigerant_eos.vapor_properties(sat_ev['P_MPa'], T1_C, ref_name=ref_name)
                 h1 = prop1['h']
+                s1 = prop1['s']
 
-                ref_data = _refrigerant_eos.REFRIGERANTS[ref_name]
-                cp_g = ref_data['cp_ideal']
-                R_spec = 8.314 / (ref_data['M'] / 1000.0)
-                gamma = (cp_g * 1000.0 + R_spec) / R_spec
-                T1_K = T1_C + C_TO_K
-                T2_ideal_K = T1_K * (sat_cd['P_MPa'] / sat_ev['P_MPa']) ** ((gamma - 1.0) / gamma)
-                h2s = h1 + cp_g * (T2_ideal_K - T1_K)
+                # 等熵迭代: s2s = s1
+                P_cd = sat_cd['P_MPa']
+                T2s_lo = max(evap_temp, cond_temp)
+                T2s_hi = T2s_lo + 250.0
+                for _ in range(80):
+                    T2s_mid = 0.5 * (T2s_lo + T2s_hi)
+                    s_mid = _refrigerant_eos.vapor_properties(P_cd, T2s_mid, ref_name=ref_name)['s']
+                    if s_mid > s1:
+                        T2s_hi = T2s_mid
+                    else:
+                        T2s_lo = T2s_mid
+                h2s = _refrigerant_eos.vapor_properties(P_cd, 0.5*(T2s_lo+T2s_hi), ref_name=ref_name)['h']
                 h2 = h1 + (h2s - h1) / comp_efficiency
 
                 T3_C = cond_temp - subcool

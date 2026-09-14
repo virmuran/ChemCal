@@ -9,6 +9,7 @@ pH 计算器 — 酸碱中和 / 缓冲溶液 / 稀释 / pH 调节
 
 """
 import math
+from datetime import datetime
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QGroupBox, QTextEdit, QComboBox, QScrollArea,
@@ -23,8 +24,9 @@ from app_styles import (INPUT_LABEL_STYLE, CLEAR_BTN_STYLE,
                         DOCX_BTN_STYLE, PDF_BTN_STYLE)
 from utils.docx_utils import ReportExporter
 
-# ── 常见弱酸/弱碱 pKa/pKb 参照 ──
+# ── 常见弱酸/弱碱 pKa/pKb 参照（25 °C） ──
 # (名称, 类型 acid/base, pK 值, 温度)
+# ⚠ 约定：类型"酸"填 pKa；类型"碱"填 pKb（pKb = 14 − pKa）
 PK_TABLE = {
     "醋酸/醋酸钠":     ("酸", 4.76, 25),
     "磷酸二氢盐/磷酸一氢盐": ("酸", 7.21, 25),
@@ -32,7 +34,9 @@ PK_TABLE = {
     "碳酸氢盐/碳酸盐": ("酸", 10.33, 25),
     "柠檬酸/柠檬酸钠": ("酸", 3.13, 25),
     "氨水/氯化铵":     ("碱", 4.75, 25),
-    "Tris-HCl":        ("碱", 8.07, 25),
+    # 修复：原填 8.07 是 Tris 的 pKa，却放在"碱"（pKb）栏，
+    # 导致 Tris 缓冲液算出的 pH 偏低 2 个多单位。pKb = 14 − 8.06 = 5.94
+    "Tris-HCl":        ("碱", 5.94, 25),
 }
 
 # ── pH 调节常用酸碱预设 ──
@@ -78,8 +82,23 @@ _REAGENT_MW = {
 class PHCalculator(CalculatorBase):
     """pH 计算器 v1.0"""
 
+    # 出厂默认值（与 setup_ui 中的初始值一致，"清空"时复位用）
+    _DEFAULTS = {
+        # 酸碱中和
+        "n_C": "1.0", "n_V": "1.0", "n_val": "1", "n_other_C": "1.0", "n_other_val": "1",
+        # 缓冲溶液
+        "buf_pk": "4.76", "buf_salt": "0.1", "buf_acid": "0.1",
+        # 稀释
+        "dil_pH1": "3.0", "dil_pk": "4.76", "dil_V1": "1.0", "dil_V2": "10.0",
+        # pH 调节
+        "adj_pH0": "7.0", "adj_pH1": "5.0", "adj_V": "2500", "adj_total_acid": "0.063",
+        "adj_wt": "30", "adj_mw": "40.0", "adj_purity": "99", "adj_n": "1",
+    }
+
     def __init__(self, parent=None, data_manager=None):
         super().__init__(parent, data_manager)
+        if self.data_manager is None:
+            self.init_data_manager()
         self._last_results = {}
         self._mode_widgets = {}       # mode → {name: widget}
         self._all_inputs = {}         # 全部输入控件统一引用
@@ -280,9 +299,9 @@ class PHCalculator(CalculatorBase):
         cb2 = self._all_inputs["buf_type"]
         cb2.addItems(["酸型（HA/A⁻）", "碱型（B/BH⁺）"])
         r = self._add_row(g, r, "共轭碱浓度 [A⁻]", "buf_salt", self._inp("0.1"),
-                          "盐/共轭碱的浓度 mol/L")
+                          "酸型填共轭碱[A⁻]；碱型填共轭酸[BH⁺]，mol/L")
         r = self._add_row(g, r, "弱酸浓度 [HA]", "buf_acid", self._inp("0.1"),
-                          "弱酸或弱碱的浓度 mol/L")
+                          "酸型填弱酸[HA]；碱型填弱碱[B]，mol/L")
         self._mode_widgets["缓冲溶液 pH"] = gb
         gb.setVisible(False)
         layout.addWidget(gb)
@@ -354,9 +373,15 @@ class PHCalculator(CalculatorBase):
                           "adj_wt", self._inp("30"), "%")
         # 不再单独创建 mol_hint 标签，让 _on_adjust_reagent 直接改 hint 文案
 
-        # ── 固体模式 ──
+        # ── 密度（液体；自定义液体核心参数，预设也可按实际温度修正） ──
+        r = self._add_row(g, r, "试剂密度 ρ",
+                          "adj_rho", self._inp("1.33"), "g/mL（20 °C）")
+
+        # ── 分子量（液体 C = wt%×ρ×10/M；固体 mol/g = 含量%×n/M） ──
         r = self._add_row(g, r, "分子量 M",
                           "adj_mw", self._inp("40.0"), "g/mol")
+
+        # ── 固体模式 ──
         r = self._add_row(g, r, "有效含量",
                           "adj_purity", self._inp("99"), "%")
 
@@ -365,8 +390,12 @@ class PHCalculator(CalculatorBase):
                           "adj_n", self._inp("1", 0),
                           "每分子释放 H⁺ 或 OH⁻ 个数")
 
-        self._adj_liquid_fields = ["adj_wt"]
-        self._adj_solid_fields = ["adj_mw", "adj_purity"]
+        # 液体需要 重量% + 密度 + 分子量（C = wt% × ρ × 10 / M）
+        # 固体需要 有效含量（mol/g = 含量% × n / M）
+        # → 自定义液体同样可算（原实现液体隐藏分子量、且无密度输入，
+        #    "自定义液体" 只能拿到 ρ=1、M=1 的占位值，浓度会算出 10×wt% 的荒谬结果）
+        self._adj_liquid_fields = ["adj_wt", "adj_rho", "adj_mw"]
+        self._adj_solid_fields = ["adj_purity"]
         self._mode_widgets["pH 调节"] = gb
         gb.setVisible(False)
         layout.addWidget(gb)
@@ -407,10 +436,11 @@ class PHCalculator(CalculatorBase):
             w = self._all_inputs.get(suf)
             if w:
                 w.setVisible(weak)
-                # 找 label 也同步
-                lbl = self.findChild(QLabel, f"lbl_{suf}")
-                if lbl:
-                    lbl.setVisible(weak)
+                # 找 label / hint 也同步
+                for obj in (f"lbl_{suf}", f"hint_{suf}"):
+                    lb = self.findChild(QLabel, obj)
+                    if lb:
+                        lb.setVisible(weak)
 
     def _on_adjust_reagent(self, name):
         """试剂预设切换 → 自动填充参数 + 显隐液体/固体字段"""
@@ -420,14 +450,25 @@ class PHCalculator(CalculatorBase):
         _, form, val1, val2, mw, n_val = info
         if form == "液体":
             self._all_inputs["adj_wt"].setText(str(val2))
-            mol_l = val2 / 100 * val1 * 1000 / mw
+            self._all_inputs["adj_rho"].setText(f"{val1:g}")
+            # 分子量：预设值可用则填入；"自定义液体" 的占位 1.0 不能当真实分子量，留空待填
+            if mw and mw > 1.0:
+                self._all_inputs["adj_mw"].setText(f"{mw:g}")
+                mol_l = val2 / 100 * val1 * 1000 / mw
+            else:
+                self._all_inputs["adj_mw"].clear()
+                mol_l = float("nan")
             # 把 mol/L 派生值合并到 hint 文字里："%（≈ X.X mol/L）"
             hint = self._row_widgets.get("adj_wt", {}).get("hint")
             if hint is not None:
-                hint.setText(f"% (≈ {mol_l:.1f} mol/L)")
+                if mol_l == mol_l:      # not NaN
+                    hint.setText(f"% (≈ {mol_l:.1f} mol/L)")
+                else:
+                    hint.setText("%（自定义：另填 ρ 与 M 后方可折算 mol/L）")
         else:
-            self._all_inputs["adj_mw"].setText(str(val1))
-            self._all_inputs["adj_purity"].setText(str(val2))
+            self._all_inputs["adj_mw"].setText(f"{val1:g}")
+            self._all_inputs["adj_purity"].setText(f"{val2:g}")
+            self._all_inputs["adj_rho"].clear()
         self._all_inputs["adj_n"].setText(str(n_val))
         self._toggle_adjust_fields(form)
         self._adjust_form = form
@@ -494,6 +535,8 @@ class PHCalculator(CalculatorBase):
             self._display(mode, r)
         except Exception as e:
             self.result_text.setPlainText(f"⚠ 计算错误: {e}")
+            # 出错即作废上次结果，避免导出生成一份内容是报错的计算书
+            self._last_results = {}
 
     # ═════════════════════════════════════════
     #  模式 1：酸碱中和
@@ -552,28 +595,47 @@ class PHCalculator(CalculatorBase):
             raise ValueError("稀释后体积必须 > 初始体积")
         factor = V2 / V1
 
+        total_conc = None
         if "强" in stype:
             if "酸" in stype:
                 pH2 = pH1 + math.log10(factor)
             else:
                 pH2 = 14 - ((14 - pH1) + math.log10(factor))
         else:
-            # 弱电解：简化公式 [H⁺]2 = Ka × (C1 × V1 / V2)
-            # 近似: pH2 ≈ 0.5×(pKa + pCa2) 其中 Ca2 = C1/factor
+            # 弱电解：由初始 pH 反推总浓度，稀释后重解一元二次解离方程
+            #   弱酸：[H⁺]² + Ka[H⁺] − Ka·Ca = 0 → Ca = [H⁺]²/Ka + [H⁺]
+            #   稀释后 Ca' = Ca/factor，再解 [H⁺]² + Ka[H⁺] − Ka·Ca' = 0
+            # 修复：原实现把 pK 当 Ka、把 10^(-pH) 当总浓度混算，
+            #       结果退化成 pH2 = pH1 + log(factor)（等同强酸），pKa 实际未起作用。
             if pk <= 0:
                 raise ValueError("弱电解需要 pKa/pKb, 请填入")
             if "酸" in stype:
-                C1 = 10 ** (-pH1)
-                Ca = C1 / factor
-                tmp = (-pk + math.sqrt(pk**2 + 4 * pk * Ca)) / 2
-                pH2 = -math.log10(max(tmp, 1e-14)) if tmp > 0 else pH1 + math.log10(factor)
+                Ka = 10 ** (-pk)
+                x1 = 10 ** (-pH1)                    # 初始 [H⁺]
+                Ca = x1 ** 2 / Ka + x1               # 初始总酸浓度 mol/L
+                if Ca > 20:
+                    raise ValueError(
+                        f"初始 pH={pH1:.2f} 与 pKa={pk:.2f} 不匹配：反推总酸浓度 "
+                        f"{Ca:.1f} mol/L 已超出实际可能。请核对 pH 是否为强酸或缓冲体系")
+                total_conc = Ca
+                Ca2 = Ca / factor
+                x2 = (-Ka + math.sqrt(Ka ** 2 + 4 * Ka * Ca2)) / 2
+                pH2 = -math.log10(max(x2, 1e-14))
             else:
-                pOH1 = 14 - pH1
-                Cb = 10 ** (-pOH1) / factor
-                tmp = (-pk + math.sqrt(pk**2 + 4 * pk * Cb)) / 2
-                pH2 = 14 + math.log10(max(tmp, 1e-14)) if tmp > 0 else pH1 - math.log10(factor)
+                Kb = 10 ** (-pk)
+                y1 = 10 ** (-(14 - pH1))             # 初始 [OH⁻]
+                Cb = y1 ** 2 / Kb + y1               # 初始总碱浓度 mol/L
+                if Cb > 20:
+                    raise ValueError(
+                        f"初始 pH={pH1:.2f} 与 pKb={pk:.2f} 不匹配：反推总碱浓度 "
+                        f"{Cb:.1f} mol/L 已超出实际可能。请核对 pH 是否为强碱体系")
+                total_conc = Cb
+                Cb2 = Cb / factor
+                y2 = (-Kb + math.sqrt(Kb ** 2 + 4 * Kb * Cb2)) / 2
+                pH2 = 14 + math.log10(max(y2, 1e-14))
 
-        return {"pH1": pH1, "pH2": pH2, "V1": V1, "V2": V2, "factor": factor, "type": stype}
+        return {"pH1": pH1, "pH2": pH2, "V1": V1, "V2": V2, "factor": factor,
+                "type": stype, "pk": pk, "total_conc": total_conc}
 
     # ═════════════════════════════════════════
     #  模式 4：pH 调节
@@ -593,6 +655,15 @@ class PHCalculator(CalculatorBase):
         form = getattr(self, "_adjust_form", "液体")
         reagent = self._combo_text("adj_reagent")
 
+        # 调节剂方向必须与调节目标一致
+        # （原实现允许"要从 pH 7 降到 5、却选液碱 NaOH"，照样算出毫升数，结果毫无意义）
+        r_type = ADJUST_REAGENTS.get(reagent, ("", "液体", 1.0, 10, 1.0, 1))[0]
+        need = "酸" if pH1 < pH0 else "碱"
+        if r_type and r_type != need:
+            raise ValueError(
+                f"体系需要加{need}（pH {pH0:.2f} → {pH1:.2f}），"
+                f"而所选调节剂「{reagent}」是{r_type}性试剂，请更换调节剂")
+
         # ── 决定用哪种酸浓度 ──
         buf_enabled = self._adj_buf_cb.isChecked()
         if buf_enabled:
@@ -601,15 +672,25 @@ class PHCalculator(CalculatorBase):
                 raise ValueError("总可滴定酸浓度必须 > 0")
             delta_H_mol = total_acid * V   # 按总酸浓度算
         else:
-            h0 = 10 ** (-pH0)
-            h1 = 10 ** (-pH1)
-            delta_H_mol = abs(h1 - h0) * V  # 按游离 H⁺ 算
+            # 加酸看游离 H⁺ 的增量，加碱看游离 OH⁻ 的增量。
+            # 原实现两种方向都用 |10^-pH1 − 10^-pH0|：加碱时算的是 H⁺ 的减少量，
+            # pH 7→9 只得 9.9e-8 mol/L，而真正需要中和/补充的 OH⁻ 增量为
+            # 9.9e-6 mol/L，偏小 100 倍（7→5 加酸方向恰好正确，故一直未被发现）。
+            if pH1 < pH0:
+                delta_c = abs(10 ** (-pH1) - 10 ** (-pH0))          # Δ[H⁺]  mol/L
+            else:
+                delta_c = abs(10 ** (pH1 - 14) - 10 ** (pH0 - 14))  # Δ[OH⁻] mol/L
+            delta_H_mol = delta_c * V
 
         if form == "液体":
-            wt = self._get("adj_wt")                  # 重量%
-            reagent = self._combo_text("adj_reagent")
+            wt = self._get("adj_wt")                   # 重量%
             info = ADJUST_REAGENTS.get(reagent, ("", "液体", 1.0, 10, 1.0, 1))
-            rho, mw = info[2], info[4]                 # 密度 g/mL, 分子量
+            rho = self._get("adj_rho", info[2]) or info[2]     # 密度 g/mL（界面可覆盖预设）
+            mw = self._get("adj_mw", info[4] or 0.0)           # 分子量
+            if mw <= 0:
+                raise ValueError("请填写试剂的分子量 M")
+            if rho <= 0:
+                raise ValueError("请填写试剂的密度 ρ")
             C = wt / 100 * rho * 1000 / mw             # → mol/L
             if C <= 0 or n_val <= 0:
                 raise ValueError("浓度和 n 值必须 > 0")
@@ -619,6 +700,7 @@ class PHCalculator(CalculatorBase):
                 "pH0": pH0, "pH1": pH1, "V": V,
                 "form": "液体", "reagent": reagent,
                 "conc_molL": C, "wt_pct": wt, "n_val": n_val,
+                "rho": rho, "mw": mw,
                 "delta_H_mol": delta_H_mol,
                 "amount": delta_L * 1000,  # mL
                 "unit": "mL",
@@ -639,7 +721,7 @@ class PHCalculator(CalculatorBase):
                 "unit": "g",
             }
 
-        result["direction"] = "加入酸（降低 pH）" if pH1 < pH0 else "加入碱（提高 pH）"
+        result["direction"] = "加酸（降低 pH）" if pH1 < pH0 else "加碱（提高 pH）"
         result["buffered"] = buf_enabled
         return result
 
@@ -673,8 +755,21 @@ class PHCalculator(CalculatorBase):
             lines.append("═" * 40)
             lines.append(f"  类型: {data['type']}")
             lines.append(f"  初始 pH = {data['pH1']:.2f}")
+            if "弱" in data["type"]:
+                lines.append(f"  pK = {data.get('pk', 0):.2f}"
+                             f"  （{'pKa' if '酸' in data['type'] else 'pKb'}，25 °C）")
+                if data.get("total_conc"):
+                    lines.append(f"  反推初始总浓度 = {data['total_conc']:.4f} mol/L"
+                                 f"（由 [H⁺]²/Ka + [H⁺] 反算）")
+                lines.append("  解法: 一元二次解离方程 [H⁺]² + Ka[H⁺] − Ka·Ca = 0")
             lines.append(f"  稀释倍数 = {data['factor']:.1f}×")
             lines.append(f"  → 稀释后 pH = {data['pH2']:.2f}")
+            if "强" in data["type"]:
+                lines.append(f"  （强电解质：pH 变化 = ±log(稀释倍数) = "
+                             f"{abs(math.log10(data['factor'])):.2f}）")
+            else:
+                lines.append(f"  （弱电解质：每稀释 10 倍 pH 约变化 0.5，"
+                             f"本次变化 {abs(data['pH2']-data['pH1']):.2f}）")
 
         else:  # pH 调节
             lines.append("═" * 50)
@@ -689,7 +784,9 @@ class PHCalculator(CalculatorBase):
             lines.append(f"  当前 pH = {data['pH0']:.2f} → 目标 pH = {data['pH1']:.2f}")
             lines.append(f"  需要改变的 H⁺ 当量 = {data['delta_H_mol']:.4f} mol")
             if data["form"] == "液体":
-                lines.append(f"  试剂浓度: {data.get('wt_pct', '?')}%  ≈ {data['conc_molL']:.2f} mol/L,  n = {data['n_val']:.0f}")
+                lines.append(f"  试剂参数: {data.get('wt_pct', '?')}%  ρ={data.get('rho', 0):.3f} g/mL"
+                             f"  M={data.get('mw', 0):.2f} g/mol")
+                lines.append(f"  试剂浓度: ≈ {data['conc_molL']:.2f} mol/L,  当量数 n = {data['n_val']:.0f}")
             else:
                 lines.append(f"  分子量 = {data['MW']:.1f},  含量 = {data['purity']:.0f}%,  n = {data['n_val']:.0f}")
             lines.append(f"  → 需要 {data['amount']:.2f} {data['unit']}")
@@ -701,43 +798,100 @@ class PHCalculator(CalculatorBase):
     # ═════════════════════════════════════════
 
     def clear(self):
-        for _, w in self._all_inputs.items():
+        """恢复出厂默认值（原实现把所有输入清成空值，清空后无法直接重算）"""
+        for key, val in self._DEFAULTS.items():
+            w = self._all_inputs.get(key)
             if isinstance(w, QLineEdit):
-                w.clear()
+                w.setText(val)
+        for key in ("side", "buf_system", "buf_type", "dil_type"):
+            cb = self._all_inputs.get(key)
+            if isinstance(cb, QComboBox):
+                cb.setCurrentIndex(0)
+        # 试剂下拉复位并重新联动填充 ρ / M / n
+        cb = self._all_inputs.get("adj_reagent")
+        if isinstance(cb, QComboBox):
+            cb.setCurrentText("液碱 NaOH 30%")
+        self._on_adjust_reagent(self._combo_text("adj_reagent"))
         self.result_text.clear()
         self._last_results = {}
 
     def _get_history_data(self) -> dict:
-        r = self._last_results
-        if not r:
-            return {}
+        """历史记录：记录真实输入参数 + 最近一次计算输出"""
         btn = self.mode_btn_group.checkedButton()
         mode = btn.text() if btn else ""
-        return {
-            "inputs": {"模式": mode, **{k: str(v) for k, v in r.items()}},
-            "outputs": r,
-            "notes": "",
-        }
+        inputs = {"计算模式": mode}
+        for key, w in self._all_inputs.items():
+            rw = getattr(self, "_row_widgets", {}).get(key)
+            name = key
+            if rw and rw.get("label") is not None:
+                name = rw["label"].text().rstrip(":").strip() or key
+            if isinstance(w, QLineEdit):
+                if w.text().strip():
+                    inputs[name] = w.text().strip()
+            elif isinstance(w, QComboBox):
+                inputs[name] = w.currentText()
+        return {"inputs": inputs, "outputs": self._last_results or {}, "notes": ""}
 
     # ═════════════════════════════════════════
     #  报告
     # ═════════════════════════════════════════
 
     def get_project_info(self):
-        return {
-            "project_name": "pH 计算",
-            "calculator_name": "pH 计算器",
-            "version": "1.0",
-            "description": "酸碱中和/缓冲溶液(Henderson-Hasselbalch)/稀释/pH调节"
-        }
+        """工程信息（导出契约：company_name / project_number / project_name / subproject_name）"""
+        try:
+            saved = {}
+            dm = getattr(self, "data_manager", None)
+            if dm is not None:
+                saved = dm.get_project_info() or {}
+            return {
+                "company_name": saved.get("company_name", ""),
+                "project_number": saved.get("project_number", ""),
+                "project_name": saved.get("project_name", ""),
+                "subproject_name": saved.get("subproject_name", ""),
+            }
+        except Exception:
+            return {}
 
     def generate_report(self):
+        """生成计算书（返回纯文本；未计算返回 None，不产出空壳报告）"""
+        if not self._last_results:
+            return None
         content = self.result_text.toPlainText().strip()
         if not content:
-            return "尚未进行计算。"
+            return None
         btn = self.mode_btn_group.checkedButton()
         mode = btn.text() if btn else ""
-        lines = [f"pH 计算报告（{mode}）", "=" * 50, "", content]
+        pi = self.get_project_info()
+        lines = [
+            f"pH 计算书（{mode}）",
+            f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            "计算工具: ChemCal 工程计算模块",
+            "=" * 50,
+            "",
+            content,
+            "",
+            "══════════",
+            " 工程信息",
+            "══════════",
+            "",
+            f"    公司名称: {pi.get('company_name', '')}",
+            f"    工程编号: {pi.get('project_number', '')}",
+            f"    工程名称: {pi.get('project_name', '')}",
+            f"    子项名称: {pi.get('subproject_name', '')}",
+            f"    计算日期: {datetime.now().strftime('%Y-%m-%d')}",
+            "",
+            "══════════",
+            "备注说明",
+            "══════════",
+            "",
+            "    1. 缓冲液 pH 按 Henderson-Hasselbalch 方程计算，pK 取 25 °C 文献值",
+            "    2. 稀释计算：强电解质 pH 变化 = ±log(稀释倍数)；弱电解质按一元二次解离方程求解",
+            "    3. pH 调节中\"无缓冲\"模型按游离 H⁺/OH⁻ 当量计算，含缓冲体系时按总可滴定酸计算",
+            "    4. 结果为理论估算值，实际体系应经实验验证",
+            "",
+            "---",
+            "生成于 ChemCal 工程计算模块",
+        ]
         return "\n".join(lines)
 
     def download_docx_report(self):

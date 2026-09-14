@@ -523,7 +523,7 @@ class GasMixturePropertiesCalculator(CalculatorBase):
 
         viscosity = self._calc_viscosity(components, T_k)
         thermal_conductivity = self._calc_thermal_conductivity(components, T_k)
-        cp_mix, cv_mix, gamma = self._calc_heat_capacity(components, T_k, mixture_type, tc_mix, pc_mix, omega_mix)
+        cp_mix, cv_mix, gamma = self._calc_heat_capacity(components, T_k, mixture_type, tc_mix, pc_mix, omega_mix, P)
         sound_speed = math.sqrt(gamma * z_factor * 8.314 * T_k / (mw_mix / 1000)) if mw_mix > 0 else 0
         reduced_density = density / (mw_mix / vc_mix * 1000) if vc_mix > 0 else 0
 
@@ -587,8 +587,40 @@ class GasMixturePropertiesCalculator(CalculatorBase):
                 k_mix += components[i]['y'] * ks[i] / denom
         return k_mix
 
-    def _calc_heat_capacity(self, components, T, mixture_type, tc_mix, pc_mix, omega_mix):
-        """NASA 比热 + 真实气体修正 [J/(mol·K)]"""
+    @staticmethod
+    def _cp_departure(T_k, tc_mix, pc_mix, omega_mix, P_kpa, n=60):
+        """
+        真实气体 cp 偏离项 [J/(mol·K)]，基于 Lee-Kesler Z 数值积分：
+          H_res = ∫₀^P [v − T·(∂v/∂T)_P] dP,  v = Z(T,P)·R·T/P
+          cp_res = (∂H_res/∂T)_P   （中心差分）
+        """
+        if tc_mix <= 0 or pc_mix <= 0 or P_kpa <= 0:
+            return 0.0
+        R = 8.314
+        dT = 1.0
+
+        def _H_res(T):
+            vals = []
+            P_lo = P_kpa * 1e-3
+            dP = (P_kpa - P_lo) / n
+            for i in range(n + 1):
+                Pp = P_lo + i * dP
+                Z = _lee_kesler_z(T / tc_mix, Pp / pc_mix, omega_mix)
+                v = Z * R * T / Pp                     # m³/mol
+                Z1 = _lee_kesler_z((T + dT) / tc_mix, Pp / pc_mix, omega_mix)
+                Z2 = _lee_kesler_z((T - dT) / tc_mix, Pp / pc_mix, omega_mix)
+                dv_dT = (Z1 * R * (T + dT) - Z2 * R * (T - dT)) / (2.0 * dT) / Pp
+                vals.append(v - T * dv_dT)             # J/mol / Pa → 积分后 J/mol
+            return (vals[0] + vals[-1]
+                    + 4.0 * sum(vals[1:-1:2]) + 2.0 * sum(vals[2:-1:2])) * dP / 3.0
+
+        try:
+            return (_H_res(T_k + dT) - _H_res(T_k - dT)) / (2.0 * dT)
+        except Exception:
+            return 0.0
+
+    def _calc_heat_capacity(self, components, T, mixture_type, tc_mix, pc_mix, omega_mix, P_kpa=101.325):
+        """NASA 比热 + 真实气体偏离修正 [J/(mol·K)]"""
         R = 8.314
         cp_ideal = sum(c['y'] * _nasa_cp(c['name'], T) for c in components)
         cv_ideal = cp_ideal - R
@@ -597,8 +629,9 @@ class GasMixturePropertiesCalculator(CalculatorBase):
             return cp_ideal, cv_ideal, cp_ideal / cv_ideal
 
         Tr = T / tc_mix if tc_mix > 0 else 1.0
-        Pr = 101.325 / pc_mix if pc_mix > 0 else 0.01
-        cp_dep = -R * omega_mix * 0.172 / Tr**4.2 * Pr
+        Pr = P_kpa / pc_mix if pc_mix > 0 else 0.01
+        # 偏离项随实际压力变化（低压下自动趋近 0）
+        cp_dep = GasMixturePropertiesCalculator._cp_departure(T, tc_mix, pc_mix, omega_mix, P_kpa)
         cp_mix = max(cv_ideal + 1e-3, cp_ideal + cp_dep)
         z = _lee_kesler_z(Tr, Pr, omega_mix) if tc_mix > 0 and pc_mix > 0 else 1.0
         cv_mix = max(1e-3, cp_mix - R * z)

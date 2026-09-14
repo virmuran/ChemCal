@@ -25,6 +25,7 @@ from app_styles import (COMBOBOX_STYLE, GROUP_STYLE, MODE_BUTTON_STYLE,
                         INPUT_LABEL_STYLE, CLEAR_BTN_STYLE,
                         DOCX_BTN_STYLE, PDF_BTN_STYLE)
 from common_constants import G, ATM_PRESSURE_MPA
+from utils.docx_utils import ReportExporter
 
 # ── 材料许用应力 (MPa) ──
 # (名称, 密度 kg/m³, [σ]@20°C, [σ]@100°C, [σ]@150°C, [σ]@200°C)
@@ -260,6 +261,24 @@ class VesselDesignCalculator(CalculatorBase):
 
         parent.addWidget(group)
 
+    @staticmethod
+    def _table_stress(name, T):
+        """按材料名和温度查表线性插值许用应力；自定义/无数据返回 None"""
+        data = ALLOWABLE_STRESS.get(name)
+        if data is None or data[1] is None:
+            return None
+        temps = [20, 100, 150, 200]
+        stresses = data[1:]
+        if T <= temps[0]:
+            return stresses[0]
+        if T >= temps[-1]:
+            return stresses[-1]
+        for i in range(len(temps) - 1):
+            if temps[i] <= T <= temps[i + 1]:
+                f = (T - temps[i]) / (temps[i + 1] - temps[i])
+                return stresses[i] + f * (stresses[i + 1] - stresses[i])
+        return stresses[0]
+
     def _fill_stress(self, name=None):
         """根据材料和设计温度自动填入许用应力"""
         try:
@@ -274,20 +293,9 @@ class VesselDesignCalculator(CalculatorBase):
             T = float(self.inputs["design_temp"].text())
         except ValueError:
             T = 120
-        temps = [20, 100, 150, 200]
-        stresses = data[1:]
-        if T <= temps[0]:
-            s = stresses[0]
-        elif T >= temps[-1]:
-            s = stresses[-1]
-        else:
-            for i in range(len(temps) - 1):
-                if temps[i] <= T <= temps[i + 1]:
-                    f = (T - temps[i]) / (temps[i + 1] - temps[i])
-                    s = stresses[i] + f * (stresses[i + 1] - stresses[i])
-                    break
-            else:
-                s = stresses[0]
+        s = self._table_stress(name, T)
+        if s is None:
+            return
         self.inputs["allow_stress"].setText(f"{s:.0f}")
         self.inputs["density"].setText(str(data[0]))
 
@@ -323,7 +331,8 @@ class VesselDesignCalculator(CalculatorBase):
             elif head_key == "碟形封头 (THA)":
                 delta_head = Pc * Di * head["k_factor"] / (2 * sigma * phi - 0.5 * Pc)
             elif head_key == "平盖":
-                delta_head = Di * math.sqrt(0.3 * Pc / sigma)
+                # GB 150.3 平盖: δ = Dc·√(K·pc/([σ]ᵗ·φ))，K≈0.3（部分焊接结构）
+                delta_head = Di * math.sqrt(0.3 * Pc / (sigma * phi))
             else:  # 椭圆封头
                 delta_head = Pc * Di / (2 * sigma * phi - 0.5 * Pc)
             delta_head_nom = math.ceil((delta_head + C2 + C1) * 2000) / 2000.0
@@ -345,8 +354,16 @@ class VesselDesignCalculator(CalculatorBase):
 
             W_total_kg = (W_cyl + W_heads) * 1000
 
-            # ── 水压试验压力 ──
-            Pt = 1.25 * Pc * sigma / sigma  # 简化为 1.25Pc
+            # ── 水压试验压力 (GB 150.1: pt = 1.25·pc·[σ]/[σ]t) ──
+            T_design = float(self.inputs["design_temp"].text())
+            mat_name = self.inputs["material"].currentText()
+            s20 = self._table_stress(mat_name, 20)
+            s_t = self._table_stress(mat_name, T_design)
+            if s20 and s_t:
+                stress_ratio = s20 / s_t
+            else:
+                stress_ratio = 1.0  # 自定义材料无法查表，取 1.0（下限，偏保守）
+            Pt = 1.25 * Pc * stress_ratio
             Pt = max(Pt, Pc + 0.1)
 
             # ── 输出 ──
@@ -371,7 +388,7 @@ class VesselDesignCalculator(CalculatorBase):
             lines.append(f"  筒体名义壁厚: {delta_nom * 1000:.1f} mm (含 C₁+C₂)")
             lines.append(f"  封头计算壁厚: {delta_head * 1000:.2f} mm")
             lines.append(f"  封头名义壁厚: {delta_head_nom * 1000:.1f} mm")
-            lines.append(f"  水压试验压力: {Pt:.2f} MPa")
+            lines.append(f"  水压试验压力: {Pt:.2f} MPa (1.25·Pc·[σ]₂₀/[σ]ᵗ = {stress_ratio:.3f})")
             lines.append(f"")
             lines.append(f"【几何尺寸】")
             lines.append(f"  筒体内径 D_i: {Di * 1000:.0f} mm")
@@ -403,26 +420,47 @@ class VesselDesignCalculator(CalculatorBase):
         self._fill_stress()
 
     def _get_history_data(self):
-        return {"inputs": {}, "outputs": {}}
+        """提供历史记录数据"""
+        def _f(key, default=0.0):
+            try:
+                return float(self.inputs[key].text())
+            except (KeyError, ValueError, TypeError):
+                return default
+
+        inputs = {
+            "筒体内径_mm": _f("inner_diameter"),
+            "设计压力_MPa": _f("design_pressure"),
+            "设计温度_C": _f("design_temp"),
+            "腐蚀裕量_mm": _f("corrosion"),
+            "钢板负偏差_mm": _f("plate_deviation"),
+            "焊缝系数": self.inputs["weld_coeff"].currentText() if "weld_coeff" in self.inputs else "",
+            "许用应力_MPa": _f("allow_stress"),
+            "径高比": _f("height_d_ratio"),
+            "装料系数": _f("fill_ratio"),
+            "介质密度": _f("density"),
+            "封头型式": self.inputs["head_type"].currentText() if "head_type" in self.inputs else "",
+            "材料": self.inputs["material"].currentText() if "material" in self.inputs else "",
+        }
+        outputs = {}
+        if getattr(self, "_last_thickness", None) is not None:
+            outputs["筒体名义壁厚_mm"] = round(self._last_thickness, 1)
+        if getattr(self, "_last_weight", None) is not None:
+            outputs["壳体总重_kg"] = round(self._last_weight, 0)
+        if getattr(self, "_last_volume", None) is not None:
+            outputs["全容积_m3"] = round(self._last_volume, 2)
+        return {"inputs": inputs, "outputs": outputs}
 
     def generate_report(self):
-        return self.result_text.toPlainText()
+        txt = self.result_text.toPlainText()
+        if not txt.strip() or "计算结果" not in txt and "═══" not in txt:
+            return None
+        return txt
 
     def _on_download_txt(self):
-        import os
-        from datetime import datetime
-        self.download_docx_report(
-            self.generate_report(),
-            os.path.join(os.path.expanduser("~"), "Desktop",
-                         f"容器设计_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"))
+        ReportExporter.export_docx(self, "容器设计计算")
 
     def _on_download_pdf(self):
-        import os
-        from datetime import datetime
-        self.download_pdf_report(
-            self.generate_report(),
-            os.path.join(os.path.expanduser("~"), "Desktop",
-                         f"容器设计_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"))
+        ReportExporter.export_pdf(self, "容器设计计算")
 
 
 # 别名

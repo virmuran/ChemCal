@@ -52,6 +52,22 @@ class SolubilityWorker(QThread):
         if key in db:
             base = db[key]
             sol = self.calculate_temperature_effect(base, temperature)
+            # 置信度：多锚点查表 High；单点/定性 Medium
+            n_anchor = len(base.get("table", [])) if base.get("table") else 0
+            if base.get("unit") == "定性":
+                confidence, method = "Medium", "定性判断"
+            elif n_anchor >= 3:
+                confidence, method = "High", "手册数据查表插值"
+            elif n_anchor >= 2:
+                confidence, method = "Medium", "两点插值"
+            else:
+                confidence, method = "Medium", "单点基准值"
+            # 判断是否区间外推
+            extrapolated = False
+            if base.get("table"):
+                ts = [p[0] for p in base["table"]]
+                if temperature < ts[0] or temperature > ts[-1]:
+                    extrapolated = True
             return {
                 "compound": compound,
                 "solvent": solvent,
@@ -61,7 +77,9 @@ class SolubilityWorker(QThread):
                 "temperature_range": base.get("temperature_range", "0-100"),
                 "source": base.get("source", "Handbook"),
                 "notes": base.get("notes", ""),
-                "confidence": "High",
+                "method": method,
+                "extrapolated": extrapolated,
+                "confidence": confidence,
             }
         return {
             "compound": compound,
@@ -71,12 +89,44 @@ class SolubilityWorker(QThread):
             "unit": "g/100g",
             "temperature_range": "N/A",
             "source": "Not Found",
-            "notes": "No data available for this compound-solvent pair",
+            "notes": "内置数据库暂无该化合物-溶剂组合的数据，请查 CRC Handbook 等手册",
+            "method": "",
+            "extrapolated": False,
             "confidence": "Low",
         }
 
+    @staticmethod
+    def _interp_solubility(table, temperature):
+        """锚点表线性插值；区间外用端部两点斜率外推"""
+        if not table:
+            return None
+        if len(table) == 1:
+            return table[0][1]
+        xs = [p[0] for p in table]
+        ys = [p[1] for p in table]
+        if temperature <= xs[0]:
+            k = (ys[1] - ys[0]) / (xs[1] - xs[0])
+            return max(0.0, ys[0] + k * (temperature - xs[0]))
+        if temperature >= xs[-1]:
+            k = (ys[-1] - ys[-2]) / (xs[-1] - xs[-2])
+            return max(0.0, ys[-1] + k * (temperature - xs[-1]))
+        for i in range(len(table) - 1):
+            if xs[i] <= temperature <= xs[i + 1]:
+                f = (temperature - xs[i]) / (xs[i + 1] - xs[i])
+                return ys[i] + f * (ys[i + 1] - ys[i])
+        return None
+
     def calculate_temperature_effect(self, base_data, temperature):
-        """温度修正（指数型模型）"""
+        """温度修正
+
+        ⚠ 2026-09-13 重写：旧实现"单点 + 指数外推"误差极大
+        （NaCl 100°C 算出 53.3，实际 39.1；Na2SO4 在 32.4°C 转折点
+        完全无法表达，偏差 -26），改为"多锚点 + 线性插值"。
+        table 数据来源: CRC Handbook / 大学化学教材溶解度表。
+        """
+        table = base_data.get("table")
+        if table:
+            return self._interp_solubility(table, temperature)
         if "solubility" not in base_data:
             return "N/A"
         base_temp = base_data.get("base_temperature", 25)
@@ -91,80 +141,129 @@ class SolubilityWorker(QThread):
 
     @staticmethod
     def get_solubility_database():
-        """内置溶解度数据库"""
+        """内置溶解度数据库（2026-09-13 扩充：多锚点查表）
+
+        table: [(温度°C, 溶解度 g/100g 水), ...] 多锚点，线性插值
+        数据来源: CRC Handbook 化学与物理手册 / 大学化学教材溶解度表
+        （KNO3/NaCl/KCl/NH4Cl/CuSO4/Na2SO4 等为教材级经典数据）
+        """
         return {
+            # ── 水溶液（多锚点，教材级数据） ──
             "氯化钠_水": {
-                "solubility": 35.7, "unit": "g/100g",
-                "base_temperature": 20, "temperature_coefficient": 0.005,
-                "temperature_range": "0-100", "source": "CRC Handbook",
-                "notes": "温度对溶解度影响较小"
+                "table": [(0,35.7),(10,35.8),(20,36.0),(30,36.3),(40,36.6),
+                          (50,37.0),(60,37.3),(70,37.8),(80,38.4),(90,39.0),(100,39.8)],
+                "unit": "g/100g", "temperature_range": "0-100",
+                "source": "CRC Handbook",
+                "notes": "溶解度随温度变化很小；100°C 实际 39.8（旧模型算 53.3）"
             },
             "氯化钾_水": {
-                "solubility": 34.0, "unit": "g/100g",
-                "base_temperature": 20, "temperature_coefficient": 0.008,
-                "temperature_range": "0-100", "source": "CRC Handbook",
-                "notes": "溶解度随温度升高而增加"
+                "table": [(0,28.0),(20,34.2),(40,40.1),(60,45.8),(80,51.3),(100,56.3)],
+                "unit": "g/100g", "temperature_range": "0-100",
+                "source": "CRC Handbook",
+                "notes": "溶解度随温度升高明显增加"
+            },
+            "硝酸钾_水": {
+                "table": [(0,13.3),(10,20.9),(20,31.6),(30,45.8),(40,63.9),
+                          (50,85.5),(60,110.0),(70,138.0),(80,169.0),(90,202.0),(100,246.0)],
+                "unit": "g/100g", "temperature_range": "0-100",
+                "source": "CRC Handbook / 教材溶解度表",
+                "notes": "温度敏感性最强的常见盐之一，适用于冷却结晶"
+            },
+            "氯化铵_水": {
+                "table": [(0,29.4),(20,37.2),(40,45.8),(60,55.3),(80,65.6),(100,77.3)],
+                "unit": "g/100g", "temperature_range": "0-100",
+                "source": "CRC Handbook",
+                "notes": "溶解度随温度升高增加"
             },
             "硫酸钠_水": {
-                "solubility": 19.5, "unit": "g/100g",
-                "base_temperature": 20, "temperature_coefficient": 0.015,
-                "temperature_range": "0-32.4", "source": "CRC Handbook",
-                "notes": "在32.4°C时溶解度最大"
+                "table": [(0,4.9),(10,9.6),(20,19.5),(30,40.8),(32.4,49.6),
+                          (40,48.8),(50,46.7),(60,45.3),(80,43.7),(100,42.5)],
+                "unit": "g/100g", "temperature_range": "0-100",
+                "source": "CRC Handbook",
+                "notes": "32.4°C 出现峰值（十水物→无水物转变点），此后随温度略降"
+            },
+            "硫酸铜_水": {
+                "table": [(0,14.3),(10,17.4),(20,20.7),(30,25.0),(40,28.5),
+                          (60,40.0),(80,55.0),(100,75.4)],
+                "unit": "g/100g", "temperature_range": "0-100",
+                "source": "CRC Handbook",
+                "notes": "以无水 CuSO4 计；五水物结晶析出温度约 25°C 以下"
+            },
+            "碳酸氢钠_水": {
+                "table": [(0,6.9),(20,9.6),(40,12.7),(60,16.4)],
+                "unit": "g/100g", "temperature_range": "0-60",
+                "source": "CRC Handbook",
+                "notes": ">60°C 逐渐分解为 Na2CO3，慎用于高温"
+            },
+            "氢氧化钙_水": {
+                "table": [(0,0.185),(20,0.165),(40,0.141),(60,0.116),(80,0.094),(100,0.077)],
+                "unit": "g/100g", "temperature_range": "0-100",
+                "source": "CRC Handbook",
+                "notes": "典型的逆溶解度（温度升高溶解度下降）"
             },
             "碳酸钙_水": {
-                "solubility": 0.0014, "unit": "g/100g",
-                "base_temperature": 25, "temperature_coefficient": -0.02,
-                "temperature_range": "0-100", "source": "CRC Handbook",
-                "notes": "溶解度随温度升高而降低"
+                "table": [(25,0.0014)],
+                "unit": "g/100g", "temperature_range": "0-100",
+                "source": "CRC Handbook",
+                "notes": "方解石；随温度升高略降；值极小，工程上按不溶处理"
+            },
+            "硫酸钡_水": {
+                "table": [(25,0.00023)],
+                "unit": "g/100g", "temperature_range": "0-100",
+                "source": "CRC Handbook",
+                "notes": "极难溶（Ksp≈1.1×10⁻¹⁰），水处理/钡餐常用"
             },
             "蔗糖_水": {
-                "solubility": 211.5, "unit": "g/100g",
-                "base_temperature": 20, "temperature_coefficient": 0.025,
-                "temperature_range": "0-100", "source": "CRC Handbook",
-                "notes": "溶解度随温度显著增加"
+                "table": [(0,179.2),(20,203.9),(30,219.5),(40,238.1),
+                          (50,260.4),(60,287.3),(70,320.5),(80,362.1)],
+                "unit": "g/100g", "temperature_range": "0-80",
+                "source": "ICUMSA",
+                "notes": "20°C 溶解度 203.9（旧库误标 211.5/20°C）"
             },
             "苯甲酸_水": {
-                "solubility": 0.34, "unit": "g/100g",
-                "base_temperature": 25, "temperature_coefficient": 0.03,
-                "temperature_range": "0-100", "source": "Merck Index",
-                "notes": "微溶于冷水，易溶于热水"
+                "table": [(20,0.29),(25,0.34),(40,0.56),(60,1.16),(80,2.71),(95,6.80)],
+                "unit": "g/100g", "temperature_range": "20-95",
+                "source": "Merck Index / CRC",
+                "notes": "微溶于冷水，热水重结晶常用体系"
             },
             "阿司匹林_水": {
-                "solubility": 0.33, "unit": "g/100g",
-                "base_temperature": 25, "temperature_coefficient": 0.02,
-                "temperature_range": "15-40", "source": "Merck Index",
-                "notes": "微溶于水"
+                "table": [(25,0.33)],
+                "unit": "g/100g", "temperature_range": "15-40",
+                "source": "Merck Index",
+                "notes": "微溶于水；>40°C 缓慢水解"
             },
             "咖啡因_水": {
-                "solubility": 2.17, "unit": "g/100g",
-                "base_temperature": 25, "temperature_coefficient": 0.04,
-                "temperature_range": "0-100", "source": "Merck Index",
+                "table": [(25,2.17),(80,18.2)],
+                "unit": "g/100g", "temperature_range": "25-80",
+                "source": "Merck Index",
                 "notes": "溶解度随温度显著增加"
             },
+            # ── 非水溶剂（单点基准，精度有限） ──
             "氯化钠_乙醇": {
-                "solubility": 0.065, "unit": "g/100g",
-                "base_temperature": 25, "temperature_coefficient": 0.01,
-                "temperature_range": "0-78", "source": "Handbook",
+                "table": [(25,0.065)],
+                "unit": "g/100g", "temperature_range": "0-78",
+                "source": "Handbook",
                 "notes": "在乙醇中溶解度很低"
             },
             "蔗糖_乙醇": {
-                "solubility": 0.6, "unit": "g/100g",
-                "base_temperature": 20, "temperature_coefficient": 0.015,
-                "temperature_range": "0-78", "source": "Handbook",
+                "table": [(25,0.6)],
+                "unit": "g/100g", "temperature_range": "0-78",
+                "source": "Handbook",
                 "notes": "在乙醇中微溶"
             },
             "碘_乙醇": {
-                "solubility": 20.5, "unit": "g/100g",
-                "base_temperature": 25, "temperature_coefficient": 0.02,
-                "temperature_range": "0-78", "source": "Handbook",
+                "table": [(25,20.5)],
+                "unit": "g/100g", "temperature_range": "0-78",
+                "source": "Handbook",
                 "notes": "易溶于乙醇"
             },
             "萘_乙醇": {
-                "solubility": 19.5, "unit": "g/100g",
-                "base_temperature": 25, "temperature_coefficient": 0.025,
-                "temperature_range": "0-78", "source": "Handbook",
-                "notes": "在乙醇中溶解度较高"
+                "table": [(25,19.5)],
+                "unit": "g/100g", "temperature_range": "0-78",
+                "source": "Handbook",
+                "notes": "在乙醇中溶解度较高（近似值）"
             },
+            # ── 定性条目 ──
             "碳酸钙_盐酸": {
                 "solubility": "可溶", "unit": "定性",
                 "base_temperature": 25, "temperature_range": "0-100",
@@ -246,9 +345,10 @@ class SolidSolubilityCalculator(CalculatorBase):
         self.compound_input.setEditable(True)
         self.compound_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.compound_input.addItems([
-            "氯化钠", "氯化钾", "硫酸钠", "碳酸钙",
+            "氯化钠", "氯化钾", "硝酸钾", "氯化铵", "硫酸钠", "硫酸铜",
+            "碳酸氢钠", "氢氧化钙", "碳酸钙", "硫酸钡",
             "蔗糖", "苯甲酸", "阿司匹林", "咖啡因",
-            "碘", "萘", "氢氧化铝", "硫酸钡",
+            "碘", "萘", "氢氧化铝",
         ])
         grid.addWidget(make_lbl("化合物:"), 0, 0)
         grid.addWidget(self.compound_input, 0, 1)
@@ -353,12 +453,18 @@ class SolidSolubilityCalculator(CalculatorBase):
     # ──────────────────── 参考表 ────────────────────────────────
     def _populate_reference_table(self):
         rows = [
-            ["氯化钠", "水", "20", "35.7", "g/100g"],
-            ["氯化钾", "水", "20", "34.0", "g/100g"],
+            ["氯化钠", "水", "20", "36.0", "g/100g"],
+            ["氯化钾", "水", "20", "34.2", "g/100g"],
+            ["硝酸钾", "水", "20", "31.6", "g/100g"],
+            ["氯化铵", "水", "20", "37.2", "g/100g"],
             ["硫酸钠", "水", "20", "19.5", "g/100g"],
+            ["硫酸铜", "水", "20", "20.7", "g/100g"],
+            ["氢氧化钙", "水", "20", "0.165", "g/100g"],
             ["碳酸钙", "水", "25", "0.0014", "g/100g"],
-            ["蔗糖", "水", "20", "211.5", "g/100g"],
+            ["硫酸钡", "水", "25", "0.00023", "g/100g"],
+            ["蔗糖", "水", "20", "203.9", "g/100g"],
             ["苯甲酸", "水", "25", "0.34", "g/100g"],
+            ["咖啡因", "水", "25", "2.17", "g/100g"],
             ["氯化钠", "乙醇", "25", "0.065", "g/100g"],
             ["碘", "乙醇", "25", "20.5", "g/100g"],
             ["萘", "乙醇", "25", "19.5", "g/100g"],
@@ -388,6 +494,17 @@ class SolidSolubilityCalculator(CalculatorBase):
         sender = self.sender()
         if sender:
             sender.setEnabled(False)
+
+        # ⚠ 防重入：上一次查询线程仍在运行时不能再新建线程。
+        # 否则 self.worker 引用被覆盖，仍在运行的 QThread 被 Python GC 回收，
+        # 会在 C++ 层直接崩溃（整个软件闪退，无异常可捕获）。
+        old = getattr(self, "worker", None)
+        if old is not None and old.isRunning():
+            if sender:
+                sender.setEnabled(True)
+            self.progress_bar.setVisible(False)
+            self._show_error("上一次查询尚未完成，请稍候再试")
+            return
 
         self._query_pending = True
         self.worker = SolubilityWorker(compound, solvent, temperature)
@@ -470,6 +587,11 @@ class SolidSolubilityCalculator(CalculatorBase):
             lines.append(f"  溶解度分级   : {grade}")
         lines += [
             f"  适用温度范围 : {r['temperature_range']} °C",
+            f"  查询方式     : {r.get('method', '')}",
+        ]
+        if r.get("extrapolated"):
+            lines.append("  ⚠ 查询温度超出锚点区间，已按端部斜率外推，精度下降")
+        lines += [
             f"  数据来源     : {r['source']}",
             f"  置信度       : {conf_icon} {r['confidence']}",
             f"  备注         : {r['notes']}",
@@ -481,8 +603,8 @@ class SolidSolubilityCalculator(CalculatorBase):
             "  难溶  : < 0.1 g/100g 溶剂",
             "",
             "【数据说明】",
-            "  温度修正模型 : S(T) = S(T0) * exp(α·(T - T0))",
-            "  α 为温度系数，基于基准温度 T0 处的溶解度值",
+            "  多锚点数据按温度线性插值；区间外按端部斜率外推",
+            "  锚点来源: CRC Handbook / 教材溶解度表 / ICUMSA",
             "=" * 50,
         ]
         self.result_text.setPlainText("\n".join(lines))

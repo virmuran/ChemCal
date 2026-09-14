@@ -89,7 +89,7 @@ class NPSHaCalculator(CalculatorBase):
         surface_pressure_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(surface_pressure_label, row, 0)
         
-        self.surface_pressure_input = QLineEdit()
+        self.surface_pressure_input = QLineEdit("101.3")
         self.surface_pressure_input.setPlaceholderText("敞口容器: 101.3 (标准大气压)")
         self.surface_pressure_input.setValidator(QDoubleValidator(0.1, 22000.0, 6))
         self.surface_pressure_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -100,8 +100,8 @@ class NPSHaCalculator(CalculatorBase):
         self.surface_pressure_combo.addItems([
             "请选择液面压力",
             "101.3 kPaA - 敞口容器(标准大气压)",
-            "98.1 kPaA - 海拔300米",
-            "95.0 kPaA - 海拔500米",
+            "97.6 kPaA - 海拔300米",
+            "95.5 kPaA - 海拔500米",
             "89.9 kPaA - 海拔1000米",
             "200 kPaA - 低压容器",
             "500 kPaA - 中压容器"
@@ -118,7 +118,7 @@ class NPSHaCalculator(CalculatorBase):
         vapor_pressure_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(vapor_pressure_label, row, 0)
         
-        self.vapor_pressure_input = QLineEdit()
+        self.vapor_pressure_input = QLineEdit("2.34")
         self.vapor_pressure_input.setPlaceholderText("例如: 2.34 (水在20°C)")
         self.vapor_pressure_input.setValidator(QDoubleValidator(0.001, 22064.0, 6))
         self.vapor_pressure_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -146,13 +146,13 @@ class NPSHaCalculator(CalculatorBase):
         
         row += 1
         
-        # 吸入液面高度
-        static_head_label = QLabel("吸入液面高度 (m):")
+        # 吸入液面至泵中心线垂直距离（灌注为正，抽吸为负）
+        static_head_label = QLabel("液面至泵中心线高差 (m):")
         static_head_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         static_head_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(static_head_label, row, 0)
         
-        self.static_head_input = QLineEdit()
+        self.static_head_input = QLineEdit("2")
         self.static_head_input.setPlaceholderText("正值为灌注，负值为抽吸")
         self.static_head_input.setValidator(QDoubleValidator(-20.0, 50.0, 6))
         self.static_head_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -178,7 +178,7 @@ class NPSHaCalculator(CalculatorBase):
         friction_loss_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(friction_loss_label, row, 0)
         
-        self.friction_loss_input = QLineEdit()
+        self.friction_loss_input = QLineEdit("1.5")
         self.friction_loss_input.setPlaceholderText("例如: 1.5")
         self.friction_loss_input.setValidator(QDoubleValidator(0.0, 20.0, 6))
         self.friction_loss_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -205,7 +205,7 @@ class NPSHaCalculator(CalculatorBase):
         density_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(density_label, row, 0)
         
-        self.density_input = QLineEdit()
+        self.density_input = QLineEdit("1000")
         self.density_input.setPlaceholderText("例如: 1000 (水)")
         self.density_input.setValidator(QDoubleValidator(500.0, 2000.0, 6))
         self.density_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -458,8 +458,9 @@ class NPSHaCalculator(CalculatorBase):
     def on_safety_margin_changed(self, text):
         """处理安全裕量选择变化"""
         if "请选择" in text:
+            self.safety_margin_input.setReadOnly(False)
             self.safety_margin_input.clear()
-            self.safety_margin_input.setPlaceholderText("选择泵型自动填充")
+            self.safety_margin_input.setPlaceholderText("选择泵型自动填充，或手动输入")
             return
         self.safety_margin_input.setReadOnly(True)
         try:
@@ -512,7 +513,7 @@ class NPSHaCalculator(CalculatorBase):
 • 液面压力: {surface_pressure} kPaA
 • 液体饱和蒸汽压: {vapor_pressure} kPa
 • 流体密度: {density} kg/m³
-• 泵安装高度: {static_head} m
+• 液面至泵中心线高差: {static_head} m（灌注为正，抽吸为负）
 • 泵入口管路损失: {friction_loss} m
 • 安全裕量: {f"{safety_margin} m" if safety_margin else "未指定"}
 {f"• 泵必需汽蚀余量 NPSHr: {npshr_value} m" if npshr_value else "• 泵必需汽蚀余量 NPSHr: 未指定"}
@@ -603,7 +604,7 @@ P_s    = {surface_pressure} kPaA (液面绝对压力)
 P_v    = {vapor_pressure} kPa (饱和蒸汽压)
 ρ      = {density} kg/m³ (液体密度)
 g      = G m/s² (重力加速度)
-H_inst = {static_head} m (泵安装高度)
+H_inst = {static_head} m (液面至泵中心线高差)
 H_f    = {friction_loss} m (吸入管路损失)
 
 详细计算:

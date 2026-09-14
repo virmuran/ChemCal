@@ -445,6 +445,14 @@ class CoolingWaterCalculator(CalculatorBase):
         glg.addWidget(self.crystal_dt_input, lr, 1)
         glg.addWidget(self._hint_crystal_dt, lr, 2); lr += 1
 
+        self._lbl_crystal_hours = lbl("降温时间(h):")
+        self.crystal_hours_input = QLineEdit("1.0")
+        self.crystal_hours_input.setValidator(QDoubleValidator(0.1, 100, 2))
+        self._hint_crystal_hours = hint("显热降温历时（影响峰值负荷）")
+        glg.addWidget(self._lbl_crystal_hours, lr, 0)
+        glg.addWidget(self.crystal_hours_input, lr, 1)
+        glg.addWidget(self._hint_crystal_hours, lr, 2); lr += 1
+
         ll.addWidget(self._group_load)
 
         # ── 冷却水参数组 ──
@@ -566,6 +574,7 @@ class CoolingWaterCalculator(CalculatorBase):
             "material_density":(self._lbl_material_density, self.material_density_input, self.material_density_combo),
             "solution_cp":     (self._lbl_solution_cp, self.solution_cp_input, self.solution_cp_combo),
             "crystal_dt":      (self._lbl_crystal_dt, self.crystal_dt_input, self._hint_crystal_dt),
+            "crystal_hours":   (self._lbl_crystal_hours, self.crystal_hours_input, self._hint_crystal_hours),
         }
         for trio in rows.values():
             for w in trio:
@@ -575,7 +584,7 @@ class CoolingWaterCalculator(CalculatorBase):
         if mode == "发酵罐":
             visible = ["ferm_type", "heat_rate", "work_vol", "stir_power"]
         elif mode == "结晶罐":
-            visible = ["crystal_amount", "crystal_heat", "tank_volume", "material_density", "solution_cp", "crystal_dt", "stir_power"]
+            visible = ["crystal_amount", "crystal_heat", "tank_volume", "material_density", "solution_cp", "crystal_dt", "crystal_hours", "stir_power"]
         elif mode == "化学反应釜":
             visible = ["rxn_heat", "work_vol", "stir_power"]
         elif mode == "脱色罐":
@@ -769,12 +778,12 @@ class CoolingWaterCalculator(CalculatorBase):
 
                 # 发酵代谢热：kJ/(L·h) × L → kJ/h → kW
                 q_metab = heat_rate * work_vol * 1000 / 3600  # kW
-                q_stir = stir_power * 0.7  # 70%搅拌功率转化为热
+                q_stir = stir_power * 0.95  # 95%搅拌功率转化为热（保守取值）
                 q_total = q_metab + q_stir
 
                 q_sources.append((f"发酵代谢热({ferm_type}): {heat_rate} kJ/(L·h) × {work_vol} m³", q_metab))
                 if stir_power > 0:
-                    q_sources.append((f"搅拌热: {stir_power} kW × 70%", q_stir))
+                    q_sources.append((f"搅拌热: {stir_power} kW × 95%", q_stir))
 
                 lo, hi = self.FERM_TYPES.get(ferm_type, (0, 0))
                 if lo > 0:
@@ -785,12 +794,12 @@ class CoolingWaterCalculator(CalculatorBase):
                 work_vol = float(self.work_vol_input.text() or 10)
                 stir_power = float(self.stir_power_input.text() or 0)
                 q_rxn = abs(rxn_heat)
-                q_stir = stir_power * 0.7
+                q_stir = stir_power * 0.95  # 95%搅拌功率转化为热（保守取值）
                 q_total = q_rxn + q_stir
 
                 q_sources.append((f"反应热: {rxn_heat} kW (绝对值)", q_rxn))
                 if stir_power > 0:
-                    q_sources.append((f"搅拌热: {stir_power} kW × 70%", q_stir))
+                    q_sources.append((f"搅拌热: {stir_power} kW × 95%", q_stir))
 
             elif mode == "结晶罐":
                 crystal_amount = float(self.crystal_amount_input.text() or 0)
@@ -799,33 +808,34 @@ class CoolingWaterCalculator(CalculatorBase):
                 material_density = float(self.material_density_input.text() or 0)
                 solution_cp = float(self.solution_cp_input.text() or 0)
                 crystal_dt = float(self.crystal_dt_input.text() or 0)
+                cool_hours = float(self.crystal_hours_input.text() or 1.0)
                 stir_power = float(self.stir_power_input.text() or 0)
 
                 # 溶液质量 = 罐有效体积 × 物料密度
                 solution_amount = tank_volume * material_density  # kg
                 # 结晶放热 = 结晶量 × 结晶热 / 3600 → kW
                 q_crystal = crystal_amount * crystal_heat / 3600
-                # 显热降温 = 溶液量 × 比热容 × 温降 / 3600 → kW
-                q_sensible = solution_amount * solution_cp * crystal_dt / 3600
+                # 显热降温 = 溶液量 × 比热容 × 温降 / (3600 × 降温时间) → kW
+                q_sensible = solution_amount * solution_cp * crystal_dt / (3600.0 * max(0.01, cool_hours))
                 # 搅拌热
-                q_stir = stir_power * 0.7
+                q_stir = stir_power * 0.95  # 95%搅拌功率转化为热（保守取值）
                 q_total = q_crystal + q_sensible + q_stir
 
                 q_sources.append((f"结晶放热: {crystal_amount} kg/h × {crystal_heat} kJ/kg", q_crystal))
-                q_sources.append((f"显热降温: {tank_volume} m³ × {material_density} kg/m³ × {solution_cp} kJ/(kg·°C) × {crystal_dt}°C", q_sensible))
+                q_sources.append((f"显热降温: {tank_volume} m³ × {material_density} kg/m³ × {solution_cp} kJ/(kg·°C) × {crystal_dt}°C ÷ {cool_hours}h", q_sensible))
                 if stir_power > 0:
-                    q_sources.append((f"搅拌热: {stir_power} kW × 70%", q_stir))
+                    q_sources.append((f"搅拌热: {stir_power} kW × 95%", q_stir))
 
             elif mode == "脱色罐":
                 heat_load = float(self.heat_load_input.text() or 15)
                 work_vol = float(self.work_vol_input.text() or 10)
                 stir_power = float(self.stir_power_input.text() or 0)
-                q_stir = stir_power * 0.7
+                q_stir = stir_power * 0.95  # 95%搅拌功率转化为热（保守取值）
                 q_total = heat_load + q_stir
 
                 q_sources.append((f"保温散热: {heat_load} kW", heat_load))
                 if stir_power > 0:
-                    q_sources.append((f"搅拌热: {stir_power} kW × 70%", q_stir))
+                    q_sources.append((f"搅拌热: {stir_power} kW × 95%", q_stir))
                 mode_labels["_note"] = "提示: 保温散热≈罐体表面积×K×ΔT(内−外)"
 
             elif mode == "换热器":
@@ -859,6 +869,12 @@ class CoolingWaterCalculator(CalculatorBase):
             elif mode == "直接输入热负荷":
                 q_total = float(self.heat_load_input.text() or 500)
                 q_sources.append(("直接热负荷", q_total))
+
+            # 低温工况警示：cp 按水 4.18 计算会低估循环水量
+            if cw_tin <= 5:
+                mode_labels["_cold"] = ("⚠ 进水温度≤5°C：低温工况应使用盐水/乙二醇溶液"
+                                        "（cp≈3.0~3.5），本计算按水 cp=4.18 会低估循环水量，"
+                                        "建议按实际载冷剂比热容核算。")
 
             # ── 循环水量计算 ──
             q_with_safety = q_total * safety
@@ -962,17 +978,24 @@ class CoolingWaterCalculator(CalculatorBase):
         except Exception as e:
             self._show_error(f"计算错误：{e}")
 
+    def _velocity_limit(self, dn):
+        """按管径档位取推荐流速上限"""
+        if dn < 25:
+            return self.PIPE_VELOCITY["DN25以下"]
+        if dn <= 50:
+            return self.PIPE_VELOCITY["DN25~DN50"]
+        if dn <= 100:
+            return self.PIPE_VELOCITY["DN50~DN100"]
+        if dn <= 200:
+            return self.PIPE_VELOCITY["DN100~DN200"]
+        return self.PIPE_VELOCITY["DN200以上"]
+
     def _recommend_pipe(self, v_m3h):
-        """根据流量推荐管径"""
+        """根据流量推荐管径（流速不超过对应档位推荐值的最小标准管径）"""
         for dn in self.STANDARD_PIPES:
             area = math.pi * (dn / 1000) ** 2 / 4
             v_actual = (v_m3h / 3600) / area  # m/s
-            # 流速在合理范围
-            if dn < 50 and v_actual <= 2.5:
-                return f"DN{dn} (流速 {v_actual:.1f} m/s)"
-            if 50 <= dn < 100 and v_actual <= 2.0:
-                return f"DN{dn} (流速 {v_actual:.1f} m/s)"
-            if dn >= 100 and v_actual <= 3.0:
+            if v_actual <= self._velocity_limit(dn):
                 return f"DN{dn} (流速 {v_actual:.1f} m/s)"
         return f"DN500 (流速 {(v_m3h/3600)/(math.pi*0.25)} m/s)"
 
@@ -996,6 +1019,8 @@ class CoolingWaterCalculator(CalculatorBase):
             lines.append(f"  {r['mode_labels']['_range']}")
         if "_note" in r.get("mode_labels", {}):
             lines.append(f"  {r['mode_labels']['_note']}")
+        if "_cold" in r.get("mode_labels", {}):
+            lines.append(f"  {r['mode_labels']['_cold']}")
 
         lines += [
             f"  安全系数: ×{r['safety']}",
@@ -1121,6 +1146,7 @@ class CoolingWaterCalculator(CalculatorBase):
         self.solution_cp_combo.setCurrentIndex(0)
         self.solution_cp_input.setText("3.80")
         self.crystal_dt_input.setText("15")
+        self.crystal_hours_input.setText("1.0")
         self.cw_preset_combo.setCurrentIndex(0)
         self.cw_tin_input.setText("32")
         self.cw_tout_input.setText("37")
@@ -1132,6 +1158,21 @@ class CoolingWaterCalculator(CalculatorBase):
     # ═══════════════════════ 历史 ═══════════════════════
     def _get_history_data(self):
         r = self._last_result
+        if r.get("mode") == "多效蒸发器":
+            return {
+                "inputs": {
+                    "计算模式": "多效蒸发器",
+                    "蒸发器类型": r.get("effect", ""),
+                    "效数系数": r.get("coeff", 0),
+                    "汽化潜热_kJ_kg": r.get("latent", 0),
+                    "蒸发水量_kg_h": r.get("evap_water", 0),
+                },
+                "outputs": {
+                    "冷却水倍率_t_t": round(r.get("tt", 0), 2),
+                    "循环液量_m3h": round(r.get("total_cw_m3h", 0), 2),
+                    "推荐管径": r.get("rec_dn", ""),
+                }
+            }
         return {
             "inputs": {
                 "计算模式": r.get("mode", ""),

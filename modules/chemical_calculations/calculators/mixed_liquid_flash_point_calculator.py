@@ -52,7 +52,7 @@ class ComponentDialog(QDialog):
         form_layout.addWidget(flash_label, 1, 0)
         
         self.flash_input = QLineEdit()
-        self.flash_input.setPlaceholderText("例如: 12.8")
+        self.flash_input.setPlaceholderText("例如: 12.8（留空 = 不燃组分，如水）")
         self.flash_input.setValidator(QDoubleValidator(-100.0, 500.0, 2))
         form_layout.addWidget(self.flash_input, 1, 1)
         
@@ -185,8 +185,9 @@ class ComponentDialog(QDialog):
     
     def fill_form_data(self):
         """填充表单数据"""
+        fp = self.component_data.get("flash_point")
         self.name_input.setText(self.component_data.get("name", ""))
-        self.flash_input.setText(str(self.component_data.get("flash_point", "")))
+        self.flash_input.setText("" if fp is None else str(fp))
         self.boiling_input.setText(str(self.component_data.get("boiling_point", "")))
         self.mw_input.setText(str(self.component_data.get("molecular_weight", "")))
         self.fraction_input.setText(str(self.component_data.get("mass_fraction", "")))
@@ -201,7 +202,12 @@ class ComponentDialog(QDialog):
         self.solvents_combo.setCurrentIndex(0)
     
     def validate_and_accept(self):
-        """验证表单并接受"""
+        """验证表单并接受
+
+        修复：原实现强制要求填闪点，"水/二氯甲烷"这类不燃组分（下拉里闪点为"无"）
+        根本无法录入，而稀释剂恰恰是影响混合闪点的关键组分。
+        现允许闪点留空 = 不燃组分。
+        """
         name = self.name_input.text().strip()
         flash_text = self.flash_input.text().strip()
         fraction_text = self.fraction_input.text().strip()
@@ -210,16 +216,13 @@ class ComponentDialog(QDialog):
             QMessageBox.warning(self, "输入错误", "请输入组分名称")
             return
         
-        if not flash_text:
-            QMessageBox.warning(self, "输入错误", "请输入闪点")
-            return
-        
         if not fraction_text:
             QMessageBox.warning(self, "输入错误", "请输入质量分数")
             return
         
         try:
-            flash_point = float(flash_text)
+            if flash_text:
+                float(flash_text)
             mass_fraction = float(fraction_text)
             
             if mass_fraction <= 0 or mass_fraction > 100:
@@ -233,10 +236,11 @@ class ComponentDialog(QDialog):
         self.accept()
     
     def get_component_data(self):
-        """获取组分数据"""
+        """获取组分数据（闪点留空记为 None，表示不燃组分）"""
+        flash_text = self.flash_input.text().strip()
         return {
             "name": self.name_input.text().strip(),
-            "flash_point": float(self.flash_input.text() or 0),
+            "flash_point": float(flash_text) if flash_text else None,
             "boiling_point": float(self.boiling_input.text() or 0),
             "molecular_weight": float(self.mw_input.text() or 0),
             "mass_fraction": float(self.fraction_input.text() or 0)
@@ -245,6 +249,17 @@ class ComponentDialog(QDialog):
 
 class MixedLiquidFlashPointCalculator(CalculatorBase):
     """混合液体闪点计算器"""
+
+    # 方法名（下拉文本含说明后缀，用 _resolve_method 做包含匹配）
+    METHOD_ORDER = ["Le Chatelier 法则", "最低闪点法", "质量加权平均法",
+                    "摩尔加权平均法", "沸点关联式(Riazi)"]
+
+    def _resolve_method(self, text: str) -> str:
+        """把下拉文本解析为标准方法名"""
+        for name in self.METHOD_ORDER:
+            if name in text:
+                return name
+        return "质量加权平均法"
     
     def __init__(self, parent=None, data_manager=None):
         super().__init__(parent)
@@ -253,6 +268,7 @@ class MixedLiquidFlashPointCalculator(CalculatorBase):
         else:
             self.init_data_manager()
         self.components = []
+        self._last_results = {}
         self.setup_ui()
 
         # 禁止未展开时鼠标滚轮切换下拉菜单
@@ -304,7 +320,8 @@ class MixedLiquidFlashPointCalculator(CalculatorBase):
             "最低闪点法 - 保守估计，取最低组分闪点",
             "质量加权平均法 - 基于质量分数的加权平均",
             "摩尔加权平均法 - 基于摩尔分数的加权平均",
-            "Cox 图表法 - 基于沸点的经验方法"
+            # 原标签"Cox 图表法"名不符实：实际采用的是 Riazi 沸点关联式
+            "沸点关联式(Riazi) - T_fp = 0.7×T_bp(K)，仅需沸点数据"
         ])
         self.method_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         method_layout.addWidget(self.method_combo)
@@ -486,8 +503,9 @@ class MixedLiquidFlashPointCalculator(CalculatorBase):
             name_item.setTextAlignment(Qt.AlignCenter)
             self.components_table.setItem(row, 0, name_item)
             
-            # 闪点
-            flash_item = QTableWidgetItem(f"{component['flash_point']:.1f}")
+            # 闪点（None = 不燃组分）
+            fp = component.get("flash_point")
+            flash_item = QTableWidgetItem("不燃" if fp is None else f"{fp:.1f}")
             flash_item.setTextAlignment(Qt.AlignCenter)
             self.components_table.setItem(row, 1, flash_item)
             
@@ -587,25 +605,34 @@ class MixedLiquidFlashPointCalculator(CalculatorBase):
                 if reply == QMessageBox.No:
                     return
             
+            # 不燃组分（闪点留空）不参与闪点计算
+            flammable = [c for c in self.components
+                         if c.get("flash_point") is not None]
+            if not flammable:
+                self.result_text.setPlainText(
+                    "所有组分均标记为不燃（闪点留空），混合物无闪点。")
+                self._last_results = {}
+                return
+
             method = self.method_combo.currentText()
-            
-            # 根据不同方法计算闪点
-            if "Le Chatelier" in method:
-                flash_point = self.calculate_le_chatelier()
-            elif "最低闪点法" in method:
-                flash_point = self.calculate_minimum_flash()
-            elif "质量加权平均法" in method:
-                flash_point = self.calculate_weighted_average_mass()
-            elif "摩尔加权平均法" in method:
-                flash_point = self.calculate_weighted_average_molar()
-            elif "Cox 图表法" in method:
-                flash_point = self.calculate_cox_method()
-            else:
-                flash_point = self.calculate_weighted_average_mass()
-            
-            # 显示结果
-            result = self.format_results(method, flash_point, total_fraction)
-            self.result_text.setText(result)
+
+            # 五种方法一次算齐，供结果区与"不同方法对比"共用同一口径
+            results = self.compute_all_methods()
+            flash_point = results.get(self._resolve_method(method))
+
+            # 初沸点（取可燃组分最低沸点）→ GHS 类别 1 与 2 的区分依据
+            bps = [c["boiling_point"] for c in flammable
+                   if (c.get("boiling_point") or 0) > 0]
+            ibp = min(bps) if bps else None
+
+            self._last_results = {"method": method, "flash_point": flash_point,
+                                  **results}
+            # 必须用 setPlainText：原 setText 会把含 HTML 标签的结果整段按 HTML 渲染，
+            # 换行全部丢失，结果框变成一坨没有换行的文字
+            self.result_text.setPlainText(
+                self.format_results(method, flash_point, total_fraction, results,
+                                    ibp=ibp,
+                                    n_nonflammable=len(self.components) - len(flammable)))
             
         except Exception as e:
             QMessageBox.critical(self, "计算错误", f"计算过程中发生错误: {str(e)}")
@@ -625,147 +652,175 @@ class MixedLiquidFlashPointCalculator(CalculatorBase):
         for i, comp in enumerate(self.components):
             inputs[f"组分{i+1}_名称"] = comp.get("name", f"组分{i+1}")
             inputs[f"组分{i+1}_质量分数_%"] = comp.get("mass_fraction", 0)
-            inputs[f"组分{i+1}_闪点_C"] = comp.get("flash_point", 0)
+            inputs[f"组分{i+1}_闪点_C"] = ("不燃" if comp.get("flash_point") is None
+                                          else comp.get("flash_point"))
 
         outputs = {}
-        # 没有组分时不执行计算，避免空数据处理
-        if not self.components:
+        # 没有可燃组分时不执行计算，避免空数据处理
+        if not [c for c in self.components if c.get("flash_point") is not None]:
+            outputs["提示"] = "无可燃组分（全部标记为不燃），混合物无闪点"
             return {"inputs": inputs, "outputs": outputs}
 
         try:
-            if "Le Chatelier" in method:
-                flash_point = self.calculate_le_chatelier()
-            elif "最低闪点法" in method:
-                flash_point = self.calculate_minimum_flash()
-            elif "质量加权平均法" in method:
-                flash_point = self.calculate_weighted_average_mass()
-            elif "摩尔加权平均法" in method:
-                flash_point = self.calculate_weighted_average_molar()
-            elif "Cox 图表法" in method:
-                flash_point = self.calculate_cox_method()
-            else:
-                flash_point = self.calculate_weighted_average_mass()
-
-            outputs = {"混合液体闪点_C": round(flash_point, 1)}
+            # 与主计算共用同一套方法（原实现另抄一份 dispatch，已同步为统一入口）
+            results = self.compute_all_methods()
+            flash_point = results.get(self._resolve_method(method))
+            outputs = {f"{k}_C": (round(v, 1) if v is not None else None)
+                       for k, v in results.items()}
+            outputs["采用方法"] = self._resolve_method(method)
+            outputs["混合液体闪点_C"] = round(flash_point, 1) if flash_point is not None else None
         except Exception as e:
             outputs["计算错误"] = str(e)
 
         return {"inputs": inputs, "outputs": outputs}
 
     def calculate_le_chatelier(self):
-        """Le Chatelier 法则计算"""
-        # 对于理想混合物，使用Le Chatelier公式
-        # 1/FP_mix = Σ (y_i / FP_i) 其中y_i是气相摩尔分数
-        
-        # 首先计算摩尔分数
-        total_moles = 0
+        """Le Chatelier 混合法则：1/T_f,mix = Σ(x_i / T_f,i)
+
+        出处：Le Chatelier 混合规则（Coward & Jones 1952；Liaw 模型；Alqaheem & Riazi 2017
+        等一致采用），x_i 为液相摩尔分数，T 为绝对温度。
+        仅对可燃组分求和；不燃组分仍计入摩尔分数分母 —— 稀释效应由此体现。
+        """
+        # 摩尔分数（全部组分参与分母，含不燃组分）
+        total_moles = 0.0
         for comp in self.components:
-            if comp["molecular_weight"] > 0:
-                moles = comp["mass_fraction"] / comp["molecular_weight"]
-                total_moles += moles
-        
-        if total_moles == 0:
+            mw = comp.get("molecular_weight") or 0
+            if mw > 0:
+                total_moles += comp["mass_fraction"] / mw
+
+        if total_moles <= 0:
             return self.calculate_weighted_average_mass()
-        
-        # 计算混合闪点 (绝对温度)
-        sum_reciprocal = 0
+
+        sum_reciprocal = 0.0
         for comp in self.components:
-            if comp["molecular_weight"] > 0 and comp["flash_point"] != 0:
-                moles = comp["mass_fraction"] / comp["molecular_weight"]
-                mole_fraction = moles / total_moles
-                
-                # 将闪点转换为绝对温度 (K)
-                flash_k = comp["flash_point"] + C_TO_K
-                sum_reciprocal += mole_fraction / flash_k
-        
-        if sum_reciprocal == 0:
-            return self.calculate_weighted_average_mass()
-        
-        flash_mix_k = 1 / sum_reciprocal
-        return flash_mix_k - C_TO_K  # 转换回°C
-    
+            fp = comp.get("flash_point")
+            mw = comp.get("molecular_weight") or 0
+            if fp is None or mw <= 0:
+                continue
+            x_i = (comp["mass_fraction"] / mw) / total_moles
+            sum_reciprocal += x_i / (fp + C_TO_K)
+
+        if sum_reciprocal <= 0:
+            return None
+        return 1.0 / sum_reciprocal - C_TO_K
+
     def calculate_minimum_flash(self):
-        """最低闪点法计算"""
-        # 取所有组分中的最低闪点
-        min_flash = float('inf')
-        for comp in self.components:
-            if comp["flash_point"] < min_flash:
-                min_flash = comp["flash_point"]
-        return min_flash
-    
+        """最低闪点法：取可燃组分中的最低闪点（最保守的安全估计）"""
+        fps = [c["flash_point"] for c in self.components
+               if c.get("flash_point") is not None]
+        return min(fps) if fps else None
+
     def calculate_weighted_average_mass(self):
-        """质量加权平均法计算"""
-        total_fraction = sum(comp["mass_fraction"] for comp in self.components)
-        if total_fraction == 0:
-            return 0
-        
-        weighted_sum = 0
-        for comp in self.components:
-            weighted_sum += comp["flash_point"] * comp["mass_fraction"]
-        
-        return weighted_sum / total_fraction
-    
+        """质量加权平均法（仅在可燃组分之间归一，不燃组分不参与）"""
+        pairs = [(c["flash_point"], c["mass_fraction"]) for c in self.components
+                 if c.get("flash_point") is not None]
+        total = sum(f for _, f in pairs)
+        if total <= 0:
+            return None
+        return sum(fp * f for fp, f in pairs) / total
+
     def calculate_weighted_average_molar(self):
-        """摩尔加权平均法计算"""
-        total_moles = 0
-        weighted_sum = 0
-        
+        """摩尔加权平均法（仅在可燃组分之间归一）"""
+        total_moles = 0.0
+        weighted_sum = 0.0
         for comp in self.components:
-            if comp["molecular_weight"] > 0:
-                moles = comp["mass_fraction"] / comp["molecular_weight"]
-                total_moles += moles
-                weighted_sum += comp["flash_point"] * moles
-        
-        if total_moles == 0:
+            fp = comp.get("flash_point")
+            mw = comp.get("molecular_weight") or 0
+            if fp is None or mw <= 0:
+                continue
+            n = comp["mass_fraction"] / mw
+            total_moles += n
+            weighted_sum += fp * n
+
+        if total_moles <= 0:
             return self.calculate_weighted_average_mass()
-        
         return weighted_sum / total_moles
-    
+
     def calculate_cox_method(self):
-        """Cox 图表法计算 (基于沸点的经验方法)"""
-        # Cox图表法是基于混合物的平均沸点来估算闪点
-        # 这里使用简化的经验公式
-        
-        # 计算质量加权平均沸点
-        total_fraction = sum(comp["mass_fraction"] for comp in self.components)
-        if total_fraction == 0:
-            return 0
-        
-        avg_boiling = 0
-        for comp in self.components:
-            avg_boiling += comp["boiling_point"] * comp["mass_fraction"]
-        avg_boiling /= total_fraction
-        
-        # 简化的Cox关系式: 闪点 ≈ 0.7 * 沸点 - 50 (经验公式)
-        estimated_flash = 0.7 * avg_boiling - 50
-        
-        # 限制在合理范围内
-        return max(estimated_flash, -50)
+        """沸点关联式估算：T_fp = 0.7 × T_bp（绝对温度，Riazi 关联式）
+
+        出处：Alqaheem & Riazi, Energy & Fuels 2017, 31, 3578（AIChE 2015 年会论文同结论）：
+        烃类及其混合物的闪点/沸点（K）之比近似为常数 0.7，纯烃 AAD 1.7%、石油馏分 2.8%，
+        为"只有沸点数据时"公认最简关联式。
+        修复：原实现用 0.7×沸点(°C) − 50，属无出处的经验式，且对芳烃偏不安全
+        （苯、甲苯会被估到比实测值高 10~25 °C）。
+        注意：该关联式源自烃类，含醇/水等极性组分时偏差可能明显偏大。
+        """
+        pairs = [(c["boiling_point"], c["mass_fraction"]) for c in self.components
+                 if (c.get("boiling_point") or 0) > 0]
+        total = sum(f for _, f in pairs)
+        if total <= 0:
+            return None
+        avg_boiling = sum(bp * f for bp, f in pairs) / total
+        return 0.7 * (avg_boiling + C_TO_K) - C_TO_K
+
+    def compute_all_methods(self):
+        """一次算出全部方法结果（避免展示时各算一遍、口径打架）"""
+        return {
+            "Le Chatelier 法则": self.calculate_le_chatelier(),
+            "最低闪点法": self.calculate_minimum_flash(),
+            "质量加权平均法": self.calculate_weighted_average_mass(),
+            "摩尔加权平均法": self.calculate_weighted_average_molar(),
+            "沸点关联式(Riazi)": self.calculate_cox_method(),
+        }
     
-    def format_results(self, method, flash_point, total_fraction):
-        """格式化计算结果"""
-        # 安全等级评估
-        if flash_point < 0:
-            safety_level = "极度危险 (易燃液体)"
-            safety_color = "#e74c3c"
+    def format_results(self, method, flash_point, total_fraction, results=None,
+                       ibp=None, n_nonflammable=0):
+        """格式化计算结果
+
+        纯文本输出。原实现把带 <span style="..."> 的 HTML 片段交给 setText()，
+        Qt 会判定为富文本整段渲染，换行全部丢失。
+        """
+        results = results or self.compute_all_methods()
+
+        # 安全等级（按 GB 13690 低/中/高闪点液体分档）
+        if flash_point < -18:
+            safety_level = "极度危险（低闪点液体）"
         elif flash_point < 23:
-            safety_level = "高度危险 (易燃液体)"
-            safety_color = "#e67e22"
-        elif flash_point < 60:
-            safety_level = "中等危险 (可燃液体)"
-            safety_color = "#f39c12"
+            safety_level = "高度危险（中闪点液体）"
+        elif flash_point <= 61:
+            safety_level = "中等危险（高闪点液体）"
         else:
-            safety_level = "相对安全 (难燃液体)"
-            safety_color = "#27ae60"
-        
+            safety_level = "相对安全（不属易燃液体）"
+
+        cmp_lines = []
+        for name in self.METHOD_ORDER:
+            v = results.get(name)
+            txt = "—（无有效数据）" if v is None else f"{v:.1f} °C"
+            extra = "（仅需沸点的粗略估算，源自烃类）" if name.startswith("沸点关联式") else ""
+            cmp_lines.append(f"• {name}: {txt}{extra}")
+
+        excluded = ""
+        caution = ""
+        if n_nonflammable:
+            excluded = (f"  注: {n_nonflammable} 个不燃组分（如水）不参与闪点加权平均，\n"
+                        f"      但仍计入 Le Chatelier 摩尔分数的分母 —— 稀释效应由此体现\n")
+            # 该式假定各组分汽化潜热相近；含水等不燃稀释剂时会严重高估闪点
+            # （水+乙醇体系可估出数百 °C），必须明确提示，否则会被误读为"更安全"
+            caution = ("""
+═══════════════════════════════════════════════════
+            ⚠ 含不燃稀释剂时的适用性提示
+═══════════════════════════════════════════════════
+
+• Le Chatelier 简化式假定各组分汽化潜热相近、且不燃组分不参与
+  可燃蒸气分压 —— 含水/不燃稀释剂时会严重高估闪点（水+乙醇可估出数百 °C），
+  该值绝不可单独作为安全依据
+• 稀释剂对闪点的真实影响需汽液平衡数据（Antoine + 活度系数）或实测
+• 安全设计请以"最低闪点法"数值为准，或按 GB/T 261-2021 闭杯法实测
+""")
+
+        # 安全相关场合应以最低值为准
+        valid = [v for v in results.values() if v is not None]
+        min_note = f"最低估计值 = {min(valid):.1f} °C（安全设计建议取值）" if valid else "无"
+
         return f"""═══════════════════════════════════════════════════
                          输入参数
 ═══════════════════════════════════════════════════
 
 计算方法: {method}
-组分数量: {len(self.components)} 个
+组分数量: {len(self.components)} 个（其中不燃组分 {n_nonflammable} 个）
 总质量分数: {total_fraction:.2f} %
-
+{excluded}
 组分列表:
 {self.format_components_list()}
 
@@ -776,43 +831,77 @@ class MixedLiquidFlashPointCalculator(CalculatorBase):
 混合液体闪点: {flash_point:.1f} °C
 
 安全评估:
-• 安全等级: <span style="color: {safety_color}; font-weight: bold">{safety_level}</span>
-• 闪点分类: {self.get_flash_point_classification(flash_point)}
+• 安全等级: {safety_level}
+• GB 13690-2009 易燃液体分档: {self.classify_gb13690(flash_point)}
+• GB 50016-2014 火灾危险性分类: {self.classify_gb50016(flash_point)}
+• GHS / GB 30000.7-2013 类别: {self.get_flash_point_classification(flash_point, ibp)}
 
 不同方法对比:
-• Le Chatelier 法则: {self.calculate_le_chatelier():.1f} °C
-• 最低闪点法: {self.calculate_minimum_flash():.1f} °C
-• 质量加权平均: {self.calculate_weighted_average_mass():.1f} °C
-• 摩尔加权平均: {self.calculate_weighted_average_molar():.1f} °C
+{chr(10).join(cmp_lines)}
 
+• {min_note}
+{caution}
 ═══════════════════════════════════════════════════
                         计算说明
 ═══════════════════════════════════════════════════
 
-• Le Chatelier法则适用于理想混合物
-• 最低闪点法提供最保守的安全估计
-• 质量/摩尔加权平均法适用于相似组分
-• Cox图表法基于沸点经验关系
-• 实际闪点可能因非理想性而有所不同
-• 建议进行实验验证重要应用"""
-    
+• Le Chatelier 法则: 1/T_mix = Σ(x_i/T_i)，x 为液相摩尔分数，T 为绝对温度
+• 最低闪点法提供最保守的安全估计，安全评价优先采用
+• 质量/摩尔加权平均法适用于组分性质相近的混合物
+• 沸点关联式 T_fp = 0.7×T_bp(K) 源自烃类（Riazi/AIChE 2015），
+  含醇、水等极性组分时偏差可能明显偏大
+• 实际闪点受非理想性影响，重要场合应做实验测定（闭杯法 GB/T 261）"""
+
     def format_components_list(self):
         """格式化组分列表"""
         components_text = ""
         for i, comp in enumerate(self.components, 1):
-            components_text += f"{i}. {comp['name']}: 闪点{comp['flash_point']}°C, 质量分数{comp['mass_fraction']}%\\n"
+            fp_txt = "不燃" if comp.get("flash_point") is None else f"{comp['flash_point']}°C"
+            components_text += f"{i}. {comp['name']}: 闪点{fp_txt}, 质量分数{comp['mass_fraction']}%\\n"
         return components_text
     
-    def get_flash_point_classification(self, flash_point):
-        """获取闪点分类"""
-        if flash_point < 0:
-            return "Class I A (极度易燃)"
-        elif flash_point < 23:
-            return "Class I B (高度易燃)" 
-        elif flash_point < 60:
-            return "Class I C (易燃)"
-        else:
-            return "Class II/III (可燃/难燃)"
+    @staticmethod
+    def classify_gb13690(flash_point):
+        """GB 13690-2009《化学品分类和危险性公示 通则》/ 危险化学品名录：低/中/高闪点液体"""
+        if flash_point < -18:
+            return "低闪点液体（闭杯 < −18 °C）"
+        if flash_point < 23:
+            return "中闪点液体（−18 ≤ 闭杯 < 23 °C）"
+        if flash_point <= 61:
+            return "高闪点液体（23 ≤ 闭杯 ≤ 61 °C）"
+        return "不属易燃液体（闭杯 > 61 °C）"
+
+    @staticmethod
+    def classify_gb50016(flash_point):
+        """GB 50016-2014《建筑设计防火规范》火灾危险性分类"""
+        if flash_point < 28:
+            return "甲类（闪点 < 28 °C）"
+        if flash_point < 60:
+            return "乙类（28 ≤ 闪点 < 60 °C）"
+        return "丙类（闪点 ≥ 60 °C）"
+
+    def get_flash_point_classification(self, flash_point, ibp=None):
+        """GHS / GB 30000.7-2013 易燃液体类别（与 NFPA 30 的 Class I/II/III 对应）
+
+        类别1: 闪点 < 23 °C 且 初沸点 ≤ 35 °C
+        类别2: 闪点 < 23 °C 且 初沸点 > 35 °C
+        类别3: 23 ≤ 闪点 ≤ 60 °C
+        类别4: 60 < 闪点 ≤ 93 °C
+        修复：原实现按 <0 / <23 / <60 直接套 Class I A / I B / I C / II，
+        与 GHS 及 NFPA 30 的分档边界都不符（IC 实为 22.8~37.8 °C，
+        且 IA / IB 还必须用初沸点区分），会把甲类易燃液体误标成低风险档。
+        """
+        if flash_point < 23:
+            if ibp is None:
+                return "类别 1 或 2（闪点 < 23 °C；填入沸点后可区分）"
+            if ibp <= 35:
+                return f"类别 1（H224：闪点 < 23 °C 且初沸点 {ibp:.0f} °C ≤ 35 °C）"
+            return f"类别 2（H225：闪点 < 23 °C 且初沸点 {ibp:.0f} °C > 35 °C）"
+        if flash_point <= 60:
+            return "类别 3（H226：23 ≤ 闪点 ≤ 60 °C）"
+        if flash_point <= 93:
+            return "类别 4（H227：60 < 闪点 ≤ 93 °C）"
+        return "非易燃液体（闪点 > 93 °C）"
 
     # ------------------------------------------------------------------
     #  清空 / 历史数据 / 报告
@@ -821,31 +910,74 @@ class MixedLiquidFlashPointCalculator(CalculatorBase):
     def clear_inputs(self):
         """清空所有输入与结果"""
         self.components.clear()
+        self._last_results = {}
         self.update_components_table()
         self.result_text.clear()
 
     def get_project_info(self):
-        return {
-            "project_name": "混合液体闪点计算",
-            "calculator_name": "混合液体闪点计算器",
-            "version": "1.0",
-            "description": "Le Chatelier法则/最低闪点/质量摩尔加权平均/Cox图表法"
-        }
+        """工程信息（导出契约：company_name / project_number / project_name / subproject_name）"""
+        try:
+            saved = {}
+            dm = getattr(self, "data_manager", None)
+            if dm is not None:
+                saved = dm.get_project_info() or {}
+            return {
+                "company_name": saved.get("company_name", ""),
+                "project_number": saved.get("project_number", ""),
+                "project_name": saved.get("project_name", ""),
+                "subproject_name": saved.get("subproject_name", ""),
+            }
+        except Exception:
+            return {}
 
     def generate_report(self):
+        """生成计算书（返回纯文本；未计算返回 None，不产出空壳报告）"""
+        if not self._last_results:
+            return None
         content = self.result_text.toPlainText().strip()
         if not content:
-            return "尚未进行计算。"
-        lines = ["混合液体闪点计算报告", "=" * 50, "", content]
+            return None
+        from datetime import datetime
+        pi = self.get_project_info()
+        lines = [
+            "混合液体闪点计算书",
+            f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            "计算工具: ChemCal 工程计算模块",
+            "=" * 50,
+            "",
+            content,
+            "",
+            "══════════",
+            " 工程信息",
+            "══════════",
+            "",
+            f"    公司名称: {pi.get('company_name', '')}",
+            f"    工程编号: {pi.get('project_number', '')}",
+            f"    工程名称: {pi.get('project_name', '')}",
+            f"    子项名称: {pi.get('subproject_name', '')}",
+            f"    计算日期: {datetime.now().strftime('%Y-%m-%d')}",
+            "",
+            "══════════",
+            "备注说明",
+            "══════════",
+            "",
+            "    1. Le Chatelier 法则、最低闪点法、质量/摩尔加权平均法、沸点关联式",
+            "       五种方法原理不同，结果存在差异，安全评价应以最低值为准",
+            "    2. 危险等级按 GB 13690-2009、GB 50016-2014、GB 30000.7-2013 标注",
+            "    3. 闪点计算为理论估算，重要场合应实测（闭杯法 GB/T 261-2021）",
+            "",
+            "---",
+            "生成于 ChemCal 工程计算模块",
+        ]
         return "\n".join(lines)
 
     def download_docx_report(self):
         """生成DOCX格式计算书"""
-        ReportExporter.export_docx(self, "MixedLiquidFlashPointCalculator")
+        ReportExporter.export_docx(self, "混合液体闪点")
 
     def download_pdf_report(self):
         """生成PDF格式计算书"""
-        ReportExporter.export_pdf(self, "MixedLiquidFlashPointCalculator")
+        ReportExporter.export_pdf(self, "混合液体闪点")
 
 
 if __name__ == "__main__":

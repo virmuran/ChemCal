@@ -221,7 +221,7 @@ class 压降计算(CalculatorBase):
         roughness_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(roughness_label, row, 0)
         
-        self.roughness_input = QLineEdit()
+        self.roughness_input = QLineEdit("0.2")
         self.roughness_input.setPlaceholderText("输入粗糙度值")
         self.roughness_input.setValidator(QDoubleValidator(0.001, 10.0, 6))
         self.roughness_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # 水平扩展
@@ -242,7 +242,7 @@ class 压降计算(CalculatorBase):
         diameter_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(diameter_label, row, 0)
         
-        self.diameter_input = QLineEdit()
+        self.diameter_input = QLineEdit("100")
         self.diameter_input.setPlaceholderText("输入内径值")
         self.diameter_input.setValidator(QDoubleValidator(1.0, 2000.0, 6))
         self.diameter_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # 水平扩展
@@ -263,7 +263,7 @@ class 压降计算(CalculatorBase):
         length_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(length_label, row, 0)
         
-        self.length_input = QLineEdit()
+        self.length_input = QLineEdit("300")
         self.length_input.setPlaceholderText("例如: 300")
         self.length_input.setValidator(QDoubleValidator(0.1, 10000.0, 6))
         self.length_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # 水平扩展
@@ -283,7 +283,7 @@ class 压降计算(CalculatorBase):
         flow_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(flow_label, row, 0)
         
-        self.flow_input = QLineEdit()
+        self.flow_input = QLineEdit("5172")
         self.flow_input.setPlaceholderText("例如: 5172")
         self.flow_input.setValidator(QDoubleValidator(0.1, 1000000.0, 6))
         self.flow_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # 水平扩展
@@ -364,7 +364,7 @@ class 压降计算(CalculatorBase):
         self.elevation_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(self.elevation_label, row, 0)
         
-        self.elevation_input = QLineEdit()
+        self.elevation_input = QLineEdit("0")
         self.elevation_input.setPlaceholderText("例如: 0")
         self.elevation_input.setValidator(QDoubleValidator(-1000.0, 1000.0, 6))
         self.elevation_input.setText("0")
@@ -412,7 +412,7 @@ class 压降计算(CalculatorBase):
         self.pressure_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(self.pressure_label, row, 0)
         
-        self.pressure_input = QLineEdit()
+        self.pressure_input = QLineEdit("101.3")
         self.pressure_input.setPlaceholderText("例如: 101.3")
         self.pressure_input.setValidator(QDoubleValidator(0.1, 10000.0, 6))
         self.pressure_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # 水平扩展
@@ -787,32 +787,34 @@ class 压降计算(CalculatorBase):
             return 0.1
     
     def get_adiabatic_value(self):
-        """获取绝热系数值"""
-        text = self.adiabatic_combo.currentText()
+        """获取绝热系数值
 
-        # 检查是否为空值选项
-        if text.startswith("-") or not text.strip():
-            # 如果没有选择，尝试从输入框获取
-            try:
-                return float(self.adiabatic_input.text() or 0)
-            except:
-                return 1.4  # 默认值
-        
-        # 尝试从文本中提取数字
+        修复：原实现先解析下拉文本，选到"自定义绝热系数"时正则取不到数字、
+        float("自定义绝热系数") 又抛异常，一律回落 1.4 —— 用户填的自定义 γ 被完全忽略。
+        现改为输入框优先（下拉选预设时输入框已同步填入数值）。
+        """
+        # 输入框优先（γ ≥ 1）
         try:
-            # 匹配第一个数字
-            import re
+            v = float(self.adiabatic_input.text())
+            if v > 1.0:
+                return v
+        except (ValueError, TypeError):
+            pass
+
+        text = self.adiabatic_combo.currentText()
+        if text.startswith("-") or not text.strip():
+            return 1.4  # 默认值
+
+        try:
             match = re.search(r'(\d+\.?\d*)', text)
             if match:
                 return float(match.group(1))
-        except:
+        except Exception:
             pass
-        
-        # 如果无法解析，尝试直接转换整个文本
+
         try:
             return float(text)
-        except:
-            # 默认值
+        except Exception:
             return 1.4
     
     def select_fittings(self):
@@ -879,35 +881,30 @@ class 压降计算(CalculatorBase):
             length = float(self.length_input.text() or 0)
             flow_rate = float(self.flow_input.text() or 0)
             density = float(self.density_input.text() or 0)
-            viscosity = float(self.viscosity_input.text() or 0) / 1000  # 转换为Pa·s
+            # 界面输入为 mPa·s；_friction_and_reynolds 内部自行换算为 Pa·s，
+            # 此处绝不能再除一次 1000（曾致雷诺数放大 1000 倍、摩擦系数落进
+            # 完全粗糙区，沿程与可压缩压降系统性偏低）。显示用 Pa·s 另行换算。
+            viscosity_mpas = float(self.viscosity_input.text() or 0)
+            viscosity = viscosity_mpas / 1000  # Pa·s，仅用于结果展示
             roughness = self.get_roughness_value()
             
+            # 可压缩模式只适用于气体（流体表里气体密度均 < 3 kg/m³）
+            if mode != "不可压缩流体" and density > 100:
+                QMessageBox.warning(
+                    self, "输入错误",
+                    "可压缩流体模式仅适用于气体介质。\n"
+                    "当前所选流体密度过高（液体），请改选 水蒸气 / 空气 / 氨气 等气体，"
+                    "或切换为「不可压缩流体」模式。")
+                return
+
             # 验证输入
             if not all([diameter, length, flow_rate, density, viscosity]):
                 QMessageBox.warning(self, "输入错误", "请填写所有必需参数")
                 return
             
-            # 计算流速
-            area = math.pi * (diameter / 2) ** 2
-            velocity = (flow_rate / 3600) / area  # m³/h -> m³/s
-            
-            # 计算雷诺数
-            reynolds = (density * velocity * diameter) / viscosity
-            
-            # 计算摩擦系数
-            if reynolds < 2000:
-                # 层流
-                friction_factor = 64 / reynolds
-                flow_regime = "层流"
-            elif reynolds < 4000:
-                # 过渡流
-                friction_factor = 0.25 / (math.log10(roughness/(3.7*diameter) + 5.74/reynolds**0.9)) ** 2
-                flow_regime = "过渡流"
-            else:
-                # 湍流
-                # 使用Colebrook-White方程迭代求解
-                friction_factor = self.solve_colebrook(roughness/diameter, reynolds)
-                flow_regime = "湍流"
+            # 流速 / 雷诺数 / 流态 / 摩擦系数（与历史记录共用同一套公式）
+            velocity, reynolds, flow_regime, friction_factor = \
+                self._friction_and_reynolds(diameter, flow_rate, density, viscosity_mpas, roughness)
             
             # 根据不同模式计算压降
             if mode == "不可压缩流体":
@@ -936,107 +933,31 @@ class 压降计算(CalculatorBase):
                 adiabatic_index = self.get_adiabatic_value()
                 start_pressure = float(self.pressure_input.text() or 0) * 1000  # 转换为Pa
 
-                # Fanno 绝热流动计算
-                # 气体声速 c = sqrt(γ * P / ρ), 使用入口条件计算
-                speed_of_sound = math.sqrt(adiabatic_index * start_pressure / density)
-                mach_number = velocity / speed_of_sound
-
-                if mach_number >= 1.0:
-                    # 超音速或阻塞流
-                    total_pressure_drop = start_pressure * 0.5  # 简化处理
-                else:
-                    # 亚音速 Fanno 流动
-                    # Fanno 参数: 4fL*/D = (1-M²)/(γM²) + (γ+1)/(2γ) * ln(M²*(γ+1)/(2+(γ-1)*M²))
-                    # 其中 L* 是达到声速的最大管长
-                    def fanno_parameter(M, gamma):
-                        """计算 Fanno 参数 4fL*/D"""
-                        if M <= 0 or M >= 1:
-                            return float('inf')
-                        term1 = (1 - M**2) / (gamma * M**2)
-                        term2 = (gamma + 1) / (2 * gamma) * math.log(
-                            M**2 * (gamma + 1) / (2 + (gamma - 1) * M**2)
-                        )
-                        return term1 + term2
-
-                    def fanno_M_from_param(param, gamma, M_guess=0.5):
-                        """从 Fanno 参数反求 Mach 数 (Newton-Raphson)"""
-                        M = M_guess
-                        for _ in range(50):
-                            fp = fanno_parameter(M, gamma)
-                            # 数值导数
-                            dm = 1e-6
-                            fp_plus = fanno_parameter(M + dm, gamma)
-                            dfp = (fp_plus - fp) / dm
-                            if abs(dfp) < 1e-12:
-                                break
-                            M_new = M - (fp - param) / dfp
-                            if M_new <= 0.001:
-                                M_new = 0.001
-                            if M_new >= 0.999:
-                                M_new = 0.999
-                            if abs(M_new - M) < 1e-8:
-                                M = M_new
-                                break
-                            M = M_new
-                        return M
-
-                    # 计算 4fL/D
-                    fLD = 4 * friction_factor * length / diameter
-                    # 入口 Fanno 参数
-                    fanno_in = fanno_parameter(mach_number, adiabatic_index)
-                    # 出口 Fanno 参数
-                    fanno_out = fanno_in - fLD
-
-                    if fanno_out <= 0:
-                        # 管道过长，达到声速（阻塞流）
-                        total_pressure_drop = start_pressure * (1 - (mach_number / 1.0) ** 2)
-                    else:
-                        # 求出口 Mach 数
-                        M_out = fanno_M_from_param(fanno_out, adiabatic_index, M_guess=max(mach_number * 0.9, 0.1))
-                        # Fanno 流 P/P* 关系
-                        def fanno_pressure_ratio(M, gamma):
-                            """P/P* 关系"""
-                            return (1 / M) * math.sqrt(
-                                (2 + (gamma - 1) * M**2) / (gamma + 1)
-                            )
-                        P_star_in = start_pressure / fanno_pressure_ratio(mach_number, adiabatic_index)
-                        end_pressure = P_star_in * fanno_pressure_ratio(M_out, adiabatic_index)
-                        total_pressure_drop = start_pressure - end_pressure
+                # 入口密度 / 声速 / 马赫数 / Fanno 压降（抽为公共方法，历史记录复用）
+                mach_number, total_pressure_drop, rho_in, blocked = self._adiabatic_dp(
+                    adiabatic_index, start_pressure, diameter, length,
+                    flow_rate, density, friction_factor)
                 
                 result = self.format_adiabatic_result(
                     mode, diameter, length, flow_rate, density, viscosity, 
                     roughness, adiabatic_index, start_pressure/1000, velocity, 
                     reynolds, flow_regime, friction_factor, mach_number, 
-                    total_pressure_drop
+                    total_pressure_drop, rho_in=rho_in, blocked=blocked
                 )
                 
             elif mode == "可压缩流体（等温）":
                 start_pressure = float(self.pressure_input.text() or 0) * 1000  # 转换为Pa
 
-                # 等温流动积分法
-                # P1² - P2² = (f * L / D) * (ṁ/A)² * (P1 / (ρ1))
-                # 简化为: P1² - P2² = (f * L / D) * (ρ1 * u1²) * P1
-                # 更精确: P2 = sqrt(P1² - (f*L/D)*(ṁ/A)²*R*T)
-                mass_flow = density * velocity * math.pi * (diameter / 2) ** 2  # kg/s
-                area = math.pi * (diameter / 2) ** 2
-                # 假设气体遵循理想气体: ρ = P/(R*T), R_specific = P/(ρ*T)
-                R_specific = start_pressure / (density * (C_TO_K + 20))  # J/(kg·K), 假设20°C
-                P1_sq = start_pressure ** 2
-                term = (friction_factor * length / diameter) * (mass_flow / area) ** 2 * R_specific * 293.15
-                P2_sq = P1_sq - term
-
-                if P2_sq <= 0:
-                    # 阻塞流
-                    end_pressure = 0
-                    total_pressure_drop = start_pressure
-                else:
-                    end_pressure = math.sqrt(P2_sq)
-                    total_pressure_drop = start_pressure - end_pressure
+                # 等温可压缩流动（忽略加速项），R 由标准状态密度反推；
+                # 若用起始压力反推，高压工况下会把 R 一并放大，压降严重失真。
+                total_pressure_drop, rho_in, blocked = self._isothermal_dp(
+                    start_pressure, diameter, length, flow_rate, density, friction_factor)
 
                 result = self.format_isothermal_result(
                     mode, diameter, length, flow_rate, density, viscosity,
                     roughness, start_pressure/1000, velocity, reynolds,
-                    flow_regime, friction_factor, total_pressure_drop
+                    flow_regime, friction_factor, total_pressure_drop,
+                    rho_in=rho_in, blocked=blocked
                 )
             
             self.result_text.setText(result)
@@ -1055,22 +976,24 @@ class 压降计算(CalculatorBase):
             QMessageBox.critical(self, "计算错误", f"计算过程中发生错误: {str(e)}")
 
     def clear_inputs(self):
-        """清空所有输入"""
+        """清空所有输入（恢复出厂默认值，保证清空后可直接重算）"""
+        # 先复位下拉（会触发联动清空输入框），再回填默认文本
         self.roughness_combo.setCurrentIndex(0)
         self.diameter_combo.setCurrentIndex(0)
         self.fluid_combo.setCurrentIndex(0)
         self.adiabatic_combo.setCurrentIndex(0)
-        self.roughness_input.clear()
-        self.diameter_input.clear()
-        self.length_input.clear()
-        self.flow_input.clear()
+        self.roughness_input.setText("0.2")
+        self.diameter_input.setText("100")
+        self.length_input.setText("300")
+        self.flow_input.setText("5172")
         self.density_input.clear()
         self.viscosity_input.clear()
-        self.elevation_input.clear()
-        self.pressure_input.clear()
+        self.elevation_input.setText("0")
+        self.pressure_input.setText("101.3")
         self.adiabatic_input.clear()
         self.result_text.clear()
         self.local_resistance_coeff = 0.0
+        self._update_svg_diagram()
 
     def _get_history_data(self):
         """提供历史记录所需的输入输出数据"""
@@ -1100,15 +1023,8 @@ class 压降计算(CalculatorBase):
         if mode == "不可压缩流体":
             elevation = float(self.elevation_input.text() or 0)
             inputs["标高变化"] = f"{elevation} m"
-            velocity = (flow_rate / 3600) / (math.pi * (diameter / 2) ** 2)
-            viscosity_pa = viscosity / 1000
-            reynolds = (density * velocity * diameter) / viscosity_pa
-            if reynolds < 2000:
-                friction_factor = 64 / reynolds
-            elif reynolds < 4000:
-                friction_factor = 0.25 / (math.log10(roughness/(3.7*diameter) + 5.74/reynolds**0.9)) ** 2
-            else:
-                friction_factor = self.solve_colebrook(roughness/diameter, reynolds)
+            velocity, reynolds, _, friction_factor = self._friction_and_reynolds(
+                diameter, flow_rate, density, viscosity, roughness)
             pd_friction = friction_factor * (length / diameter) * (density * velocity ** 2) / 2
             pd_local = self.local_resistance_coeff * (density * velocity ** 2) / 2
             pd_elevation = density * G * elevation
@@ -1128,19 +1044,12 @@ class 压降计算(CalculatorBase):
             pressure = float(self.pressure_input.text() or 0)
             inputs["绝热系数"] = adiabatic
             inputs["起点压力"] = f"{pressure} kPa"
-            velocity = (flow_rate / 3600) / (math.pi * (diameter / 2) ** 2)
-            viscosity_pa = viscosity / 1000
-            reynolds = (density * velocity * diameter) / viscosity_pa
-            if reynolds < 2000:
-                friction_factor = 64 / reynolds
-            elif reynolds < 4000:
-                friction_factor = 0.25 / (math.log10(roughness/(3.7*diameter) + 5.74/reynolds**0.9)) ** 2
-            else:
-                friction_factor = self.solve_colebrook(roughness/diameter, reynolds)
-            mach = velocity / math.sqrt(adiabatic * 287 * 293)
-            pressure_ratio = max(0, 1 - (friction_factor * length / diameter) * (adiabatic * mach**2) / 2)
-            end_pressure = pressure * 1000 * pressure_ratio
-            total = (pressure * 1000 - end_pressure)
+            # 与主计算共用同一套公式（原实现另用 287·293 与经验压比，结果对不上）
+            velocity, reynolds, _, friction_factor = self._friction_and_reynolds(
+                diameter, flow_rate, density, viscosity, roughness)
+            mach, total, _, _ = self._adiabatic_dp(
+                adiabatic, pressure * 1000, diameter, length,
+                flow_rate, density, friction_factor)
             raw_results = {
                 "流速(m/s)": velocity, "雷诺数": reynolds,
                 "摩擦系数": friction_factor, "马赫数": mach,
@@ -1149,16 +1058,11 @@ class 压降计算(CalculatorBase):
         else:  # 可压缩流体（等温）
             pressure = float(self.pressure_input.text() or 0)
             inputs["起点压力"] = f"{pressure} kPa"
-            velocity = (flow_rate / 3600) / (math.pi * (diameter / 2) ** 2)
-            viscosity_pa = viscosity / 1000
-            reynolds = (density * velocity * diameter) / viscosity_pa
-            if reynolds < 2000:
-                friction_factor = 64 / reynolds
-            elif reynolds < 4000:
-                friction_factor = 0.25 / (math.log10(roughness/(3.7*diameter) + 5.74/reynolds**0.9)) ** 2
-            else:
-                friction_factor = self.solve_colebrook(roughness/diameter, reynolds)
-            total = (friction_factor * length * density * velocity**2) / (2 * diameter)
+            velocity, reynolds, _, friction_factor = self._friction_and_reynolds(
+                diameter, flow_rate, density, viscosity, roughness)
+            # 原实现此处沿用不可压缩 Darcy 式，与主计算的等温可压缩式不一致
+            total, _, _ = self._isothermal_dp(
+                pressure * 1000, diameter, length, flow_rate, density, friction_factor)
             raw_results = {
                 "流速(m/s)": velocity, "雷诺数": reynolds,
                 "摩擦系数": friction_factor,
@@ -1224,8 +1128,15 @@ class 压降计算(CalculatorBase):
     def format_adiabatic_result(self, mode, diameter, length, flow_rate, density, 
                               viscosity, roughness, adiabatic_index, start_pressure, 
                               velocity, reynolds, flow_regime, friction_factor, 
-                              mach_number, total_pressure_drop):
+                              mach_number, total_pressure_drop, rho_in=None,
+                              blocked=False):
         """格式化绝热流动计算结果"""
+        rho_line = (f"    入口密度(@起始压力): {rho_in:.4f} kg/m³\n"
+                    f"    标准状态密度(20°C,101.3kPa): {density:.4f} kg/m³\n"
+                    if rho_in else f"    流体密度: {density:.3f} kg/m³\n")
+        blocked_line = ("\n    ⚠ 阻塞流：该管长已超过临界长度 L*，出口锁在声速截面，\n"
+                        "      按此流量实际无法通过，需加大管径或降低流量！\n"
+                        if blocked else "")
         return f"""
 ══════════
  输入参数
@@ -1234,12 +1145,11 @@ class 压降计算(CalculatorBase):
     计算模式: {mode}
     管道内径: {diameter*1000:.1f} mm
     管道长度: {length} m
-    流体流量: {flow_rate} m³/h
-    流体密度: {density:.3f} kg/m³
-    流体粘度: {viscosity*1000:.6f} mPa·s
+    流体流量: {flow_rate} m³/h（入口状态）
+{rho_line}    流体粘度: {viscosity*1000:.6f} mPa·s
     管道粗糙度: {roughness*1000:.3f} mm
     绝热系数: {adiabatic_index:.2f}
-    起始压力: {start_pressure:.1f} kPa
+    起始压力: {start_pressure:.1f} kPa（绝压）
 
 ══════════
 计算结果
@@ -1250,8 +1160,7 @@ class 压降计算(CalculatorBase):
     • 雷诺数: {reynolds:.0f}
     • 流态: {flow_regime}
     • 摩擦系数: {friction_factor:.6f}
-    • 马赫数: {mach_number:.4f}
-
+    • 马赫数: {mach_number:.4f}{blocked_line}
     压力损失分析:
     • 总压力损失: {total_pressure_drop/1000:.3f} kPa
     • 压降百分比: {total_pressure_drop/(start_pressure*1000)*100:.2f} %
@@ -1265,14 +1174,20 @@ class 压降计算(CalculatorBase):
 ══════════
 
     • 使用绝热流动(Fanno流动)关系式计算
-    • 考虑了气体可压缩性和温度变化
-    • 马赫数计算基于标准温度(20°C)简化
+    • 入口密度按理想气体由起始压力换算（流体表密度为标准状态值）
     • 结果仅供参考，实际应用请考虑安全系数"""
     
     def format_isothermal_result(self, mode, diameter, length, flow_rate, density, 
                                viscosity, roughness, start_pressure, velocity, 
-                               reynolds, flow_regime, friction_factor, total_pressure_drop):
+                               reynolds, flow_regime, friction_factor, total_pressure_drop,
+                               rho_in=None, blocked=False):
         """格式化等温流动计算结果"""
+        rho_line = (f"    入口密度(@起始压力): {rho_in:.4f} kg/m³\n"
+                    f"    标准状态密度(20°C,101.3kPa): {density:.4f} kg/m³\n"
+                    if rho_in else f"    流体密度: {density:.3f} kg/m³\n")
+        blocked_line = ("\n    ⚠ 阻塞流：P1²−(f·L/D)·G²RT ≤ 0，该管长无法通过此流量，\n"
+                        "      需加大管径或降低流量！\n"
+                        if blocked else "")
         return f"""
 ══════════
  输入参数
@@ -1281,11 +1196,10 @@ class 压降计算(CalculatorBase):
     计算模式: {mode}
     管道内径: {diameter*1000:.1f} mm
     管道长度: {length} m
-    流体流量: {flow_rate} m³/h
-    流体密度: {density:.3f} kg/m³
-    流体粘度: {viscosity*1000:.6f} mPa·s
+    流体流量: {flow_rate} m³/h（入口状态）
+{rho_line}    流体粘度: {viscosity*1000:.6f} mPa·s
     管道粗糙度: {roughness*1000:.3f} mm
-    起始压力: {start_pressure:.1f} kPa
+    起始压力: {start_pressure:.1f} kPa（绝压）
 
 ══════════
 计算结果
@@ -1295,8 +1209,7 @@ class 压降计算(CalculatorBase):
     • 流速: {velocity:.2f} m/s
     • 雷诺数: {reynolds:.0f}
     • 流态: {flow_regime}
-    • 摩擦系数: {friction_factor:.6f}
-
+    • 摩擦系数: {friction_factor:.6f}{blocked_line}
     压力损失分析:
     • 总压力损失: {total_pressure_drop/1000:.3f} kPa
     • 压降百分比: {total_pressure_drop/(start_pressure*1000)*100:.2f} %
@@ -1309,9 +1222,8 @@ class 压降计算(CalculatorBase):
 计算说明
 ══════════
 
-    • 使用等温流动公式计算
-    • 假设气体温度保持恒定
-    • 考虑了气体可压缩性
+    • 使用等温流动公式 P1²−P2²=(f·L/D)·G²RT 计算（忽略加速项）
+    • 假设气体温度恒定 20°C，入口密度按理想气体换算
     • 结果仅供参考，实际应用请考虑安全系数"""
     
     def solve_colebrook(self, relative_roughness, reynolds):
@@ -1324,6 +1236,126 @@ class 压降计算(CalculatorBase):
                 return f_new
             f = f_new
         return f
+
+    # ── 气体入口状态（理想气体） ────────────────────────────────
+    # 流体表里的气体密度均为 101.325 kPa / 20 °C 的标准状态值，
+    # 直接拿去算高压管道的声速/质量流量会整体失真，故统一在此换算入口密度。
+    GAS_T_REF_K = 293.15
+
+    def _gas_R(self, density):
+        """由所选流体的标准状态密度反推气体常数 R = P/(ρT)，J/(kg·K)"""
+        return 101325.0 / (max(density, 1e-9) * self.GAS_T_REF_K)
+
+    def _gas_inlet_density(self, density, p_pa):
+        """按理想气体计算入口压力下的气体密度，kg/m³"""
+        return p_pa / (self._gas_R(density) * self.GAS_T_REF_K)
+
+    # ── 水力计算公共方法（主计算与历史记录共用，避免两套公式各行其是） ──
+
+    def _friction_and_reynolds(self, diameter, flow_rate, density, viscosity, roughness):
+        """返回 (流速 m/s, 雷诺数, 流态, 摩擦系数)
+
+        参数口径（务必遵守，历史上这里踩过坑）：
+            diameter  : m
+            flow_rate : m³/h（标况/入口状态）
+            density   : kg/m³
+            viscosity : **mPa·s**（界面输入口径，本方法内部除 1000 转 Pa·s）
+            roughness : m（绝对粗糙度，界面 mm 已由 get_roughness_value 折算）
+        """
+        area = math.pi * (diameter / 2) ** 2
+        velocity = (flow_rate / 3600.0) / area          # m³/h -> m³/s
+        viscosity_pa = viscosity / 1000.0               # mPa·s -> Pa·s
+        reynolds = (density * velocity * diameter) / viscosity_pa
+        if reynolds < 2000:
+            friction_factor = 64 / reynolds
+            flow_regime = "层流"
+        elif reynolds < 4000:
+            # 过渡区：Swamee-Jain 显式近似
+            friction_factor = 0.25 / (math.log10(
+                roughness / (3.7 * diameter) + 5.74 / reynolds ** 0.9)) ** 2
+            flow_regime = "过渡流"
+        else:
+            friction_factor = self.solve_colebrook(roughness / diameter, reynolds)
+            flow_regime = "湍流"
+        return velocity, reynolds, flow_regime, friction_factor
+
+    @staticmethod
+    def _fanno_param(mach, gamma):
+        """Fanno 参数 4fL*/D"""
+        if mach <= 0 or mach >= 1:
+            return float('inf')
+        term1 = (1 - mach ** 2) / (gamma * mach ** 2)
+        term2 = (gamma + 1) / (2 * gamma) * math.log(
+            mach ** 2 * (gamma + 1) / (2 + (gamma - 1) * mach ** 2))
+        return term1 + term2
+
+    @classmethod
+    def _fanno_mach_from_param(cls, param, gamma, mach_guess=0.5):
+        """由 Fanno 参数反求 Mach 数（Newton-Raphson）"""
+        M = mach_guess
+        for _ in range(50):
+            fp = cls._fanno_param(M, gamma)
+            dm = 1e-6
+            fp_plus = cls._fanno_param(M + dm, gamma)
+            dfp = (fp_plus - fp) / dm
+            if abs(dfp) < 1e-12:
+                break
+            M_new = M - (fp - param) / dfp
+            M_new = min(max(M_new, 0.001), 0.999)
+            if abs(M_new - M) < 1e-8:
+                M = M_new
+                break
+            M = M_new
+        return M
+
+    @staticmethod
+    def _fanno_p_ratio(mach, gamma):
+        """Fanno 流 P/P* 关系"""
+        return (1 / mach) * math.sqrt(
+            (2 + (gamma - 1) * mach ** 2) / (gamma + 1))
+
+    def _adiabatic_dp(self, gamma, p1, diameter, length, flow_rate, density,
+                      friction_factor):
+        """绝热（Fanno）流动压降
+
+        返回 (入口马赫数, 压降 Pa, 入口密度 kg/m³, 是否阻塞)
+        """
+        rho_in = self._gas_inlet_density(density, p1)
+        area = math.pi * (diameter / 2) ** 2
+        velocity = (flow_rate / 3600.0) / area
+        mach = velocity / math.sqrt(gamma * p1 / rho_in)
+
+        # 声速截面压力比 P*/P1（阻塞时出口锁在 M=1 截面）
+        p_star_ratio = mach * math.sqrt(
+            (gamma + 1.0) / (2.0 + (gamma - 1.0) * mach ** 2))
+
+        if mach >= 1.0:
+            # 入口已声速/超音速，亚音速 Fanno 模型不适用
+            return mach, p1 * (1.0 - p_star_ratio), rho_in, True
+
+        fanno_out = self._fanno_param(mach, gamma) - 4 * friction_factor * length / diameter
+        if fanno_out <= 0:
+            # 管长超过临界长度 L* → 阻塞
+            return mach, p1 * (1.0 - p_star_ratio), rho_in, True
+
+        m_out = self._fanno_mach_from_param(fanno_out, gamma, max(mach * 0.9, 0.1))
+        p_exit = p1 / self._fanno_p_ratio(mach, gamma) * self._fanno_p_ratio(m_out, gamma)
+        return mach, p1 - p_exit, rho_in, False
+
+    def _isothermal_dp(self, p1, diameter, length, flow_rate, density, friction_factor):
+        """等温可压缩流动压降：P1² − P2² = (f·L/D)·G²·R·T
+
+        返回 (压降 Pa, 入口密度 kg/m³, 是否阻塞)
+        """
+        rho_in = self._gas_inlet_density(density, p1)
+        area = math.pi * (diameter / 2) ** 2
+        mass_flux = rho_in * (flow_rate / 3600.0) / area       # kg/(m²·s)
+        term = ((friction_factor * length / diameter) * mass_flux ** 2
+                * self._gas_R(density) * self.GAS_T_REF_K)
+        p2_sq = p1 ** 2 - term
+        if p2_sq <= 0:
+            return p1, rho_in, True
+        return p1 - math.sqrt(p2_sq), rho_in, False
 
     def get_project_info(self):
         """获取工程信息 - 返回 dict"""

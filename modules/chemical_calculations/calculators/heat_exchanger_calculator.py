@@ -385,7 +385,7 @@ class 换热器计算(CalculatorBase):
         self.input_layout.addWidget(label, row, 0)
         
         # 输入框 - 第1列
-        manual_input = QLineEdit()
+        manual_input = QLineEdit("800")
         manual_input.setPlaceholderText("输入或选择后自动填充")
         manual_input.setValidator(QDoubleValidator(1, 10000, 1))
         manual_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -948,7 +948,14 @@ class 换热器计算(CalculatorBase):
         
         # 计算冷流体出口温度 (°C)
         cold_t2 = cold_t1 + (Q_hot * 3600) / (cold_flow * cold_cp)
-        
+
+        # 温度交叉检查（避免 LMTD 对数出现负值）
+        if cold_t2 >= hot_t1:
+            QMessageBox.warning(self, "温度交叉",
+                f"冷流体出口温度({cold_t2:.1f}°C)不低于热流体进口温度({hot_t1:.1f}°C)，"
+                f"该工况无法用此换热器实现，请调整流量或温度")
+            return
+
         # 计算对数平均温差
         delta_t1 = hot_t1 - cold_t2
         delta_t2 = hot_t2 - cold_t1
@@ -956,7 +963,7 @@ class 换热器计算(CalculatorBase):
             lmtd = delta_t1
         else:
             lmtd = (delta_t1 - delta_t2) / math.log(delta_t1 / delta_t2)
-        
+
         # 显示结果
         result = f"""
 ═══════════
@@ -1015,7 +1022,14 @@ class 换热器计算(CalculatorBase):
         
         # 计算热流体出口温度 (°C)
         hot_t2 = hot_t1 - (Q_cold * 3600) / (hot_flow * hot_cp)
-        
+
+        # 温度交叉检查（避免 LMTD 对数出现负值）
+        if hot_t2 <= cold_t1:
+            QMessageBox.warning(self, "温度交叉",
+                f"热流体出口温度({hot_t2:.1f}°C)不高于冷流体进口温度({cold_t1:.1f}°C)，"
+                f"该工况无法用此换热器实现，请调整流量或温度")
+            return
+
         # 计算对数平均温差
         delta_t1 = hot_t1 - cold_t2
         delta_t2 = hot_t2 - cold_t1
@@ -1023,7 +1037,7 @@ class 换热器计算(CalculatorBase):
             lmtd = delta_t1
         else:
             lmtd = (delta_t1 - delta_t2) / math.log(delta_t1 / delta_t2)
-        
+
         # 显示结果
         result = f"""
 ═══════════

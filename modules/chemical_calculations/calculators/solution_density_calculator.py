@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
+from datetime import datetime
 import math
 import importlib.util
 import os
@@ -32,16 +33,26 @@ _IAPWS_MODULE = None
 _IAPWS_AVAILABLE = False
 
 def _load_iapws():
-    """动态加载 steam_iapws 模块（与换热器计算器同款方案）"""
+    """动态加载 steam_iapws 模块（与换热器计算器同款方案）
+
+    ⚠ 2026-09-13 修复：steam_iapws.py 位于 calculators 的上一级目录
+    （modules/chemical_calculations/steam_iapws.py），原代码只在
+    calculators 同级目录找 → 永远加载失败 → 静默回退 UNESCO。
+    """
     global _IAPWS_MODULE, _IAPWS_AVAILABLE
     if _IAPWS_MODULE is not None or _IAPWS_AVAILABLE:
         return _IAPWS_AVAILABLE
     try:
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        spec = importlib.util.spec_from_file_location(
-            "steam_iapws",
-            os.path.join(base_dir, "steam_iapws.py")
-        )
+        candidates = [
+            os.path.join(base_dir, "steam_iapws.py"),
+            os.path.join(os.path.dirname(base_dir), "steam_iapws.py"),
+        ]
+        path = next((p for p in candidates if os.path.isfile(p)), None)
+        if path is None:
+            _IAPWS_AVAILABLE = False
+            return False
+        spec = importlib.util.spec_from_file_location("steam_iapws", path)
         if spec is None:
             _IAPWS_AVAILABLE = False
             return False
@@ -51,6 +62,7 @@ def _load_iapws():
         _IAPWS_AVAILABLE = True
         return True
     except Exception:
+        _IAPWS_MODULE = None
         _IAPWS_AVAILABLE = False
         return False
 
@@ -67,16 +79,19 @@ def rho_water(T: float) -> float:
     精度: IAPWS ±0.01 kg/m³ | UNESCO ±0.1 kg/m³
     """
     T = max(0.0, min(100.0, T))
-    # 优先尝试 IAPWS-IF97 Region 1（过冷水）
+    # 优先 IAPWS-IF97：用 steam_properties(0.101325 MPa, T)（Region1 过冷液/饱和液）
+    # ⚠ 2026-09-13 修复：原调用 _IAPWS_MODULE.region1(P, T)，
+    # 模块中并无公开 region1（私有 _region1 签名是 (T_K, P_MPa)），
+    # 参数顺序、单位、函数名三重错误 → 每次抛异常静默回退 UNESCO。
     if _IAPWS_MODULE is not None:
         try:
-            # 常压近似：用饱和压力查 Region 1
-            # 若 steam_iapws 有饱和温度函数则直接用，否则用 ATM_PRESSURE_MPA MPa
-            P_sat = ATM_PRESSURE_MPA  # MPa，常压近似值
-            # 尝试调用 region1(P, T) -> dict 含 'v'（比容 m³/kg）
-            props = _IAPWS_MODULE.region1(P_sat, T)
-            v = props['v']  # 比容 m³/kg
-            return 1.0 / v  # ρ = 1/v  kg/m³
+            props = _IAPWS_MODULE.steam_properties(ATM_PRESSURE_MPA, T)
+            if props.get('phase') == 'subcooled_liquid':
+                return 1.0 / props['v']
+            # 已达/超过饱和温度（T≈100°C）：取饱和液密度 rho_f，
+            # 否则 steam_properties 会返回饱和蒸汽密度 0.59 kg/m³
+            sat = _IAPWS_MODULE.saturation_properties(T_C=T)
+            return sat['rho_f']
         except Exception:
             pass
     # Fallback: UNESCO 1983 公式（±0.1 kg/m³）
@@ -107,23 +122,26 @@ def rho_glucose(w: float, T: float = 20.0) -> float:
     w: 质量分数 0~0.60
     T: 温度 °C
     返回: kg/m³
-    公式来源: Perry's Chemical Engineers' Handbook + 实验数据拟合
+    公式来源: Perry's 手册 20°C 数据最小二乘拟合（2026-09-13 重拟合）
+    拟合误差: ≤0.1 kg/m³（锚点 10/20/30/40%）
     """
     c = w * 100.0
-    rho_20 = 999.8 + 3.840 * c + 0.01429 * c**2
+    rho_20 = 1002.45 + 3.519 * c + 0.0205 * c**2
     correction = rho_water(T) - rho_water(20.0)
     return rho_20 + correction
 
 def rho_sucrose(w: float, T: float = 20.0) -> float:
     """
     蔗糖（C12H22O11）水溶液密度
-    w: 质量分数 0~0.70
+    w: 质量分数 0~0.67（20°C 饱和溶解度 203.9 g/100g ≈ 67.1%）
     T: 温度 °C
     返回: kg/m³
-    公式来源: ICUMSA 国际糖分析统一方法委员会标准
+    公式来源: ICUMSA 表最小二乘拟合（2026-09-13 重拟合，三次）
+    拟合误差: ≤0.2 kg/m³（锚点 10~60%）
     """
     c = w * 100.0
-    rho_20 = 999.8 + 3.9586 * c + 0.01609 * c**2
+    rho_20 = (997.867 + 3.99471 * c + 0.00713492 * c**2
+              + 1.09259e-4 * c**3)
     correction = rho_water(T) - rho_water(20.0)
     return rho_20 + correction
 
@@ -133,10 +151,13 @@ def rho_naoh(w: float, T: float = 20.0) -> float:
     w: 质量分数 0~0.50
     T: 温度 °C
     返回: kg/m³
-    公式来源: Perry's 手册 + 文献数据拟合
+    公式来源: Perry's 手册 20°C 数据最小二乘拟合（2026-09-13 重拟合，三次）
+    ⚠ 旧系数 999.8+7.988c−0.03649c² 在 20% 时算出 1145（实际 1219，偏低 74）
+    拟合误差: ≤0.7 kg/m³（锚点 4~50%）
     """
     c = w * 100.0
-    rho_20 = 999.8 + 7.988 * c - 0.03649 * c**2
+    rho_20 = (1000.92 + 10.5598 * c + 0.0330541 * c**2
+              - 7.18267e-4 * c**3)
     correction = rho_water(T) - rho_water(20.0)
     return rho_20 + correction
 
@@ -146,9 +167,11 @@ def rho_hcl(w: float, T: float = 20.0) -> float:
     w: 质量分数 0~0.38
     T: 温度 °C
     返回: kg/m³
+    公式来源: Perry's 手册 20°C 数据最小二乘拟合（2026-09-13 重拟合）
+    拟合误差: ≤0.3 kg/m³（锚点 10~38%）
     """
     c = w * 100.0
-    rho_20 = 999.8 + 4.733 * c - 0.01477 * c**2
+    rho_20 = 996.882 + 5.02862 * c + 1.35988e-3 * c**2
     correction = rho_water(T) - rho_water(20.0)
     return rho_20 + correction
 
@@ -158,24 +181,29 @@ def rho_h2so4(w: float, T: float = 20.0) -> float:
     w: 质量分数 0~0.98
     T: 温度 °C
     返回: kg/m³
-    公式来源: Perry's + 工业手册数据拟合（三阶）
+    公式来源: Perry's 手册 20°C 数据最小二乘拟合（2026-09-13 重拟合，五次）
+    ⚠ 旧三阶系数在 80% 时偏低 159、90% 偏低 192
+    拟合误差: ≤1.7 kg/m³（锚点 10~98%）
     """
     c = w * 100.0
-    rho_20 = (999.8 + 6.970 * c + 0.01862 * c**2
-              - 2.127e-4 * c**3)
+    rho_20 = (1013.25 + 3.53371 * c + 0.229567 * c**2
+              - 6.20113e-3 * c**3 + 8.59409e-5 * c**4
+              - 4.22407e-7 * c**5)
     correction = rho_water(T) - rho_water(20.0)
     return rho_20 + correction
 
 def rho_nacl(w: float, T: float = 20.0) -> float:
     """
     NaCl 水溶液密度
-    w: 质量分数 0~0.26
+    w: 质量分数 0~0.264（20°C 饱和）
     T: 温度 °C
     返回: kg/m³
-    公式来源: 标准数据拟合
+    公式来源: Perry's 手册 20°C 数据最小二乘拟合（2026-09-13 重拟合）
+    ⚠ 旧系数 999.8+6.781c−0.05874c² 在 24% 时偏低 52
+    拟合误差: ≤2.3 kg/m³（锚点 0~26%）
     """
     c = w * 100.0
-    rho_20 = 999.8 + 6.781 * c - 0.05874 * c**2
+    rho_20 = 998.132 + 7.40439 * c + 3.87041e-3 * c**2
     correction = rho_water(T) - rho_water(20.0)
     return rho_20 + correction
 
@@ -208,19 +236,19 @@ SUBSTANCE_CONFIG = {
         "T_range": (0, 80),
         "w_label": "葡萄糖质量分数（0~0.60）",
         "w_max": 0.60,
-        "formula": "ρ(20°C) = 999.8 + 3.840c + 0.01429c²  + 温度修正",
-        "ref": "Perry's Chemical Engineers' Handbook",
-        "accuracy": "±2 kg/m³",
+        "formula": "ρ(20°C) = 1002.45 + 3.519c + 0.0205c²  + 温度修正",
+        "ref": "Perry's 手册 20°C 数据拟合（2026-09-13 重拟合）",
+        "accuracy": "±1 kg/m³（锚点 10~40%）",
     },
     "蔗糖溶液": {
         "func": rho_sucrose,
-        "w_range": (0.0, 0.70),
+        "w_range": (0.0, 0.67),
         "T_range": (0, 80),
-        "w_label": "蔗糖质量分数（0~0.70）",
-        "w_max": 0.70,
-        "formula": "ρ(20°C) = 999.8 + 3.9586c + 0.01609c²  + 温度修正",
-        "ref": "ICUMSA 国际糖分析统一方法委员会",
-        "accuracy": "±1 kg/m³",
+        "w_label": "蔗糖质量分数（0~0.67，20°C 饱和）",
+        "w_max": 0.67,
+        "formula": "ρ(20°C) = 997.867 + 3.99471c + 0.00713492c² + 1.0926×10⁻⁴c³  + 温度修正",
+        "ref": "ICUMSA 表 20°C 数据拟合（2026-09-13 重拟合）",
+        "accuracy": "±1 kg/m³（锚点 10~60%）",
     },
     "NaOH 溶液": {
         "func": rho_naoh,
@@ -228,9 +256,9 @@ SUBSTANCE_CONFIG = {
         "T_range": (0, 80),
         "w_label": "NaOH 质量分数（0~0.50）",
         "w_max": 0.50,
-        "formula": "ρ(20°C) = 999.8 + 7.988c − 0.03649c²  + 温度修正",
-        "ref": "Perry's 手册；文献数据拟合",
-        "accuracy": "±3 kg/m³",
+        "formula": "ρ(20°C) = 1000.92 + 10.5598c + 0.0330541c² − 7.183×10⁻⁴c³  + 温度修正",
+        "ref": "Perry's 手册 20°C 数据拟合（2026-09-13 重拟合）",
+        "accuracy": "±1 kg/m³（锚点 4~50%）",
     },
     "盐酸 (HCl)": {
         "func": rho_hcl,
@@ -238,9 +266,9 @@ SUBSTANCE_CONFIG = {
         "T_range": (0, 60),
         "w_label": "HCl 质量分数（0~0.38）",
         "w_max": 0.38,
-        "formula": "ρ(20°C) = 999.8 + 4.733c − 0.01477c²  + 温度修正",
-        "ref": "Perry's 手册；文献数据",
-        "accuracy": "±2 kg/m³",
+        "formula": "ρ(20°C) = 996.882 + 5.02862c + 1.360×10⁻³c²  + 温度修正",
+        "ref": "Perry's 手册 20°C 数据拟合（2026-09-13 重拟合）",
+        "accuracy": "±1 kg/m³（锚点 10~38%）",
     },
     "硫酸 (H₂SO₄)": {
         "func": rho_h2so4,
@@ -248,19 +276,19 @@ SUBSTANCE_CONFIG = {
         "T_range": (0, 80),
         "w_label": "H₂SO₄ 质量分数（0~0.98）",
         "w_max": 0.98,
-        "formula": "ρ(20°C) = 999.8 + 6.970c + 0.01862c² − 2.127×10⁻⁴c³  + 温度修正",
-        "ref": "Perry's 手册；工业数据",
-        "accuracy": "±5 kg/m³",
+        "formula": "ρ(20°C) = 1013.25 + 3.53371c + 0.229567c² − 6.201×10⁻³c³ + 8.594×10⁻⁵c⁴ − 4.224×10⁻⁷c⁵  + 温度修正",
+        "ref": "Perry's 手册 20°C 数据拟合（2026-09-13 重拟合，五次）",
+        "accuracy": "±2 kg/m³（锚点 10~98%）",
     },
     "NaCl 溶液": {
         "func": rho_nacl,
-        "w_range": (0.0, 0.26),
+        "w_range": (0.0, 0.264),
         "T_range": (0, 80),
-        "w_label": "NaCl 质量分数（0~0.26）",
-        "w_max": 0.26,
-        "formula": "ρ(20°C) = 999.8 + 6.781c − 0.05874c²  + 温度修正",
-        "ref": "标准手册数据拟合",
-        "accuracy": "±2 kg/m³",
+        "w_label": "NaCl 质量分数（0~0.264，20°C 饱和）",
+        "w_max": 0.264,
+        "formula": "ρ(20°C) = 998.132 + 7.40439c + 3.870×10⁻³c²  + 温度修正",
+        "ref": "Perry's 手册 20°C 数据拟合（2026-09-13 重拟合）",
+        "accuracy": "±2 kg/m³（锚点 0~26%）",
     },
 }
 
@@ -708,35 +736,68 @@ class SolutionDensityCalculator(CalculatorBase):
         self._clear_inputs()
 
     def get_project_info(self):
-        """获取项目信息"""
-        return {
-            "name": self.calculation_type,
-            "description": "溶液密度计算器",
-            "parameters": {
-                "物料": self.substance_combo.currentText(),
-                "质量分数": self.w_input.text(),
-                "温度": self.T_input.text()
+        """获取工程信息 - 返回 dict"""
+        try:
+            saved_info = {}
+            if getattr(self, 'data_manager', None):
+                saved_info = self.data_manager.get_project_info()
+            return {
+                'company_name': saved_info.get('company_name', ''),
+                'project_number': saved_info.get('project_number', ''),
+                'project_name': saved_info.get('project_name', ''),
+                'subproject_name': saved_info.get('subproject_name', ''),
             }
-        }
+        except Exception:
+            return {'company_name': '', 'project_number': '',
+                    'project_name': '', 'subproject_name': ''}
 
     def generate_report(self):
-        """生成报告数据"""
-        return {
-            "title": "溶液密度计算报告",
-            "content": self.result_text.toPlainText(),
-            "parameters": {
-                "物料": self.substance_combo.currentText(),
-                "质量分数": self.w_input.text(),
-                "温度(°C)": self.T_input.text(),
-            }
-        }
+        """生成计算书文本（必须返回 str，导出链路依赖）"""
+        try:
+            result_text = self.result_text.toPlainText()
+            if not result_text.strip():
+                return None
+
+            project_info = self.get_project_info()
+            report = f"""══════════════════════════════════════════
+          溶液密度计算书
+══════════════════════════════════════════
+
+{result_text}
+
+══════════════════════════════════════════
+ 工程信息
+══════════════════════════════════════════
+
+  公司名称: {project_info.get('company_name', '')}
+  工程编号: {project_info.get('project_number', '')}
+  工程名称: {project_info.get('project_name', '')}
+  子项名称: {project_info.get('subproject_name', '')}
+  计算日期: {datetime.now().strftime('%Y-%m-%d')}
+
+══════════════════════════════════════════
+备注说明
+══════════════════════════════════════════
+
+  1. 溶液密度按所选物料的经验关联式计算，随温度、浓度变化
+  2. 关联式适用范围以结果中标注的温度/浓度区间为准
+  3. 计算结果仅供参考，实际工程需经专业工程师审核确认
+
+---
+生成于 ChemCal 工程计算模块
+"""
+            return report
+
+        except Exception as e:
+            print(f"生成计算书失败: {e}")
+            return None
 
     def download_docx_report(self):
         """生成DOCX格式计算书"""
-        ReportExporter.export_docx(self, "SolutionDensityCalculator")
+        ReportExporter.export_docx(self, "溶液密度计算")
     def download_pdf_report(self):
         """生成PDF格式计算书"""
-        ReportExporter.export_pdf(self, "SolutionDensityCalculator")
+        ReportExporter.export_pdf(self, "溶液密度计算")
 if __name__ == "__main__":
     import sys
     from PySide6.QtWidgets import QApplication

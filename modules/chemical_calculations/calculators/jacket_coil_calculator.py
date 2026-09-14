@@ -619,6 +619,7 @@ class JacketCoilCalculator(CalculatorBase):
             # ── 换热介质侧给热系数 h_o ──
             if is_steam:
                 h_o = 8000  # W/(m²·K) 蒸汽冷凝典型值
+                self._re_warning = None
             elif mode == "jacket":
                 # 夹套内给热系数（特征尺寸取夹套间隙）
                 gap = 0.05  # 夹套间隙 m
@@ -633,8 +634,14 @@ class JacketCoilCalculator(CalculatorBase):
                     Pr_o = WATER_CP * 1000 * mu_m / (0.6 if media_info["mode"] == "water" else 0.15)
                     Nu_o = 0.023 * Re_o**0.8 * Pr_o**0.4
                     h_o = Nu_o * (0.6 if media_info["mode"] == "water" else 0.15) / De
+                    if Re_o < 4000:
+                        self._re_warning = (f"⚠ 夹套侧 Re≈{Re_o:.0f}，处于层流/过渡区，"
+                                            "Dittus-Boelter 关联式适用性差，介质侧 h_o 仅供粗估")
+                    else:
+                        self._re_warning = None
                 else:
                     h_o = 1500
+                    self._re_warning = None
             else:
                 # 盘管内给热系数
                 do = float(self.inputs["coil_od"].text())
@@ -651,8 +658,14 @@ class JacketCoilCalculator(CalculatorBase):
                     Nu_straight = 0.023 * Re_o**0.8 * Pr_o**0.4
                     Nu_o = Nu_straight * (1 + 3.5 * di / Dc)
                     h_o = Nu_o * 0.6 / di
+                    if Re_o < 4000:
+                        self._re_warning = (f"⚠ 盘管内 Re≈{Re_o:.0f}，处于层流/过渡区，"
+                                            "Dittus-Boelter 关联式适用性差，介质侧 h_o 仅供粗估")
+                    else:
+                        self._re_warning = None
                 else:
                     h_o = 2000
+                    self._re_warning = None
 
             # ── 总传热系数 ──
             delta = float(self.inputs["wall_thickness"].text())
@@ -698,6 +711,8 @@ class JacketCoilCalculator(CalculatorBase):
             lines.append(f"  介质侧 h_o:       {h_o:.1f} W/(m²·K)")
             lines.append(f"  热负荷 Q:         {Q_kW:.1f} kW")
             lines.append(f"  对数平均温差:     {LMTD:.1f} °C")
+            if getattr(self, "_re_warning", None):
+                lines.append(f"  {self._re_warning}")
             lines.append(f"")
             lines.append(f"【换热介质】")
             if is_steam:

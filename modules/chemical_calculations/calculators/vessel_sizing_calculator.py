@@ -310,6 +310,7 @@ class 设备尺寸计算(CalculatorBase):
         self.target_vol_input.setValidator(QDoubleValidator(0.001, 10000, 3))
         self.target_vol_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.target_vol_input.setPlaceholderText("例如 10.0")
+        self.target_vol_input.setText("10.0")
         grid.addWidget(self.target_vol_input, row, 1)
         self.target_vol_hint = QLabel("用户期望的工作容积")
         self.target_vol_hint.setStyleSheet("font-style: italic;")
@@ -323,6 +324,7 @@ class 设备尺寸计算(CalculatorBase):
         self.diameter_input.setValidator(QDoubleValidator(1, 10000, 2))
         self.diameter_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.diameter_input.setPlaceholderText("例如 1000")
+        self.diameter_input.setText("1000")
         grid.addWidget(self.diameter_input, row, 1)
         self.diameter_hint = QLabel("标准直径参考")
         self.diameter_hint.setStyleSheet("font-style: italic;")
@@ -336,6 +338,7 @@ class 设备尺寸计算(CalculatorBase):
         self.cyl_height_input.setValidator(QDoubleValidator(0, 50000, 2))
         self.cyl_height_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.cyl_height_input.setPlaceholderText("例如 2000")
+        self.cyl_height_input.setText("2000")
         grid.addWidget(self.cyl_height_input, row, 1)
         self.cyl_height_hint = QLabel("圆柱部分高度")
         self.cyl_height_hint.setStyleSheet("font-style: italic;")
@@ -363,6 +366,7 @@ class 设备尺寸计算(CalculatorBase):
         grid.addWidget(self.top_param_label, row, 0)
         self.top_param_input = QLineEdit()
         self.top_param_input.setPlaceholderText("输入深度或角度")
+        self.top_param_input.setText("250")
         self.top_param_input.setValidator(QDoubleValidator(0, 90, 2))
         self.top_param_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         grid.addWidget(self.top_param_input, row, 1)
@@ -392,6 +396,7 @@ class 设备尺寸计算(CalculatorBase):
         grid.addWidget(self.bottom_param_label, row, 0)
         self.bottom_param_input = QLineEdit()
         self.bottom_param_input.setPlaceholderText("输入深度或角度")
+        self.bottom_param_input.setText("250")
         self.bottom_param_input.setValidator(QDoubleValidator(0, 90, 2))
         self.bottom_param_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         grid.addWidget(self.bottom_param_input, row, 1)
@@ -513,8 +518,9 @@ class 设备尺寸计算(CalculatorBase):
     def setup_defaults(self):
         # 默认模式为反向计算
         self.on_mode_button_clicked(self.mode_buttons["反向计算"])
-        self.on_top_type_changed("椭圆封头")
-        self.on_bottom_type_changed("椭圆封头")
+        # 修复：必须真正设置下拉框（原来只调了 UI 提示更新，组合框停在"平顶/平底"）
+        self.top_type.setCurrentText("椭圆封头")
+        self.bottom_type.setCurrentText("椭圆封头")
         self.top_auto_check.setChecked(True)
         self.bottom_auto_check.setChecked(True)
         self.top_param_input.setEnabled(False)
@@ -642,12 +648,29 @@ class 设备尺寸计算(CalculatorBase):
             self.result_text.append(f"\n[附件信息] {msg}")
 
     def clear_inputs(self):
-        """清空所有输入参数"""
-        for widget in self.findChildren((QLineEdit, QComboBox)):
-            if isinstance(widget, QLineEdit):
-                widget.clear()
-            elif isinstance(widget, QComboBox):
-                widget.setCurrentIndex(0)
+        """恢复默认输入参数（与 setup_defaults 一致，而非清成空值）"""
+        self.fill_factor_input.setText("0.85")
+        self.hd_ratio_input.setText("2.0")
+        self.hd_combo.setCurrentIndex(2)
+        self.target_vol_input.setText("10.0")
+        self.diameter_input.setText("1000")
+        self.cyl_height_input.setText("2000")
+        self.density_input.setText("7850")
+        self.density_combo.setCurrentIndex(0)
+        self.wall_thickness.setText("8")
+        self.top_type.setCurrentText("椭圆封头")
+        self.bottom_type.setCurrentText("椭圆封头")
+        self.top_param_input.setText("250")
+        self.bottom_param_input.setText("250")
+        self.top_auto_check.setChecked(True)
+        self.bottom_auto_check.setChecked(True)
+        self.mode_buttons["反向计算"].setChecked(True)
+        self.on_mode_changed("反向计算")
+        self.result_text.clear()
+        self._last_diameter = None
+        self._last_height = None
+        self._last_volume = None
+        self._update_svg_diagram()
 
     # ───────────────── SVG 罐体示意图 ─────────────────
     def _text(self, x, y, text, size=9, color="#333", bold=False, center=True):
@@ -810,23 +833,27 @@ class 设备尺寸计算(CalculatorBase):
             bottom_type = self.bottom_type.currentText()
 
             if mode == "反向计算":
-                # 反向计算模式下D未知，get_head_depth使用比例标记
-                top_head_h = self.get_head_depth('top', top_type)
-                bottom_head_h = self.get_head_depth('bottom', bottom_type)
+                # 封头规格（'ratio'/'angle' 由求解器按当前直径动态解析）
+                top_spec = self.get_head_depth('top', top_type)
+                bottom_spec = self.get_head_depth('bottom', bottom_type)
                 target_work_vol = float(self.target_vol_input.text())   # m³
                 # 几何容积 = 工作容积 / 填充系数
                 target_geo_vol = target_work_vol / fill_factor
 
                 # 求解直径 D (m) 和圆柱高度 H (m)
                 D, H_cyl = self.solve_dimensions(target_geo_vol, hd_ratio,
-                                                  top_type, top_head_h,
-                                                  bottom_type, bottom_head_h)
+                                                  top_type, top_spec,
+                                                  bottom_type, bottom_spec)
+                top_head_h = self.resolve_head_depth(top_spec, D)
+                bottom_head_h = self.resolve_head_depth(bottom_spec, D)
             else:  # 正向计算
                 D = float(self.diameter_input.text()) / 1000
                 H_cyl = float(self.cyl_height_input.text()) / 1000
                 # 正向计算模式下传入实际直径D
-                top_head_h = self.get_head_depth('top', top_type, D=D)
-                bottom_head_h = self.get_head_depth('bottom', bottom_type, D=D)
+                top_head_h = self.resolve_head_depth(
+                    self.get_head_depth('top', top_type, D=D), D)
+                bottom_head_h = self.resolve_head_depth(
+                    self.get_head_depth('bottom', bottom_type, D=D), D)
                 # 几何容积
                 geo_vol = self.calc_total_volume(D, H_cyl, top_type, top_head_h,
                                                    bottom_type, bottom_head_h)
@@ -908,26 +935,28 @@ class 设备尺寸计算(CalculatorBase):
 
         outputs = {}
         try:
-            top_head_h = self.get_head_depth('top', top_type)
-            bottom_head_h = self.get_head_depth('bottom', bottom_type)
+            top_spec = self.get_head_depth('top', top_type)
+            bottom_spec = self.get_head_depth('bottom', bottom_type)
 
             if mode == "反向计算":
                 target_work_vol = float(self.target_vol_input.text() or 0)
                 inputs["目标工作容积_m3"] = target_work_vol
                 D, H_cyl = self.solve_dimensions(target_work_vol / fill_factor, hd_ratio,
-                                                   top_type, top_head_h, bottom_type, bottom_head_h)
+                                                   top_type, top_spec, bottom_type, bottom_spec)
             else:
                 D = float(self.diameter_input.text() or 0) / 1000
                 H_cyl = float(self.cyl_height_input.text() or 0) / 1000
                 inputs["直径_mm"] = D * 1000
                 inputs["筒体高度_mm"] = H_cyl * 1000
 
-            geo_vol = self.calc_total_volume(D, H_cyl, top_type, top_head_h, bottom_type, bottom_head_h)
+            top_h = self.resolve_head_depth(top_spec, D)
+            bottom_h = self.resolve_head_depth(bottom_spec, D)
+            geo_vol = self.calc_total_volume(D, H_cyl, top_type, top_h, bottom_type, bottom_h)
             work_vol = geo_vol * fill_factor
-            area = self.calc_total_area(D, H_cyl, top_type, top_head_h, bottom_type, bottom_head_h)
+            area = self.calc_total_area(D, H_cyl, top_type, top_h, bottom_type, bottom_h)
             steel_volume = area * t
             weight = steel_volume * rho_mat
-            total_height = H_cyl + top_head_h + bottom_head_h
+            total_height = H_cyl + top_h + bottom_h
 
             outputs = {
                 "直径_mm": round(D * 1000, 1),
@@ -944,49 +973,43 @@ class 设备尺寸计算(CalculatorBase):
         return {"inputs": inputs, "outputs": outputs}
 
     def get_head_depth(self, which, head_type, D=None):
-        """获取封头深度（m）
+        """获取封头深度规格
 
-        参数:
-            which: 'top' 或 'bottom'
-            head_type: 封头类型
-            D: 筒体直径(m)。正向计算时传入实际值，反向计算时内部由resolve_head_depth动态计算
+        返回 (kind, value) 元组:
+          ('flat', 0.0)   平顶/平底/斜底，无深度
+          ('ratio', r)    自动比例，深度 = r·D（反向模式 D 未知时使用，
+                          由 resolve_head_depth 在求解迭代中按当前 D 动态缩放）
+          ('depth', h)    绝对深度 m（正向模式已按实际 D 换算）
+          ('angle', a)    锥角 °（反向模式锥形手动输入时）
         """
-        if head_type in ["平顶", "平底"]:
-            return 0.0
+        if head_type in ["平顶", "平底", "斜底"]:
+            return ('flat', 0.0)
 
         auto = (self.top_auto_check if which == 'top' else self.bottom_auto_check).isChecked()
         param_input = self.top_param_input if which == 'top' else self.bottom_param_input
-        if D is None:
-            D = 1.0  # 仅用于比例计算，实际会在求解时动态更新
 
         if auto:
-            # 根据类型返回与直径的比例
             if head_type == "椭圆封头":
-                return 0.25 * D   # 标准椭圆深度 = D/4
+                r = 0.25   # 标准椭圆深度 = D/4
             elif head_type == "碟形封头":
-                return 0.2 * D    # 近似
+                r = 0.2    # 近似
             elif head_type == "锥形封头":
-                # 锥形默认给一个比例，或用户输入角度，这里先返回0.3D作为默认
-                return 0.3 * D
-            elif head_type == "斜底":
-                return 0.0        # 斜底不影响总高？暂时返回0
+                r = 0.3    # 锥形默认深度比
             else:
-                return 0.0
-        else:
-            # 用户输入值，可能是深度(mm)或角度(°)
-            if not param_input.text():
-                return 0.0
-            val = float(param_input.text()) / 1000  # 转换为m
-            if head_type == "锥形封头" and param_input.isEnabled():
-                # 此时val是角度（°），需转换为深度：深度 = (D/2) * tan(angle_rad)
-                # 如果D未知（反向计算模式D=None），返回角度标记由resolve_head_depth处理
-                if D is None or D == 1.0:
-                    return -val  # 负值表示角度
-                else:
-                    angle_rad = math.radians(val)
-                    return (D / 2.0) * math.tan(angle_rad)
-            else:
-                return val   # 深度，单位m
+                r = 0.0
+            if D is not None:
+                return ('depth', r * D)
+            return ('ratio', r)
+
+        # 手动输入
+        if not param_input.text():
+            return ('flat', 0.0)
+        raw = float(param_input.text())  # 深度 mm 或 角度 °（原始值）
+        if head_type == "锥形封头":
+            if D is not None:
+                return ('depth', (D / 2.0) * math.tan(math.radians(raw)))
+            return ('angle', raw)
+        return ('depth', raw / 1000.0)
 
     def head_volume(self, head_type, D, h):
         """计算单个封头容积 (m³)"""
@@ -1086,23 +1109,22 @@ class 设备尺寸计算(CalculatorBase):
         return area_cyl + area_top + area_bottom
 
     def solve_dimensions(self, target_vol, hd_ratio,
-                         top_type, top_head_h,
-                         bottom_type, bottom_head_h):
+                         top_type, top_spec,
+                         bottom_type, bottom_spec):
         """
         反向求解直径 D 和圆柱高度 H_cyl
         参数:
             target_vol: 目标几何容积 (m³)
             hd_ratio: 高径比 H_cyl/D
-            top_type, top_head_h: 顶部封头类型和深度（若为负值表示角度）
-            bottom_type, bottom_head_h: 底部封头类型和深度
+            top_type, top_spec: 顶部封头类型和深度规格 (kind, value)
+            bottom_type, bottom_spec: 底部封头类型和深度规格
         返回:
             D (m), H_cyl (m)
         """
         # 定义目标函数 f(D) = 当前容积 - target_vol
         def f(D):
-            # 根据封头类型计算实际深度
-            top_h = self.resolve_head_depth(top_type, top_head_h, D)
-            bottom_h = self.resolve_head_depth(bottom_type, bottom_head_h, D)
+            top_h = self.resolve_head_depth(top_spec, D)
+            bottom_h = self.resolve_head_depth(bottom_spec, D)
             H_cyl = hd_ratio * D
             vol = self.calc_total_volume(D, H_cyl, top_type, top_h, bottom_type, bottom_h)
             return vol - target_vol
@@ -1139,20 +1161,21 @@ class 设备尺寸计算(CalculatorBase):
         H_cyl = hd_ratio * D
         return D, H_cyl
 
-    def resolve_head_depth(self, head_type, h_value, D):
-        """
-        根据封头类型和h_value（可能为负角度）返回实际深度（m）
-        """
-        if head_type in ["平顶", "平底"]:
+    @staticmethod
+    def resolve_head_depth(spec, D):
+        """将 get_head_depth 返回的规格解析为实际深度 (m)"""
+        if not spec:
             return 0.0
-        if h_value >= 0:
-            return h_value  # 直接为深度
-        else:
-            # 负值表示角度（°），仅对锥形封头有意义
-            angle_deg = -h_value
-            angle_rad = math.radians(angle_deg)
-            # 锥段高度 = (D/2) * tan(angle)  （假设角度是从水平起算的锥角？通常锥角是顶角，这里简化）
-            return (D / 2.0) * math.tan(angle_rad)
+        kind, val = spec
+        if kind == 'flat':
+            return 0.0
+        if kind == 'depth':
+            return val
+        if kind == 'ratio':
+            return val * D
+        if kind == 'angle':
+            return (D / 2.0) * math.tan(math.radians(val))
+        return 0.0
 
     def recommend_alarms(self, D, H_cyl, top_h, bottom_h, fill_factor):
         """
@@ -1274,8 +1297,8 @@ class 设备尺寸计算(CalculatorBase):
 
     def generate_report(self):
         content = self.result_text.toPlainText().strip()
-        if not content:
-            return "尚未进行计算。"
+        if not content or "计算结果" not in content:
+            return None  # 未计算过：不生成空壳计算书
         lines = ["设备尺寸计算报告", "=" * 50, "", content]
         return "\n".join(lines)
 

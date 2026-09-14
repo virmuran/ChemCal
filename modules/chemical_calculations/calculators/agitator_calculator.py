@@ -32,9 +32,9 @@ IMPELLER_TYPES = {
     "Rushton 涡轮（六直叶）": (5.5, "高剪切，发酵罐标准配置"),
     "Rushton 涡轮（六弯叶）": (4.8, "剪切力略低于直叶"),
     "Rushton 涡轮（六箭叶）": (4.0, "介于涡轮和桨式之间"),
-    " pitched 桨（45°×4叶）":  (1.5, "轴向流，中等剪切"),
-    " pitched 桨（45°×6叶）":  (2.0, "轴向流，多叶版"),
-    " prop 推进式（3叶）":     (0.35, "轴向流，低剪切"),
+    "Pitched 桨（45°×4叶）":  (1.5, "轴向流，中等剪切"),
+    "Pitched 桨（45°×6叶）":  (2.0, "轴向流，多叶版"),
+    "Prop 推进式（3叶）":     (0.35, "轴向流，低剪切"),
     "锚式/框式":               (0.5, "高粘度，层流区"),
 }
 
@@ -355,10 +355,24 @@ class AgitatorCalculator(CalculatorBase):
         self.impeller_hint.setText(info[1] if len(info) > 1 else "")
 
     def clear_all(self):
-        """清空所有输入"""
-        for w in self.findChildren(QLineEdit):
-            w.clear()
+        """清空输入并恢复出厂默认值"""
+        defaults = {
+            self.volume_input: "50",
+            self.diameter_input: "3.0",
+            self.liquid_height_input: "6.0",
+            self.custom_aspect_input: "2.5",
+            self.d_impeller_input: "1.0",
+            self.speed_input: "150",
+            self.num_impellers_input: "2",
+            self.density_input: "1050",
+            self.viscosity_input: "50",
+            self.vvm_input: "1.0",
+            self.our_input: "100",
+        }
+        for w, val in defaults.items():
+            w.setText(val)
         self.result_text.clear()
+        self._last_results = {}
 
     # ═══════════════════════════════════════════
     # 核心计算
@@ -413,11 +427,16 @@ class AgitatorCalculator(CalculatorBase):
         rec_motor = "≥" + min((m for m in motor_choices if float(m) >= motor_power),
                               key=lambda x: float(x), default="400")
 
-        # 通气功率估算（假设 vvm=1.0）
+        # 通气功率估算（Michel & Miller 关联式，SI 单位）
+        # Pg = 0.706 × (P0² × n × d³ / Q^0.56)^0.45   [W]
+        # 其中 P0[W]、n[r/s]、d[m]、Q[m³/s]（vvm×V 为 m³/min，需除 60）
         vvm = float(self.vvm_input.text() or 1.0)
-        Q = vvm * V  # m³/min
-        Pg_factor = (P0**2 * n_rps * d**3 / (Q / 60)**0.56) ** 0.45
-        Pg = min(P0 * Pg_factor, P0 * 0.7) if P0 > 0 else 0
+        Q = vvm * V / 60  # m³/s
+        if Q > 0 and P0 > 0:
+            Pg = 0.706 * (P0**2 * n_rps * d**3 / Q**0.56) ** 0.45
+            Pg = min(Pg, P0)  # 物理上限：通气后功率不高于不通气功率
+        else:
+            Pg = P0  # 未通气或不通气工况
         Pg_kw = Pg / 1000
 
         return {
@@ -445,12 +464,12 @@ class AgitatorCalculator(CalculatorBase):
         A_cross = math.pi * D**2 / 4
         Q_air = vvm * V  # m³/min
         vs = (Q_air / 60) / A_cross  # m/s
-        vs_mh = vs * 3600  # m/h
 
         # van't Riet 关联式：kLa = A × (Pg/V)^a × (vs)^b
         # 非牛顿/牛顿发酵液：A=0.026, a=0.4, b=0.5
-        kLa = 0.026 * (Pg_W / vol_m3)**0.4 * (vs_mh)**0.5  # 1/h
-        kLa_s = kLa / 3600  # 1/s
+        # 单位: kLa [1/s], Pg/V [W/m³], vs [m/s]（注意必须用 m/s，不能用 m/h）
+        kLa_s = 0.026 * (Pg_W / vol_m3)**0.4 * vs**0.5  # 1/s
+        kLa = kLa_s * 3600  # 1/h
 
         # OTRmax (最大传氧速率)
         # OTR = kLa × (C* - C)
@@ -462,8 +481,8 @@ class AgitatorCalculator(CalculatorBase):
         # OUR 校核
         safety = OTR_max / our if our > 0 else float('inf')
 
-        # 需求通气量
-        q_air_required = our / OTR_max * vvm if OTR_max > 0 else float('inf')
+        # 需求通气量（OTR ∝ vs^0.5，即 ∝ vvm^0.5 → vvm_req = vvm×(OUR/OTRmax)²）
+        q_air_required = vvm * (our / OTR_max) ** 2 if OTR_max > 0 else float('inf')
 
         return {
             "Pg_kW": Pg_kw,
@@ -479,6 +498,35 @@ class AgitatorCalculator(CalculatorBase):
     # ═══════════════════════════════════════════
     # 结果显示
     # ═══════════════════════════════════════════
+
+    def _get_history_data(self):
+        """提供历史记录数据"""
+        inputs = {
+            "计算模式": (self.mode_btn_group.checkedButton().text()
+                        if self.mode_btn_group.checkedButton() else "搅拌功率计算"),
+            "桨型": self.impeller_combo.currentText(),
+            "罐体体积_m3": float(self.volume_input.text() or 0),
+            "罐径_m": float(self.diameter_input.text() or 0),
+            "液位高度_m": float(self.liquid_height_input.text() or 0),
+            "桨径_m": float(self.d_impeller_input.text() or 0),
+            "转速_rpm": float(self.speed_input.text() or 0),
+            "桨层数": float(self.num_impellers_input.text() or 1),
+            "密度_kg_m3": float(self.density_input.text() or 1000),
+            "粘度_mPa_s": float(self.viscosity_input.text() or 1),
+        }
+        outputs = {}
+        r = getattr(self, "_last_results", None) or {}
+        for key, out_key in [("P0_kW", "不通气功率_kW"), ("Pg_kW", "通气功率_kW"),
+                             ("motor_rec", "推荐电机_kW"), ("Re", "雷诺数"),
+                             ("tip_speed", "桨端线速度_m_s")]:
+            if key in r:
+                v = r[key]
+                outputs[out_key] = round(v, 3) if isinstance(v, float) else v
+        if "kLa_per_h" in r:
+            outputs["kLa_h_1"] = round(r["kLa_per_h"], 3)
+        if "OTR_max" in r:
+            outputs["OTR_max_mmol_L_h"] = round(r["OTR_max"], 2)
+        return {"inputs": inputs, "outputs": outputs}
 
     def _display_result(self, mode, data):
         lines = []

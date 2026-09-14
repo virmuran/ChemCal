@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, Q
                               QFileDialog, QSizePolicy, QLineEdit)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
+from datetime import datetime
 import math
 from fpdf import FPDF
 import sys
@@ -23,6 +24,84 @@ from common_constants import C_TO_K, G, ATM_PRESSURE_MPA, WATER_DENSITY, WATER_C
 from utils.docx_utils import ReportExporter
 
 # QGroupBox统一样式
+
+# ════════════════════════════════════════════════════════════════
+# 手册锚点数据表（2026-09-13 新增）
+# 原实现的 DIPPR 密度/比热容多项式与 Andrade 粘度系数存在严重的
+# 单位/公式错误（水 25°C 密度算出 0.17、比热容算出 6.5e10、粘度
+# 算出 ~1e-15），全部弃用，改为「多锚点 + 线性插值」：
+#   - 锚点间线性插值（数据来源见各表注释）
+#   - 区间外用端部两点斜率外推，结果精度下降
+# 表内数值来源: CRC Handbook / Perry's 化学工程师手册 / NIST WebBook
+# ════════════════════════════════════════════════════════════════
+
+DENS_TABLES = {   # 液体密度 kg/m³，(T°C, ρ)
+    "水":   [(0,999.84),(10,999.70),(20,998.21),(25,997.05),(30,995.65),
+             (40,992.22),(50,988.04),(60,983.19),(70,977.76),(80,971.79),
+             (90,965.31),(100,958.35)],
+    "乙醇": [(0,806.3),(20,789.3),(25,785.1),(40,772.2),(60,755.4),
+             (80,735.4),(100,716.0)],
+    "甲醇": [(0,810.0),(20,791.8),(25,786.6),(40,768.9),(60,747.7),
+             (80,725.9),(100,702.0)],
+    "丙酮": [(0,812.5),(20,790.8),(25,784.5),(40,764.3),(60,740.0),
+             (80,715.5),(100,690.0)],
+    "苯":   [(0,900.1),(20,879.0),(25,873.6),(40,857.6),(60,835.7),
+             (80,814.6)],
+    "甲苯": [(0,885.5),(20,866.9),(25,862.2),(40,846.9),(60,827.6),
+             (80,807.6),(100,787.6)],
+    "乙酸": [(20,1049.3),(25,1044.3),(40,1028.8),(60,1010.8),(80,991.9)],
+    "氨":   [(-33.3,682.0),(-20,665.5),(0,638.6),(20,610.3)],   # 饱和液氨
+    "丙烷": [(-42.1,581.6),(0,529.7),(20,500.5),(25,493.0)],    # 饱和液丙烷
+}
+
+VISC_TABLES = {   # 液体动力粘度 mPa·s，(T°C, μ)
+    "水":   [(0,1.787),(10,1.307),(20,1.002),(25,0.890),(30,0.798),
+             (40,0.653),(50,0.547),(60,0.467),(70,0.404),(80,0.355),
+             (90,0.315),(100,0.282)],
+    "乙醇": [(0,1.786),(20,1.200),(25,1.074),(40,0.834),(60,0.592)],
+    "甲醇": [(0,0.817),(20,0.5945),(25,0.544),(40,0.446),(60,0.347)],
+    "丙酮": [(0,0.399),(20,0.316),(25,0.295),(40,0.248)],
+    "苯":   [(10,0.758),(20,0.652),(25,0.604),(30,0.560),(40,0.492),
+             (50,0.436),(60,0.382)],
+    "甲苯": [(20,0.590),(25,0.560),(40,0.470)],
+}
+
+CP_TABLES = {     # 液体比热容 kJ/(kg·K)，(T°C, cp)
+    "水":   [(0,4.217),(20,4.184),(25,4.181),(40,4.178),(60,4.185),
+             (80,4.196),(100,4.216)],
+    "乙醇": [(20,2.42),(25,2.44),(40,2.51),(60,2.69)],
+    "甲醇": [(20,2.49),(25,2.53),(40,2.63),(60,2.79)],
+    "丙酮": [(20,2.15),(25,2.17),(40,2.24),(60,2.36)],
+    "苯":   [(20,1.72),(25,1.73),(40,1.79),(60,1.90)],
+    "甲苯": [(20,1.69),(25,1.70),(40,1.78),(60,1.89)],
+    "氨":   [(-33.3,4.47),(0,4.61),(20,4.75)],
+}
+
+KT_TABLES = {     # 液体热导率 W/(m·K)，(T°C, k)
+    "水":   [(0,0.5610),(20,0.5984),(25,0.6065),(40,0.6305),(60,0.6544),
+             (80,0.6700),(100,0.6791)],
+}
+
+def _interp_table(table, T):
+    """锚点表线性插值；区间外用端部两点斜率外推"""
+    if not table:
+        return None
+    if len(table) == 1:
+        return table[0][1]
+    xs = [p[0] for p in table]
+    ys = [p[1] for p in table]
+    if T <= xs[0]:
+        k = (ys[1] - ys[0]) / (xs[1] - xs[0])
+        return ys[0] + k * (T - xs[0])
+    if T >= xs[-1]:
+        k = (ys[-1] - ys[-2]) / (xs[-1] - xs[-2])
+        return ys[-1] + k * (T - xs[-1])
+    for i in range(len(table) - 1):
+        if xs[i] <= T <= xs[i + 1]:
+            f = (T - xs[i]) / (xs[i + 1] - xs[i])
+            return ys[i] + f * (ys[i + 1] - ys[i])
+    return None
+
 
 class PureSubstanceProperties(CalculatorBase):
     """纯物质物性数据查询"""
@@ -353,9 +432,12 @@ class PureSubstanceProperties(CalculatorBase):
     
     def _get_history_data(self):
         """提供历史记录数据"""
-        substance = self.substance_combo.currentText()
-        temperature = float(self.temperature_input.text())
-        pressure = float(self.pressure_input.text())
+        try:
+            substance = self.substance_combo.currentText()
+            temperature = float(self.temperature_input.text())
+            pressure = float(self.pressure_input.text())
+        except (ValueError, RuntimeError):
+            return {}
 
         inputs = {
             "物质名称": substance,
@@ -386,52 +468,77 @@ class PureSubstanceProperties(CalculatorBase):
         return {"inputs": inputs, "outputs": outputs}
     
     def get_project_info(self):
-        """获取项目信息"""
-        return {
-            "name": self.calculation_type,
-            "description": "纯物质物性数据查询与计算",
-            "parameters": {
-                "物质": self.substance_combo.currentText(),
-                "温度": float(self.temperature_input.text()),
-                "压力": float(self.pressure_input.text())
+        """获取工程信息 - 返回 dict"""
+        try:
+            saved_info = {}
+            if getattr(self, 'data_manager', None):
+                saved_info = self.data_manager.get_project_info()
+            return {
+                'company_name': saved_info.get('company_name', ''),
+                'project_number': saved_info.get('project_number', ''),
+                'project_name': saved_info.get('project_name', ''),
+                'subproject_name': saved_info.get('subproject_name', ''),
             }
-        }
-    
+        except Exception:
+            return {'company_name': '', 'project_number': '',
+                    'project_name': '', 'subproject_name': ''}
+
     def generate_report(self):
-        """生成报告数据"""
-        substance = self.substance_combo.currentText()
-        temperature = float(self.temperature_input.text())
-        pressure = float(self.pressure_input.text())
-        
-        report = {
-            "title": f"{self.calculation_type}报告",
-            "substance": substance,
-            "temperature": temperature,
-            "pressure": pressure,
-            "history_data": self._get_history_data()
-        }
-        
-        if substance in self.substance_data:
-            report["basic_data"] = self.substance_data[substance]["basic"]
-            report["thermal_data"] = self.substance_data[substance]["thermal"]
-        
-        return report
-    
+        """生成计算书文本（必须返回 str，导出链路依赖）"""
+        try:
+            result_text = self.result_text.toPlainText()
+            if not result_text.strip():
+                return None
+
+            project_info = self.get_project_info()
+            report = f"""══════════════════════════════════════════
+          纯物质物性查询计算书
+══════════════════════════════════════════
+
+{result_text}
+
+══════════════════════════════════════════
+ 工程信息
+══════════════════════════════════════════
+
+  公司名称: {project_info.get('company_name', '')}
+  工程编号: {project_info.get('project_number', '')}
+  工程名称: {project_info.get('project_name', '')}
+  子项名称: {project_info.get('subproject_name', '')}
+  计算日期: {datetime.now().strftime('%Y-%m-%d')}
+
+══════════════════════════════════════════
+备注说明
+══════════════════════════════════════════
+
+  1. 物性数据取自内置数据库，来源见结果中的标注
+  2. 数据为常压或饱和状态下的典型值，特殊工况需查专业物性软件
+  3. 计算结果仅供参考，实际工程需经专业工程师审核确认
+
+---
+生成于 ChemCal 工程计算模块
+"""
+            return report
+
+        except Exception as e:
+            print(f"生成计算书失败: {e}")
+            return None
+
     def download_docx_report(self):
         """生成DOCX格式计算书"""
-        ReportExporter.export_docx(self, "PureSubstanceProperties")
+        ReportExporter.export_docx(self, "纯物质物性查询")
     def download_pdf_report(self):
         """生成PDF格式计算书"""
-        ReportExporter.export_pdf(self, "PureSubstanceProperties")
+        ReportExporter.export_pdf(self, "纯物质物性查询")
     def on_category_changed(self, category):
         """类别改变事件"""
         substances = {
-            "无机物": ["水", "氨", "二氧化碳", "硫酸", "氯化钠", "盐酸", "氢氧化钠"],
+            "无机物": ["水", "氨", "二氧化碳", "硫酸", "氯化钠", "氢氧化钠"],
             "有机物": ["甲醇", "乙醇", "丙酮", "苯", "甲苯", "乙酸", "正己烷", "环己烷", "甲烷", "乙烷", "丙烷", "乙烯", "丙烯"],
             "金属": ["铁", "铜", "铝", "锌", "铅", "银", "金"],
             "气体": ["空气", "氧气", "氮气", "氢气", "甲烷", "乙烷", "丙烷", "乙烯", "丙烯", "二氧化碳"],
             "液体": ["水", "乙醇", "甲醇", "丙酮", "苯", "甲苯", "乙酸", "正己烷", "环己烷", "硫酸"],
-            "固体": ["冰", "食盐", "石英", "石墨", "金刚石"]
+            "固体": ["冰", "氯化钠", "石英", "石墨", "金刚石"]
         }
         
         self.substance_combo.clear()
@@ -470,23 +577,35 @@ class PureSubstanceProperties(CalculatorBase):
             "铁": "7439-89-6",
             "铜": "7440-50-8",
             "铝": "7429-90-5",
+            "锌": "7440-66-6",
+            "铅": "7439-92-1",
+            "银": "7440-22-4",
+            "金": "7440-57-5",
+            "乙酸": "64-19-7",
+            "正己烷": "110-54-3",
+            "环己烷": "110-82-7",
+            "氢氧化钠": "1310-73-2",
             "空气": "132259-10-0",
             "氧气": "7782-44-7",
             "氮气": "7727-37-9",
-            "氢气": "1333-74-0"
+            "氢气": "1333-74-0",
+            "冰": "7732-18-5",
+            "石英": "14808-60-7",
+            "石墨": "7782-42-5",
+            "金刚石": "7782-40-3"
         }
         
         self.cas_label.setText(cas_numbers.get(substance, "未知"))
     
     def load_substance_data(self):
-        """加载物质物性数据库（扩展版 22 种常见化工物质）
-        
+        """加载物质物性数据库（2026-09-13 扩展：22 种流体 + 7 金属 + 4 固体 + NaOH）
+
         数据来源:
         - 临界性质: NIST Chemistry WebBook / DIPPR Project 801
         - Antoine 系数: NIST (单位: log10(P/mmHg) = A - B/(T/°C + C))
-        - DIPPR 密度: ρ = A / B^(1-(1-T/C)^D), T 单位 K, ρ 单位 kg/m³
-        - Andrade 粘度: μ = A × 10^(B/(T+C)), μ 单位 mPa·s, T 单位 °C
-        - 液相比热容: Cp = A + B·T + C·T² + D·T³, kJ/(kg·K), T 单位 K
+        - 液相密度/粘度/比热容/热导率温度修正: 模块顶部锚点表线性插值
+          （DENS_TABLES / VISC_TABLES / CP_TABLES / KT_TABLES）
+        - 金属/固体: CRC Handbook 25°C 固体典型值
         """
         substance_data = {
             # ── 无机物 ──
@@ -881,6 +1000,176 @@ class PureSubstanceProperties(CalculatorBase):
                     "基准温度": -252.9
                 },
                 "formula_params": {}
+            },
+            # ── 金属（固态常温物性；密度/cp/k 为 25°C 固体典型值，CRC Handbook） ──
+            "铁": {
+                "basic": {
+                    "分子式": "Fe", "分子量": 55.845, "CAS号": "7439-89-6",
+                    "沸点": 2861, "熔点": 1538, "临界温度": None,
+                    "临界压力": None, "临界密度": None,
+                    "偏心因子": None
+                },
+                "thermal": {
+                    "密度": 7874.0, "粘度": None, "热导率": 80.4,
+                    "比热容": 0.449, "蒸发热": None, "表面张力": None,
+                    "基准温度": 25.0
+                },
+                "formula_params": {}
+            },
+            "铜": {
+                "basic": {
+                    "分子式": "Cu", "分子量": 63.546, "CAS号": "7440-50-8",
+                    "沸点": 2562, "熔点": 1084.6, "临界温度": None,
+                    "临界压力": None, "临界密度": None,
+                    "偏心因子": None
+                },
+                "thermal": {
+                    "密度": 8960.0, "粘度": None, "热导率": 401.0,
+                    "比热容": 0.385, "蒸发热": None, "表面张力": None,
+                    "基准温度": 25.0
+                },
+                "formula_params": {}
+            },
+            "铝": {
+                "basic": {
+                    "分子式": "Al", "分子量": 26.982, "CAS号": "7429-90-5",
+                    "沸点": 2470, "熔点": 660.3, "临界温度": None,
+                    "临界压力": None, "临界密度": None,
+                    "偏心因子": None
+                },
+                "thermal": {
+                    "密度": 2700.0, "粘度": None, "热导率": 237.0,
+                    "比热容": 0.897, "蒸发热": None, "表面张力": None,
+                    "基准温度": 25.0
+                },
+                "formula_params": {}
+            },
+            "锌": {
+                "basic": {
+                    "分子式": "Zn", "分子量": 65.38, "CAS号": "7440-66-6",
+                    "沸点": 907, "熔点": 419.5, "临界温度": None,
+                    "临界压力": None, "临界密度": None,
+                    "偏心因子": None
+                },
+                "thermal": {
+                    "密度": 7134.0, "粘度": None, "热导率": 116.0,
+                    "比热容": 0.388, "蒸发热": None, "表面张力": None,
+                    "基准温度": 25.0
+                },
+                "formula_params": {}
+            },
+            "铅": {
+                "basic": {
+                    "分子式": "Pb", "分子量": 207.2, "CAS号": "7439-92-1",
+                    "沸点": 1749, "熔点": 327.5, "临界温度": None,
+                    "临界压力": None, "临界密度": None,
+                    "偏心因子": None
+                },
+                "thermal": {
+                    "密度": 11340.0, "粘度": None, "热导率": 35.3,
+                    "比热容": 0.128, "蒸发热": None, "表面张力": None,
+                    "基准温度": 25.0
+                },
+                "formula_params": {}
+            },
+            "银": {
+                "basic": {
+                    "分子式": "Ag", "分子量": 107.868, "CAS号": "7440-22-4",
+                    "沸点": 2162, "熔点": 961.8, "临界温度": None,
+                    "临界压力": None, "临界密度": None,
+                    "偏心因子": None
+                },
+                "thermal": {
+                    "密度": 10490.0, "粘度": None, "热导率": 429.0,
+                    "比热容": 0.235, "蒸发热": None, "表面张力": None,
+                    "基准温度": 25.0
+                },
+                "formula_params": {}
+            },
+            "金": {
+                "basic": {
+                    "分子式": "Au", "分子量": 196.967, "CAS号": "7440-57-5",
+                    "沸点": 2856, "熔点": 1064.2, "临界温度": None,
+                    "临界压力": None, "临界密度": None,
+                    "偏心因子": None
+                },
+                "thermal": {
+                    "密度": 19300.0, "粘度": None, "热导率": 317.0,
+                    "比热容": 0.129, "蒸发热": None, "表面张力": None,
+                    "基准温度": 25.0
+                },
+                "formula_params": {}
+            },
+            # ── 固体 / 无机化合物 ──
+            "氢氧化钠": {
+                "basic": {
+                    "分子式": "NaOH", "分子量": 40.00, "CAS号": "1310-73-2",
+                    "沸点": 1388, "熔点": 318.0, "临界温度": None,
+                    "临界压力": None, "临界密度": None,
+                    "偏心因子": None
+                },
+                "thermal": {
+                    "密度": 2130.0, "粘度": None, "热导率": None,
+                    "比热容": 1.49, "蒸发热": None, "表面张力": None,
+                    "基准温度": 25.0
+                },
+                "formula_params": {}
+            },
+            "冰": {
+                "basic": {
+                    "分子式": "H₂O(固)", "分子量": 18.015, "CAS号": "7732-18-5",
+                    "沸点": 100.0, "熔点": 0.0, "临界温度": 647.14,
+                    "临界压力": 22064, "临界密度": 0.322,
+                    "偏心因子": 0.344
+                },
+                "thermal": {
+                    "密度": 916.7, "粘度": None, "热导率": 2.22,
+                    "比热容": 2.09, "蒸发热": 2838, "表面张力": None,
+                    "基准温度": 0.0
+                },
+                "formula_params": {}
+            },
+            "石英": {
+                "basic": {
+                    "分子式": "SiO₂", "分子量": 60.084, "CAS号": "14808-60-7",
+                    "沸点": 2230, "熔点": 1713, "临界温度": None,
+                    "临界压力": None, "临界密度": None,
+                    "偏心因子": None
+                },
+                "thermal": {
+                    "密度": 2650.0, "粘度": None, "热导率": 7.7,
+                    "比热容": 0.74, "蒸发热": None, "表面张力": None,
+                    "基准温度": 25.0
+                },
+                "formula_params": {}
+            },
+            "石墨": {
+                "basic": {
+                    "分子式": "C", "分子量": 12.011, "CAS号": "7782-42-5",
+                    "沸点": 4200, "熔点": 3652, "临界温度": None,
+                    "临界压力": None, "临界密度": None,
+                    "偏心因子": None
+                },
+                "thermal": {
+                    "密度": 2260.0, "粘度": None, "热导率": 129.0,
+                    "比热容": 0.71, "蒸发热": None, "表面张力": None,
+                    "基准温度": 25.0
+                },
+                "formula_params": {}
+            },
+            "金刚石": {
+                "basic": {
+                    "分子式": "C", "分子量": 12.011, "CAS号": "7782-40-3",
+                    "沸点": 4200, "熔点": 3550, "临界温度": None,
+                    "临界压力": None, "临界密度": None,
+                    "偏心因子": None
+                },
+                "thermal": {
+                    "密度": 3515.0, "粘度": None, "热导率": 2300.0,
+                    "比热容": 0.51, "蒸发热": None, "表面张力": None,
+                    "基准温度": 25.0
+                },
+                "formula_params": {}
             }
         }
         
@@ -924,79 +1213,133 @@ class PureSubstanceProperties(CalculatorBase):
         self.update_table(self.basic_prop_table, basic_props)
     
     def display_thermal_properties(self, thermal_data, temperature, pressure):
-        """显示热力学性质（使用 DIPPR / Andrade 方程修正）"""
+        """显示热力学性质（2026-09-13 重写：锚点插值 + 气相理想气体）"""
         substance_name = self.substance_combo.currentText()
         data = self.substance_data.get(substance_name, {})
-        fp = data.get("formula_params", {})
-        
-        base_temp = thermal_data.get("基准温度", 25.0)
-        
-        # 密度：DIPPR 方程（如有系数）
-        if "dippr_A" in fp:
-            density = self._dippr_density(fp, temperature)
-        else:
-            density = self._simple_density_correction(thermal_data["密度"], temperature, base_temp)
-        
-        # 粘度：Andrade 方程（如有系数）
-        if "andrade_A" in fp:
-            viscosity = self._andrade_viscosity(fp, temperature)
-        else:
-            viscosity = self._simple_viscosity_correction(thermal_data["粘度"], temperature, base_temp)
-        
-        # 热导率：简化线性修正
-        thermal_cond = self._simple_thermal_cond_correction(
-            thermal_data["热导率"], temperature, base_temp, fp
-        )
-        
-        # 比热容：DIPPR 多项式（如有系数）
-        if "cp_A" in fp:
-            heat_capacity = self._dippr_heat_capacity(fp, temperature)
-        else:
-            heat_capacity = self._simple_cp_correction(thermal_data["比热容"], temperature, base_temp)
-        
+        basic = data.get("basic", {})
+
+        density = self._density_at(thermal_data, basic, temperature, pressure,
+                                   name=substance_name)
+        viscosity = self._viscosity_at(thermal_data, basic, temperature,
+                                       name=substance_name)
+        thermal_cond = self._thermal_cond_at(thermal_data, basic, temperature,
+                                             name=substance_name)
+        heat_capacity = self._cp_at(thermal_data, basic, temperature,
+                                    name=substance_name)
+
         thermal_props = [
-            ["密度", f"{density:.3f}", "kg/m³" if density > 1 else "g/cm³"],
+            ["密度", f"{density:.3f}", "kg/m³"] if density is not None else ["密度", "N/A", "-"],
             ["粘度", f"{viscosity:.4f}", "mPa·s"] if viscosity is not None else ["粘度", "N/A", "-"],
             ["热导率", f"{thermal_cond:.4f}", "W/m·K"] if thermal_cond is not None else ["热导率", "N/A", "-"],
-            ["比热容", f"{heat_capacity:.3f}", "kJ/(kg·K)"],
+            ["比热容", f"{heat_capacity:.3f}", "kJ/(kg·K)"] if heat_capacity is not None else ["比热容", "N/A", "-"],
             ["蒸发热(常沸点)", f"{thermal_data['蒸发热']}", "kJ/kg"] if thermal_data.get("蒸发热") else ["蒸发热", "N/A", "-"],
             ["表面张力", f"{thermal_data['表面张力']}", "mN/m"] if thermal_data.get("表面张力") else ["表面张力", "N/A", "-"],
         ]
-        
+
         # 蒸气压计算（如有 Antoine 系数且温度在范围内）
+        fp = data.get("formula_params", {})
         if "antoine_A" in fp:
             try:
                 p_sat = self._antoine_vapor_pressure(fp, temperature)
-                thermal_props.append(["蒸气压", f"{p_sat:.2f}", "kPa"])
+                if p_sat is not None:
+                    thermal_props.append(["蒸气压", f"{p_sat:.2f}", "kPa"])
             except Exception:
                 pass
-        
+
         self.update_table(self.thermo_prop_table, thermal_props)
     
-    def _dippr_density(self, fp, T_C):
-        """DIPPR 液体密度方程: ρ = A / B^(1-(1-T/C)^D)
-        T 单位 K, ρ 单位 kg/m³"""
-        try:
-            A, B, C, D = fp["dippr_A"], fp["dippr_B"], fp["dippr_C"], fp["dippr_D"]
-            T_K = T_C + C_TO_K
-            T_r = T_K / C
-            if T_r >= 1.0:
-                return 0.0
-            rho = A / (B ** (1.0 - (1.0 - T_r) ** D))
-            return max(0.0, rho)
-        except Exception:
-            return 0.0
-    
-    def _andrade_viscosity(self, fp, T_C):
-        """Andrade 液体粘度方程: μ = A × 10^(B/(T+C))
-        μ 单位 mPa·s, T 单位 °C"""
-        try:
-            A, B, C = fp["andrade_A"], fp["andrade_B"], fp["andrade_C"]
-            mu = A * (10.0 ** (B / (T_C + C)))
-            return max(0.0, mu)
-        except Exception:
+    # ──────────────────────────────────────────────────────────
+    # 物性温度修正（2026-09-13 重写）
+    # 旧实现的 DIPPR 密度/比热容与 Andrade 粘度存在严重单位/公式
+    # 错误（输出为 0.17 / 6.5e10 / ~1e-15 之类的垃圾值），全部弃用。
+    # 新策略（按相态分流）：
+    #   气相（T > 沸点）: 密度=理想气体定律；μ、k 按 T^0.7/T^0.8 缩放
+    #   液相: 手册锚点表线性插值 → 无表则旧简化修正
+    #   固相（T < 熔点）: 返回常温基准值
+    # ──────────────────────────────────────────────────────────
+    def _phase_of(self, basic, temperature):
+        bp = basic.get("沸点")
+        mp = basic.get("熔点")
+        if bp is not None and temperature > bp:
+            return "gas"
+        if mp is not None and temperature < mp:
+            return "solid"
+        return "liquid"
+
+    def _density_at(self, thermal, basic, temperature, pressure_kpa, name=None):
+        name = name or self.substance_combo.currentText()
+        base = thermal.get("密度")
+        if base is None:
             return None
-    
+        phase = self._phase_of(basic, temperature)
+        if phase == "gas":
+            # 理想气体: ρ = PM/(RT)
+            M = basic.get("分子量")
+            if M:
+                P_pa = (pressure_kpa if pressure_kpa else 101.325) * 1000.0
+                return P_pa * (M / 1000.0) / (8.314 * (temperature + C_TO_K))
+            return base
+        if phase == "solid":
+            return base
+        table = DENS_TABLES.get(name)
+        if table:
+            return _interp_table(table, temperature)
+        return self._simple_density_correction(
+            base, temperature, thermal.get("基准温度", 25.0))
+
+    def _viscosity_at(self, thermal, basic, temperature, name=None):
+        name = name or self.substance_combo.currentText()
+        base = thermal.get("粘度")
+        if base is None:
+            return None
+        phase = self._phase_of(basic, temperature)
+        base_T = thermal.get("基准温度", 25.0)
+        if phase == "gas":
+            # 气体粘度随温度升高而增大: μ ∝ T^0.7（Sutherland 简化）
+            if base_T + C_TO_K > 0:
+                return base * ((temperature + C_TO_K) / (base_T + C_TO_K)) ** 0.7
+            return base
+        if phase == "solid":
+            return None
+        table = VISC_TABLES.get(name)
+        if table:
+            return _interp_table(table, temperature)
+        return self._simple_viscosity_correction(base, temperature, base_T)
+
+    def _thermal_cond_at(self, thermal, basic, temperature, name=None):
+        name = name or self.substance_combo.currentText()
+        base = thermal.get("热导率")
+        if base is None:
+            return None
+        phase = self._phase_of(basic, temperature)
+        base_T = thermal.get("基准温度", 25.0)
+        if phase == "gas":
+            # 气体热导率随温度升高而增大: k ∝ T^0.8
+            if base_T + C_TO_K > 0:
+                return base * ((temperature + C_TO_K) / (base_T + C_TO_K)) ** 0.8
+            return base
+        if phase == "solid":
+            return base
+        table = KT_TABLES.get(name)
+        if table:
+            return _interp_table(table, temperature)
+        return self._simple_thermal_cond_correction(base, temperature, base_T, {})
+
+    def _cp_at(self, thermal, basic, temperature, name=None):
+        name = name or self.substance_combo.currentText()
+        base = thermal.get("比热容")
+        if base is None:
+            return None
+        phase = self._phase_of(basic, temperature)
+        if phase == "gas":
+            # 低压气体比热容随温度变化缓慢，返回基准值
+            return base
+        table = CP_TABLES.get(name)
+        if table:
+            return _interp_table(table, temperature)
+        return self._simple_cp_correction(
+            base, temperature, thermal.get("基准温度", 25.0))
+
     def _antoine_vapor_pressure(self, fp, T_C):
         """Antoine 蒸气压方程: log10(P/mmHg) = A - B/(T+C)
         返回 kPa"""
@@ -1011,21 +1354,6 @@ class PureSubstanceProperties(CalculatorBase):
             return p_mmhg * 0.133322  # mmHg → kPa
         except Exception:
             return None
-    
-    def _dippr_heat_capacity(self, fp, T_C):
-        """DIPPR 液相比热容多项式: Cp = A + B·T + C·T² + D·T³
-        kJ/(kg·K), T 单位 K"""
-        try:
-            A, B, C, D = fp["cp_A"], fp["cp_B"], fp["cp_C"], fp["cp_D"]
-            T_K = T_C + C_TO_K
-            Tmin = fp.get("cp_Tmin", 0)
-            Tmax = fp.get("cp_Tmax", 9999)
-            if T_K < Tmin or T_K > Tmax:
-                raise ValueError("超出比热容多项式适用范围")
-            cp = A + B * T_K + C * T_K**2 + D * T_K**3
-            return max(0.0, cp)
-        except Exception:
-            return 0.0
     
     def _simple_density_correction(self, base_value, T, base_T):
         """简化密度修正（线性）"""
@@ -1063,27 +1391,25 @@ class PureSubstanceProperties(CalculatorBase):
         return base_value * (1.0 + 2e-3 * dT)
     
     def calculate_temperature_effect(self, base_value, temperature, property_type):
-        """兼容旧接口的温度修正（保留用于温度扫描）"""
+        """温度修正（温度扫描用；2026-09-13 改走锚点表/气体缩放）"""
         substance_name = self.substance_combo.currentText()
         data = self.substance_data.get(substance_name, {})
-        fp = data.get("formula_params", {})
+        basic = data.get("basic", {})
         thermal = data.get("thermal", {})
-        base_T = thermal.get("基准温度", 25.0)
-        
+        fp = data.get("formula_params", {})
+
         if property_type == "density":
-            if "dippr_A" in fp:
-                return self._dippr_density(fp, temperature)
-            return self._simple_density_correction(thermal.get("密度", base_value), temperature, base_T)
+            return self._density_at(thermal, basic, temperature, 101.325,
+                                    name=substance_name)
         elif property_type == "viscosity":
-            if "andrade_A" in fp:
-                return self._andrade_viscosity(fp, temperature) or base_value
-            return self._simple_viscosity_correction(thermal.get("粘度", base_value), temperature, base_T)
+            return self._viscosity_at(thermal, basic, temperature,
+                                      name=substance_name)
         elif property_type == "thermal_cond":
-            return self._simple_thermal_cond_correction(thermal.get("热导率", base_value), temperature, base_T, fp)
+            return self._thermal_cond_at(thermal, basic, temperature,
+                                         name=substance_name)
         elif property_type == "heat_capacity":
-            if "cp_A" in fp:
-                return self._dippr_heat_capacity(fp, temperature)
-            return self._simple_cp_correction(thermal.get("比热容", base_value), temperature, base_T)
+            return self._cp_at(thermal, basic, temperature,
+                               name=substance_name)
         else:
             return base_value
     

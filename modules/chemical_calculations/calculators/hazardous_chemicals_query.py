@@ -19,6 +19,28 @@ from app_styles import (COMBOBOX_STYLE, INPUT_LABEL_STYLE,
 from calculator_base import CalculatorBase
 from utils.docx_utils import ReportExporter
 
+# ═══════════════════════════════════════════════════════════════
+#  危险性类别（按 GB 30000 系列 / GHS 的危险性种类命名）
+# ═══════════════════════════════════════════════════════════════
+# 危险化学品查询的"危险性筛选"下拉框选项【必须由数据库实际出现的类别派生】，
+# 不能写死列表——写死会留下永远匹配不到记录的"死"筛选项（曾出现 4 项）。
+HAZARD_RANK = [
+    "爆炸物", "易燃气体", "氧化性气体", "毒性气体",
+    "易燃液体", "易燃固体", "自燃物质", "遇水放出易燃气体的物质",
+    "氧化性物质", "有机过氧化物", "毒性物质", "致癌物",
+    "腐蚀性物质", "健康危害物质", "环境危害物质",
+]
+ALL_HAZARDS_LABEL = "所有危险性"
+
+DATA_SOURCE_NOTE = (
+    "数据来源：内置参考数据，物性取自常用化学品手册（沸点/熔点/密度/闪点/自燃温度/"
+    "爆炸极限）；危险性分类与 GHS 象形图、危险性说明（H 语句）、防范说明（P 语句）"
+    "按 GB 30000《化学品分类和标签规范》系列（等同 GHS）整理，用于现场安全操作的"
+    "快速查询。正式 SDS / 安全标签编制、危险化学品登记与运输分类，须以供应商 SDS 和"
+    "《危险化学品目录》《危险货物品名表》(GB 12268) 的最新版本为准。"
+)
+
+
 # QGroupBox统一样式
 
 # 统一滚动条样式
@@ -125,7 +147,7 @@ class ChemicalDetailDialog(QDialog):
 
         # 标题
         title_label = QLabel(f"{self.chemical_data.get('name', '未知化学品')}")
-        title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #2c3e50; margin: 10px;")
+        title_label.setStyleSheet("font-size: 18px; font-weight: bold; margin: 10px;")
         layout.addWidget(title_label, 0, 0, 1, 2)
 
         row = 1
@@ -224,6 +246,17 @@ class ChemicalDetailDialog(QDialog):
                     label = QLabel(f"• {hazard.strip()}")
                     class_layout.addWidget(label)
             layout.addWidget(class_group)
+
+        # GHS 分类（类别号，比"危险性类别"更细）
+        if self.chemical_data.get('ghs_classification'):
+            cls_group = QGroupBox("GHS 危险性分类")
+            cls_layout = QVBoxLayout(cls_group)
+            for item in self.chemical_data['ghs_classification'].split(';'):
+                if item.strip():
+                    label = QLabel(f"• {item.strip()}")
+                    label.setWordWrap(True)
+                    cls_layout.addWidget(label)
+            layout.addWidget(cls_group)
 
         # GHS象形图
         if self.chemical_data.get('ghs_symbols'):
@@ -417,7 +450,8 @@ class HazardousChemicalsQuery(CalculatorBase):
         left_layout.addLayout(type_layout)
 
         # 搜索框
-        self.search_input = QLineEdit()
+        # 默认必须为空：曾遗留调试默认值 "乙醇"，导致模块打开时 7 种化学品只列出 1 种
+        self.search_input = QLineEdit("")
         self.search_input.setPlaceholderText("输入化学品名称、CAS号或分子式...")
         self.search_input.textChanged.connect(self.on_search_text_changed)
         left_layout.addWidget(self.search_input)
@@ -430,17 +464,9 @@ class HazardousChemicalsQuery(CalculatorBase):
 
         self.hazard_filter_combo = QComboBox()
         self.hazard_filter_combo.setStyleSheet(COMBOBOX_STYLE)
-        self.hazard_filter_combo.addItems([
-            "所有危险性",
-            "易燃液体",
-            "易燃气体",
-            "易燃固体",
-            "氧化性物质",
-            "毒性物质",
-            "腐蚀性物质",
-            "爆炸性物质",
-            "健康危害物质"
-        ])
+        # 选项在 load_chemicals_database() 中按数据库实际危险性类别动态生成，
+        # 避免写死列表出现永远匹配不到任何记录的"死"筛选项
+        self.hazard_filter_combo.addItem(ALL_HAZARDS_LABEL)
         self.hazard_filter_combo.currentTextChanged.connect(self.filter_chemicals)
         hazard_layout.addWidget(self.hazard_filter_combo)
         left_layout.addLayout(hazard_layout)
@@ -585,8 +611,13 @@ class HazardousChemicalsQuery(CalculatorBase):
                 "autoignition_temp": 464,
                 "explosion_limits": "6.0%-36.5%",
                 "hazard_class": "易燃液体;毒性物质",
-                "ghs_symbols": "易燃;健康危害",
-                "hazard_statements": "高度易燃液体和蒸气;吞咽有毒;对眼睛有害",
+                "ghs_classification": "易燃液体 类别2;急性毒性-经口 类别3;"
+                                      "急性毒性-经皮 类别3;急性毒性-吸入 类别3;"
+                                      "特异性靶器官毒性-一次接触 类别1（视神经）",
+                "ghs_symbols": "易燃;健康危害;毒性",
+                "hazard_statements": "H225 高度易燃液体和蒸气;H301 吞咽会中毒;"
+                                     "H311 皮肤接触会中毒;H331 吸入会中毒;"
+                                     "H370 会对器官造成损害（视神经、中枢神经系统）",
                 "precautionary_statements": "远离热源/火花/明火/热表面;保持容器密闭;戴防护手套/防护眼镜",
                 "handling": "在通风良好的地方操作。消除所有火源。",
                 "storage": "储存于阴凉、通风处。远离火种、热源。",
@@ -610,8 +641,9 @@ class HazardousChemicalsQuery(CalculatorBase):
                 "autoignition_temp": 423,
                 "explosion_limits": "3.3%-19%",
                 "hazard_class": "易燃液体",
+                "ghs_classification": "易燃液体 类别2;严重眼损伤/眼刺激 类别2A",
                 "ghs_symbols": "易燃",
-                "hazard_statements": "高度易燃液体和蒸气",
+                "hazard_statements": "H225 高度易燃液体和蒸气;H319 造成严重眼刺激",
                 "precautionary_statements": "远离热源/火花/明火/热表面;保持容器密闭",
                 "handling": "在通风良好的地方操作。消除所有火源。",
                 "storage": "储存于阴凉、通风处。远离火种、热源。",
@@ -635,8 +667,11 @@ class HazardousChemicalsQuery(CalculatorBase):
                 "autoignition_temp": 465,
                 "explosion_limits": "2.5%-12.8%",
                 "hazard_class": "易燃液体",
-                "ghs_symbols": "易燃",
-                "hazard_statements": "高度易燃液体和蒸气",
+                "ghs_classification": "易燃液体 类别2;严重眼损伤/眼刺激 类别2A;"
+                                      "特异性靶器官毒性-一次接触 类别3（麻醉作用）",
+                "ghs_symbols": "易燃;健康危害",
+                "hazard_statements": "H225 高度易燃液体和蒸气;H319 造成严重眼刺激;"
+                                     "H336 可能造成困倦或眩晕",
                 "precautionary_statements": "远离热源/火花/明火/热表面;保持容器密闭",
                 "handling": "在通风良好的地方操作。消除所有火源。",
                 "storage": "储存于阴凉、通风处。远离火种、热源。",
@@ -660,8 +695,14 @@ class HazardousChemicalsQuery(CalculatorBase):
                 "autoignition_temp": 498,
                 "explosion_limits": "1.2%-7.8%",
                 "hazard_class": "易燃液体;致癌物;毒性物质",
-                "ghs_symbols": "易燃;健康危害",
-                "hazard_statements": "高度易燃液体和蒸气;吞咽会中毒;吸入会中毒;可能致癌",
+                "ghs_classification": "易燃液体 类别2;致癌性 类别1A;生殖细胞致突变性 类别1B;"
+                                      "特异性靶器官毒性-反复接触 类别1;"
+                                      "皮肤腐蚀/刺激 类别2;严重眼损伤/眼刺激 类别2A",
+                "ghs_symbols": "易燃;健康危害;腐蚀性",
+                "hazard_statements": "H225 高度易燃液体和蒸气;H304 吞咽并进入呼吸道可能致命;"
+                                     "H315 造成皮肤刺激;H319 造成严重眼刺激;"
+                                     "H340 可能造成遗传性缺陷;H350 可能致癌;"
+                                     "H372 长期或反复接触会对器官造成损害（血液系统）",
                 "precautionary_statements": "远离热源/火花/明火/热表面;戴防护手套/防护眼镜/面部防护罩",
                 "handling": "在通风橱内操作。避免吸入蒸气。",
                 "storage": "储存于阴凉、通风处。远离火种、热源。",
@@ -684,9 +725,14 @@ class HazardousChemicalsQuery(CalculatorBase):
                 "flash_point": "无",
                 "autoignition_temp": "无",
                 "explosion_limits": "无",
-                "hazard_class": "腐蚀性物质;毒性物质",
+                # GHS 勘误（2026-09-14）：原标"腐蚀性物质;毒性物质"。硫酸按 GB 30000.2/.19/
+                # .28 应分类为【皮肤腐蚀/刺激 类别1A】【严重眼损伤/眼刺激 类别1】，
+                # 急性经口 LD50(大鼠) 约 2140 mg/kg 仅属急性毒性类别5，中国不采用类别5，
+                # 因此【不标"毒性物质"】，原标注属夸大。
+                "hazard_class": "腐蚀性物质",
+                "ghs_classification": "皮肤腐蚀/刺激 类别1A;严重眼损伤/眼刺激 类别1",
                 "ghs_symbols": "腐蚀性",
-                "hazard_statements": "导致严重皮肤灼伤和眼损伤",
+                "hazard_statements": "H314 造成严重皮肤灼伤和眼损伤;H290 可能腐蚀金属",
                 "precautionary_statements": "戴防护手套/防护眼镜/面部防护罩;如进入眼睛：用水小心冲洗几分钟",
                 "handling": "在通风良好的地方操作。避免与皮肤和眼睛接触。",
                 "storage": "储存于阴凉、干燥、通风处。与碱类、易燃物分开存放。",
@@ -710,8 +756,9 @@ class HazardousChemicalsQuery(CalculatorBase):
                 "autoignition_temp": "无",
                 "explosion_limits": "无",
                 "hazard_class": "腐蚀性物质",
+                "ghs_classification": "皮肤腐蚀/刺激 类别1A;严重眼损伤/眼刺激 类别1",
                 "ghs_symbols": "腐蚀性",
-                "hazard_statements": "导致严重皮肤灼伤和眼损伤",
+                "hazard_statements": "H314 造成严重皮肤灼伤和眼损伤;H290 可能腐蚀金属",
                 "precautionary_statements": "戴防护手套/防护眼镜/面部防护罩",
                 "handling": "在通风良好的地方操作。避免与皮肤和眼睛接触。",
                 "storage": "储存于阴凉、干燥、通风处。与酸类分开存放。",
@@ -734,9 +781,17 @@ class HazardousChemicalsQuery(CalculatorBase):
                 "flash_point": "无",
                 "autoignition_temp": "无",
                 "explosion_limits": "无",
-                "hazard_class": "毒性气体;氧化性气体;腐蚀性物质",
-                "ghs_symbols": "毒性;腐蚀性;氧化性",
-                "hazard_statements": "吸入会中毒;导致严重皮肤灼伤和眼损伤;可能导致呼吸道刺激",
+                "hazard_class": "毒性气体;氧化性气体;腐蚀性物质;环境危害物质",
+                "ghs_classification": "氧化性气体 类别1;加压气体（液化气体）;"
+                                      "急性毒性-吸入 类别2;皮肤腐蚀/刺激 类别2;"
+                                      "严重眼损伤/眼刺激 类别2;"
+                                      "特异性靶器官毒性-一次接触 类别3（呼吸道刺激）;"
+                                      "危害水生环境-急性 类别1",
+                "ghs_symbols": "氧化性;毒性;腐蚀性;环境危害",
+                "hazard_statements": "H270 可能导致或加剧燃烧（氧化剂）;"
+                                     "H330 吸入致命;H315 造成皮肤刺激;"
+                                     "H319 造成严重眼刺激;H335 可能引起呼吸道刺激;"
+                                     "H400 对水生生物毒性极大",
                 "precautionary_statements": "戴防护手套/防护眼镜/面部防护罩;避免吸入气体",
                 "handling": "在通风橱内操作。使用适当的呼吸防护装置。",
                 "storage": "储存于阴凉、通风处。与可燃物、还原剂分开存放。",
@@ -749,18 +804,47 @@ class HazardousChemicalsQuery(CalculatorBase):
         ]
 
         self.filtered_chemicals = self.chemicals_data.copy()
+        self._rebuild_hazard_filters()
         self.filter_chemicals()
 
-    def on_search_text_changed(self, text):
-        """处理搜索文本变化"""
-        # 使用定时器延迟搜索，避免频繁更新
-        if hasattr(self, 'search_timer'):
-            self.search_timer.stop()
+    def _rebuild_hazard_filters(self):
+        """按数据库实际出现的危险性类别重建筛选下拉选项
 
-        self.search_timer = QTimer()
-        self.search_timer.setSingleShot(True)
-        self.search_timer.timeout.connect(lambda: self.filter_chemicals())
-        self.search_timer.start(300)  # 300ms延迟
+        修复：原下拉框选项为写死列表，其中"易燃气体/易燃固体/爆炸性物质/
+        健康危害物质"在数据库中没有任何记录能匹配，属永远查不到结果的死选项；
+        "氧化性物质"与实际使用的"氧化性气体"也不一致。改为完全由数据派生。
+        """
+        present = set()
+        for chem in self.chemicals_data:
+            for token in str(chem.get("hazard_class", "")).split(";"):
+                token = token.strip()
+                if token:
+                    present.add(token)
+
+        # 按 HAZARD_RANK 排序，未列入排序表的新类别追加在末尾（不遗漏）
+        ordered = [h for h in HAZARD_RANK if h in present]
+        ordered += sorted(present - set(HAZARD_RANK))
+
+        keep = self.hazard_filter_combo.currentText()
+        self.hazard_filter_combo.blockSignals(True)
+        self.hazard_filter_combo.clear()
+        self.hazard_filter_combo.addItem(ALL_HAZARDS_LABEL)
+        self.hazard_filter_combo.addItems(ordered)
+        idx = self.hazard_filter_combo.findText(keep)
+        self.hazard_filter_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self.hazard_filter_combo.blockSignals(False)
+
+    def on_search_text_changed(self, text):
+        """处理搜索文本变化（延迟 300ms 触发，避免每次按键都全量过滤）"""
+        # 定时器只创建一次：原实现每次输入都新建 QTimer 并覆盖 self.search_timer，
+        # 旧对象失去引用被 GC（在运行的 QTimer 被回收属隐患）
+        if getattr(self, 'search_timer', None) is None:
+            self.search_timer = QTimer(self)
+            self.search_timer.setSingleShot(True)
+            self.search_timer.timeout.connect(self.filter_chemicals)
+
+        self.search_timer.stop()
+        self.search_timer.start(300)
 
     def filter_chemicals(self):
         """过滤化学品列表"""
@@ -772,7 +856,7 @@ class HazardousChemicalsQuery(CalculatorBase):
 
         for chemical in self.chemicals_data:
             # 危险性筛选
-            if hazard_filter != "所有危险性" and hazard_filter not in chemical.get('hazard_class', ''):
+            if hazard_filter != ALL_HAZARDS_LABEL and hazard_filter not in chemical.get('hazard_class', ''):
                 continue
 
             # 搜索筛选
@@ -794,26 +878,44 @@ class HazardousChemicalsQuery(CalculatorBase):
 
         self.update_chemicals_list()
 
+    def _hazard_style(self, hazard_class):
+        """按危险性返回 (底色, 字色, 前缀标记)
+
+        底色为浅色系且【字色必须显式给深色】——否则深色主题下 QListWidget 会用
+        白色系统文字，落在这几个浅底色上几乎不可读（原代码只 setBackground）。
+        """
+        if "易燃" in hazard_class and "毒性" in hazard_class:
+            return QColor(255, 200, 200), QColor(31, 41, 51), "🔥☠"
+        if "易燃" in hazard_class:
+            return QColor(255, 230, 200), QColor(31, 41, 51), "🔥"
+        if "毒性" in hazard_class or "致癌" in hazard_class:
+            return QColor(228, 200, 255), QColor(31, 41, 51), "☠"
+        if "腐蚀性" in hazard_class:
+            return QColor(200, 230, 255), QColor(31, 41, 51), "⚠"
+        if "氧化性" in hazard_class:
+            return QColor(255, 245, 190), QColor(31, 41, 51), "⭕"
+        return None, None, ""
+
     def update_chemicals_list(self):
         """更新化学品列表"""
         self.chemicals_list.clear()
 
         for chemical in self.filtered_chemicals:
-            item = QListWidgetItem(chemical['name'])
-
-            # 根据危险性设置颜色
             hazard_class = chemical.get('hazard_class', '')
-            if '易燃' in hazard_class and '毒性' in hazard_class:
-                item.setBackground(QColor(255, 200, 200))  # 浅红色
-            elif '易燃' in hazard_class:
-                item.setBackground(QColor(255, 230, 200))  # 浅橙色
-            elif '毒性' in hazard_class or '致癌' in hazard_class:
-                item.setBackground(QColor(255, 200, 255))  # 浅紫色
-            elif '腐蚀性' in hazard_class:
-                item.setBackground(QColor(200, 230, 255))  # 浅蓝色
+
+            # 列表项文本同时给出危险性，避免必须悬停才能看到分类
+            item = QListWidgetItem(f"{chemical['name']}    [{hazard_class}]")
+            # 化学品数据挂在 UserRole 上，按名字反查在重名/文本改动时会失效
+            item.setData(Qt.UserRole, chemical)
+
+            bg, fg, mark = self._hazard_style(hazard_class)
+            if bg is not None:
+                item.setBackground(bg)
+                item.setForeground(fg)
 
             # 设置提示信息
-            tooltip = f"CAS: {chemical.get('cas', '未知')}\n"
+            tooltip = f"{mark} {chemical['name']}\n"
+            tooltip += f"CAS: {chemical.get('cas', '未知')}\n"
             tooltip += f"分子式: {chemical.get('formula', '未知')}\n"
             tooltip += f"危险性: {hazard_class}"
             item.setToolTip(tooltip)
@@ -825,8 +927,10 @@ class HazardousChemicalsQuery(CalculatorBase):
 
     def show_chemical_detail(self, item):
         """显示化学品详情"""
-        chemical_name = item.text()
-        chemical = next((chem for chem in self.filtered_chemicals if chem['name'] == chemical_name), None)
+        chemical = item.data(Qt.UserRole)
+        if chemical is None:      # 兜底：按名称反查
+            chemical = next((c for c in self.filtered_chemicals
+                             if c['name'] == item.text()), None)
 
         if chemical:
             self.current_chemical = chemical
@@ -835,44 +939,70 @@ class HazardousChemicalsQuery(CalculatorBase):
             self.download_pdf_btn.setEnabled(True)
             self.update_detail_display(chemical)
 
-    def update_detail_display(self, chemical):
-        """更新详情显示"""
-        detail_html = f"""
-        <div style="font-family: Arial, sans-serif;">
-            <h2 style="color: #2c3e50;">{chemical['name']}</h2>
+    def _format_detail_text(self, chemical):
+        """把化学品数据格式化为纯文本详情
 
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-                <tr>
-                    <td style="padding: 8px; border: 1px solid #ddd; background-color: #f8f9fa; width: 30%;"><strong>CAS号</strong></td>
-                    <td style="padding: 8px; border: 1px solid #ddd;">{chemical.get('cas', '未知')}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 8px; border: 1px solid #ddd; background-color: #f8f9fa;"><strong>分子式</strong></td>
-                    <td style="padding: 8px; border: 1px solid #ddd;">{chemical.get('formula', '未知')}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 8px; border: 1px solid #ddd; background-color: #f8f9fa;"><strong>分子量</strong></td>
-                    <td style="padding: 8px; border: 1px solid #ddd;">{chemical.get('molecular_weight', '未知')}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 8px; border: 1px solid #ddd; background-color: #f8f9fa;"><strong>危险性类别</strong></td>
-                    <td style="padding: 8px; border: 1px solid #ddd;">{chemical.get('hazard_class', '未知')}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 8px; border: 1px solid #ddd; background-color: #f8f9fa;"><strong>闪点</strong></td>
-                    <td style="padding: 8px; border: 1px solid #ddd;">{chemical.get('flash_point', '未知')} °C</td>
-                </tr>
-            </table>
-
-            <h3 style="color: #e74c3c;">危险性说明</h3>
-            <p>{chemical.get('hazard_statements', '无').replace(';', '<br>• ')}</p>
-
-            <h3 style="color: #3498db;">主要防范措施</h3>
-            <p>{chemical.get('precautionary_statements', '无').replace(';', '<br>• ')}</p>
-        </div>
+        修复：原实现用 setHtml 拼硬编码浅色表格（#f8f9fa 底 + #ddd 边框 +
+        #2c3e50 标题），深色主题下白字压浅底完全不可读；现改为纯文本，
+        由主题系统统一接管文字色，与其余计算器的结果框一致。
         """
+        def bullet(field, indent="  "):
+            raw = str(chemical.get(field, "") or "").strip()
+            if not raw or raw == "无":
+                return f"{indent}无\n"
+            parts = [p.strip() for p in raw.split(";") if p.strip()]
+            return "".join(f"{indent}• {p}\n" for p in parts)
 
-        self.detail_text.setHtml(detail_html)
+        def val(field, unit=""):
+            v = chemical.get(field, None)
+            if v is None or v == "":
+                return "未知"
+            # "无"/非数值时不再拼单位，避免出现"无 °C"这种读不通的写法
+            if isinstance(v, (int, float)):
+                return f"{v}{unit}"
+            return str(v)
+
+        out = f"=== {chemical.get('name', '未知')} ===\n"
+        out += f"  CAS号   : {val('cas')}\n"
+        out += f"  分子式  : {val('formula')}\n"
+        out += f"  分子量  : {val('molecular_weight')}\n"
+        out += f"  外观    : {val('appearance')}\n"
+        out += f"  熔点    : {val('melting_point', ' °C')}\n"
+        out += f"  沸点    : {val('boiling_point', ' °C')}\n"
+        out += f"  密度    : {val('density', ' g/cm³')}\n"
+        out += f"  水溶性  : {val('water_solubility')}\n"
+        out += f"  闪点    : {val('flash_point', ' °C')}\n"
+        out += f"  自燃温度: {val('autoignition_temp', ' °C')}\n"
+        out += f"  爆炸极限: {val('explosion_limits')}\n\n"
+
+        out += "── 危险性 ──\n"
+        out += f"  危险性类别: {val('hazard_class')}\n"
+        if chemical.get("ghs_classification"):
+            out += f"  GHS 分类  : {chemical['ghs_classification']}\n"
+        out += f"  GHS 象形图: {val('ghs_symbols')}\n\n"
+
+        out += "  危险性说明（H 语句）:\n"
+        out += bullet("hazard_statements")
+        out += "\n  防范说明（P 语句）:\n"
+        out += bullet("precautionary_statements")
+        out += "\n── 安全措施 ──\n"
+        out += "  操作处置:\n"
+        out += f"    {chemical.get('handling', '无')}\n"
+        out += "  储存条件:\n"
+        out += f"    {chemical.get('storage', '无')}\n"
+        out += "  个人防护:\n"
+        out += bullet("personal_protection", "    ")
+        out += "  工程控制:\n"
+        out += bullet("engineering_controls", "    ")
+        out += "\n── 数据来源 ──\n"
+        out += f"  {DATA_SOURCE_NOTE}\n"
+        out += "\n  提示：双击列表项或点「查看完整详情」查看火灾/泄漏/急救等应急措施。\n"
+
+        return out
+
+    def update_detail_display(self, chemical):
+        """更新详情显示（纯文本，文字色交由主题系统）"""
+        self.detail_text.setPlainText(self._format_detail_text(chemical))
 
     def show_full_detail(self):
         """显示完整详情对话框"""
@@ -906,6 +1036,7 @@ class HazardousChemicalsQuery(CalculatorBase):
                 "分子式": chem.get("formula", ""),
                 "分子量": str(chem.get("molecular_weight", "")),
                 "危险性类别": chem.get("hazard_class", ""),
+                "GHS分类": chem.get("ghs_classification", ""),
                 "闪点": str(chem.get("flash_point", "")),
                 "沸点": str(chem.get("boiling_point", "")),
                 "爆炸极限": chem.get("explosion_limits", "")
@@ -913,18 +1044,21 @@ class HazardousChemicalsQuery(CalculatorBase):
         return {"inputs": inputs, "outputs": outputs}
 
     def get_project_info(self):
-        """获取项目信息（报告生成用，返回 dict）"""
-        info = {
-            "project_name": "危险化学品查询",
+        """获取项目信息（报告生成用，返回标准工程信息 dict）"""
+        saved = {}
+        try:
+            if self.data_manager:
+                saved = self.data_manager.get_project_info() or {}
+        except Exception:
+            saved = {}
+        return {
+            "company_name": saved.get("company_name", ""),
+            "project_number": saved.get("project_number", ""),
+            "project_name": saved.get("project_name", "危险化学品查询"),
+            "subproject_name": saved.get("subproject_name", ""),
             "calculation_type": self.calculation_type,
             "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "operator": "用户",
         }
-        if hasattr(self, 'current_chemical') and self.current_chemical:
-            chem = self.current_chemical
-            info["chemical_name"] = chem.get("name", "")
-            info["cas_number"] = chem.get("cas", "")
-        return info
 
     def generate_report(self):
         """生成报告内容（返回 str；未选择化学品时返回 None，不生成空文件）"""
@@ -932,6 +1066,7 @@ class HazardousChemicalsQuery(CalculatorBase):
             return None
 
         chem = self.current_chemical
+        project = self.get_project_info()
         report = f"""
 ================================================================================
                          危险化学品安全技术说明书
@@ -958,6 +1093,7 @@ CAS号: {chem.get('cas', '未知')}
                               危险性信息
 --------------------------------------------------------------------------------
 危险性类别: {chem.get('hazard_class', '未知')}
+GHS分类: {chem.get('ghs_classification', '未标注')}
 GHS象形图: {chem.get('ghs_symbols', '未知')}
 
 危险性说明:
@@ -993,8 +1129,22 @@ GHS象形图: {chem.get('ghs_symbols', '未知')}
 急救措施:
 {chem.get('first_aid', '无').replace(';', '\n')}
 
+--------------------------------------------------------------------------------
+                              工程信息
+--------------------------------------------------------------------------------
+公司名称: {project['company_name'] or '—'}
+项目名称: {project['project_name'] or '—'}
+项目编号: {project['project_number'] or '—'}
+子项名称: {project['subproject_name'] or '—'}
+查询时间: {project['timestamp']}
+
+--------------------------------------------------------------------------------
+                              数据来源
+--------------------------------------------------------------------------------
+{DATA_SOURCE_NOTE}
+
 ================================================================================
-                              报告生成完成
+                    本报告由 ChemCal 工程计算模块生成
 ================================================================================
 """
         return report

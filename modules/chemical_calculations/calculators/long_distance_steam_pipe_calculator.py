@@ -112,7 +112,7 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         lbl = QLabel("流量:")
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         lbl.setStyleSheet(INPUT_LABEL_STYLE)
-        self.flow_rate_input = QLineEdit()
+        self.flow_rate_input = QLineEdit("10")
         self.flow_rate_input.setPlaceholderText("例如：10")
         self.flow_rate_input.setValidator(QDoubleValidator(0.1, 1000, 2))
         self.flow_rate_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -128,7 +128,7 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         lbl = QLabel("入口温度:")
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         lbl.setStyleSheet(INPUT_LABEL_STYLE)
-        self.inlet_temp_input = QLineEdit()
+        self.inlet_temp_input = QLineEdit("200")
         self.inlet_temp_input.setPlaceholderText("例如：200")
         self.inlet_temp_input.setValidator(QDoubleValidator(100, 600, 1))
         self.inlet_temp_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -138,10 +138,10 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         steam_layout.addWidget(hint, row, 2)
 
         row = 3
-        lbl = QLabel("入口压力:")
+        lbl = QLabel("入口压力 (表压):")
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         lbl.setStyleSheet(INPUT_LABEL_STYLE)
-        self.inlet_pressure_input = QLineEdit()
+        self.inlet_pressure_input = QLineEdit("1.0")
         self.inlet_pressure_input.setPlaceholderText("例如：1.0")
         self.inlet_pressure_input.setValidator(QDoubleValidator(0.1, 10, 2))
         self.inlet_pressure_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -168,7 +168,7 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         lbl = QLabel("管道长度:")
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         lbl.setStyleSheet(INPUT_LABEL_STYLE)
-        self.pipe_length_input = QLineEdit()
+        self.pipe_length_input = QLineEdit("1000")
         self.pipe_length_input.setPlaceholderText("例如：1000")
         self.pipe_length_input.setValidator(QDoubleValidator(10, 50000, 0))
         self.pipe_length_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -181,7 +181,7 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         lbl = QLabel("管道内径:")
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         lbl.setStyleSheet(INPUT_LABEL_STYLE)
-        self.pipe_diameter_input = QLineEdit()
+        self.pipe_diameter_input = QLineEdit("200")
         self.pipe_diameter_input.setPlaceholderText("例如：200")
         self.pipe_diameter_input.setValidator(QDoubleValidator(10, 2000, 1))
         self.pipe_diameter_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -231,7 +231,7 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         lbl = QLabel("保温厚度:")
         lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         lbl.setStyleSheet(INPUT_LABEL_STYLE)
-        self.insulation_thickness_input = QLineEdit()
+        self.insulation_thickness_input = QLineEdit("50")
         self.insulation_thickness_input.setPlaceholderText("例如：50")
         self.insulation_thickness_input.setValidator(QDoubleValidator(0, 500, 1))
         self.insulation_thickness_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -330,14 +330,14 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         main_layout.addWidget(right_widget, 1)
 
     def clear_inputs(self):
-        """清空所有输入"""
-        self.flow_rate_input.clear()
-        self.inlet_temp_input.clear()
-        self.inlet_pressure_input.clear()
-        self.pipe_length_input.clear()
-        self.pipe_diameter_input.clear()
+        """清空所有输入（恢复出厂默认值）"""
+        self.flow_rate_input.setText("10")
+        self.inlet_temp_input.setText("200")
+        self.inlet_pressure_input.setText("1.0")
+        self.pipe_length_input.setText("1000")
+        self.pipe_diameter_input.setText("200")
         self.roughness_input.setText("0.2")
-        self.insulation_thickness_input.clear()
+        self.insulation_thickness_input.setText("50")
         self.insulation_conductivity_input.setText("0.04")
         self.ambient_temp_input.setText("20")
         self.result_text.clear()
@@ -358,10 +358,11 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
             inlet_temp = float(self.inlet_temp_input.text())
             inlet_pressure = float(self.inlet_pressure_input.text())
             pressure_unit = self.pressure_unit.currentText()
+            # 输入为表压，转绝压供 IAPWS 使用
             if pressure_unit == "bar":
-                inlet_pressure_mpa = inlet_pressure / 10
+                inlet_pressure_mpa = inlet_pressure / 10 + ATM_PRESSURE_MPA
             else:  # MPa
-                inlet_pressure_mpa = inlet_pressure
+                inlet_pressure_mpa = inlet_pressure + ATM_PRESSURE_MPA
 
             pipe_length = float(self.pipe_length_input.text())
             pipe_diameter = float(self.pipe_diameter_input.text()) / 1000  # 转换为m
@@ -381,8 +382,8 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
             # 显示结果
             self.display_results(results)
 
-        except ValueError:
-            self.result_text.setPlainText("输入参数格式错误，请检查输入值")
+        except ValueError as e:
+            self.result_text.setPlainText(f"输入错误: {str(e)}" if str(e) else "输入参数格式错误，请检查输入值")
         except Exception as e:
             self.result_text.setPlainText(f"计算错误: {str(e)}")
 
@@ -398,7 +399,8 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         inlet_temp = float(self.inlet_temp_input.text() or 0)
         inlet_pressure = float(self.inlet_pressure_input.text() or 0)
         pressure_unit = self.pressure_unit.currentText()
-        inlet_pressure_mpa = inlet_pressure / 10 if pressure_unit == "bar" else inlet_pressure
+        inlet_pressure_mpa = ((inlet_pressure / 10 + ATM_PRESSURE_MPA) if pressure_unit == "bar"
+                              else (inlet_pressure + ATM_PRESSURE_MPA))
         pipe_length = float(self.pipe_length_input.text() or 0)
         pipe_diameter = float(self.pipe_diameter_input.text() or 0)
         roughness = float(self.roughness_input.text() or 0)
@@ -433,7 +435,8 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
                 "出口压力_MPa": round(results.get('outlet_pressure', 0), 3),
                 "温降_C": round(results.get('temp_drop', 0), 1),
                 "压降_MPa": round(results.get('pressure_drop', 0), 3),
-                "总热损失_kW": round(results.get('total_heat_loss', 0), 1)
+                "总热损失_kW": round(results.get('heat_loss', 0), 1),
+                "冷凝蒸汽量_kg_h": round(results.get('condensate_kg_h', 0), 1)
             }
         except Exception as e:
             outputs["计算错误"] = str(e)
@@ -535,28 +538,48 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
                 thermal_cond = iapws_k(pressure_mpa, temp_c)
                 return density, viscosity, specific_heat, thermal_cond
             except Exception:
-                # 降级处理
-                density = pressure_mpa * 100 / (0.4615 * (temp_c + C_TO_K))
+                # 降级处理：理想气体 rho = P/(R·T)
+                density = pressure_mpa * 1000 / (0.4615 * (temp_c + C_TO_K))
                 return density, 1.2e-5, 2.0, 0.03
 
-        # 初始参数
+        # 初始参数（current_pressure 为绝压 MPa）
         current_temp = inlet_temp
         current_pressure = inlet_pressure
+        is_saturated = (steam_type == "饱和蒸汽")
+
+        # 过热模式校验：入口温度必须高于该压力下的饱和温度
+        if not is_saturated:
+            t_sat_in = _steam_iapws.saturation_temperature(inlet_pressure)
+            if inlet_temp <= t_sat_in + 0.5:
+                raise ValueError(
+                    f"入口温度 {inlet_temp:.1f} °C 低于 {inlet_pressure:.3f} MPa(绝) 的饱和温度 "
+                    f"{t_sat_in:.1f} °C，该状态不是过热蒸汽。请改选\"饱和蒸汽\"模式或提高入口温度")
+        else:
+            # 饱和蒸汽：入口温度取 Tsat(入口压力)，温降 = Tsat 之差
+            inlet_temp = _steam_iapws.saturation_temperature(inlet_pressure)
 
         # 分段计算 (将管道分成若干段)
         num_segments = 10
         segment_length = pipe_length / num_segments
 
         total_heat_loss = 0
+        total_condensate_kg_s = 0  # 饱和蒸汽沿途冷凝量
+        cross_area = math.pi * (pipe_diameter / 2) ** 2
 
         for i in range(num_segments):
-            # 获取当前段的蒸汽物性
-            density, viscosity, specific_heat, steam_conductivity = get_steam_properties(
-                current_temp, current_pressure
-            )
+            if is_saturated:
+                # 饱和蒸汽：温度跟随饱和曲线 Tsat(P)，热损失转化为冷凝量
+                sat_in = _steam_iapws.saturation_properties(P_MPa=current_pressure)
+                current_temp = sat_in['T_C']
+                density = sat_in['rho_g']
+                specific_heat = sat_in['cp_g']
+                viscosity = iapws_mu(current_pressure, current_temp) if iapws_mu else 1.2e-5
+            else:
+                density, viscosity, specific_heat, steam_conductivity = get_steam_properties(
+                    current_temp, current_pressure
+                )
 
             # 计算流速
-            cross_area = math.pi * (pipe_diameter / 2) ** 2
             velocity = mass_flow / (density * cross_area)
 
             # 计算雷诺数
@@ -571,6 +594,12 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
 
             # 更新压力
             current_pressure -= pressure_drop_mpa
+
+            # 压力守卫：末端不得接近常压
+            if current_pressure <= ATM_PRESSURE_MPA + 0.005:
+                raise ValueError(
+                    f"第 {i+1}/{num_segments} 段末端压力降至 {current_pressure:.3f} MPa(绝)，"
+                    "已接近常压无法继续输送。请增大管径、减小管长或提高入口压力")
 
             # 计算热损失
             if insulation_thickness > 0:
@@ -590,9 +619,15 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
 
             total_heat_loss += heat_loss_segment
 
-            # 计算温度降
-            temp_drop_segment = heat_loss_segment / (mass_flow * specific_heat * 1000)  # kJ/s to °C
-            current_temp -= temp_drop_segment
+            if is_saturated:
+                # 冷凝量 = 该段散热功率 / 汽化潜热（取该段入口压力下的 h_fg）
+                total_condensate_kg_s += heat_loss_segment / (sat_in['h_fg'] * 1000)
+                # 温度更新：跟随新压力下的饱和温度
+                current_temp = _steam_iapws.saturation_temperature(current_pressure)
+            else:
+                # 计算温度降
+                temp_drop_segment = heat_loss_segment / (mass_flow * specific_heat * 1000)  # kJ/s to °C
+                current_temp -= temp_drop_segment
 
         # 最终结果
         outlet_temp = current_temp
@@ -601,7 +636,12 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         pressure_drop = inlet_pressure - outlet_pressure
 
         # 计算最终段的流速和雷诺数
-        density_out, viscosity_out, _, _ = get_steam_properties(outlet_temp, outlet_pressure)
+        if is_saturated:
+            sat_out = _steam_iapws.saturation_properties(P_MPa=outlet_pressure)
+            density_out = sat_out['rho_g']
+            viscosity_out = iapws_mu(outlet_pressure, outlet_temp) if iapws_mu else 1.2e-5
+        else:
+            density_out, viscosity_out, _, _ = get_steam_properties(outlet_temp, outlet_pressure)
         velocity_out = mass_flow / (density_out * cross_area)
         reynolds_out = density_out * velocity_out * pipe_diameter / viscosity_out
 
@@ -619,6 +659,7 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
             'temp_drop': temp_drop,
             'pressure_drop': pressure_drop,
             'heat_loss': total_heat_loss / 1000,  # 转换为kW
+            'condensate_kg_h': total_condensate_kg_s * 3600,  # 饱和蒸汽冷凝量
             'velocity': velocity_out,
             'reynolds': reynolds_out,
             'flow_regime': flow_regime
@@ -645,6 +686,9 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         text += f"  温度降：{results['temp_drop']:.1f} °C\n\n"
         text += f"  压力降：{results['pressure_drop']:.3f} MPa\n\n"
         text += f"  总热损失：{results['heat_loss']:.1f} kW\n\n"
+        if results.get('condensate_kg_h', 0) > 0:
+            cond = results['condensate_kg_h']
+            text += f"  沿途冷凝蒸汽量：{cond:.1f} kg/h\n\n"
         text += f"  蒸汽流速：{results['velocity']:.1f} m/s\n\n"
         text += f"  雷诺数：{results['reynolds']:.0f}\n\n"
         text += f"  流动状态：{results['flow_regime']}\n"

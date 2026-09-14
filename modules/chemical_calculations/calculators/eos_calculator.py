@@ -283,7 +283,7 @@ class EOSCalculator(CalculatorBase):
         cgrid.setColumnStretch(1, 8)
         cgrid.setColumnStretch(2, 5)
 
-        self.temperature_input = QLineEdit()
+        self.temperature_input = QLineEdit("300")
         self.temperature_input.setPlaceholderText("温度")
         self.temperature_input.setValidator(QDoubleValidator(1, 2000, 2))
         self.temperature_input.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
@@ -291,7 +291,7 @@ class EOSCalculator(CalculatorBase):
         cgrid.addWidget(self.temperature_input, 0, 1)
         cgrid.addWidget(H("例如298.15"), 0, 2)
 
-        self.pressure_input = QLineEdit()
+        self.pressure_input = QLineEdit("101.325")
         self.pressure_input.setPlaceholderText("压力")
         self.pressure_input.setValidator(QDoubleValidator(0.1, 100000, 2))
         self.pressure_input.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
@@ -504,13 +504,21 @@ class EOSCalculator(CalculatorBase):
         return 1.0
 
     # ------------------------------------------------------------------
-    #  剩余性质（解析公式）
+    #  剩余性质（解析精确式，经 U_R 积分途径推导并数值验证）
     # ------------------------------------------------------------------
 
     @staticmethod
     def _residual_properties(eos_type, params, Z, T, P, tc, omega):
         """
         返回 (H^R, S^R, G^R) J/mol, J/(mol·K), J/mol
+
+        推导: U^R = ∫[T(∂P/∂T)_V − P]dV = −(a−T·a')·I(V)，
+              H^R = U^R + RT(Z−1)。
+        吸引项因子统一为 (1−β̄)，β̄ ≡ (T/a)(da/dT)：
+          vdW: β̄=0；RK: β̄=−0.5（→教科书 H^R/RT = Z−1−(3A/2B)ln(1+B/Z)）
+          SRK/PR: β̄ = −κ√Tr/(1+κ(1−√Tr))
+        S^R 用恒等式 S^R = (H^R − RT·lnφ)/T（与逸度系数严格自洽），
+        G^R = RT·lnφ。
         """
         R = 8.314
         if not params:
@@ -520,40 +528,35 @@ class EOSCalculator(CalculatorBase):
         b = params['b']
         A = a * (P * 1000) / (R * T) ** 2
         B = b * (P * 1000) / (R * T)
+        Tr = T / tc if tc > 0 else 1.0
+        sqrt_Tr = math.sqrt(Tr) if Tr > 0 else 1.0
+
+        phi = EOSCalculator._fugacity_coeff(eos_type, params, Z, T, P)
+        G_R = R * T * math.log(phi) if phi > 0 else 0.0
 
         if eos_type == "范德瓦尔斯方程":
             H_R = R * T * (Z - 1.0) - a * (P * 1000) / (Z * R * T)
-            S_R = R * (math.log(Z) + B / Z)
 
-        elif eos_type in ("Redlich-Kwong方程", "Soave-Redlich-Kwong方程"):
-            if eos_type == "Soave-Redlich-Kwong方程":
-                m_srk = 0.480 + 1.574 * omega - 0.176 * omega ** 2
-                sqrt_Tr = math.sqrt(T / tc) if tc > 0 else 1.0
-                da_over_a = -m_srk / (T * sqrt_Tr) if T > 0 else 0.0
-            else:
-                da_over_a = -0.5 / T if T > 0 else 0.0
+        elif eos_type == "Redlich-Kwong方程":
+            # β̄ = −0.5 恒定 → 因子 1.5
+            H_R = R * T * (Z - 1.0 - 1.5 * (A / B) * math.log(1.0 + B / Z))
 
-            H_R = R * T * (Z - 1.0 - (A / B) * math.log(1.0 + B / Z) * (1.0 + T * da_over_a))
-            S_R = R * (math.log(Z - B) - (A / B) * math.log(1.0 + B / Z) + math.log(Z))
+        elif eos_type == "Soave-Redlich-Kwong方程":
+            m = 0.480 + 1.574 * omega - 0.176 * omega ** 2
+            beta = -m * sqrt_Tr / (1.0 + m * (1.0 - sqrt_Tr))
+            H_R = R * T * (Z - 1.0 - (A / B) * (1.0 - beta) * math.log(1.0 + B / Z))
 
         elif eos_type == "Peng-Robinson方程":
             kappa = 0.37464 + 1.54226 * omega - 0.26992 * omega ** 2
-            sqrt_Tr = math.sqrt(T / tc) if tc > 0 else 1.0
-            dalpha_over_alpha = kappa / (T * sqrt_Tr) if T > 0 else 0.0
-            da_over_a = dalpha_over_alpha
-
+            beta = -kappa * sqrt_Tr / (1.0 + kappa * (1.0 - sqrt_Tr))
             sqrt2 = math.sqrt(2.0)
             H_R = R * T * (Z - 1.0
-                           - (A / (2.0 * sqrt2 * B)) * (1.0 + T * da_over_a)
+                           - (A / (2.0 * sqrt2 * B)) * (1.0 - beta)
                            * math.log((Z + (1 + sqrt2) * B) / (Z + (1 - sqrt2) * B)))
-            S_R = R * (math.log(Z - B)
-                       - (A / (2.0 * sqrt2 * B)) * math.log((Z + (1 + sqrt2) * B) / (Z + (1 - sqrt2) * B))
-                       + math.log(Z))
         else:
             H_R = 0.0
-            S_R = 0.0
 
-        G_R = H_R - T * S_R
+        S_R = (H_R - G_R) / T
         return H_R, S_R, G_R
 
     # ------------------------------------------------------------------
@@ -775,6 +778,9 @@ class EOSCalculator(CalculatorBase):
         return {"calculator": "EOSCalculator", "name": "状态方程计算"}
 
     def generate_report(self):
+        if not self.result_text.toPlainText().strip() or not self._last_result:
+            QMessageBox.warning(self, "生成失败", "请先进行计算再生成计算书")
+            return None
         return self.result_text.toPlainText()
 
     def download_docx_report(self):

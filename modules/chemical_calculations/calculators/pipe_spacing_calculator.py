@@ -292,24 +292,8 @@ class 管道间距(CalculatorBase):
         return widget
     
     def clear_inputs(self):
-        """清空所有输入参数"""
-        for widget in self.findChildren(QLineEdit):
-            widget.clear()
-        for widget in self.findChildren(QComboBox):
-            widget.setCurrentIndex(0)
-        # 重置结果显示
-        self.result_main_label.setText("点击计算按钮开始计算")
-        self.result_detail_label.setText("")
-        # 重置结果数据
-        self.results = {
-            'spacing_basic': 0,
-            'spacing_flange': 0,
-            'spacing_final': 0,
-            'flange_od1': 0,
-            'flange_od2': 0,
-            'pipe_od1': 0,
-            'pipe_od2': 0
-        }
+        """清空并恢复默认参数"""
+        self.reset_inputs()
 
     def get_project_info(self):
         """获取工程信息 - 返回 dict"""
@@ -334,10 +318,15 @@ class 管道间距(CalculatorBase):
             # 检查是否有计算结果
             if not self.results.get('spacing_final', 0):
                 QMessageBox.warning(self, "生成失败", "请先进行计算再生成计算书")
-                return ""
+                return None
 
             project_info = self.get_project_info()
             r = self.results
+            notes = r.get('notes') or []
+            notes_block = ""
+            if notes:
+                notes_block = ("══════════\n数据提示\n══════════\n\n"
+                               + "\n".join(f"    • {n}" for n in notes) + "\n\n")
 
             report = f"""工程计算书 - 管道间距计算
 计算工具: ChemCal 工程计算模块
@@ -374,14 +363,15 @@ class 管道间距(CalculatorBase):
     法兰间距（法兰外缘）: {r['spacing_flange']:.1f}mm
     最终最小中心距: {r['spacing_final']:.1f}mm
 
-══════════
+{notes_block}══════════
 备注说明
 ══════════
 
-    1. 本计算书依据化工部标准HG/T20592~20623-2009，参照GB50316和SH3012
-    2. 计算结果仅供参考，实际应用需考虑安全系数
-    3. 重要工程参数应经专业工程师审核确认
-    4. 计算条件变更时应重新进行计算
+    1. 法兰外径依据 HG/T 20592-2009 钢制管法兰 PN 系列（整体钢制管法兰表）
+    2. 本计算书参照 GB 50316 和 SH 3012，管廊净距 50mm、法兰外缘净距 25mm
+    3. 计算结果仅供参考，实际应用需考虑安全系数
+    4. 重要工程参数应经专业工程师审核确认
+    5. 计算条件变更时应重新进行计算
 
 ---
 生成于 ChemCal 工程计算模块
@@ -389,7 +379,7 @@ class 管道间距(CalculatorBase):
             return report
         except Exception as e:
             print(f"生成计算书失败: {e}")
-            return ""
+            return None
 
     def download_docx_report(self):
         """生成DOCX格式计算书"""
@@ -398,38 +388,52 @@ class 管道间距(CalculatorBase):
         """生成PDF格式计算书"""
         ReportExporter.export_pdf(self, "管道间距")
     def load_flange_data(self):
-        """加载法兰标准数据（简化版，实际应使用完整数据库）"""
-        # HG/T20592-2009 PN系列法兰外径数据（单位：mm）
-        # 格式: {DN: {法兰等级: 外径}}
+        """加载法兰外径数据（HG/T 20592-2009 钢制管法兰 PN 系列，单位 mm）
+
+        表内填的是【法兰外径 D】，不是螺栓孔中心圆直径 K！
+        （K 比 D 小 30~70mm，误用 K 会使法兰间距偏小 → 相邻法兰实际干涉）
+        数据来源：HG/T 20592-2009 表 8.2.4 系列（整体钢制管法兰）。
+        注：PN63 / PN100 该标准仅给到 DN400，更大口径未收录。
+        """
         flange_data = {
-            # PN10/16 系列
-            15: {'PN10': 65, 'PN16': 65, 'PN25': 65, 'PN40': 65, 'PN63': 65, 'PN100': 65},
-            20: {'PN10': 75, 'PN16': 75, 'PN25': 75, 'PN40': 75, 'PN63': 75, 'PN100': 75},
-            25: {'PN10': 85, 'PN16': 85, 'PN25': 85, 'PN40': 85, 'PN63': 85, 'PN100': 85},
-            32: {'PN10': 100, 'PN16': 100, 'PN25': 100, 'PN40': 100, 'PN63': 100, 'PN100': 100},
-            40: {'PN10': 110, 'PN16': 110, 'PN25': 110, 'PN40': 110, 'PN63': 110, 'PN100': 110},
-            50: {'PN10': 125, 'PN16': 125, 'PN25': 125, 'PN40': 125, 'PN63': 125, 'PN100': 140},
-            65: {'PN10': 145, 'PN16': 145, 'PN25': 145, 'PN40': 145, 'PN63': 145, 'PN100': 160},
-            80: {'PN10': 160, 'PN16': 160, 'PN25': 160, 'PN40': 160, 'PN63': 160, 'PN100': 190},
-            100: {'PN10': 180, 'PN16': 180, 'PN25': 190, 'PN40': 190, 'PN63': 190, 'PN100': 230},
-            125: {'PN10': 210, 'PN16': 210, 'PN25': 220, 'PN40': 220, 'PN63': 220, 'PN100': 270},
-            150: {'PN10': 240, 'PN16': 240, 'PN25': 250, 'PN40': 250, 'PN63': 250, 'PN100': 300},
-            200: {'PN10': 295, 'PN16': 295, 'PN25': 310, 'PN40': 320, 'PN63': 320, 'PN100': 360},
-            250: {'PN10': 350, 'PN16': 350, 'PN25': 370, 'PN40': 385, 'PN63': 385, 'PN100': 425},
-            300: {'PN10': 400, 'PN16': 400, 'PN25': 430, 'PN40': 450, 'PN63': 450, 'PN100': 485},
-            350: {'PN10': 460, 'PN16': 460, 'PN25': 490, 'PN40': 510, 'PN63': 510, 'PN100': 555},
-            400: {'PN10': 515, 'PN16': 515, 'PN25': 550, 'PN40': 585, 'PN63': 585, 'PN100': 620},
-            450: {'PN10': 565, 'PN16': 565, 'PN25': 600, 'PN40': 610, 'PN63': 610, 'PN100': 660},
-            500: {'PN10': 615, 'PN16': 615, 'PN25': 660, 'PN40': 670, 'PN63': 670, 'PN100': 730},
+            10:  {'PN10': 90,  'PN16': 90,  'PN25': 90,  'PN40': 90,  'PN63': 100, 'PN100': 100},
+            15:  {'PN10': 95,  'PN16': 95,  'PN25': 95,  'PN40': 95,  'PN63': 105, 'PN100': 105},
+            20:  {'PN10': 105, 'PN16': 105, 'PN25': 105, 'PN40': 105, 'PN63': 130, 'PN100': 130},
+            25:  {'PN10': 115, 'PN16': 115, 'PN25': 115, 'PN40': 115, 'PN63': 140, 'PN100': 140},
+            32:  {'PN10': 140, 'PN16': 140, 'PN25': 140, 'PN40': 140, 'PN63': 155, 'PN100': 155},
+            40:  {'PN10': 150, 'PN16': 150, 'PN25': 150, 'PN40': 150, 'PN63': 170, 'PN100': 170},
+            50:  {'PN10': 165, 'PN16': 165, 'PN25': 165, 'PN40': 165, 'PN63': 180, 'PN100': 195},
+            65:  {'PN10': 185, 'PN16': 185, 'PN25': 185, 'PN40': 185, 'PN63': 205, 'PN100': 220},
+            80:  {'PN10': 200, 'PN16': 200, 'PN25': 200, 'PN40': 200, 'PN63': 215, 'PN100': 230},
+            100: {'PN10': 220, 'PN16': 220, 'PN25': 235, 'PN40': 235, 'PN63': 250, 'PN100': 265},
+            125: {'PN10': 250, 'PN16': 250, 'PN25': 270, 'PN40': 270, 'PN63': 295, 'PN100': 315},
+            150: {'PN10': 285, 'PN16': 285, 'PN25': 300, 'PN40': 300, 'PN63': 345, 'PN100': 355},
+            200: {'PN10': 340, 'PN16': 340, 'PN25': 360, 'PN40': 375, 'PN63': 415, 'PN100': 430},
+            250: {'PN10': 395, 'PN16': 405, 'PN25': 425, 'PN40': 450, 'PN63': 470, 'PN100': 505},
+            300: {'PN10': 445, 'PN16': 460, 'PN25': 485, 'PN40': 515, 'PN63': 530, 'PN100': 585},
+            350: {'PN10': 505, 'PN16': 520, 'PN25': 555, 'PN40': 580, 'PN63': 600, 'PN100': 655},
+            400: {'PN10': 565, 'PN16': 580, 'PN25': 620, 'PN40': 660, 'PN63': 670, 'PN100': 715},
+            450: {'PN10': 615, 'PN16': 640, 'PN25': 670, 'PN40': 685},
+            500: {'PN10': 670, 'PN16': 715, 'PN25': 730, 'PN40': 755},
         }
         return flange_data
+
+    # 管子外径（GB/T 17395 通用系列 / ASME B36.10M，mm）
+    PIPE_OD_TABLE = {
+        10: 17.2, 15: 21.3, 20: 26.9, 25: 33.7, 32: 42.4, 40: 48.3, 50: 60.3,
+        65: 76.1, 80: 88.9, 100: 114.3, 125: 139.7, 150: 168.3, 200: 219.1,
+        250: 273.0, 300: 323.9, 350: 355.6, 400: 406.4, 450: 457.0, 500: 508.0,
+    }
+
     
     def load_initial_data(self):
-        """初始化加载数据"""
+        """初始化加载数据（先清空，避免单位制来回切换时条目重复累加）"""
         # 初始化公称直径列表（公制）
         dn_list = ["15", "20", "25", "32", "40", "50", "65", "80", "100", 
                   "125", "150", "200", "250", "300", "350", "400", "450", "500"]
         
+        self.dn_input1.clear()
+        self.dn_input2.clear()
         self.dn_input1.addItems(dn_list)
         self.dn_input2.addItems(dn_list)
         self.dn_input1.setCurrentIndex(8)  # 默认DN100
@@ -437,10 +441,12 @@ class 管道间距(CalculatorBase):
         
         # 初始化法兰等级
         flange_grades = ["PN10", "PN16", "PN25", "PN40", "PN63", "PN100"]
+        self.flange_combo1.clear()
+        self.flange_combo2.clear()
         self.flange_combo1.addItems(flange_grades)
         self.flange_combo2.addItems(flange_grades)
         self.flange_combo1.setCurrentIndex(0)  # 默认PN10
-        self.flange_combo2.setCurrentIndex(0)  # 默认PN20
+        self.flange_combo2.setCurrentIndex(0)  # 默认PN10
         
         # 设置输入验证
         for input_widget in [self.insulation_input1, self.insulation_input2, 
@@ -473,45 +479,41 @@ class 管道间距(CalculatorBase):
         }
         return nps_to_dn_map.get(nps_str, 50)
     
+    def _dn_to_int(self, dn):
+        """把下拉/手输规格归一化为 DN 数字（按当前单位制判定，避免 "1"/"20" 歧义）"""
+        s = str(dn).strip()
+        if self.unit_combo.currentIndex() == 1:      # 英制 NPS
+            return self.nps_to_dn(s)
+        try:
+            return int(float(s))
+        except ValueError:
+            return self.nps_to_dn(s)
+
+    def lookup_flange_od(self, dn, flange_grade):
+        """查法兰外径，返回 (外径mm, 备注)。未收录时按已知最大值保守取值并提示。"""
+        table = self.flange_data.get(dn)
+        if table:
+            if flange_grade in table:
+                return table[flange_grade], ""
+            known = [v for k, v in table.items() if k in ("PN10", "PN16", "PN25", "PN40")]
+            if known:
+                v = max(known)
+                return v, (f"DN{dn} 的 {flange_grade} 法兰外径 HG/T 20592-2009 未收录，"
+                           f"暂按同口径最大已知外径 {v}mm 保守取值，请查标准手册复核")
+        est = round(dn * 2.2, 1)
+        return est, f"DN{dn} 非常用口径，法兰外径按 2.2×DN = {est}mm 保守估算，请查标准手册复核"
+
     def get_flange_od(self, dn, flange_grade):
-        """获取法兰外径"""
-        try:
-            if isinstance(dn, str):
-                # 如果是英制，先转换为DN
-                if '"' in dn or "/" in dn or " " in dn:
-                    dn = self.nps_to_dn(dn)
-                else:
-                    dn = int(dn)
-            
-            # 从数据中查找
-            if dn in self.flange_data:
-                if flange_grade in self.flange_data[dn]:
-                    return self.flange_data[dn][flange_grade]
-            
-            # 如果没找到，使用估算公式
-            return dn * 1.5 + 50  # 简化估算
-        except:
-            return 100  # 默认值
-    
+        """获取法兰外径（mm）"""
+        od, _ = self.lookup_flange_od(self._dn_to_int(dn), flange_grade)
+        return od
+
     def get_pipe_od(self, dn):
-        """获取管道外径（根据DN估算）"""
-        try:
-            if isinstance(dn, str):
-                # 如果是英制，先转换为DN
-                if '"' in dn or "/" in dn or " " in dn:
-                    dn = self.nps_to_dn(dn)
-                else:
-                    dn = int(dn)
-            
-            # 管道外径估算（根据常用壁厚系列）
-            if dn <= 80:
-                return dn + 2 * 3.5  # 小口径管道
-            elif dn <= 200:
-                return dn + 2 * 4.5  # 中口径管道
-            else:
-                return dn + 2 * 6.0  # 大口径管道
-        except:
-            return dn * 1.1  # 简化估算
+        """获取管道外径（mm，GB/T 17395 通用系列 / ASME B36.10M）"""
+        n = self._dn_to_int(dn)
+        if n in self.PIPE_OD_TABLE:
+            return self.PIPE_OD_TABLE[n]
+        return round(n * 1.15, 1)  # 非常用口径：按 1.15×DN 保守估算
     
     def calculate_spacing(self):
         """计算管道间距 - 依据标准"""
@@ -527,10 +529,11 @@ class 管道间距(CalculatorBase):
             insulation1 = float(self.insulation_input1.text()) if self.insulation_check1.isChecked() else 0
             insulation2 = float(self.insulation_input2.text()) if self.insulation_check2.isChecked() else 0
             
-            # 获取法兰外径
-            flange_od1 = self.get_flange_od(dn1, flange_grade1)
-            flange_od2 = self.get_flange_od(dn2, flange_grade2)
-            
+            # 获取法兰外径（未收录的(DN,PN)组合会返回保守估算值并给出提示）
+            flange_od1, note1 = self.lookup_flange_od(self._dn_to_int(dn1), flange_grade1)
+            flange_od2, note2 = self.lookup_flange_od(self._dn_to_int(dn2), flange_grade2)
+            notes = [n for n in (note1, note2) if n]
+
             # 获取管道外径
             pipe_od1 = self.get_pipe_od(dn1)
             pipe_od2 = self.get_pipe_od(dn2)
@@ -581,7 +584,8 @@ class 管道间距(CalculatorBase):
                 'flange_od1': flange_od1,
                 'flange_od2': flange_od2,
                 'pipe_od1': pipe_od1,
-                'pipe_od2': pipe_od2
+                'pipe_od2': pipe_od2,
+                'notes': notes
             })
             
             # 更新显示
@@ -626,7 +630,12 @@ class 管道间距(CalculatorBase):
             detail_text += " + ".join(adjustments)
         else:
             detail_text += "无"
-        
+
+        # 数据来源提示（法兰外径未收录 / 非标口径保守估算）
+        notes = self.results.get('notes') or []
+        if notes:
+            detail_text += "<br><br><b>数据提示:</b><br>• " + "<br>• ".join(notes)
+
         self.result_detail_label.setText(detail_text)
 
     def _get_history_data(self):

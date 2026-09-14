@@ -280,11 +280,28 @@ def _region2(T_K, P_MPa):
 # 状态判定与区域选择
 # ============================================================================
 
-Ps_623 = 16.5291642526  # MPa, 饱和压力 @ 623.15K
+Ps_623 = 16.5291642526  # MPa, 饱和压力 @ 623.15K (= B23 线起点, IF97 Table 33)
+
+
+def _p_b23(T_K):
+    """B23 边界线: 区域2与区域3的分界 (IF97 Eq.5)
+
+    参考: IAPWS-IF97 Release (2007/2012) Eq.5
+    自检: p_B23(623.15K) = 16.5291642526 MPa = Ps_623
+    """
+    return (0.34805185628969e3
+            - 0.11671859879975e1 * T_K
+            + 0.10192970039589e-2 * T_K * T_K)
 
 
 def _region_select(T_K, P_MPa):
-    """判断状态区域 (1, 2, 或 4)"""
+    """判断状态区域 (1, 2, 3 或 4)
+
+    区域1仅覆盖 T ≤ 623.15K；T > 623.15K 时区域1/区域3的分界
+    不是饱和线而是 B23 边界线（IF97 Eq.5）。此前用 Ps_623 判断，
+    导致 623.15K 以上、B23 线以下的高压过热状态被误判为区域1，
+    区域1公式在有效范围外外推出错误结果（如 700K/30MPa 偏差 3500%）。
+    """
     if T_K <= 623.15:
         Ps = _p_sat(T_K)
         if abs(P_MPa - Ps) / max(Ps, 1e-15) < 1e-6:
@@ -294,10 +311,10 @@ def _region_select(T_K, P_MPa):
         else:
             return 2
     else:
-        if P_MPa >= Ps_623:
-            return 1
-        else:
+        if P_MPa < _p_b23(T_K):
             return 2
+        else:
+            return 3  # 区域3（近临界/超临界区），本模块未实现
 
 
 # ============================================================================
@@ -347,6 +364,13 @@ def saturation_properties(T_C=None, P_MPa=None):
     else:
         raise ValueError("必须提供 T_C 或 P_MPa")
 
+    # 饱和线 16.53 MPa 以上进入区域3，饱和液/汽相（h_f/h_g 等）需区域3公式，
+    # 本模块未实现——原实现会拿区域1/2公式在有效范围外外推出错误值
+    if T_K > 623.15:
+        raise ValueError(
+            f"饱和状态 P={P:.3f} MPa (Tsat={T_K-273.15:.1f} °C) 超出本模块范围"
+            f"（P ≤ 16.53 MPa，即区域1/2/4 覆盖范围），近临界区需区域3公式")
+
     prop_f = _region1(T_K, P)
     prop_g = _region2(T_K, P)
 
@@ -376,6 +400,12 @@ def steam_properties(P_MPa, T_C):
     """
     T_K = T_C + 273.15
     region = _region_select(T_K, P_MPa)
+
+    if region == 3:
+        raise ValueError(
+            f"状态点 P={P_MPa} MPa, T={T_C} °C 位于 IAPWS-IF97 区域3"
+            f"（近临界/超临界区，P ≥ 16.53 MPa 且高温），本模块未实现该区域，"
+            f"请改用完整物性库或查专用图表")
 
     if region == 1:
         prop = _region1(T_K, P_MPa)

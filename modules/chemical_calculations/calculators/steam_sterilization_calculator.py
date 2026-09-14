@@ -64,6 +64,9 @@ MATERIAL_DB = {
     "钛材TA2": {"rho": 4510, "cp": 540, "S": 100, "display": "钛材 TA2"},
 }
 
+# 显示名 → DB 键 反查表（下拉框显示的是 display 名，直接用显示名查库会 KeyError）
+MAT_DISPLAY_TO_KEY = {v["display"]: k for k, v in MATERIAL_DB.items()}
+
 # ── 保温类型 ──
 INSULATION_DB = {
     "无保温": 15.0,
@@ -277,7 +280,7 @@ class SteamSterilizationCalculator(CalculatorBase):
             (9, "热效率:", K_EFFICIENCY, "默认 0.95", QDoubleValidator(0.5, 1.0, 2), None),
         ]
         defaults = {
-            K_VOLUME: "", K_HD_RATIO: "2.0", K_T_STERILIZE: "121",
+            K_VOLUME: "10", K_HD_RATIO: "2.0", K_T_STERILIZE: "121",
             K_T_INITIAL: "25", K_P_STEAM: "0.3", K_TIME: "30",
             K_SAFETY: "1.2", K_EFFICIENCY: "0.95",
         }
@@ -291,12 +294,13 @@ class SteamSterilizationCalculator(CalculatorBase):
 
     def _setup_pipe_mode(self):
         """管道消毒输入界面"""
-        pipe_mats = ["304不锈钢", "316L不锈钢", "碳钢Q235"]
+        pipe_keys = ["304不锈钢", "316L不锈钢", "碳钢Q235"]
         inputs = [
             (0, "管道公称直径:", K_PIPE_DN, None, None,
              [f"{dn} (外径{od}×{wt}mm)" for dn, (od, wt) in PIPE_DIMENSIONS.items()]),
             (1, "管道长度 (m):", K_PIPE_LENGTH, "例如：50", QDoubleValidator(0.5, 5000, 1), None),
-            (2, "管道材质:", K_PIPE_MATERIAL, None, None, pipe_mats),
+            (2, "管道材质:", K_PIPE_MATERIAL, None, None,
+             [MATERIAL_DB[m]["display"] for m in pipe_keys]),
             (3, "灭菌温度 (°C):", K_T_STERILIZE, "默认 121", QDoubleValidator(100, 150, 1), None),
             (4, "初始温度 (°C):", K_T_INITIAL, "默认 25", QDoubleValidator(-10, 50, 1), None),
             (5, "蒸汽压力 MPa(g):", K_P_STEAM, "默认 0.3", QDoubleValidator(0.05, 2.5, 2), None),
@@ -444,7 +448,8 @@ class SteamSterilizationCalculator(CalculatorBase):
             raise ValueError("请输入有效的罐体体积")
 
         hd_ratio = self._get(K_HD_RATIO, 2.0)
-        material_name = self._get(K_MATERIAL, "304不锈钢")
+        material_display = str(self._get(K_MATERIAL, "304不锈钢"))
+        material_name = MAT_DISPLAY_TO_KEY.get(material_display, "304不锈钢")
         t_sterilize = self._get(K_T_STERILIZE, 121)
         t_initial = self._get(K_T_INITIAL, 25)
         p_steam = self._get(K_P_STEAM, 0.3)
@@ -474,9 +479,16 @@ class SteamSterilizationCalculator(CalculatorBase):
         h_loss = INSULATION_DB[insulation]  # W/(m²·K)
         q_loss = h_loss * geo["A_total"] * (t_sterilize - t_ambient) * time_min * 60 / 1000  # kJ
 
-        # 6. 蒸汽物性（标准接口：入参为表压 MPa）
+        # 5. 蒸汽物性（标准接口：入参为表压 MPa）
         steam = get_steam_props(p_steam)
-        h_fg = steam["h_fg"]  # kJ/kg
+        h_fg = steam["h_fg"]
+
+        # 校验：灭菌温度必须低于蒸汽饱和温度
+        if t_sterilize >= steam["sat_temp"]:
+            raise ValueError(
+                f"灭菌温度 {t_sterilize:.0f} °C 不低于 {p_steam:.2f} MPa(g) 蒸汽的饱和温度 "
+                f"{steam['sat_temp']:.1f} °C，该蒸汽无法将罐体加热到目标温度。"
+                "请提高蒸汽压力或降低灭菌温度")
 
         # 7. 蒸汽用量
         q_total = (q_heat + q_loss) * safety
@@ -489,6 +501,7 @@ class SteamSterilizationCalculator(CalculatorBase):
             "volume": volume,
             "hd_ratio": hd_ratio,
             "material": material_name,
+            "material_display": mat["display"],
             "p_steam": p_steam,
             "t_sterilize": t_sterilize,
             "t_initial": t_initial,
@@ -523,7 +536,8 @@ class SteamSterilizationCalculator(CalculatorBase):
         if pipe_length <= 0:
             raise ValueError("请输入有效的管道长度")
 
-        material_name = self._get(K_PIPE_MATERIAL, "304不锈钢")
+        material_display = str(self._get(K_PIPE_MATERIAL, "304不锈钢"))
+        material_name = MAT_DISPLAY_TO_KEY.get(material_display, "304不锈钢")
         t_sterilize = self._get(K_T_STERILIZE, 121)
         t_initial = self._get(K_T_INITIAL, 25)
         p_steam = self._get(K_P_STEAM, 0.3)
@@ -563,6 +577,13 @@ class SteamSterilizationCalculator(CalculatorBase):
         steam = get_steam_props(p_steam)
         h_fg = steam["h_fg"]
 
+        # 校验：灭菌温度必须低于蒸汽饱和温度
+        if t_sterilize >= steam["sat_temp"]:
+            raise ValueError(
+                f"灭菌温度 {t_sterilize:.0f} °C 不低于 {p_steam:.2f} MPa(g) 蒸汽的饱和温度 "
+                f"{steam['sat_temp']:.1f} °C，该蒸汽无法将管道加热到目标温度。"
+                "请提高蒸汽压力或降低灭菌温度")
+
         # 6. 蒸汽用量
         q_total = (q_heat + q_loss) * safety
         steam_mass_theoretical = q_total / h_fg
@@ -577,6 +598,7 @@ class SteamSterilizationCalculator(CalculatorBase):
             "pipe_wt": wt,
             "pipe_length": pipe_length,
             "material": material_name,
+            "material_display": mat["display"],
             "A_total": A_total,
             "pipe_weight": pipe_weight,
             "delta_t": delta_t,
@@ -612,12 +634,12 @@ class SteamSterilizationCalculator(CalculatorBase):
   高径比 H/D: {r['hd_ratio']:.1f}
   计算内径: {r['D']:.3f} m ({r['D']*1000:.0f} mm)
   计算高度: {r['H']:.3f} m ({r['H']*1000:.0f} mm)
-  估算壁厚: {r['wall_thickness']:.0f} mm ({r['material']})
+  估算壁厚: {r['wall_thickness']:.0f} mm ({r['material_display']})
   外表面积: {r['A_total']:.1f} m²
   罐体重量: {r['tank_weight']:.0f} kg ({r['tank_weight']/1000:.2f} t)
 
 【热负荷计算】
-  材质: {r['material']} (比热容 {MATERIAL_DB[r['material']]['cp']} J/(kg·K))
+  材质: {r['material_display']} (比热容 {MATERIAL_DB[r['material']]['cp']} J/(kg·K))
   温差: {r['delta_t']:.1f} °C ({r['t_initial']} → {r['t_sterilize']})
   罐体加热热负荷: {r['q_heat']/1000:.1f} MJ ({r['q_heat']:.0f} kJ)
   散热系数: {INSULATION_DB.get(r['insulation'], '?')} W/(m²·K) ({r['insulation']})
@@ -636,7 +658,7 @@ class SteamSterilizationCalculator(CalculatorBase):
   安全系数: {r['safety']:.2f}
   热效率: {r['efficiency']:.2f}
   ★ 实际蒸汽用量: {r['steam_mass_actual']:.2f} kg
-  ★ 折合标况: {r['steam_mass_actual']/r['volume']:.1f} kg/m³(罐容)
+  ★ 单位罐容蒸汽耗量: {r['steam_mass_actual']/r['volume']:.1f} kg/m³(罐容)
 """
         self.result_text.setText(text)
 
@@ -649,7 +671,7 @@ class SteamSterilizationCalculator(CalculatorBase):
 【管道参数】
   管道规格: {r['pipe_dn']} (外径{r['pipe_od']}×{r['pipe_wt']}mm)
   管道长度: {r['pipe_length']:.0f} m
-  管道材质: {r['material']}
+  管道材质: {r['material_display']}
   外表面积: {r['A_total']:.1f} m²
   管道重量: {r['pipe_weight']:.1f} kg
 
@@ -672,7 +694,7 @@ class SteamSterilizationCalculator(CalculatorBase):
   安全系数: {r['safety']:.2f}
   热效率: {r['efficiency']:.2f}
   ★ 实际蒸汽用量: {r['steam_mass_actual']:.2f} kg
-  ★ 折合标况: {r['steam_mass_actual']/r['pipe_length']:.2f} kg/m(管长)
+  ★ 单位管长蒸汽耗量: {r['steam_mass_actual']/r['pipe_length']:.2f} kg/m(管长)
 """
         self.result_text.setText(text)
 

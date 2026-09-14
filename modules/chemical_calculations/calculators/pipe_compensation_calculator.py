@@ -274,7 +274,7 @@ class 管道补偿(CalculatorBase):
         od_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(od_label, row, 0)
         
-        self.od_input = QLineEdit()
+        self.od_input = QLineEdit("108")
         self.od_input.setPlaceholderText("例如: 108")
         self.od_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.od_input.setValidator(QDoubleValidator(1.0, 2000.0, 6))
@@ -302,7 +302,7 @@ class 管道补偿(CalculatorBase):
         self.length_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(self.length_label, row, 0)
         
-        self.length_input = QLineEdit()
+        self.length_input = QLineEdit("50.0")
         self.length_input.setPlaceholderText("例如: 50.0")
         self.length_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.length_input.setValidator(QDoubleValidator(0.1, 1000.0, 6))
@@ -320,7 +320,7 @@ class 管道补偿(CalculatorBase):
         self.l1_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(self.l1_label, row, 0)
         
-        self.l1_input = QLineEdit()
+        self.l1_input = QLineEdit("20.0")
         self.l1_input.setPlaceholderText("例如: 20.0")
         self.l1_input.setValidator(QDoubleValidator(0.1, 1000.0, 6))
         self.l1_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -338,7 +338,7 @@ class 管道补偿(CalculatorBase):
         self.l2_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(self.l2_label, row, 0)
         
-        self.l2_input = QLineEdit()
+        self.l2_input = QLineEdit("9.0")
         self.l2_input.setPlaceholderText("例如: 9.0")
         self.l2_input.setValidator(QDoubleValidator(0.1, 1000.0, 6))
         self.l2_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -356,7 +356,7 @@ class 管道补偿(CalculatorBase):
         self.l3_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(self.l3_label, row, 0)
         
-        self.l3_input = QLineEdit()
+        self.l3_input = QLineEdit("15.0")
         self.l3_input.setPlaceholderText("例如: 15.0")
         self.l3_input.setValidator(QDoubleValidator(0.1, 1000.0, 6))
         self.l3_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -374,7 +374,7 @@ class 管道补偿(CalculatorBase):
         temp_install_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(temp_install_label, row, 0)
         
-        self.temp_install_input = QLineEdit()
+        self.temp_install_input = QLineEdit("20")
         self.temp_install_input.setPlaceholderText("例如: 20")
         self.temp_install_input.setValidator(QDoubleValidator(-100.0, 100.0, 6))
         self.temp_install_input.setText("20")
@@ -392,7 +392,7 @@ class 管道补偿(CalculatorBase):
         temp_operate_label.setStyleSheet(INPUT_LABEL_STYLE)
         input_layout.addWidget(temp_operate_label, row, 0)
         
-        self.temp_operate_input = QLineEdit()
+        self.temp_operate_input = QLineEdit("200")
         self.temp_operate_input.setPlaceholderText("例如: 200")
         self.temp_operate_input.setValidator(QDoubleValidator(-100.0, 500.0, 6))
         self.temp_operate_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
