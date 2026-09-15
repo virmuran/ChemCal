@@ -4,9 +4,8 @@
 # GUI 框架
 PySide6>=6.5.0
 
-# 科学计算
+# 科学计算（仅 numpy；scipy/pandas 项目零引用已于 2026-09-14 剔除）
 numpy>=1.24.0
-scipy>=1.10.0
 
 # PDF 生成（计算书导出，reportlab 为旧方案，逐步废弃）
 reportlab>=4.0.0
@@ -22,6 +21,9 @@ pywin32>=305
 
 # 系统监控（帮助 > 系统信息）
 psutil>=5.9.0
+
+# 剪贴板（篮式过滤器导出）
+pyperclip>=1.8.0
 
 # 日志记录
 loguru>=0.7.0

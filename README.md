@@ -26,7 +26,14 @@
 
 ## 下载与安装
 
-前往 [Releases](https://github.com/virmuran/ChemCal/releases) 下载最新版 `ChemCal_vX.X.X.exe`，双击即可运行，无需安装 Python 环境。
+前往 [Releases](https://github.com/virmuran/ChemCal/releases)，按需选择：
+
+| 文件 | 适合谁 | 说明 |
+|---|---|---|
+| `ChemCal_vX.X.X_setup.exe` | 普通用户 | 安装向导（简体中文），下一步装完，开始菜单/桌面快捷方式、控制面板卸载 |
+| `ChemCal_vX.X.X_portable.zip` | 便携党 | 解压即用，免安装，适合 U 盘 / 无权限环境 |
+
+两种发行均无需安装 Python 环境。用户数据保存在用户目录 `.ChemCal/`，安装版卸载不会删除你的计算历史与数据。
 
 如需从源码运行：
 
@@ -92,6 +99,7 @@ python main.py
 
 - **代码规范**：中文注释 + Python 类型注解
 - **新增计算器**：参照 `modules/chemical_calculations/calculators/` 中的现有实现，继承 `CalculatorBase`
+- **发版打包**：改 `version.py` 后运行 `.venv/Scripts/python.exe build_release.py`，一键完成 PyInstaller + Inno Setup 安装包 + 便携 zip，产物在 `installer/` 与 `dist/`
 - **新增参考数据**：按 `data/reference_db.json` 格式追加条目
 
 ### 贡献/参与者
@@ -128,6 +136,7 @@ python main.py
 - 🛠 **安全阀**：修复 Kd 阀型映射错位（"不带调节圈微启式"误填 0.45，正确 0.30）及初始化顺序异常
 - 🛠 **查询类修正**：危险化学品 GHS 分类按 GB 30000 核对（硫酸不再标"毒性物质"，补全 H 语句）；腐蚀速率等级由速率唯一派生（左景伊 4 级制）；发酵废水 COD 物料平衡重复计入修复；L-蛋氨酸 COD 当量 1.073→1.609（含硫氨基酸）
 - 🛠 水蒸气物性 steam_iapws 对照 IAPWS-IF97 官方验证表全网格校验（偏差 ≤0.04%），高压区判域修正
+- 📦 **分发改版**：剔除死重依赖 scipy / pandas（~200MB），打包由 onefile 单文件改为 onedir + Inno Setup 安装包（52.8MB）与便携 zip（54.6MB）双发行，告别 344MB 单 exe 与临时目录解压
 
 ### v1.5.0 (2026-07-14)
 
@@ -172,6 +181,9 @@ ChemCal/
 ├── history_db.py               # 历史记录（SQLite）
 ├── updater.py                  # 自动更新（GitHub Releases）
 ├── version.py                  # 版本号定义
+├── ChemCal.spec                # PyInstaller 打包配置（onedir）
+├── ChemCal.iss                 # Inno Setup 安装包脚本
+├── build_release.py            # 一键发版（版本同步 + 打包 + 双产物）
 ├── requirements.txt
 ├── ChemCal.ico                 # 应用图标
 ├── ChemCal.png                 # Logo
