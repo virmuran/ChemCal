@@ -18,7 +18,7 @@ import re
 import sys
 import tempfile
 
-PROJ = r"C:\Users\Administrator\Desktop\ChemCal"
+PROJ = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJ not in sys.path:
     sys.path.insert(0, PROJ)
 

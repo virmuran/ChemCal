@@ -29,7 +29,7 @@ import sys
 import tempfile
 from datetime import datetime, timedelta
 
-PROJ = r"C:\Users\Administrator\Desktop\ChemCal"
+PROJ = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJ not in sys.path:
     sys.path.insert(0, PROJ)
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")

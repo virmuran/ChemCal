@@ -12,7 +12,7 @@ import tempfile
 
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 
-PROJ = r"C:\Users\Administrator\Desktop\ChemCal"
+PROJ = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 for p in [PROJ,
           os.path.join(PROJ, "modules"),
           os.path.join(PROJ, "modules", "chemical_calculations"),
