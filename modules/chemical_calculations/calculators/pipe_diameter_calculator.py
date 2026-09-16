@@ -334,6 +334,35 @@ class 管径计算(CalculatorBase):
             "P=20~30MPa": {"velocity": (5, 10), "flow": (0, 0), "pressure": (20, 30), "flow_unit": "Nm³/h"}
         }
     
+    # ══════════════════════════════════════════════════════════
+    # 与资料库互取数据（打通「查到数据要手抄到另一个页签」）
+    # ══════════════════════════════════════════════════════════
+
+    def apply_reference_value(self, field, value):
+        """接收资料库「送入计算器」的值。
+
+        field 取值见 modules/reference/ref_exchange.TARGETS
+        （velocity_input / flow_input / diameter_input / pressure_input / temp_input）。
+        """
+        widget = getattr(self, field, None)
+        if widget is None or not hasattr(widget, "setText"):
+            return False
+        text = ("%g" % value) if isinstance(value, (int, float)) else str(value)
+        widget.setText(text)
+        return True
+
+    def _open_reference(self, title):
+        """📚 快捷入口：请主窗口切到资料库并定位到该节。"""
+        try:
+            from modules.reference.ref_exchange import EXCHANGE
+        except Exception:
+            try:
+                from ref_exchange import EXCHANGE
+            except Exception:
+                return False
+        EXCHANGE.open_section(title)
+        return True
+
     def setup_ui(self):
         """设置UI界面 - 统一风格布局"""
         # 定义标签样式 - 统一标准
@@ -363,7 +392,26 @@ class 管径计算(CalculatorBase):
         description.setWordWrap(True)
         description.setStyleSheet("font-size: 12px; padding: 5px;")
         left_layout.addWidget(description)
-        
+
+        # ── 资料库快捷入口（与资料库互取数据：点一下即定位到对应数据节）──
+        ref_row = QHBoxLayout()
+        ref_row.setSpacing(6)
+        ref_hint = QLabel("查资料库:")
+        ref_hint.setStyleSheet(label_style)
+        ref_row.addWidget(ref_hint)
+        for _label, _title in (("推荐流速", "常用流体推荐流速"),
+                               ("管径选型", "管径快速选型"),
+                               ("管道粗糙度", "管道粗糙度"),
+                               ("液体物性", "常用液体物性（25°C）"),
+                               ("饱和蒸汽", "饱和蒸汽压力-温度对照")):
+            _btn = QPushButton(_label)
+            _btn.setObjectName("iconBtn")      # 轻型按钮样式交主题
+            _btn.setToolTip(f"在资料库中打开「{_title}」")
+            _btn.clicked.connect(lambda _=False, t=_title: self._open_reference(t))
+            ref_row.addWidget(_btn)
+        ref_row.addStretch()
+        left_layout.addLayout(ref_row)
+
         # 2. 计算模式选择
         mode_group = CalculatorBase.make_group_box("计算模式")
         mode_layout = QHBoxLayout(mode_group)
@@ -762,15 +810,32 @@ class 管径计算(CalculatorBase):
             "锅炉给水": 1000,
             "蒸汽冷凝水": 1000,
             "冷凝水": 1000,
+            # 修正记录（2026-09-16）：fluid_ranges / 下拉框里叫「蒸汽冷凝液」，
+            # 本表此前只登记了「蒸汽冷凝水」，导致选中它时 update_density() 落空
+            # 静默退回 1000 —— 与 fluid_data 同义的三个名字必须都在。
+            "蒸汽冷凝液": 1000,
             "过热水": 1000,
             "海水，微碱水": 1025,
             "粘度较大的液体": 1200,
-            "液氨": 682,
-            "氢氧化钠": 2130,
+            # 液氨 20°C 饱和液氨密度 610 kg/m³。
+            # 修正记录（2026-09-16）：原值 682 是 −33°C（常压沸点）的密度，
+            # 被误置于「液体类 (20°C)」下，使液氨管径计算偏小约 6%。
+            # 依据：本项目 pure_substance_properties.DENS_TABLES["氨"] = (20, 610.3)。
+            "液氨": 610,
+            # 氢氧化钠溶液：原值 2130 是**固体烧碱**的密度（CRC 2.13 g/cm³），
+            # 与液氨同类错误 —— 被误置于「液体类 (20°C)」下，会使碱液管径偏小约 43%。
+            # 修正为 20°C、20% 溶液的 1219 kg/m³（化学化工物性数据手册 表5.2.6：
+            # 20°C 20% = 1.2191 g/cm³；ChemLin / ProTank 同值）。
+            # ⚠ 本表一种流体只存一个密度，不随 fluid_ranges 的
+            #   「浓度0~30% / 30~50% / 50~73%」分档变化。
+            "氢氧化钠": 1219,
             "四氯化碳": 1594,
             "硫酸": 1830,
             "盐酸": 1200,
-            "氯化钠": 2160,
+            # 氯化钠溶液：原值 2160 是**固体食盐**的密度，非液体 —— 与液氨/烧碱同类错误。
+            # 修正为 20°C、25% 盐水的 1190 kg/m³（与本项目 pressure_drop_calculator 的
+            # 「氯化钠(25%溶液) (20°C) - 密度 1190.0」一致；资料库「饱和食盐水」25°C 为 1200）。
+            "氯化钠": 1190,
             "排除废水": 1100,
             "泥状混合物": 1500,
             "乙二醇": 1115,

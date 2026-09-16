@@ -164,6 +164,8 @@ class ThemeManager(QObject):
             "rule": "#d1d5db",        # 表格分隔线（与主题边框同色）
             "banner_bg": "#4a6fa5",   # 顶部色块背景
             "banner_fg": "#ffffff",   # 顶部色块文字
+            "hl_bg": "#fde68a",       # 搜索/反查命中单元格底色
+            "hl_fg": "#1f2937",       # 命中单元格文字（与 hl_bg 成对，保证可读）
         },
         "dark": {
             "muted": "#a3a3a3",
@@ -173,6 +175,8 @@ class ThemeManager(QObject):
             "rule": "#555555",
             "banner_bg": "#4a6fa5",
             "banner_fg": "#ffffff",
+            "hl_bg": "#6b5a1e",
+            "hl_fg": "#fdf3d0",
         },
         "blue": {
             "muted": "#5b6b7c",
@@ -182,6 +186,8 @@ class ThemeManager(QObject):
             "rule": "#bee3f8",
             "banner_bg": "#3182ce",
             "banner_fg": "#ffffff",
+            "hl_bg": "#fde68a",
+            "hl_fg": "#1a365d",
         },
     }
 
@@ -201,6 +207,11 @@ class ThemeManager(QObject):
         QPushButton#dangerBtn:hover:!checked { background-color: #a03024; }
         QPushButton#primaryBtn:disabled, QPushButton#dangerBtn:disabled {
             background-color: #c4c7c5; color: #8a8a8a; }
+        /* 轻量图标按钮（资料库的展开/折叠、📚 查资料） */
+        QPushButton#iconBtn { background-color: transparent; color: #6b7280;
+                              border: 1px solid #d1d5db; border-radius: 6px; padding: 2px 8px; }
+        QPushButton#iconBtn:hover:!checked { background-color: #4a6fa5; color: white;
+                                             border-color: #4a6fa5; }
         QLineEdit[roField="true"] { background-color: #f0f0f0; color: #6b7280; }
         QLabel[unitLabel="true"] { color: #6b7280; }
         """ + countdown_card_rules("light"),
@@ -216,6 +227,11 @@ class ThemeManager(QObject):
         QPushButton#dangerBtn:hover:!checked { background-color: #d4513f; }
         QPushButton#primaryBtn:disabled, QPushButton#dangerBtn:disabled {
             background-color: #4a4a4a; color: #8a8a8a; }
+        /* 轻量图标按钮（资料库的展开/折叠、📚 查资料） */
+        QPushButton#iconBtn { background-color: transparent; color: #a3a3a3;
+                              border: 1px solid #555555; border-radius: 6px; padding: 2px 8px; }
+        QPushButton#iconBtn:hover:!checked { background-color: #4a6fa5; color: white;
+                                             border-color: #4a6fa5; }
         QLineEdit[roField="true"] { background-color: #2b2b2b; color: #a3a3a3; }
         QLabel[unitLabel="true"] { color: #a3a3a3; }
         """ + countdown_card_rules("dark"),
@@ -231,6 +247,11 @@ class ThemeManager(QObject):
         QPushButton#dangerBtn:hover:!checked { background-color: #a03024; }
         QPushButton#primaryBtn:disabled, QPushButton#dangerBtn:disabled {
             background-color: #bee3f8; color: #8a8a8a; }
+        /* 轻量图标按钮（资料库的展开/折叠、📚 查资料） */
+        QPushButton#iconBtn { background-color: transparent; color: #5b6b7c;
+                              border: 1px solid #bee3f8; border-radius: 6px; padding: 2px 8px; }
+        QPushButton#iconBtn:hover:!checked { background-color: #3182ce; color: white;
+                                             border-color: #3182ce; }
         QLineEdit[roField="true"] { background-color: #edf2f7; color: #5b6b7c; }
         QLabel[unitLabel="true"] { color: #5b6b7c; }
         """ + countdown_card_rules("blue"),

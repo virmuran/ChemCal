@@ -1,278 +1,5 @@
 [
   {
-    "category": "设备布置",
-    "icon": "plant",
-    "sections": [
-      {
-        "title": "储罐布置间距",
-        "description": "储罐之间及储罐与建（构）筑物之间的防火间距",
-        "source": "GB 50160-2008《石油化工企业设计防火标准》第5.2节",
-        "type": "table",
-        "headers": [
-          "介质类型",
-          "储罐容量",
-          "罐与罐间距(m)",
-          "罐与防火堤间距(m)",
-          "备注"
-        ],
-        "rows": [
-          [
-            "甲类液体(闪点<28°C)",
-            "≤1000m³",
-            "0.75D且≥1.5",
-            "≥0.5D且≥1.0",
-            "D为较大罐直径"
-          ],
-          [
-            "甲类液体(闪点<28°C)",
-            ">1000m³",
-            "0.75D且≥1.5",
-            "≥0.5D且≥1.0",
-            "D为较大罐直径"
-          ],
-          [
-            "乙类液体(28≤闪点<60°C)",
-            "任意",
-            "0.5D且≥1.0",
-            "≥0.3D且≥0.8",
-            ""
-          ],
-          [
-            "丙类液体(闪点≥60°C)",
-            "任意",
-            "0.4D且≥0.8",
-            "≥0.25D且≥0.5",
-            ""
-          ],
-          [
-            "液化烃(压力储罐)",
-            "任意",
-            "2.0m且≥1.5D",
-            "≥1.0",
-            "D为较大罐直径"
-          ]
-        ]
-      },
-      {
-        "title": "塔与容器间距",
-        "description": "塔器、容器等设备之间的操作与检修间距",
-        "source": "HG/T 20546-2009《化工装置设备布置设计规范》",
-        "type": "table",
-        "headers": [
-          "设备类型",
-          "间距要求(m)",
-          "说明"
-        ],
-        "rows": [
-          [
-            "塔与塔（整体基础）",
-            "≥1.5",
-            "检修通道最小宽度"
-          ],
-          [
-            "塔与塔（独立基础）",
-            "≥2.0",
-            "考虑基础不均匀沉降"
-          ],
-          [
-            "卧式容器之间",
-            "≥0.8",
-            "操作通道"
-          ],
-          [
-            "立式容器之间",
-            "≥1.0",
-            "操作通道"
-          ],
-          [
-            "容器与建筑物",
-            "≥1.5",
-            "防火与检修"
-          ],
-          [
-            "换热器之间",
-            "≥0.8",
-            "抽管束空间另计"
-          ],
-          [
-            "泵与泵之间",
-            "≥1.0",
-            "操作与检修"
-          ]
-        ]
-      },
-      {
-        "title": "操作通道与走廊",
-        "description": "设备操作通道、走廊的最小宽度要求",
-        "source": "HG/T 20546-2009《化工装置设备布置设计规范》",
-        "type": "table",
-        "headers": [
-          "通道类型",
-          "最小宽度(m)",
-          "最小高度(m)",
-          "说明"
-        ],
-        "rows": [
-          [
-            "主要操作走廊",
-            "1.2",
-            "2.2",
-            "经常有人通行"
-          ],
-          [
-            "一般操作通道",
-            "1.0",
-            "2.2",
-            "日常巡检"
-          ],
-          [
-            "次要操作通道",
-            "0.8",
-            "2.0",
-            "不经常通行"
-          ],
-          [
-            "检修通道",
-            "1.5~2.0",
-            "2.5",
-            "需搬运设备"
-          ],
-          [
-            "楼梯宽度",
-            "1.0~1.2",
-            "2.2",
-            "主要楼梯"
-          ],
-          [
-            "直爬梯宽度",
-            "0.5~0.6",
-            "—",
-            "检修用"
-          ],
-          [
-            "斜梯宽度",
-            "0.7~0.8",
-            "—",
-            "倾角40~50°"
-          ],
-          [
-            "平台宽度",
-            "≥0.8",
-            "—",
-            "操作平台"
-          ],
-          [
-            "走台宽度",
-            "≥0.6",
-            "—",
-            "不经常通行"
-          ]
-        ]
-      },
-      {
-        "title": "平台与梯子",
-        "description": "操作平台和梯子的设计参数",
-        "source": "HG/T 20546-2009 / GB 4053《固定式钢梯及平台安全要求》",
-        "type": "table",
-        "headers": [
-          "项目",
-          "参数",
-          "说明"
-        ],
-        "rows": [
-          [
-            "操作平台宽度",
-            "≥0.8m",
-            "经常操作≥1.0m"
-          ],
-          [
-            "操作平台荷重",
-            "≥2.5kN/m²",
-            "检修平台≥4.0kN/m²"
-          ],
-          [
-            "平台护栏高度",
-            "1.05~1.2m",
-            "距地面≥2m需设护栏"
-          ],
-          [
-            "护栏踢脚板高度",
-            "≥0.10m",
-            "防止物品坠落"
-          ],
-          [
-            "直爬梯段高",
-            "≤10m",
-            "超过需设休息平台"
-          ],
-          [
-            "直爬梯宽度",
-            "0.5~0.6m",
-            "踏棍间距0.25~0.30m"
-          ],
-          [
-            "斜梯倾角",
-            "40~50°",
-            "最佳45°"
-          ],
-          [
-            "斜梯宽度",
-            "0.7~0.8m",
-            "踏步高度0.20~0.25m"
-          ],
-          [
-            "安全笼起始高度",
-            "2.5m以上",
-            "直爬梯高度超过3.5m时设置"
-          ]
-        ]
-      },
-      {
-        "title": "防火间距（厂房之间）",
-        "description": "甲、乙、丙类厂房之间的防火间距",
-        "source": "GB 50016-2014《建筑设计防火规范》第3.4节",
-        "type": "table",
-        "headers": [
-          "厂房类别",
-          "甲类(m)",
-          "乙类(m)",
-          "丙类(m)",
-          "丁/戊类(m)"
-        ],
-        "rows": [
-          [
-            "甲类",
-            "12",
-            "12",
-            "12",
-            "12"
-          ],
-          [
-            "乙类",
-            "12",
-            "10",
-            "10",
-            "10"
-          ],
-          [
-            "丙类(单/多层)",
-            "12",
-            "10",
-            "10",
-            "10"
-          ],
-          [
-            "丁/戊类(单/多层)",
-            "12",
-            "10",
-            "10",
-            "按耐火等级"
-          ]
-        ]
-      }
-    ]
-  },
-  {
     "category": "管道设计",
     "icon": "pipe",
     "sections": [
@@ -396,6 +123,10 @@
             "—",
             ""
           ]
+        ],
+        "tags": [
+          "管道",
+          "流速"
         ]
       },
       {
@@ -509,7 +240,12 @@
             "1319.59",
             "475.8~951.7"
           ]
-        ]
+        ],
+        "tags": [
+          "管道",
+          "管径"
+        ],
+        "note": "本表为 GB/T 8163《输送流体用无缝钢管》Φ 系列（中国体系）内径；下方对照列为美标 Sch 40 内径。**两套体系不可混用**：同一 DN 的内径差 0.6~20mm（DN25 为 26 vs 26.6，DN100 为 100 vs 102.3）。"
       },
       {
         "title": "管道支吊架最大间距",
@@ -583,6 +319,10 @@
             "9.5~12.0",
             ""
           ]
+        ],
+        "tags": [
+          "管道",
+          "支吊架"
         ]
       },
       {
@@ -590,7 +330,11 @@
         "description": "内压管道壁厚计算公式及参数说明",
         "source": "GB/T 150-2011《压力容器》/ ASME B31.3",
         "type": "text",
-        "content": "内压直管壁厚计算公式:\n\nt = P × D / (2 × [σ]×φ + P)\n\n式中:\n  t  — 计算壁厚 (mm)\n  P  — 设计压力 (MPa)\n  D  — 管道外径 (mm)\n  [σ] — 许用应力 (MPa)，查材料许用应力表\n  φ  — 焊缝系数（无缝管=1.0，有缝管=0.85）\n\n壁厚附加量:\n  C = C1 + C2\n  C1 — 腐蚀裕量 (mm)，一般取1~3mm\n  C2 — 壁厚负偏差 (mm)，按标准取值\n\n最终壁厚: t_actual ≥ t + C"
+        "content": "内压直管壁厚计算公式:\n\nt = P × D / (2 × [σ]×φ + P)\n\n式中:\n  t  — 计算壁厚 (mm)\n  P  — 设计压力 (MPa)\n  D  — 管道外径 (mm)\n  [σ] — 许用应力 (MPa)，查材料许用应力表\n  φ  — 焊缝系数（无缝管=1.0，有缝管=0.85）\n\n壁厚附加量:\n  C = C1 + C2\n  C1 — 腐蚀裕量 (mm)，一般取1~3mm\n  C2 — 壁厚负偏差 (mm)，按标准取值\n\n最终壁厚: t_actual ≥ t + C",
+        "tags": [
+          "管道",
+          "强度"
+        ]
       },
       {
         "title": "常用管道材料及适用温度",
@@ -658,230 +402,14 @@
             "-20~40",
             "给水、燃气"
           ]
+        ],
+        "tags": [
+          "管道",
+          "材料"
         ]
       }
-    ]
-  },
-  {
-    "category": "安全规范",
-    "icon": "safety",
-    "sections": [
-      {
-        "title": "安全阀整定压力",
-        "description": "安全阀整定压力（开启压力）的设定依据",
-        "source": "GB/T 12241-2005 / TSG 21-2016《固定式压力容器安全技术监察规程》",
-        "type": "table",
-        "headers": [
-          "设备工作压力Pw(MPa)",
-          "整定压力Ps(MPa)",
-          "回座压力",
-          "说明"
-        ],
-        "rows": [
-          [
-            "Pw ≤ 0.1",
-            "Pw + 0.015~0.03",
-            "≥0.9Ps",
-            "低压容器"
-          ],
-          [
-            "0.1 < Pw ≤ 0.6",
-            "1.05Pw",
-            "≥0.9Ps",
-            ""
-          ],
-          [
-            "0.6 < Pw ≤ 1.6",
-            "1.05~1.08Pw",
-            "≥0.9Ps",
-            "一般化工容器"
-          ],
-          [
-            "1.6 < Pw ≤ 4.0",
-            "1.05~1.08Pw",
-            "≥0.9Ps",
-            ""
-          ],
-          [
-            "Pw > 4.0",
-            "1.03~1.05Pw",
-            "≥0.9Ps",
-            "高压容器"
-          ],
-          [
-            "蒸汽锅炉",
-            "1.04~1.06Pw",
-            "≥0.93Ps",
-            "按锅炉规程"
-          ],
-          [
-            "火灾工况",
-            "≤1.1×MAWP",
-            "—",
-            "火灾紧急泄放"
-          ]
-        ]
-      },
-      {
-        "title": "安全泄放量计算公式",
-        "description": "不同工况下安全阀泄放量的计算方法",
-        "source": "GB/T 12241-2005 / API 521",
-        "type": "text",
-        "content": "一、气体/蒸汽泄放量（临界流动）:\n  W = 5.25 × A × C × Kd × P1 × √(M/(Z×T1))\n\n  W    — 泄放量 (kg/h)\n  A    — 最小泄放面积 (cm²)\n  C    — 气体特性系数，C=520×√(k×(2/(k+1))^((k+1)/(k-1)))\n  Kd   — 额定泄放系数（由厂家提供，一般0.6~0.98）\n  P1   — 泄放压力 (MPaA)\n  M    — 气体分子量 (kg/kmol)\n  Z    — 压缩因子\n  T1   — 泄放温度 (K)\n  k    — 气体绝热指数\n\n二、液体泄放量:\n  W = 3.16 × A × Kd × √(ΔP × ρ)\n\n  ΔP   — 泄放压差 (MPa)\n  ρ    — 液体密度 (kg/m³)\n\n三、火灾工况液体泄放量:\n  W = 155.4 × F × A_w^0.82 / L\n\n  F    — 环境系数（保温=0.3, 裸露=1.0）\n  A_w  — 润湿面积 (m²)\n  L    — 汽化潜热 (kJ/kg)"
-      },
-      {
-        "title": "防爆区域划分",
-        "description": "爆炸危险区域的划分标准",
-        "source": "GB 50058-2014《爆炸危险环境电力装置设计规范》",
-        "type": "table",
-        "headers": [
-          "区域等级",
-          "定义",
-          "典型距离",
-          "说明"
-        ],
-        "rows": [
-          [
-            "0区",
-            "连续或长期存在爆炸性气体",
-            "—",
-            "密闭容器内部"
-          ],
-          [
-            "1区",
-            "正常运行时可能出现爆炸性气体",
-            "释放源水平3m/垂直0.5m",
-            "泵/阀/法兰附近"
-          ],
-          [
-            "2区",
-            "正常运行时不太可能出现",
-            "1区外水平3m/垂直1m",
-            "1区外围"
-          ],
-          [
-            "20区",
-            "连续或长期存在爆炸性粉尘",
-            "—",
-            "粉尘容器内部"
-          ],
-          [
-            "21区",
-            "正常运行时可能出现爆炸性粉尘",
-            "释放源周围1m",
-            "加料/包装口附近"
-          ],
-          [
-            "22区",
-            "偶尔出现短时爆炸性粉尘",
-            "21区外3m",
-            "21区外围"
-          ]
-        ]
-      },
-      {
-        "title": "安全色与安全标志",
-        "description": "管道、设备的安全色标识标准",
-        "source": "GB 2893-2008《安全色》/ GB 7231-2003《工业管路基本识别色》",
-        "type": "table",
-        "headers": [
-          "管道介质",
-          "识别色",
-          "色样(RGB)",
-          "标注方式"
-        ],
-        "rows": [
-          [
-            "水",
-            "艳绿",
-            "#008000",
-            "色环+箭头+文字"
-          ],
-          [
-            "蒸汽",
-            "大红",
-            "#FF0000",
-            "色环+箭头+文字"
-          ],
-          [
-            "空气",
-            "淡灰",
-            "#B0B0B0",
-            "色环+箭头+文字"
-          ],
-          [
-            "气体(可燃)",
-            "中黄",
-            "#FFD700",
-            "色环+箭头+文字"
-          ],
-          [
-            "气体(不可燃)",
-            "银灰",
-            "#C0C0C0",
-            "色环+箭头+文字"
-          ],
-          [
-            "酸/碱",
-            "紫",
-            "#800080",
-            "色环+箭头+文字"
-          ],
-          [
-            "可燃液体",
-            "棕",
-            "#8B4513",
-            "色环+箭头+文字"
-          ],
-          [
-            "其他液体",
-            "黑",
-            "#000000",
-            "色环+箭头+文字"
-          ],
-          [
-            "氧气",
-            "淡蓝",
-            "#ADD8E6",
-            "色环+箭头+文字"
-          ]
-        ]
-      }
-    ]
-  },
-  {
-    "category": "计算依据",
-    "icon": "formula",
-    "sections": [
-      {
-        "title": "换热器设计公式",
-        "description": "ChemCal换热器计算器的核心公式及参数来源",
-        "source": "GB/T 151-2014《热交换器》/ 化工原理",
-        "type": "text",
-        "content": "一、传热基本方程:\n  Q = K × A × ΔTm\n\n  Q    — 传热量 (W)\n  K    — 总传热系数 (W/(m²·K))\n  A    — 传热面积 (m²)\n  ΔTm  — 对数平均温差 (°C)\n\n二、对数平均温差:\n  ΔTm = (ΔT1 - ΔT2) / ln(ΔT1/ΔT2)\n\n  逆流: ΔT1 = Th_in - Tc_out, ΔT2 = Th_out - Tc_in\n  顺流: ΔT1 = Th_in - Tc_in, ΔT2 = Th_out - Tc_out\n\n三、总传热系数:\n  1/K = 1/h1 + δ/λ + 1/h2 + Rf\n\n  h1,h2 — 管内外对流换热系数 (W/(m²·K))\n  δ     — 管壁厚度 (m)\n  λ     — 管材导热系数 (W/(m·K))\n  Rf    — 污垢热阻 (m²·K/W)\n\n四、常见K值范围:\n  水-水: 800~1500 W/(m²·K)\n  水-油: 150~350 W/(m²·K)\n  水-蒸汽(冷凝): 1000~4000 W/(m²·K)\n  水-有机蒸汽: 500~1200 W/(m²·K)\n  气-气: 10~35 W/(m²·K)"
-      },
-      {
-        "title": "泵计算公式",
-        "description": "泵功率、NPSHa计算公式",
-        "source": "化工原理 / API 610",
-        "type": "text",
-        "content": "一、泵轴功率:\n  P = Q × ρ × g × H / (3600 × 1000 × η)\n\n  P  — 轴功率 (kW)\n  Q  — 流量 (m³/h)\n  ρ  — 流体密度 (kg/m³)\n  g  — 重力加速度 9.81 m/s²\n  H  — 扬程 (m)\n  η  — 泵效率 (0.5~0.85)\n\n  电机功率 = P / 0.95 (考虑传动效率)\n  电机选型: P_motor ≥ 1.1 × P_shaft (安全系数)\n\n二、NPSHa计算:\n  NPSHa = (Ps - Pv) / (ρ×g) + Hs - Hf\n\n  Ps — 吸入液面压力 (PaA)\n  Pv — 液体饱和蒸汽压 (PaA)\n  Hs — 静吸水头 (m)，正值为灌注，负值为吸上\n  Hf — 吸入管路阻力损失 (m)\n\n三、安全裕量:\n  NPSHa ≥ NPSHr + 安全裕量\n  离心泵: +0.5~1.0m\n  往复泵: +1.0~2.0m\n  计量泵: +0.5~1.0m"
-      },
-      {
-        "title": "压降计算公式",
-        "description": "管道沿程阻力与局部阻力计算",
-        "source": "化工原理 / GB 50316",
-        "type": "text",
-        "content": "一、达西-魏斯巴赫公式（沿程压降）:\n  ΔPf = λ × (L/D) × (ρ×v²/2)\n\n  λ  — 摩擦系数（与Re和相对粗糙度有关）\n  L  — 管道长度 (m)\n  D  — 管道内径 (m)\n  ρ  — 流体密度 (kg/m³)\n  v  — 流速 (m/s)\n\n二、摩擦系数:\n  层流(Re≤2000): λ = 64/Re\n  湍流(Re>4000): 用Colebrook公式或Moody图\n  1/√λ = -2×lg(ε/(3.7D) + 2.51/(Re×√λ))\n\n三、局部阻力:\n  ΔPf_local = Σξ × (ρ×v²/2)\n  ξ — 局部阻力系数\n\n  常见局部阻力系数:\n  90°弯头: 0.3~0.5\n  45°弯头: 0.15~0.2\n  三通(直通): 0.1~0.2\n  三通(分支): 0.5~1.0\n  闸阀(全开): 0.1~0.2\n  截止阀(全开): 3.0~5.0\n  止回阀: 0.6~2.0\n  变径(突然缩小): 0.3~0.5"
-      },
-      {
-        "title": "循环水用水量公式",
-        "description": "ChemCal循环水计算器的核心公式汇总",
-        "source": "GB 50050-2017《工业循环冷却水处理设计规范》",
-        "type": "text",
-        "content": "基本公式:\n  G = Q / (Cp × ΔT)\n\n  G   — 循环水量 (kg/h)\n  Q   — 热负荷 (kW)\n  Cp  — 冷却水比热容 (kJ/(kg·°C))\n  ΔT  — 冷却水温升 (°C)\n\n热负荷来源:\n\n1. 发酵罐: Q = V × q × 1000/3600\n   V — 发酵液体积(L), q — 产热率(kJ/(L·h))\n\n2. 换热器: Q = K × A × ΔTm\n\n3. 反应釜: Q = Q_反应 + Q_搅拌\n   Q_搅拌 = P × 0.7 (搅拌功率×效率)\n\n4. 结晶罐: Q = q_结晶 + q_显热 + q_搅拌\n   q_结晶 = 结晶量×结晶热/3600\n   q_显热 = 溶液量×Cp×ΔT/3600\n\n5. 多效蒸发器: t/t = 系数×λ/(Cp×ΔT)\n   系数与效数有关(经验值)\n   λ — 末效汽化潜热(kJ/kg)\n\n推荐管径: d = √(4G/(π×ρ×v×3600))"
-      }
-    ]
+    ],
+    "group": "设计计算数据"
   },
   {
     "category": "物性数据",
@@ -1026,7 +554,11 @@
             "3.5",
             "0.13"
           ]
-        ]
+        ],
+        "tags": [
+          "物性"
+        ],
+        "note": "本表为 25°C 值；后两列为计算器底层 reference_data.FLUID_PROPERTIES 的 20°C 值（各计算器实际使用）。同一物质两列数值不同是温度基准差异，不是矛盾。"
       },
       {
         "title": "汽化潜热数据",
@@ -1112,6 +644,11 @@
             "523",
             "常压沸点"
           ]
+        ],
+        "tags": [
+          "物性",
+          "热力学",
+          "查表"
         ]
       },
       {
@@ -1186,6 +723,11 @@
             "—",
             ""
           ]
+        ],
+        "tags": [
+          "物性",
+          "热力学",
+          "查表"
         ]
       },
       {
@@ -1264,9 +806,505 @@
             "0.00017~0.00035",
             ""
           ]
+        ],
+        "tags": [
+          "物性",
+          "换热"
         ]
       }
-    ]
+    ],
+    "group": "设计计算数据"
+  },
+  {
+    "category": "蒸汽参数",
+    "icon": "steam",
+    "sections": [
+      {
+        "title": "饱和蒸汽压力-温度对照",
+        "description": "饱和蒸汽在不同表压下的饱和温度、汽化潜热和比容。全部由项目内置 IAPWS-IF97 引擎（common_constants.get_steam_props，表压+0.101325MPa 换算为绝对压力）计算，与各计算器同源",
+        "source": "IAPWS-IF97 / 蒸汽表",
+        "type": "table",
+        "headers": [
+          "表压 MPa(g)",
+          "绝对压力 MPa(a)",
+          "饱和温度 °C",
+          "汽化潜热 kJ/kg",
+          "蒸汽比容 m³/kg"
+        ],
+        "rows": [
+          [
+            "0.05",
+            "0.151",
+            "111.6",
+            "2225",
+            "1.1499"
+          ],
+          [
+            "0.10",
+            "0.201",
+            "120.4",
+            "2201",
+            "0.8803"
+          ],
+          [
+            "0.20",
+            "0.301",
+            "133.7",
+            "2163",
+            "0.6034"
+          ],
+          [
+            "0.30",
+            "0.401",
+            "143.7",
+            "2133",
+            "0.4610"
+          ],
+          [
+            "0.40",
+            "0.501",
+            "151.9",
+            "2108",
+            "0.3740"
+          ],
+          [
+            "0.50",
+            "0.601",
+            "158.9",
+            "2086",
+            "0.3150"
+          ],
+          [
+            "0.60",
+            "0.701",
+            "165.0",
+            "2066",
+            "0.2724"
+          ],
+          [
+            "0.70",
+            "0.801",
+            "170.5",
+            "2048",
+            "0.2400"
+          ],
+          [
+            "0.80",
+            "0.901",
+            "175.4",
+            "2031",
+            "0.2146"
+          ],
+          [
+            "0.90",
+            "1.001",
+            "179.9",
+            "2015",
+            "0.1942"
+          ],
+          [
+            "1.00",
+            "1.101",
+            "184.1",
+            "2000",
+            "0.1773"
+          ],
+          [
+            "1.25",
+            "1.351",
+            "193.4",
+            "1966",
+            "0.1457"
+          ],
+          [
+            "1.50",
+            "1.601",
+            "201.4",
+            "1935",
+            "0.1237"
+          ],
+          [
+            "2.00",
+            "2.101",
+            "214.9",
+            "1880",
+            "0.0949"
+          ],
+          [
+            "2.50",
+            "2.601",
+            "226.1",
+            "1831",
+            "0.0769"
+          ]
+        ],
+        "tags": [
+          "蒸汽",
+          "热力学",
+          "查表"
+        ]
+      },
+      {
+        "title": "蒸汽品质分级及应用",
+        "description": "发酵行业常用蒸汽品质分级标准及典型用途",
+        "source": "ISPE / 行业工程实践",
+        "type": "table",
+        "headers": [
+          "蒸汽级别",
+          "品质要求",
+          "典型用途",
+          "制备方式",
+          "注意事项"
+        ],
+        "rows": [
+          [
+            "工业蒸汽",
+            "常规锅炉蒸汽，无特殊过滤",
+            "采暖、热水、CIP加热、一般加热",
+            "工业锅炉",
+            "铁锈/杂质较多"
+          ],
+          [
+            "过滤蒸汽",
+            "工业蒸汽经≥5μm过滤器",
+            "工艺加热、空消（非直接接触）",
+            "工业锅炉+管道过滤器",
+            "管路需定期排凝"
+          ],
+          [
+            "洁净蒸汽",
+            "经过滤+洁净管道，无有害杂质",
+            "实消、与物料间接接触的加热",
+            "工业锅炉+不锈钢管道+0.45μm滤",
+            "需使用不锈钢管道"
+          ],
+          [
+            "纯蒸汽/洁净蒸汽",
+            "纯化水制备，冷凝水符合WFI标准",
+            "直接接触无菌工艺、SIP",
+            "纯蒸汽发生器（多效蒸馏）",
+            "高价，仅关键工段使用"
+          ]
+        ],
+        "tags": [
+          "蒸汽"
+        ]
+      },
+      {
+        "title": "发酵厂常见蒸汽压力需求",
+        "description": "各工段对蒸汽压力的典型要求范围",
+        "source": "工程设计经验",
+        "type": "table",
+        "headers": [
+          "工段/用途",
+          "推荐压力 MPa(g)",
+          "温度 °C",
+          "说明"
+        ],
+        "rows": [
+          [
+            "发酵罐空消（空罐灭菌）",
+            "0.3~0.5",
+            "144~159",
+            "灭菌温度121°C，需考虑散热损失"
+          ],
+          [
+            "发酵罐实消（培养基灭菌）",
+            "0.4~0.6",
+            "152~165",
+            "需更大热负荷，压力要求更高"
+          ],
+          [
+            "管道SIP",
+            "0.3~0.5",
+            "144~159",
+            "保温管道需更高压力补偿散热"
+          ],
+          [
+            "换热器加热（间接）",
+            "0.3~0.8",
+            "144~175",
+            "取决于工艺所需温升"
+          ],
+          [
+            "CIP清洗加热",
+            "0.2~0.5",
+            "134~159",
+            "CIP液加热到70~85°C即可"
+          ],
+          [
+            "闪蒸/浓缩",
+            "0.5~1.0",
+            "159~184",
+            "多效蒸发首效"
+          ],
+          [
+            "冬季采暖",
+            "0.1~0.3",
+            "120~144",
+            "换热站换热"
+          ],
+          [
+            "蒸汽伴热",
+            "0.2~0.5",
+            "134~159",
+            "长距离管道保温"
+          ]
+        ],
+        "tags": [
+          "蒸汽",
+          "发酵",
+          "经验值"
+        ]
+      }
+    ],
+    "group": "设计计算数据"
+  },
+  {
+    "category": "压缩空气",
+    "icon": "compressed_air",
+    "sections": [
+      {
+        "title": "ISO 8573 压缩空气质量等级",
+        "description": "ISO 8573-1:2010 压缩空气品质标准——固体颗粒、水分、含油量分级",
+        "source": "ISO 8573-1:2010 Compressed air — Part 1: Contaminants and purity classes",
+        "type": "table",
+        "headers": [
+          "等级",
+          "固体颗粒 (μm)",
+          "固体颗粒浓度 (mg/m³)",
+          "压力露点 (°C)",
+          "含油量 (mg/m³)"
+        ],
+        "rows": [
+          [
+            "0",
+            "按设备要求",
+            "按设备要求",
+            "按设备要求",
+            "按设备要求"
+          ],
+          [
+            "1",
+            "≤0.1",
+            "≤0.1",
+            "≤-70",
+            "≤0.01"
+          ],
+          [
+            "2",
+            "≤1",
+            "≤1",
+            "≤-40",
+            "≤0.1"
+          ],
+          [
+            "3",
+            "≤5",
+            "≤5",
+            "≤-20",
+            "≤1"
+          ],
+          [
+            "4",
+            "≤15",
+            "≤8",
+            "≤+3",
+            "≤5"
+          ],
+          [
+            "5",
+            "≤40",
+            "≤10",
+            "≤+7",
+            "≤25"
+          ],
+          [
+            "6",
+            "—",
+            "—",
+            "≤+10",
+            "—"
+          ]
+        ],
+        "tags": [
+          "压缩空气"
+        ]
+      },
+      {
+        "title": "发酵厂各用途压缩空气质量要求",
+        "description": "不同工段对压缩空气的品质需求（参考ISO 8573等级）",
+        "source": "ISPE / GMP / 工程设计实践",
+        "type": "table",
+        "headers": [
+          "用途",
+          "ISO 8573等级(固体/水/油)",
+          "压力露点",
+          "过滤要求",
+          "说明"
+        ],
+        "rows": [
+          [
+            "仪表气 (IA)",
+            "2/3/2",
+            "≤-20°C",
+            "1μm+活性炭除油",
+            "常规仪表用气"
+          ],
+          [
+            "一般工艺气",
+            "2/4/2",
+            "≤+3°C",
+            "1μm+0.01μm凝聚式",
+            "接触非无菌物料"
+          ],
+          [
+            "发酵供气(无菌)",
+            "1/2/1",
+            "≤-40°C",
+            "0.01μm除菌滤芯×2",
+            "发酵罐通气，需无菌"
+          ],
+          [
+            "无菌操作/灌装",
+            "1/1/1",
+            "≤-70°C",
+            "0.01μm除菌滤芯+活性炭",
+            "B级/A级区"
+          ],
+          [
+            "气动执行器",
+            "3/4/3",
+            "≤+3°C",
+            "5μm+除油",
+            "普通气缸/阀门"
+          ],
+          [
+            "干燥/吹扫",
+            "2/4/2",
+            "≤+3°C",
+            "1μm",
+            "管道吹扫、干燥"
+          ]
+        ],
+        "tags": [
+          "压缩空气",
+          "发酵",
+          "GMP"
+        ]
+      },
+      {
+        "title": "压缩空气管网设计参考",
+        "description": "空压站及管道设计的常用流速、压降和经验参数",
+        "source": "工程设计经验 / 压缩机厂商数据",
+        "type": "table",
+        "headers": [
+          "参数",
+          "推荐值/范围",
+          "说明"
+        ],
+        "rows": [
+          [
+            "空压机出口压力",
+            "0.7~0.85 MPa(g)",
+            "常用0.75~0.8 MPa(g)"
+          ],
+          [
+            "仪表气系统压力",
+            "0.5~0.7 MPa(g)",
+            "经调压阀后"
+          ],
+          [
+            "发酵供气压力",
+            "0.3~0.6 MPa(g)",
+            "需考虑管道沿程阻力+除菌过滤器压降"
+          ],
+          [
+            "主干管流速",
+            "6~10 m/s",
+            "流速过高→压降大，过低→管径大"
+          ],
+          [
+            "支管流速",
+            "8~15 m/s",
+            "短管可适当提高"
+          ],
+          [
+            "推荐管道压降",
+            "≤0.02 MPa / 100m",
+            "经济流速计算"
+          ],
+          [
+            "空气含油量(无油机)",
+            "≤0.01 mg/m³",
+            "无油螺杆/离心机，ISO 8573-1 Class 1"
+          ],
+          [
+            "干燥方式",
+            "冷冻式(露点+3°C) / 吸附式(露点-40°C)",
+            "仪表气建议吸附式"
+          ],
+          [
+            "后冷却器出口温度",
+            "≤环境温度+10°C",
+            "进入干燥器前"
+          ]
+        ],
+        "tags": [
+          "压缩空气"
+        ]
+      }
+    ],
+    "group": "设计计算数据"
+  },
+  {
+    "category": "计算依据",
+    "icon": "formula",
+    "sections": [
+      {
+        "title": "换热器设计公式",
+        "description": "ChemCal换热器计算器的核心公式及参数来源",
+        "source": "GB/T 151-2014《热交换器》/ 化工原理",
+        "type": "text",
+        "content": "一、传热基本方程:\n  Q = K × A × ΔTm\n\n  Q    — 传热量 (W)\n  K    — 总传热系数 (W/(m²·K))\n  A    — 传热面积 (m²)\n  ΔTm  — 对数平均温差 (°C)\n\n二、对数平均温差:\n  ΔTm = (ΔT1 - ΔT2) / ln(ΔT1/ΔT2)\n\n  逆流: ΔT1 = Th_in - Tc_out, ΔT2 = Th_out - Tc_in\n  顺流: ΔT1 = Th_in - Tc_in, ΔT2 = Th_out - Tc_out\n\n三、总传热系数:\n  1/K = 1/h1 + δ/λ + 1/h2 + Rf\n\n  h1,h2 — 管内外对流换热系数 (W/(m²·K))\n  δ     — 管壁厚度 (m)\n  λ     — 管材导热系数 (W/(m·K))\n  Rf    — 污垢热阻 (m²·K/W)\n\n四、常见K值范围:\n  水-水: 800~1500 W/(m²·K)\n  水-油: 150~350 W/(m²·K)\n  水-蒸汽(冷凝): 1000~4000 W/(m²·K)\n  水-有机蒸汽: 500~1200 W/(m²·K)\n  气-气: 10~35 W/(m²·K)",
+        "tags": [
+          "计算公式",
+          "换热"
+        ]
+      },
+      {
+        "title": "泵计算公式",
+        "description": "泵功率、NPSHa计算公式",
+        "source": "化工原理 / API 610",
+        "type": "text",
+        "content": "一、泵轴功率:\n  P = Q × ρ × g × H / (3600 × 1000 × η)\n\n  P  — 轴功率 (kW)\n  Q  — 流量 (m³/h)\n  ρ  — 流体密度 (kg/m³)\n  g  — 重力加速度 9.81 m/s²\n  H  — 扬程 (m)\n  η  — 泵效率 (0.5~0.85)\n\n  电机功率 = P / 0.95 (考虑传动效率)\n  电机选型: P_motor ≥ 1.1 × P_shaft (安全系数)\n\n二、NPSHa计算:\n  NPSHa = (Ps - Pv) / (ρ×g) + Hs - Hf\n\n  Ps — 吸入液面压力 (PaA)\n  Pv — 液体饱和蒸汽压 (PaA)\n  Hs — 静吸水头 (m)，正值为灌注，负值为吸上\n  Hf — 吸入管路阻力损失 (m)\n\n三、安全裕量:\n  NPSHa ≥ NPSHr + 安全裕量\n  离心泵: +0.5~1.0m\n  往复泵: +1.0~2.0m\n  计量泵: +0.5~1.0m",
+        "tags": [
+          "计算公式"
+        ]
+      },
+      {
+        "title": "压降计算公式",
+        "description": "管道沿程阻力与局部阻力计算",
+        "source": "化工原理 / GB 50316",
+        "type": "text",
+        "content": "一、达西-魏斯巴赫公式（沿程压降）:\n  ΔPf = λ × (L/D) × (ρ×v²/2)\n\n  λ  — 摩擦系数（与Re和相对粗糙度有关）\n  L  — 管道长度 (m)\n  D  — 管道内径 (m)\n  ρ  — 流体密度 (kg/m³)\n  v  — 流速 (m/s)\n\n二、摩擦系数:\n  层流(Re≤2000): λ = 64/Re\n  湍流(Re>4000): 用Colebrook公式或Moody图\n  1/√λ = -2×lg(ε/(3.7D) + 2.51/(Re×√λ))\n\n三、局部阻力:\n  ΔPf_local = Σξ × (ρ×v²/2)\n  ξ — 局部阻力系数\n\n  常见局部阻力系数:\n  90°弯头: 0.3~0.5\n  45°弯头: 0.15~0.2\n  三通(直通): 0.1~0.2\n  三通(分支): 0.5~1.0\n  闸阀(全开): 0.1~0.2\n  截止阀(全开): 3.0~5.0\n  止回阀: 0.6~2.0\n  变径(突然缩小): 0.3~0.5",
+        "tags": [
+          "计算公式"
+        ]
+      },
+      {
+        "title": "循环水用水量公式",
+        "description": "ChemCal循环水计算器的核心公式汇总",
+        "source": "GB 50050-2017《工业循环冷却水处理设计规范》",
+        "type": "text",
+        "content": "基本公式:\n  G = Q / (Cp × ΔT)\n\n  G   — 循环水量 (kg/h)\n  Q   — 热负荷 (kW)\n  Cp  — 冷却水比热容 (kJ/(kg·°C))\n  ΔT  — 冷却水温升 (°C)\n\n热负荷来源:\n\n1. 发酵罐: Q = V × q × 1000/3600\n   V — 发酵液体积(L), q — 产热率(kJ/(L·h))\n\n2. 换热器: Q = K × A × ΔTm\n\n3. 反应釜: Q = Q_反应 + Q_搅拌\n   Q_搅拌 = P × 0.7 (搅拌功率×效率)\n\n4. 结晶罐: Q = q_结晶 + q_显热 + q_搅拌\n   q_结晶 = 结晶量×结晶热/3600\n   q_显热 = 溶液量×Cp×ΔT/3600\n\n5. 多效蒸发器: t/t = 系数×λ/(Cp×ΔT)\n   系数与效数有关(经验值)\n   λ — 末效汽化潜热(kJ/kg)\n\n推荐管径: d = √(4G/(π×ρ×v×3600))",
+        "tags": [
+          "计算公式",
+          "水处理"
+        ]
+      }
+    ],
+    "group": "设计计算数据"
   },
   {
     "category": "材料规范",
@@ -1320,6 +1358,10 @@
             "RF/RTJ",
             "大口径"
           ]
+        ],
+        "tags": [
+          "材料",
+          "法兰"
         ]
       },
       {
@@ -1384,6 +1426,12 @@
             "RF/MFM",
             "中温中压"
           ]
+        ],
+        "tags": [
+          "材料",
+          "垫片",
+          "密封",
+          "双语"
         ]
       },
       {
@@ -1469,6 +1517,10 @@
             "间歇排水",
             "伴热管线"
           ]
+        ],
+        "tags": [
+          "材料",
+          "阀门"
         ]
       },
       {
@@ -1525,6 +1577,10 @@
             "—",
             "已禁用，用石墨/PTFE替代"
           ]
+        ],
+        "tags": [
+          "材料",
+          "密封"
         ]
       },
       {
@@ -1566,6 +1622,12 @@
             "PTFE填充",
             "Tmax=260°C"
           ]
+        ],
+        "tags": [
+          "材料",
+          "垫片",
+          "密封",
+          "双语"
         ]
       },
       {
@@ -1574,1050 +1636,17 @@
         "source": "GB/T 4622.2-2022",
         "type": "text",
         "content": "【1 范围】\n本部分规定了管法兰用缠绕式垫片的公称尺寸和结构尺寸要求。\n适用于公称压力PN2.5~PN420（Class 150~Class 2500）的管法兰用缠绕式垫片。\n\n【2 公称尺寸范围】\n— PN系列：DN 10 ~ DN 2000\n— Class系列：NPS 1/2 ~ NPS 80\n\n【3 垫片结构】\n缠绕式垫片由V形或W形金属带与非金属填充带交替缠绕而成，\n可根据需要配内环、外环或内外环。\n\n【4 主要尺寸要求】\n— 垫片内径(D1) = 法兰接管内径 + 3mm\n— 缠绕部分外径(D2) = 法兰密封面内径(突面) 或 环槽底径(凹凸面)\n— 外环外径(D3) = 法兰螺栓孔中心圆直径 - 螺栓孔径\n— 缠绕部分厚度(T1) = 3.2mm 或 4.5mm（PN≥40时）\n— 外环厚度(T2) ≤ 缠绕部分厚度\n\n【5 常用压力等级垫片环宽】\n— PN16~PN40：缠绕环宽 ≥ 10mm\n— PN63~PN160：缠绕环宽 ≥ 12mm\n— PN250~PN420：缠绕环宽 ≥ 14mm\n\n【6 选用建议】\n— 一般工况优先选用C型（带外环型）\n— 真空/深冷工况选用D型（带内外环型）\n— 榫槽面法兰选用A型或B型",
-        "copy_table": []
-      }
-    ]
-  },
-  {
-    "category": "原辅料标准",
-    "icon": "material",
-    "sections": [
-      {
-        "title": "葡萄糖 (一水/无水)",
-        "description": "一水葡萄糖(C6H12O6·H2O)及无水葡萄糖(C6H12O6)质量指标",
-        "source": "GB/T 20882.1-2025",
-        "type": "text",
-        "content": "【1 范围】\n本标准规定了食用葡萄糖的质量要求,包括一水葡萄糖(C6H12O6·H2O)和无水葡萄糖(C6H12O6)。\n适用于以淀粉或淀粉质为原料,经酶法或酸酶法液化、糖化、精制而制得的食用葡萄糖。\n\n【2 规范性引用文件】\nGB 5009.3 食品安全国家标准 食品中水分的测定\nGB 5009.8 食品安全国家标准 食品中果糖、葡萄糖、蔗糖、麦芽糖、乳糖的测定\nGB 15203 食品安全国家标准 淀粉糖\n\n【3 术语和定义】\n一水葡萄糖(Monohydrate Dextrose):含有一分子结晶水的葡萄糖,化学式C6H12O6·H2O。\n无水葡萄糖(Anhydrous Dextrose):不含结晶水的葡萄糖,化学式C6H12O6。\n\n【4 产品分类】\n按产品形态分为一水葡萄糖和无水葡萄糖。按质量等级分为优级品和一级品。\n\n【5 要求】\n5.1 感官要求\n[TABLE_START]\n<tr><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>项目</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>要求</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>色泽</td><td style='padding:6px 10px; border:1px solid #ddd;'>白色结晶性粉末或颗粒,无正常视力可见杂质</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>气味</td><td style='padding:6px 10px; border:1px solid #ddd;'>具有葡萄糖特有的甜香气味,无异味</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>滋味</td><td style='padding:6px 10px; border:1px solid #ddd;'>甜味柔和,无异味</td></tr>\n[TABLE_END]\n5.2 理化指标\n[TABLE_START]\n<tr><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>指标项目</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>单位</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>一水葡萄糖</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>无水葡萄糖-优级品</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>无水葡萄糖-一级品</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>水分</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤10.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤2.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤2.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>含量(干基)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥99.5</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥99.5</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥99.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>比旋光度</td><td style='padding:6px 10px; border:1px solid #ddd;'/>&#176;</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>52.0~53.5</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>pH</td><td style='padding:6px 10px; border:1px solid #ddd;'>/</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>4.0~6.5</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>氯化物(Cl-)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>≤0.01</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>硫酸灰分</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>≤0.25</td></tr>\n[TABLE_END]\n\n【6 试验方法】\n水分测定按GB 5009.3执行；含量测定按GB 5009.8执行；比旋光度按GB/T 20882.1规定方法测定。\n\n【7 检验规则】\n产品须经生产厂检验部门按本标准逐批检验合格后方可出厂。\n\n【8 标志、包装、运输和贮存】\n产品应贮存在阴凉、干燥、通风的库房内,不得与有毒有害物质混贮。",
-        "copy_table": "GB/T 20882.1-2025 食用葡萄糖\n─────────────────────────────────────────────\n指标项目          单位    一水葡萄糖    无水-优级品    无水-一级品\n水分              %      ≤10.0        ≤2.0          ≤2.0\n含量(干基)         %      ≥99.5        ≥99.5         ≥99.0\n比旋光度          °      52.0~53.5\npH               /      4.0~6.5\n氯化物(Cl⁻)       %      ≤0.01\n硫酸灰分           %      ≤0.25"
-      },
-      {
-        "title": "玉米浆 (Corn Steep Liquor)",
-        "description": "玉米浸泡液浓缩产物,发酵工业常用有机氮源",
-        "source": "QB/T 标准 / 行业通行规格",
-        "type": "text",
-        "content": "【1 概述】\n玉米浆是玉米湿法加工过程中产生的浸泡液经浓缩得到的液体产物,富含氨基酸、多肽、维生素、乳酸\n和无机盐等营养成分,是微生物发酵工业中广泛使用的有机氮源。\n\n【2 产品特性】\n玉米浆含有大量可溶性蛋白质、氨基酸(尤其是丙氨酸、谷氨酸、亮氨酸等)、乳酸、还原糖和B族维生素,具有促进微生物生长的作用。\n其品质主要受玉米品种、浸泡工艺和浓缩程度影响。\n\n【3 感官要求】\n棕褐色粘稠液体,具有玉米浆特有的气味,无腐败异味。\n[TABLE_START]\n<tr><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>项目</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>要求</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>外观</td><td style='padding:6px 10px; border:1px solid #ddd;'>棕褐色粘稠液体</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>气味</td><td style='padding:6px 10px; border:1px solid #ddd;'>典型玉米香气,无腐败异味</td></tr>\n[TABLE_END]\n\n【4 理化指标】\n[TABLE_START]\n<tr><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>指标项目</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>单位</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>指标值</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>干物质(DM)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥45.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>总氮(干基)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥3.5</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>氨基氮(干基)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥1.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>还原糖(以葡萄糖计,干基)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥5.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>乳酸(干基)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤15.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>pH</td><td style='padding:6px 10px; border:1px solid #ddd;'>/</td><td style='padding:6px 10px; border:1px solid #ddd;'>3.8~4.5</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>粘度(25°C)</td><td style='padding:6px 10px; border:1px solid #ddd;'>mPa·s</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤100</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>SO2含量</td><td style='padding:6px 10px; border:1px solid #ddd;'>mg/kg</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤30</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>灰分(干基)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤10.0</td></tr>\n[TABLE_END]",
-        "copy_table": "玉米浆 典型规格\n──────────────────────────────\n指标项目                单位    指标值\n干物质(DM)              %      ≥45.0\n总氮(干基)              %      ≥3.5\n氨基氮(干基)            %      ≥1.0\n还原糖(以葡萄糖计,干基)   %      ≥5.0\n乳酸(干基)              %      ≤15.0\npH                     /      3.8~4.5\n粘度(25°C)             mPa·s  ≤100\nSO₂含量                mg/kg  ≤30\n灰分(干基)              %      ≤10.0"
-      },
-      {
-        "title": "酵母浸粉 (Yeast Extract)",
-        "description": "酵母浸出物经喷雾干燥制得的粉末,微生物培养基原料",
-        "source": "QB/T 2919-2007 / 行业通行规格",
-        "type": "text",
-        "content": "【1 概述】\n酵母浸粉是以食用酵母为原料,经酶解或自溶、分离、浓缩、干燥制成的粉末状产品,富含氨基酸、多肽、核苷酸、B族维生素和微量元素,广泛应用于微生物培养基、发酵工业和生物制药领域。\n\n【2 产品特性】\n酵母浸粉含有丰富的游离氨基酸和小分子肽,可被微生物直接吸收利用,同时含有核酸降解产物(核苷酸和核苷),对多种微生物具有促进生长作用。\n\n【3 感官要求】\n浅黄至棕褐色粉末,具有酵母浸出物特有的气味,无其它不正常气味。\n[TABLE_START]\n<tr><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>项目</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>要求</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>外观</td><td style='padding:6px 10px; border:1px solid #ddd;'>浅黄至棕褐色粉末</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>气味</td><td style='padding:6px 10px; border:1px solid #ddd;'>酵母浸出物特有气味,无异味</td></tr>\n[TABLE_END]\n\n【4 理化指标】\n[TABLE_START]\n<tr><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>指标项目</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>单位</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>指标值</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>水分</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤5.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>总氮(干基)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥8.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>氨基氮(干基)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥3.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>pH(2%溶液)</td><td style='padding:6px 10px; border:1px solid #ddd;'>/</td><td style='padding:6px 10px; border:1px solid #ddd;'>5.0~7.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>氯化物(以NaCl计)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤15.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>干燥失重</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤6.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>灰分</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤15.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>粒度(>0.425mm)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤5.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>菌落总数</td><td style='padding:6px 10px; border:1px solid #ddd;'>CFU/g</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤10000</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>霉菌/酵母菌</td><td style='padding:6px 10px; border:1px solid #ddd;'>CFU/g</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤100</td></tr>\n[TABLE_END]",
-        "copy_table": "酵母浸粉 典型规格\n──────────────────────────────\n指标项目            单位    指标值\n水分               %      ≤5.0\n总氮(干基)          %      ≥8.0\n氨基氮(干基)        %      ≥3.0\npH(2%溶液)         /      5.0~7.0\n氯化物(以NaCl计)    %      ≤15.0\n干燥失重            %      ≤6.0\n灰分               %      ≤15.0\n粒度(>0.425mm)     %      ≤5.0\n菌落总数            CFU/g  ≤10000\n霉菌/酵母菌         CFU/g  ≤100"
-      },
-      {
-        "title": "硫酸铵 (Ammonium Sulfate)",
-        "description": "(NH4)2SO4 工业品/食品级,发酵无机氮源",
-        "source": "GB/T 535-2020 硫酸铵",
-        "type": "text",
-        "content": "【1 范围】\n本标准规定了硫酸铵(NH4)2SO4的产品分类、要求、试验方法、检验规则、标志、包装、运输和贮存。\n适用于由合成氨与硫酸中和制得的工业用硫酸铵。\n\n【2 规范性引用文件】\nGB/T 601 化学试剂 标准滴定溶液的制备\nGB/T 2441.1~2441.8 尿素的测定方法\n\n【3 要求】\n3.1 外观:白色或类白色结晶,无机械杂质。\n3.2 硫酸铵应符合下表要求:\n[TABLE_START]\n<tr><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>指标项目</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>单位</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>优等品</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>一等品</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>合格品</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>外观</td><td style='padding:6px 10px; border:1px solid #ddd;'>/</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>白色或类白色结晶</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>总氮(N,干基)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥21.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥21.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥20.5</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>水分</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.5</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.5</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤1.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>游离酸(H2SO4)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.05</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.10</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.20</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>水不溶物</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>≤0.01</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铁(Fe)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>≤0.005</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>砷(As)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>≤0.0005</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>重金属(以Pb计)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>≤0.001</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>氯化物(Cl)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>≤0.02</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>pH(5%溶液)</td><td style='padding:6px 10px; border:1px solid #ddd;'>/</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>5.0~6.5</td></tr>\n[TABLE_END]\n\n【4 试验方法】\n总氮含量按GB/T 535规定的方法测定;水分按卡尔·费休法或干燥失重法测定。\n\n【5 检验规则】\n产品须经生产厂检验部门按本标准逐批检验合格后方可出厂。\n\n【6 标志、包装、运输和贮存】\n产品采用内衬塑料袋、外套编织袋包装。贮存于阴凉干燥通风处,防止受潮。",
-        "copy_table": "GB/T 535-2020 硫酸铵\n─────────────────────────────────────────\n指标项目          单位    优等品    一等品    合格品\n外观              /      白色或类白色结晶\n总氮(N,干基)      %      ≥21.0    ≥21.0    ≥20.5\n水分              %      ≤0.5     ≤0.5     ≤1.0\n游离酸(H₂SO₄)     %      ≤0.05    ≤0.10    ≤0.20\n水不溶物           %      ≤0.01\n铁(Fe)            %      ≤0.005\n砷(As)            %      ≤0.0005\n重金属(以Pb计)     %      ≤0.001\n氯化物(Cl)         %      ≤0.02\npH(5%溶液)        /      5.0~6.5"
-      },
-      {
-        "title": "尿素 (Urea)",
-        "description": "CO(NH2)2 工业品/农业品,发酵无机氮源",
-        "source": "GB/T 2440-2017 尿素",
-        "type": "text",
-        "content": "【1 范围】\n本标准规定了尿素CO(NH2)2的要求、试验方法、检验规则、标志、包装、运输和贮存。\n适用于由氨和二氧化碳合成制得的尿素,主要用于农业和工业。\n\n【2 规范性引用文件】\nGB/T 601 化学试剂 标准滴定溶液的制备\nGB/T 2441.1~2441.8 尿素的测定方法\nGB/T 6678 化工产品采样总则\n\n【3 要求】\n3.1 外观:白色或浅色颗粒或结晶,无机械杂质。\n3.2 尿素应符合下表要求:\n[TABLE_START]\n<tr><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>指标项目</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>单位</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>优等品</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>一等品</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>合格品</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>外观</td><td style='padding:6px 10px; border:1px solid #ddd;'>/</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>白色或浅色颗粒</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>总氮(N,干基)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥46.4</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥46.2</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥46.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>缩二脲</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.9</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤1.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤1.5</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>水分</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.5</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.5</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤1.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>粒度(0.85~2.80mm)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥90.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥90.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥85.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>游离氨</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>≤0.015</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铁(Fe)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>≤0.001</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>水不溶物</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>≤0.005</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>pH(10%溶液)</td><td style='padding:6px 10px; border:1px solid #ddd;'>/</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>7.0~8.5</td></tr>\n[TABLE_END]\n\n【4 试验方法】\n总氮含量按GB/T 2441.1规定的方法测定;缩二脲按GB/T 2441.2分光光度法测定;\n水分按GB/T 2441.3规定的方法测定;粒度按GB/T 2441.7规定的方法测定。\n\n【5 检验规则】\n产品须经生产厂检验部门按本标准逐批检验合格后方可出厂。\n\n【6 标志、包装、运输和贮存】\n产品采用内衬塑料袋、外套编织袋包装。贮存在阴凉干燥通风处,避免阳光直射和雨淋。",
-        "copy_table": "GB/T 2440-2017 尿素\n──────────────────────────────────────\n指标项目            单位    优等品    一等品    合格品\n外观                /      白色或浅色颗粒\n总氮(N,干基)        %      ≥46.4    ≥46.2    ≥46.0\n缩二脲              %      ≤0.9     ≤1.0     ≤1.5\n水分                %      ≤0.5     ≤0.5     ≤1.0\n粒度(0.85~2.80mm)   %      ≥90.0    ≥90.0    ≥85.0\n游离氨              %      ≤0.015\n铁(Fe)              %      ≤0.001\n水不溶物             %      ≤0.005\npH(10%溶液)         /      7.0~8.5"
-      },
-      {
-        "title": "氢氧化钙（食品添加剂）",
-        "description": "食品安全国家标准 食品添加剂 氢氧化钙",
-        "source": "GB 1886.375-2024",
-        "type": "text",
-        "content": "【1 范围】\n本标准适用于以石灰石或生石灰为原料经消化、精制得到的食品添加剂氢氧化钙。\n分子式：Ca(OH)₂，相对分子质量：74.09（按2022年国际相对原子质量）。\n\n【2 感官要求】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>项目</th><th style='padding:6px 10px; border:1px solid #ddd;'>要求</th><th style='padding:6px 10px; border:1px solid #ddd;'>检验方法</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>色泽</td><td style='padding:6px 10px; border:1px solid #ddd;'>白色</td><td style='padding:6px 10px; border:1px solid #ddd;'>取适量试样置于50mL烧杯中，自然光下观察</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>状态</td><td style='padding:6px 10px; border:1px solid #ddd;'>粉末</td><td style='padding:6px 10px; border:1px solid #ddd;'>—</td></tr>\n</table>\n[TABLE_END]\n\n【3 理化指标】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>要求</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>Ca(OH)₂含量 w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥95.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>镁及碱金属盐 w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤1.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>酸不溶物 w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.1</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>氟(F)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤50</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>钡(Ba) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.03</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铅(Pb)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤2.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>砷(As)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤3.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>细度(0.045mm筛通过率) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥50.0</td></tr>\n</table>\n[TABLE_END]",
-        "copy_table": [
-          [
-            "Ca(OH)₂含量",
-            "≥95.0%"
-          ],
-          [
-            "镁及碱金属盐",
-            "≤1.0%"
-          ],
-          [
-            "酸不溶物",
-            "≤0.1%"
-          ],
-          [
-            "氟(F)",
-            "≤50 mg/kg"
-          ],
-          [
-            "铅(Pb)",
-            "≤2.0 mg/kg"
-          ],
-          [
-            "砷(As)",
-            "≤3.0 mg/kg"
-          ],
-          [
-            "细度(0.045mm)",
-            "≥50.0%"
-          ]
-        ]
-      },
-      {
-        "title": "聚氧乙烯木糖醇酐单油酸酯（食品添加剂）",
-        "description": "食品安全国家标准 食品添加剂 聚氧乙烯木糖醇酐单油酸酯",
-        "source": "GB 1886.72-2016",
-        "type": "text",
-        "content": "【1 范围】\n本标准适用于以木糖醇酐单油酸酯与环氧乙烷聚合而成的食品添加剂聚氧乙烯木糖醇酐单油酸酯。\n主要用于食品加工中作乳化剂。\n\n【2 分子结构】\n化学式：N[(CH₃CHCH₂O)_m (C₂H₄O)_nH]₃\n相对分子质量：3000~4200（参考2007年国际相对原子质量）\n\n【3 感官要求】\n淡黄色至琥珀色油状液体或膏状物，无明显的特殊气味。\n\n【4 理化指标】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>要求</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>酸值(以KOH计)/(mg/g)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤2.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>皂化值(以KOH计)/(mg/g)</td><td style='padding:6px 10px; border:1px solid #ddd;'>40.0~56.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>羟值(以KOH计)/(mg/g)</td><td style='padding:6px 10px; border:1px solid #ddd;'>30.0~45.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铅(Pb)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.5</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>砷(As)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤1.0</td></tr>\n</table>\n[TABLE_END]",
-        "copy_table": [
-          [
-            "酸值(KOH)",
-            "≤2.0 mg/g"
-          ],
-          [
-            "皂化值(KOH)",
-            "40.0~56.0 mg/g"
-          ],
-          [
-            "羟值(KOH)",
-            "30.0~45.0 mg/g"
-          ],
-          [
-            "铅(Pb)",
-            "≤0.5 mg/kg"
-          ],
-          [
-            "砷(As)",
-            "≤1.0 mg/kg"
-          ]
-        ]
-      },
-      {
-        "title": "盐酸（食品添加剂）",
-        "description": "食品安全国家标准 食品添加剂 盐酸",
-        "source": "GB 1886.9-2016",
-        "type": "text",
-        "content": "【1 范围】\n本标准适用于食品添加剂盐酸，主要用于食品加工中pH调节和水解。\n分子式：HCl，相对分子质量：36.46。\n\n【2 感官要求】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>项目</th><th style='padding:6px 10px; border:1px solid #ddd;'>要求</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>色泽</td><td style='padding:6px 10px; border:1px solid #ddd;'>无色或浅黄色透明液体</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>气味</td><td style='padding:6px 10px; border:1px solid #ddd;'>刺激性气味</td></tr>\n</table>\n[TABLE_END]\n\n【3 理化指标】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>要求</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>总酸度(以HCl计) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥31.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铁(Fe) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.0005</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>硫酸盐(以SO₄²⁻计) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.007</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>亚硫酸盐(以SO₃²⁻计) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.0005</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>灼烧残渣 w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.05</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>游离氯(以Cl₂计) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.003</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>砷(As)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤1.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铅(Pb)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤5.0</td></tr>\n</table>\n[TABLE_END]",
-        "copy_table": [
-          [
-            "总酸度(HCl)",
-            "≥31.0%"
-          ],
-          [
-            "铁(Fe)",
-            "≤5 mg/kg"
-          ],
-          [
-            "硫酸盐(SO₄²⁻)",
-            "≤0.007%"
-          ],
-          [
-            "灼烧残渣",
-            "≤0.05%"
-          ],
-          [
-            "游离氯",
-            "≤0.003%"
-          ],
-          [
-            "砷(As)",
-            "≤1.0 mg/kg"
-          ],
-          [
-            "铅(Pb)",
-            "≤5.0 mg/kg"
-          ]
-        ]
-      },
-      {
-        "title": "氢氧化钠（食品添加剂）",
-        "description": "食品安全国家标准 食品添加剂 氢氧化钠",
-        "source": "GB 1886.20-2016",
-        "type": "text",
-        "content": "【1 范围】\n本标准适用于食品添加剂氢氧化钠（烧碱），主要用于食品加工中pH调节、\n中和及清洗等。分子式：NaOH，相对分子质量：40.00。\n\n【2 感官要求】\n固体氢氧化钠为白色固体，有潮解性；液体为无色透明液体。\n\n【3 理化指标】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>固体</th><th style='padding:6px 10px; border:1px solid #ddd;'>液体</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>总碱量(以NaOH计) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>98.0~100.5</td><td style='padding:6px 10px; border:1px solid #ddd;'>98.0~103.5(以干基计)</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>碳酸钠(Na₂CO₃) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤2.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤2.0(以干基计)</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>砷(As)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤3.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤3.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铅(Pb)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤5.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤5.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>汞(Hg)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.1</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.1</td></tr>\n</table>\n[TABLE_END]",
-        "copy_table": [
-          [
-            "总碱量(NaOH) 固体",
-            "98.0~100.5%"
-          ],
-          [
-            "总碱量(NaOH) 液体(干基)",
-            "98.0~103.5%"
-          ],
-          [
-            "碳酸钠(Na₂CO₃)",
-            "≤2.0%"
-          ],
-          [
-            "砷(As)",
-            "≤3.0 mg/kg"
-          ],
-          [
-            "铅(Pb)",
-            "≤5.0 mg/kg"
-          ],
-          [
-            "汞(Hg)",
-            "≤0.1 mg/kg"
-          ]
-        ]
-      },
-      {
-        "title": "硫酸（食品添加剂）",
-        "description": "食品安全国家标准 食品添加剂 硫酸",
-        "source": "GB 29205-2012",
-        "type": "text",
-        "content": "【1 范围】\n本标准适用于食品添加剂硫酸，主要用于食品加工中的pH调节剂、加工助剂等。\n分子式：H₂SO₄，相对分子质量：98.08。\n\n【2 感官要求】\n无色或浅色透明油状液体。\n\n【3 理化指标】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>要求</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>硫酸(H₂SO₄) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>92.0~98.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>灼烧残渣 w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.02</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>氯化物(Cl) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.005</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>硝酸盐(NO₃⁻) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.001</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铁(Fe) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.020</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>硒(Se)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤20</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铅(Pb)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤5</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>砷(As)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤3</td></tr>\n</table>\n[TABLE_END]",
-        "copy_table": [
-          [
-            "硫酸(H₂SO₄)",
-            "92.0~98.0%"
-          ],
-          [
-            "灼烧残渣",
-            "≤0.02%"
-          ],
-          [
-            "铁(Fe)",
-            "≤0.020%"
-          ],
-          [
-            "硒(Se)",
-            "≤20 mg/kg"
-          ],
-          [
-            "铅(Pb)",
-            "≤5 mg/kg"
-          ],
-          [
-            "砷(As)",
-            "≤3 mg/kg"
-          ]
-        ]
-      },
-      {
-        "title": "植物活性炭（食品添加剂·木质活性炭）",
-        "description": "食品安全国家标准 食品添加剂 植物活性炭（木质活性炭）",
-        "source": "GB 29215-2012",
-        "type": "text",
-        "content": "【1 范围】\n本标准适用于以木质原料（木屑、果核等）经炭化、活化制成的食品添加剂植物活性炭，\n用于食品加工中的脱色、脱臭、净化等。\n\n【2 感官要求】\n黑色粉末或颗粒，无臭无味。\n\n【3 理化指标】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>要求</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>碘吸附值/(mg/g)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥400</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>干燥减量 w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤7.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>pH值</td><td style='padding:6px 10px; border:1px solid #ddd;'>5.0~8.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>灰分 w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤4.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>砷(As)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤3</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铅(Pb)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤5</td></tr>\n</table>\n[TABLE_END]",
-        "copy_table": [
-          [
-            "碘吸附值",
-            "≥400 mg/g"
-          ],
-          [
-            "干燥减量",
-            "≤7.0%"
-          ],
-          [
-            "pH值",
-            "5.0~8.0"
-          ],
-          [
-            "灰分",
-            "≤4.0%"
-          ],
-          [
-            "砷(As)",
-            "≤3 mg/kg"
-          ],
-          [
-            "铅(Pb)",
-            "≤5 mg/kg"
-          ]
-        ]
-      },
-      {
-        "title": "复配食品添加剂通则",
-        "description": "食品安全国家标准 复配食品添加剂通则",
-        "source": "GB 26687-2011",
-        "type": "text",
-        "content": "【1 范围】\n本标准适用于除食品用香精和胶基糖果基础剂以外的所有复配食品添加剂。\n复配食品添加剂是指由两种或两种以上单一品种食品添加剂，添加或不添加辅料，\n经物理方法混匀而成的食品添加剂。\n\n【2 命名原则】\n— 由单一功能且功能相同的食品添加剂复配而成：按功能命名，如「复配着色剂」\n— 由功能相同的多种功能食品添加剂复配而成：按功能命名，如「复配防腐剂」\n— 由功能不同的食品添加剂复配而成：按主要功能命名\n\n【3 感官要求】\n应符合相应产品标准的规定，不应有异味、异臭，不应有腐败、霉变现象。\n\n【4 有害物质控制】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>项目</th><th style='padding:6px 10px; border:1px solid #ddd;'>要求</th><th style='padding:6px 10px; border:1px solid #ddd;'>检测方法</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>砷(As)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤2.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>GB/T 5009.76</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铅(Pb)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤2.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>GB/T 5009.75</td></tr>\n</table>\n[TABLE_END]\n\n【5 标签标识】\n— 配料表应标明各单一食品添加剂的通用名称和含量\n— 各单一食品添加剂应按GB 2760的规定标示使用范围和最大使用量\n— 辅料也应列入配料表\n\n【6 限量计算】\n复配食品添加剂中各单一品种的使用量应符合GB 2760的规定。\n加权计算时，各单一品种的实际添加量不得超过其在GB 2760中的最大使用量。",
-        "copy_table": [
-          [
-            "砷(As)",
-            "≤2.0 mg/kg"
-          ],
-          [
-            "铅(Pb)",
-            "≤2.0 mg/kg"
-          ]
-        ]
-      },
-      {
-        "title": "工业硫氢化钠",
-        "description": "工业硫氢化钠的技术要求、试验方法、检验规则等",
-        "source": "GB/T 23937-2026",
-        "type": "text",
-        "content": "【1 范围】\n本标准规定了工业硫氢化钠的分类、要求、试验方法、检验规则、标志、包装、\n运输和贮存。适用于工业生产的固体和液体硫氢化钠。\n化学式：NaHS，主要用于硫化染料、合成有机中间体、采矿浮选、皮革脱毛、\n废水处理等行业。\n\n【2 产品分类】\n— 固体硫氢化钠：黄色或橙色片状、粒状固体\n— 液体硫氢化钠：淡黄色或橙黄色透明液体\n— 固体产品按NaHS含量分为：70型（≥70%）、60型（≥60%）\n\n【3 技术要求】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>固体70型</th><th style='padding:6px 10px; border:1px solid #ddd;'>固体60型</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>硫氢化钠(NaHS) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥70.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥60.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>硫化钠(Na₂S) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤3.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤5.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铁(Fe) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.003</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.005</td></tr>\n</table>\n[TABLE_END]\n\n【4 安全与储运】\n— 危险化学品分类：碱性腐蚀品\n— 遇酸放出有毒硫化氢气体\n— 应密封、防潮、防晒，储存于阴凉干燥通风处\n— 运输应符合JT/T 617危险货物道路运输规则",
-        "copy_table": [
-          [
-            "NaHS含量 70型",
-            "≥70.0%"
-          ],
-          [
-            "NaHS含量 60型",
-            "≥60.0%"
-          ],
-          [
-            "Na₂S 70型",
-            "≤3.0%"
-          ],
-          [
-            "Na₂S 60型",
-            "≤5.0%"
-          ],
-          [
-            "铁(Fe) 70型",
-            "≤0.003%"
-          ],
-          [
-            "铁(Fe) 60型",
-            "≤0.005%"
-          ]
-        ]
-      },
-      {
-        "title": "木质活性炭（净水用）",
-        "description": "净水用木质活性炭的技术指标",
-        "source": "GB/T 13803.3-1999",
-        "type": "text",
-        "content": "【1 范围】\n本标准规定了净水用木质活性炭的技术要求、试验方法及检验规则。\n适用于以木质为原料生产的，用于饮用水净化及工业用水处理的活性炭。\n\n【2 产品分类】\n— 粉末活性炭：90%以上通过80目(0.18mm)筛\n— 颗粒活性炭：粒度为0.4~3mm\n\n【3 技术指标】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>优级品</th><th style='padding:6px 10px; border:1px solid #ddd;'>一级品</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>碘吸附值/(mg/g)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥1000</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥900</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>亚甲基蓝吸附值/(mg/g)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥135</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥105</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>强度/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥94</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥85</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>表观密度/(g/mL)</td><td style='padding:6px 10px; border:1px solid #ddd;'>0.45~0.55</td><td style='padding:6px 10px; border:1px solid #ddd;'>0.40~0.55</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>水分 w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤10</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤10</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>灰分 w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤5</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤6</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>pH值</td><td style='padding:6px 10px; border:1px solid #ddd;'>6.0~8.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>6.0~9.0</td></tr>\n</table>\n[TABLE_END]",
-        "copy_table": [
-          [
-            "碘吸附值 优级",
-            "≥1000 mg/g"
-          ],
-          [
-            "碘吸附值 一级",
-            "≥900 mg/g"
-          ],
-          [
-            "亚甲基蓝吸附值 优级",
-            "≥135 mg/g"
-          ],
-          [
-            "强度 优级",
-            "≥94%"
-          ],
-          [
-            "表观密度 优级",
-            "0.45~0.55 g/mL"
-          ],
-          [
-            "水分",
-            "≤10%"
-          ],
-          [
-            "pH值",
-            "6.0~8.0"
-          ]
-        ]
-      },
-      {
-        "title": "硫酸铵（食品添加剂）",
-        "description": "食品安全国家标准 食品添加剂 硫酸铵",
-        "source": "GB 29206-2012",
-        "type": "text",
-        "content": "【1 范围】\n本标准适用于食品添加剂硫酸铵，主要用于食品加工助剂、发酵用氮源等。\n分子式：(NH₄)₂SO₄，相对分子质量：132.14。\n\n【2 感官要求】\n白色结晶或颗粒，无可见杂质。\n\n【3 理化指标】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>要求</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>硫酸铵[(NH₄)₂SO₄] w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>99.0~100.5</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>灼烧残渣 w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.25</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>硒(Se)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤30</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铅(Pb)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤3</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>砷(As)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤3</td></tr>\n</table>\n[TABLE_END]",
-        "copy_table": [
-          [
-            "(NH₄)₂SO₄含量",
-            "99.0~100.5%"
-          ],
-          [
-            "灼烧残渣",
-            "≤0.25%"
-          ],
-          [
-            "硒(Se)",
-            "≤30 mg/kg"
-          ],
-          [
-            "铅(Pb)",
-            "≤3 mg/kg"
-          ],
-          [
-            "砷(As)",
-            "≤3 mg/kg"
-          ]
-        ]
-      },
-      {
-        "title": "工业玉米淀粉",
-        "description": "工业玉米淀粉的技术要求、试验方法及检验规则",
-        "source": "GB/T 12309-2026",
-        "type": "text",
-        "content": "【1 范围】\n本标准规定了工业玉米淀粉的技术要求、试验方法、检验规则以及标签、标志、包装、\n运输和贮存要求。适用于以玉米为原料，经湿磨法加工制成的工业玉米淀粉。\n\n【2 感官要求】\n白色或微带浅黄色阴影的粉末，具有玉米淀粉固有的气味，无异味。\n\n【3 理化指标】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>优级品</th><th style='padding:6px 10px; border:1px solid #ddd;'>一级品</th><th style='padding:6px 10px; border:1px solid #ddd;'>合格品</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>水分/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 13.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 14.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 14.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>细度(100目通过率)/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥ 99.5</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥ 99.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥ 98.5</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>斑点数/(个/cm²)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 0.4</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 1.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 1.5</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>酸度(中和100g干淀粉消耗0.1mol/L NaOH)/mL</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 12.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 18.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 25.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>灰分(干基)/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 0.10</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 0.15</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 0.20</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>蛋白质(干基)/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 0.35</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 0.45</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 0.60</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>脂肪(干基)/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 0.10</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 0.15</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 0.20</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>白度(457nm蓝光反射率)/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥ 92.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥ 90.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥ 88.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>二氧化硫/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 30.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 30.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 30.0</td></tr>\n</table>\n[TABLE_END]",
-        "copy_table": [
-          [
-            "水分 优级",
-            "≤13.0%"
-          ],
-          [
-            "细度(100目) 优级",
-            "≥99.5%"
-          ],
-          [
-            "斑点 优级",
-            "≤0.4个/cm²"
-          ],
-          [
-            "酸度 优级",
-            "≤12.0mL"
-          ],
-          [
-            "灰分(干基) 优级",
-            "≤0.10%"
-          ],
-          [
-            "蛋白质(干基) 优级",
-            "≤0.35%"
-          ],
-          [
-            "脂肪(干基) 优级",
-            "≤0.10%"
-          ],
-          [
-            "白度 优级",
-            "≥92.0%"
-          ],
-          [
-            "SO₂",
-            "≤30.0 mg/kg"
-          ]
-        ]
-      },
-      {
-        "title": "非食用发酵工业酒精",
-        "description": "非食用发酵工业酒精的技术要求、试验方法及检验规则",
-        "source": "GB/T 394.1-2026",
-        "type": "text",
-        "content": "【1 范围】\n本标准规定了非食用发酵工业酒精的分类、技术要求、试验方法、检验规则和标志、\n包装、运输、贮存。适用于以谷物、薯类、糖蜜或其他含淀粉/糖类物质为原料，\n经发酵、蒸馏制成的非食用工业酒精。\n\n【2 感官要求】\n无色透明液体，无杂质，具有酒精特有的气味，无异臭。\n\n【3 理化指标】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>优级</th><th style='padding:6px 10px; border:1px solid #ddd;'>一级</th><th style='padding:6px 10px; border:1px solid #ddd;'>合格</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>乙醇(体积分数)/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥ 96.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥ 95.5</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥ 95.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>硫酸试验色度/号</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 10</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 80</td><td style='padding:6px 10px; border:1px solid #ddd;'>—</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>氧化时间/min</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥ 30</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥ 15</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥ 5</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>醛(以乙醛计)/(mg/L)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 5</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 30</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 50</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>杂醇油(以异丁醇+异戊醇计)/(mg/L)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 4</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 100</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 400</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>甲醇/(mg/L)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 50</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 200</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 800</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>酸(以乙酸计)/(mg/L)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 10</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 20</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 30</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>酯(以乙酸乙酯计)/(mg/L)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 10</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 50</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 100</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>不挥发物/(mg/L)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 15</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 25</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 30</td></tr>\n</table>\n[TABLE_END]",
-        "copy_table": [
-          [
-            "乙醇 优级",
-            "≥96.0% vol"
-          ],
-          [
-            "硫酸试验色度 优级",
-            "≤10号"
-          ],
-          [
-            "氧化时间 优级",
-            "≥30min"
-          ],
-          [
-            "醛(乙醛) 优级",
-            "≤5mg/L"
-          ],
-          [
-            "杂醇油 优级",
-            "≤4mg/L"
-          ],
-          [
-            "甲醇 优级",
-            "≤50mg/L"
-          ],
-          [
-            "酸(乙酸) 优级",
-            "≤10mg/L"
-          ]
-        ]
-      },
-      {
-        "title": "硅藻土（食品工业用）",
-        "description": "食品工业用硅藻土的卫生要求与质量指标",
-        "source": "GB 14936-2012",
-        "type": "text",
-        "content": "【1 范围】\n本标准规定了食品工业用硅藻土的卫生要求。适用于以天然硅藻土为原料，经干燥、\n焙烧、酸洗等加工工艺制得的食品工业用硅藻土（助滤剂）。\n\n【2 感官要求】\n类白色至浅黄色粉末，无异味，无肉眼可见外来杂质。\n\n【3 理化指标】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>要求</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>pH值(10%水浸液)</td><td style='padding:6px 10px; border:1px solid #ddd;'>5.0~11.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>水可溶物/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.5</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>盐酸可溶物/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤3.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>灼烧减量(天然品)/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤7.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>灼烧减量(焙烧品)/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤2.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>砷(As)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤4.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铅(Pb)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤4.0</td></tr>\n</table>\n[TABLE_END]",
-        "copy_table": [
-          [
-            "pH值(10%水浸液)",
-            "5.0~11.0"
-          ],
-          [
-            "水可溶物",
-            "≤0.5%"
-          ],
-          [
-            "盐酸可溶物",
-            "≤3.0%"
-          ],
-          [
-            "灼烧减量(天然)",
-            "≤7.0%"
-          ],
-          [
-            "灼烧减量(焙烧)",
-            "≤2.0%"
-          ],
-          [
-            "砷(As)",
-            "≤4.0 mg/kg"
-          ],
-          [
-            "铅(Pb)",
-            "≤4.0 mg/kg"
-          ]
-        ]
-      },
-      {
-        "title": "食品工业用酶制剂",
-        "description": "食品工业用酶制剂的通用质量要求",
-        "source": "GB 1886.174-2024",
-        "type": "text",
-        "content": "【1 范围】\n本标准规定了食品工业用酶制剂的通用质量要求。适用于食品工业用各种酶制剂，\n包括从动植物可食或非可食部分直接提取，以及由传统或经基因修饰的微生物发酵提取的酶制剂。\n\n【2 感官要求】\n固体为粉末或颗粒，液体为澄清或微浑液体，具有该酶制剂特有的气味，无异味。\n\n【3 理化指标】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>要求</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>酶活力(标示值)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥标示值的85%</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铅(Pb)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤5.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>总砷(As)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤3.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>沙门氏菌(25g)</td><td style='padding:6px 10px; border:1px solid #ddd;'>不得检出</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>大肠菌群/(CFU/g或CFU/mL)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤30</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>菌落总数/(CFU/g或CFU/mL)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤50000</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>大肠埃希氏菌(25g或25mL)</td><td style='padding:6px 10px; border:1px solid #ddd;'>不得检出</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>黄曲霉毒素B₁/(μg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤5.0(仅限真菌来源)</td></tr>\n</table>\n[TABLE_END]",
-        "copy_table": [
-          [
-            "酶活力",
-            "≥标示值85%"
-          ],
-          [
-            "铅(Pb)",
-            "≤5.0 mg/kg"
-          ],
-          [
-            "总砷(As)",
-            "≤3.0 mg/kg"
-          ],
-          [
-            "沙门氏菌",
-            "不得检出"
-          ],
-          [
-            "大肠菌群",
-            "≤30 CFU/g(mL)"
-          ],
-          [
-            "菌落总数",
-            "≤50000 CFU/g(mL)"
-          ],
-          [
-            "大肠埃希氏菌",
-            "不得检出"
-          ]
+        "copy_table": [],
+        "tags": [
+          "材料",
+          "法兰",
+          "垫片",
+          "密封",
+          "双语"
         ]
       }
-    ]
-  },
-  {
-    "category": "蒸汽参数",
-    "icon": "steam",
-    "sections": [
-      {
-        "title": "饱和蒸汽压力-温度对照",
-        "description": "饱和蒸汽在不同表压下的饱和温度、汽化潜热和比容",
-        "source": "IAPWS-IF97 / 蒸汽表",
-        "type": "table",
-        "headers": [
-          "表压 MPa(g)",
-          "绝对压力 MPa(a)",
-          "饱和温度 °C",
-          "汽化潜热 kJ/kg",
-          "蒸汽比容 m³/kg"
-        ],
-        "rows": [
-          [
-            "0.05",
-            "0.151",
-            "111.4",
-            "2226",
-            "1.159"
-          ],
-          [
-            "0.10",
-            "0.201",
-            "120.2",
-            "2205",
-            "0.886"
-          ],
-          [
-            "0.20",
-            "0.301",
-            "133.5",
-            "2164",
-            "0.606"
-          ],
-          [
-            "0.30",
-            "0.401",
-            "143.6",
-            "2133",
-            "0.462"
-          ],
-          [
-            "0.40",
-            "0.501",
-            "151.8",
-            "2108",
-            "0.375"
-          ],
-          [
-            "0.50",
-            "0.601",
-            "158.8",
-            "2086",
-            "0.315"
-          ],
-          [
-            "0.60",
-            "0.701",
-            "165.0",
-            "2066",
-            "0.272"
-          ],
-          [
-            "0.70",
-            "0.801",
-            "170.4",
-            "2048",
-            "0.240"
-          ],
-          [
-            "0.80",
-            "0.901",
-            "175.4",
-            "2031",
-            "0.215"
-          ],
-          [
-            "0.90",
-            "1.001",
-            "179.9",
-            "2015",
-            "0.194"
-          ],
-          [
-            "1.00",
-            "1.101",
-            "184.1",
-            "2000",
-            "0.177"
-          ],
-          [
-            "1.25",
-            "1.351",
-            "192.0",
-            "1967",
-            "0.145"
-          ],
-          [
-            "1.50",
-            "1.601",
-            "198.3",
-            "1938",
-            "0.123"
-          ],
-          [
-            "2.00",
-            "2.101",
-            "208.4",
-            "1893",
-            "0.093"
-          ],
-          [
-            "2.50",
-            "2.601",
-            "216.2",
-            "1855",
-            "0.074"
-          ]
-        ]
-      },
-      {
-        "title": "蒸汽品质分级及应用",
-        "description": "发酵行业常用蒸汽品质分级标准及典型用途",
-        "source": "ISPE / 行业工程实践",
-        "type": "table",
-        "headers": [
-          "蒸汽级别",
-          "品质要求",
-          "典型用途",
-          "制备方式",
-          "注意事项"
-        ],
-        "rows": [
-          [
-            "工业蒸汽",
-            "常规锅炉蒸汽，无特殊过滤",
-            "采暖、热水、CIP加热、一般加热",
-            "工业锅炉",
-            "铁锈/杂质较多"
-          ],
-          [
-            "过滤蒸汽",
-            "工业蒸汽经≥5μm过滤器",
-            "工艺加热、空消（非直接接触）",
-            "工业锅炉+管道过滤器",
-            "管路需定期排凝"
-          ],
-          [
-            "洁净蒸汽",
-            "经过滤+洁净管道，无有害杂质",
-            "实消、与物料间接接触的加热",
-            "工业锅炉+不锈钢管道+0.45μm滤",
-            "需使用不锈钢管道"
-          ],
-          [
-            "纯蒸汽/洁净蒸汽",
-            "纯化水制备，冷凝水符合WFI标准",
-            "直接接触无菌工艺、SIP",
-            "纯蒸汽发生器（多效蒸馏）",
-            "高价，仅关键工段使用"
-          ]
-        ]
-      },
-      {
-        "title": "发酵厂常见蒸汽压力需求",
-        "description": "各工段对蒸汽压力的典型要求范围",
-        "source": "工程设计经验",
-        "type": "table",
-        "headers": [
-          "工段/用途",
-          "推荐压力 MPa(g)",
-          "温度 °C",
-          "说明"
-        ],
-        "rows": [
-          [
-            "发酵罐空消（空罐灭菌）",
-            "0.3~0.5",
-            "144~159",
-            "灭菌温度121°C，需考虑散热损失"
-          ],
-          [
-            "发酵罐实消（培养基灭菌）",
-            "0.4~0.6",
-            "152~165",
-            "需更大热负荷，压力要求更高"
-          ],
-          [
-            "管道SIP",
-            "0.3~0.5",
-            "144~159",
-            "保温管道需更高压力补偿散热"
-          ],
-          [
-            "换热器加热（间接）",
-            "0.3~0.8",
-            "144~175",
-            "取决于工艺所需温升"
-          ],
-          [
-            "CIP清洗加热",
-            "0.2~0.5",
-            "134~159",
-            "CIP液加热到70~85°C即可"
-          ],
-          [
-            "闪蒸/浓缩",
-            "0.5~1.0",
-            "159~184",
-            "多效蒸发首效"
-          ],
-          [
-            "冬季采暖",
-            "0.1~0.3",
-            "120~144",
-            "换热站换热"
-          ],
-          [
-            "蒸汽伴热",
-            "0.2~0.5",
-            "134~159",
-            "长距离管道保温"
-          ]
-        ]
-      }
-    ]
-  },
-  {
-    "category": "压缩空气",
-    "icon": "compressed_air",
-    "sections": [
-      {
-        "title": "ISO 8573 压缩空气质量等级",
-        "description": "ISO 8573-1:2010 压缩空气品质标准——固体颗粒、水分、含油量分级",
-        "source": "ISO 8573-1:2010 Compressed air — Part 1: Contaminants and purity classes",
-        "type": "table",
-        "headers": [
-          "等级",
-          "固体颗粒 (μm)",
-          "固体颗粒浓度 (mg/m³)",
-          "压力露点 (°C)",
-          "含油量 (mg/m³)"
-        ],
-        "rows": [
-          [
-            "0",
-            "按设备要求",
-            "按设备要求",
-            "按设备要求",
-            "按设备要求"
-          ],
-          [
-            "1",
-            "≤0.1",
-            "≤0.1",
-            "≤-70",
-            "≤0.01"
-          ],
-          [
-            "2",
-            "≤1",
-            "≤1",
-            "≤-40",
-            "≤0.1"
-          ],
-          [
-            "3",
-            "≤5",
-            "≤5",
-            "≤-20",
-            "≤1"
-          ],
-          [
-            "4",
-            "≤15",
-            "≤8",
-            "≤+3",
-            "≤5"
-          ],
-          [
-            "5",
-            "≤40",
-            "≤10",
-            "≤+7",
-            "≤25"
-          ],
-          [
-            "6",
-            "—",
-            "—",
-            "≤+10",
-            "—"
-          ]
-        ]
-      },
-      {
-        "title": "发酵厂各用途压缩空气质量要求",
-        "description": "不同工段对压缩空气的品质需求（参考ISO 8573等级）",
-        "source": "ISPE / GMP / 工程设计实践",
-        "type": "table",
-        "headers": [
-          "用途",
-          "ISO 8573等级(固体/水/油)",
-          "压力露点",
-          "过滤要求",
-          "说明"
-        ],
-        "rows": [
-          [
-            "仪表气 (IA)",
-            "2/3/2",
-            "≤-20°C",
-            "1μm+活性炭除油",
-            "常规仪表用气"
-          ],
-          [
-            "一般工艺气",
-            "2/4/2",
-            "≤+3°C",
-            "1μm+0.01μm凝聚式",
-            "接触非无菌物料"
-          ],
-          [
-            "发酵供气(无菌)",
-            "1/2/1",
-            "≤-40°C",
-            "0.01μm除菌滤芯×2",
-            "发酵罐通气，需无菌"
-          ],
-          [
-            "无菌操作/灌装",
-            "1/1/1",
-            "≤-70°C",
-            "0.01μm除菌滤芯+活性炭",
-            "B级/A级区"
-          ],
-          [
-            "气动执行器",
-            "3/4/3",
-            "≤+3°C",
-            "5μm+除油",
-            "普通气缸/阀门"
-          ],
-          [
-            "干燥/吹扫",
-            "2/4/2",
-            "≤+3°C",
-            "1μm",
-            "管道吹扫、干燥"
-          ]
-        ]
-      },
-      {
-        "title": "压缩空气管网设计参考",
-        "description": "空压站及管道设计的常用流速、压降和经验参数",
-        "source": "工程设计经验 / 压缩机厂商数据",
-        "type": "table",
-        "headers": [
-          "参数",
-          "推荐值/范围",
-          "说明"
-        ],
-        "rows": [
-          [
-            "空压机出口压力",
-            "0.7~0.85 MPa(g)",
-            "常用0.75~0.8 MPa(g)"
-          ],
-          [
-            "仪表气系统压力",
-            "0.5~0.7 MPa(g)",
-            "经调压阀后"
-          ],
-          [
-            "发酵供气压力",
-            "0.3~0.6 MPa(g)",
-            "需考虑管道沿程阻力+除菌过滤器压降"
-          ],
-          [
-            "主干管流速",
-            "6~10 m/s",
-            "流速过高→压降大，过低→管径大"
-          ],
-          [
-            "支管流速",
-            "8~15 m/s",
-            "短管可适当提高"
-          ],
-          [
-            "推荐管道压降",
-            "≤0.02 MPa / 100m",
-            "经济流速计算"
-          ],
-          [
-            "空气含油量(无油机)",
-            "≤0.01 mg/m³",
-            "无油螺杆/离心机，ISO 8573-1 Class 1"
-          ],
-          [
-            "干燥方式",
-            "冷冻式(露点+3°C) / 吸附式(露点-40°C)",
-            "仪表气建议吸附式"
-          ],
-          [
-            "后冷却器出口温度",
-            "≤环境温度+10°C",
-            "进入干燥器前"
-          ]
-        ]
-      }
-    ]
-  },
-  {
-    "category": "消防安全",
-    "icon": "safety",
-    "sections": [
-      {
-        "title": "火灾自动报警系统",
-        "description": "危险化学品作业场所火灾自动报警系统的设计要求",
-        "source": "GB/T 47438.1-2026",
-        "type": "text",
-        "content": "【1 范围】\n本部分规定了危险化学品作业场所火灾自动报警系统的特殊要求。\n\n【2 适用范围】\n适用于涉及危险化学品的生产、储存、使用场所的火灾自动报警系统设计、安装和验收。\n\n【3 系统组成】\n火灾自动报警系统由火灾探测器、手动报警按钮、火灾报警控制器、联动控制装置、电源等组成。\n\n【4 一般要求】\n— 系统应具有自检、故障报警、火警优先功能\n— 探测器选型应考虑场所的危险特性和环境条件\n— 报警信号应传输至有人值守的控制室\n— 系统主电源应采用消防电源，备用电源容量满足24h工作\n\n【5 特殊要求】\n— 爆炸危险区域应选用防爆型探测器\n— 对腐蚀性气体环境应采取防腐措施\n— 联动控制应包括切断非消防电源、关闭防火阀等\n— 可燃/有毒气体报警信号宜接入火灾报警系统\n\n【6 设计参数】\n— 探测器保护面积：感烟≤60m²，感温≤20m²\n— 报警区域划分按防火分区或楼层\n— 手动报警按钮间距≤30m\n— 声光报警器声压级≥75dB(A)（距发声器1m处）",
-        "copy_table": []
-      },
-      {
-        "title": "消防应急照明和疏散指示系统",
-        "description": "危险化学品作业场所消防应急照明和疏散指示系统的特殊要求",
-        "source": "GB/T 47438.2-2026",
-        "type": "text",
-        "content": "【1 范围】\n本部分规定了危险化学品作业场所消防应急照明和疏散指示系统的特殊要求。\n\n【2 系统功能】\n— 为人员安全疏散提供必要的照度和疏散方向指示\n— 为消防救援作业提供应急照明\n\n【3 设计要求】\n— 疏散走道地面最低水平照度≥3.0 lx\n— 疏散楼梯间地面最低水平照度≥5.0 lx\n— 避难层地面最低水平照度≥5.0 lx\n— 消防控制室、消防水泵房等不应低于正常照明照度\n— 应急转换时间≤5s（高危场所≤0.25s）\n— 应急工作时间≥90min\n\n【4 特殊要求】\n— 爆炸危险区域应采用防爆型灯具\n— 腐蚀性环境应采取防腐防护措施\n— 标志灯具表面亮度≥50 cd/m²\n— 疏散指示标志间距≤20m（走道）\n\n【5 电池要求】\n— 蓄电池初装容量应保证应急工作时间≥90min\n— 电池寿命到期后应有更换指示",
-        "copy_table": []
-      },
-      {
-        "title": "可燃气体检测报警系统",
-        "description": "危险化学品作业场所可燃气体检测报警系统的特殊要求",
-        "source": "GB/T 47438.3-2026",
-        "type": "text",
-        "content": "【1 范围】\n本部分规定了危险化学品作业场所可燃气体检测报警系统的特殊要求。\n\n【2 系统组成】\n由可燃气体探测器、报警控制器、声光报警器等组成。\n\n【3 探测器选型】\n— 检测原理：催化燃烧式、红外吸收式、半导体式等\n— 防爆等级不低于 Ex d IIB T4\n— 防护等级不低于 IP65\n— 响应时间（T90）≤30s\n\n【4 报警设定值】\n— 一级报警（预报警）：≤25% LEL\n— 二级报警（高报警）：≤50% LEL\n\n【5 布置要求】\n— 检测比空气轻的气体：探测器安装在释放源上方0.5~2m\n— 检测比空气重的气体：探测器安装在释放源下方0.3~0.6m\n— 探测器覆盖半径：室内≤7.5m，室外≤15m\n— 露天布置需安装防雨罩\n\n【6 报警联动】\n— 一级报警：启动现场声光报警\n— 二级报警：联动切断阀、启动排风、通知消防控制室\n— 报警信号应持续至人工确认消除",
-        "copy_table": []
-      },
-      {
-        "title": "报警信息便携显示装置",
-        "description": "危险化学品作业场所报警信息便携显示装置的要求",
-        "source": "GB/T 47438.4-2026",
-        "type": "text",
-        "content": "【1 范围】\n本部分规定了危险化学品作业场所报警信息便携显示装置的要求。\n\n【2 功能要求】\n— 可接收并显示火灾报警、可燃/有毒气体报警等信息\n— 实时显示报警点位、报警类型、报警时间\n— 支持多级报警管理\n\n【3 技术参数】\n— 通信距离：≥100m（空旷环境）\n— 续航时间：≥8h（连续工作）\n— 显示屏幕：≥3.5英寸\n— 响应延迟：≤3s\n\n【4 环境适应性】\n— 工作温度：-10°C~+50°C\n— 防护等级：≥IP54\n— 防爆等级应符合使用场所要求\n\n【5 功能】\n— 具备声、光、振动三种提醒方式\n— 支持历史报警记录查询\n— 低电量报警功能",
-        "copy_table": []
-      },
-      {
-        "title": "电力传输和控制电缆",
-        "description": "危险化学品作业场所报警系统用电力传输和控制电缆的要求",
-        "source": "GB/T 47438.5-2026",
-        "type": "text",
-        "content": "【1 范围】\n本部分规定了危险化学品作业场所报警系统用电力传输和控制电缆的要求。\n\n【2 电缆分类】\n— 电力电缆：为系统设备提供电源\n— 控制电缆：传输报警信号和控制信号\n— 通信电缆：传输数据信号\n\n【3 性能要求】\n— 耐火性能：满足GB/T 19216要求（950°C/180min）\n— 阻燃性能：不低于B1级（GB 31247）\n— 低烟无卤（LSZH）\n— 耐化学腐蚀（耐酸、碱、油等）\n\n【4 特殊要求】\n— 爆炸危险区域电缆应选用铠装电缆\n— 腐蚀性环境电缆护套应具有耐腐蚀性能\n— 消防配电线路应采用矿物绝缘电缆或耐火电缆\n— 不同电压等级线路应分管/槽敷设\n\n【5 安装要求】\n— 电缆接头应采用防爆接线盒\n— 穿越防火分区处应采取防火封堵",
-        "copy_table": []
-      }
-    ]
-  },
-  {
-    "category": "水质标准",
-    "icon": "water",
-    "sections": [
-      {
-        "title": "生活饮用水卫生标准",
-        "description": "生活饮用水水质常规指标及限值",
-        "source": "GB 5749-2022",
-        "type": "text",
-        "content": "【1 范围】\n本标准规定了生活饮用水水质要求、水源水质要求、集中式供水单位卫生要求等。\n适用于城乡各类集中式供水和分散式供水的生活饮用水。\n\n【2 水质常规指标（微生物指标）】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>限值</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>总大肠菌群</td><td style='padding:6px 10px; border:1px solid #ddd;'>不得检出(MPN/100mL或CFU/100mL)</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>大肠埃希氏菌</td><td style='padding:6px 10px; border:1px solid #ddd;'>不得检出(MPN/100mL或CFU/100mL)</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>菌落总数</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤100 CFU/mL</td></tr>\n</table>\n[TABLE_END]\n\n【3 毒理指标】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>限值(mg/L)</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>砷(As)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.01</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>镉(Cd)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.005</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铬(Cr⁶⁺)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.05</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铅(Pb)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.01</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>汞(Hg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.001</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>氰化物</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.05</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>氟化物</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤1.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>硝酸盐(以N计)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤10</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>三氯甲烷</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.06</td></tr>\n</table>\n[TABLE_END]\n\n【4 感官性状和一般化学指标】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>限值</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>色度(铂钴色度单位)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤15</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>浑浊度(NTU)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤1，水源与净水条件限制时≤3</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>pH</td><td style='padding:6px 10px; border:1px solid #ddd;'>6.5~8.5</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>总硬度(以CaCO₃计)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤450 mg/L</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铁(Fe)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.3 mg/L</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>锰(Mn)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.1 mg/L</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>氯化物</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤250 mg/L</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>硫酸盐</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤250 mg/L</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>溶解性总固体(TDS)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤1000 mg/L</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铝(Al)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.2 mg/L</td></tr>\n</table>\n[TABLE_END]\n\n【5 消毒剂常规指标】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>消毒剂</th><th style='padding:6px 10px; border:1px solid #ddd;'>与水接触时间</th><th style='padding:6px 10px; border:1px solid #ddd;'>出厂水余量(mg/L)</th><th style='padding:6px 10px; border:1px solid #ddd;'>管网末梢余量(mg/L)</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>氯气及游离氯制剂</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥30min</td><td style='padding:6px 10px; border:1px solid #ddd;'>0.3~2</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥0.05</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>一氯胺(总氯)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥120min</td><td style='padding:6px 10px; border:1px solid #ddd;'>0.5~3</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥0.05</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>臭氧(O₃)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥12min</td><td style='padding:6px 10px; border:1px solid #ddd;'>—</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥0.02(如加氯则总氯≥0.05)</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>二氧化氯(ClO₂)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥30min</td><td style='padding:6px 10px; border:1px solid #ddd;'>0.1~0.8</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥0.02</td></tr>\n</table>\n[TABLE_END]",
-        "copy_table": [
-          [
-            "总大肠菌群",
-            "不得检出"
-          ],
-          [
-            "菌落总数",
-            "≤100 CFU/mL"
-          ],
-          [
-            "pH",
-            "6.5~8.5"
-          ],
-          [
-            "总硬度(CaCO₃)",
-            "≤450 mg/L"
-          ],
-          [
-            "铁(Fe)",
-            "≤0.3 mg/L"
-          ],
-          [
-            "锰(Mn)",
-            "≤0.1 mg/L"
-          ],
-          [
-            "氯化物",
-            "≤250 mg/L"
-          ],
-          [
-            "硫酸盐",
-            "≤250 mg/L"
-          ],
-          [
-            "TDS",
-            "≤1000 mg/L"
-          ],
-          [
-            "浊度",
-            "≤1 NTU"
-          ],
-          [
-            "游离余氯",
-            "0.3~2 mg/L(出厂) / ≥0.05(末梢)"
-          ]
-        ]
-      }
-    ]
+    ],
+    "group": "材料与设备"
   },
   {
     "category": "热工设备",
@@ -2629,9 +1658,452 @@
         "source": "GB/T 47619-2026",
         "type": "text",
         "content": "【1 范围】\n本标准规定了采用蒸气压缩循环的热泵蒸汽发生装置（简称热泵蒸汽机组）的分类、技术要求、\n试验方法和检验规则。适用于以空气、水等为低温热源，产生蒸汽供工业或民用使用的热泵机组。\n\n【2 术语与定义】\n— 热泵蒸汽发生装置：利用蒸气压缩循环从低温热源吸热，制取蒸汽的成套设备\n— 制热性能系数(COPh)：制热量与输入功率之比\n— 蒸汽产量：单位时间的蒸汽发生量(kg/h)\n\n【3 分类与型号】\n— 按热源类型：空气源、水源、余热源\n— 按蒸汽压力：低压(≤0.4MPa)、中压(0.4~1.0MPa)\n— 按蒸汽温度：饱和蒸汽、过热蒸汽\n\n【4 主要技术参数】\n— 蒸汽产量范围：50~2000 kg/h\n— 蒸汽压力范围：0.1~1.0 MPa\n— 制热性能系数(COPh)：≥2.5（标准工况）\n— 出水/蒸汽温度：≥100°C（常压），≥120°C（微压）\n\n【5 性能要求】\n— 在额定工况下，蒸汽产量不低于标称值的95%\n— 蒸汽干度≥0.95\n— 能效等级：1级COPh≥4.0，2级COPh≥3.2，3级COPh≥2.5\n\n【6 安全要求】\n— 压力容器应符合GB/T 150及相关规范\n— 应设置超压保护、缺水保护、过载保护\n— 电气安全应符合GB 4706.32要求",
-        "copy_table": []
+        "copy_table": [],
+        "tags": [
+          "热工"
+        ]
       }
-    ]
+    ],
+    "group": "材料与设备"
+  },
+  {
+    "category": "设备布置",
+    "icon": "plant",
+    "sections": [
+      {
+        "title": "储罐布置间距",
+        "description": "储罐之间及储罐与建（构）筑物之间的防火间距",
+        "source": "GB 50160-2008(2018年版)《石油化工企业设计防火标准》第5.2节",
+        "type": "table",
+        "headers": [
+          "介质类型",
+          "储罐容量",
+          "罐与罐间距(m)",
+          "罐与防火堤间距(m)",
+          "备注"
+        ],
+        "rows": [
+          [
+            "甲类液体(闪点<28°C)",
+            "≤1000m³",
+            "0.75D且≥1.5",
+            "≥0.5D且≥1.0",
+            "D为较大罐直径"
+          ],
+          [
+            "甲类液体(闪点<28°C)",
+            ">1000m³",
+            "0.75D且≥1.5",
+            "≥0.5D且≥1.0",
+            "D为较大罐直径"
+          ],
+          [
+            "乙类液体(28≤闪点<60°C)",
+            "任意",
+            "0.5D且≥1.0",
+            "≥0.3D且≥0.8",
+            ""
+          ],
+          [
+            "丙类液体(闪点≥60°C)",
+            "任意",
+            "0.4D且≥0.8",
+            "≥0.25D且≥0.5",
+            ""
+          ],
+          [
+            "液化烃(压力储罐)",
+            "任意",
+            "2.0m且≥1.5D",
+            "≥1.0",
+            "D为较大罐直径"
+          ]
+        ],
+        "tags": [
+          "布置",
+          "储罐"
+        ]
+      },
+      {
+        "title": "塔与容器间距",
+        "description": "塔器、容器等设备之间的操作与检修间距",
+        "source": "HG/T 20546-2009《化工装置设备布置设计规范》",
+        "type": "table",
+        "headers": [
+          "设备类型",
+          "间距要求(m)",
+          "说明"
+        ],
+        "rows": [
+          [
+            "塔与塔（整体基础）",
+            "≥1.5",
+            "检修通道最小宽度"
+          ],
+          [
+            "塔与塔（独立基础）",
+            "≥2.0",
+            "考虑基础不均匀沉降"
+          ],
+          [
+            "卧式容器之间",
+            "≥0.8",
+            "操作通道"
+          ],
+          [
+            "立式容器之间",
+            "≥1.0",
+            "操作通道"
+          ],
+          [
+            "容器与建筑物",
+            "≥1.5",
+            "防火与检修"
+          ],
+          [
+            "换热器之间",
+            "≥0.8",
+            "抽管束空间另计"
+          ],
+          [
+            "泵与泵之间",
+            "≥1.0",
+            "操作与检修"
+          ]
+        ],
+        "tags": [
+          "布置"
+        ]
+      },
+      {
+        "title": "操作通道与走廊",
+        "description": "设备操作通道、走廊的最小宽度要求",
+        "source": "HG/T 20546-2009《化工装置设备布置设计规范》",
+        "type": "table",
+        "headers": [
+          "通道类型",
+          "最小宽度(m)",
+          "最小高度(m)",
+          "说明"
+        ],
+        "rows": [
+          [
+            "主要操作走廊",
+            "1.2",
+            "2.2",
+            "经常有人通行"
+          ],
+          [
+            "一般操作通道",
+            "1.0",
+            "2.2",
+            "日常巡检"
+          ],
+          [
+            "次要操作通道",
+            "0.8",
+            "2.0",
+            "不经常通行"
+          ],
+          [
+            "检修通道",
+            "1.5~2.0",
+            "2.5",
+            "需搬运设备"
+          ],
+          [
+            "楼梯宽度",
+            "1.0~1.2",
+            "2.2",
+            "主要楼梯"
+          ],
+          [
+            "直爬梯宽度",
+            "0.5~0.6",
+            "—",
+            "检修用"
+          ],
+          [
+            "斜梯宽度",
+            "0.7~0.8",
+            "—",
+            "倾角40~50°"
+          ],
+          [
+            "平台宽度",
+            "≥0.8",
+            "—",
+            "操作平台"
+          ],
+          [
+            "走台宽度",
+            "≥0.6",
+            "—",
+            "不经常通行"
+          ]
+        ],
+        "tags": [
+          "布置"
+        ]
+      },
+      {
+        "title": "平台与梯子",
+        "description": "操作平台和梯子的设计参数",
+        "source": "HG/T 20546-2009 / GB 4053《固定式钢梯及平台安全要求》",
+        "type": "table",
+        "headers": [
+          "项目",
+          "参数",
+          "说明"
+        ],
+        "rows": [
+          [
+            "操作平台宽度",
+            "≥0.8m",
+            "经常操作≥1.0m"
+          ],
+          [
+            "操作平台荷重",
+            "≥2.5kN/m²",
+            "检修平台≥4.0kN/m²"
+          ],
+          [
+            "平台护栏高度",
+            "1.05~1.2m",
+            "距地面≥2m需设护栏"
+          ],
+          [
+            "护栏踢脚板高度",
+            "≥0.10m",
+            "防止物品坠落"
+          ],
+          [
+            "直爬梯段高",
+            "≤10m",
+            "超过需设休息平台"
+          ],
+          [
+            "直爬梯宽度",
+            "0.5~0.6m",
+            "踏棍间距0.25~0.30m"
+          ],
+          [
+            "斜梯倾角",
+            "40~50°",
+            "最佳45°"
+          ],
+          [
+            "斜梯宽度",
+            "0.7~0.8m",
+            "踏步高度0.20~0.25m"
+          ],
+          [
+            "安全笼起始高度",
+            "2.5m以上",
+            "直爬梯高度超过3.5m时设置"
+          ]
+        ],
+        "tags": [
+          "布置"
+        ]
+      },
+      {
+        "title": "防火间距（厂房之间）",
+        "description": "甲、乙、丙类厂房之间的防火间距",
+        "source": "GB 50016-2014(2018年版)《建筑设计防火规范》第3.4节；厂房防火间距强制性条文已由 GB 55037-2022《建筑防火通用规范》替代，设计时以 GB 55037-2022 为准",
+        "type": "table",
+        "headers": [
+          "厂房类别",
+          "甲类(m)",
+          "乙类(m)",
+          "丙类(m)",
+          "丁/戊类(m)"
+        ],
+        "rows": [
+          [
+            "甲类",
+            "12",
+            "12",
+            "12",
+            "12"
+          ],
+          [
+            "乙类",
+            "12",
+            "10",
+            "10",
+            "10"
+          ],
+          [
+            "丙类(单/多层)",
+            "12",
+            "10",
+            "10",
+            "10"
+          ],
+          [
+            "丁/戊类(单/多层)",
+            "12",
+            "10",
+            "10",
+            "按耐火等级"
+          ]
+        ],
+        "tags": [
+          "布置",
+          "防火间距"
+        ]
+      }
+    ],
+    "group": "布置与安全"
+  },
+  {
+    "category": "安全规范",
+    "icon": "safety",
+    "sections": [
+      {
+        "title": "安全阀整定压力",
+        "description": "安全阀整定压力（开启压力）的设定依据",
+        "source": "GB/T 12241-2005 / TSG 21-2016《固定式压力容器安全技术监察规程》",
+        "type": "table",
+        "headers": [
+          "设备工作压力Pw(MPa)",
+          "整定压力Ps(MPa)",
+          "回座压力",
+          "说明"
+        ],
+        "rows": [
+          [
+            "Pw ≤ 0.1",
+            "Pw + 0.015~0.03",
+            "≥0.9Ps",
+            "低压容器"
+          ],
+          [
+            "0.1 < Pw ≤ 0.6",
+            "1.05Pw",
+            "≥0.9Ps",
+            ""
+          ],
+          [
+            "0.6 < Pw ≤ 1.6",
+            "1.05~1.08Pw",
+            "≥0.9Ps",
+            "一般化工容器"
+          ],
+          [
+            "1.6 < Pw ≤ 4.0",
+            "1.05~1.08Pw",
+            "≥0.9Ps",
+            ""
+          ],
+          [
+            "Pw > 4.0",
+            "1.03~1.05Pw",
+            "≥0.9Ps",
+            "高压容器"
+          ],
+          [
+            "蒸汽锅炉",
+            "1.04~1.06Pw",
+            "≥0.93Ps",
+            "按锅炉规程"
+          ],
+          [
+            "火灾工况",
+            "≤1.1×MAWP",
+            "—",
+            "火灾紧急泄放"
+          ]
+        ],
+        "tags": [
+          "安全"
+        ]
+      },
+      {
+        "title": "安全泄放量计算公式",
+        "description": "不同工况下安全阀泄放量的计算方法",
+        "source": "GB/T 12241-2005 / API 521",
+        "type": "text",
+        "content": "一、气体/蒸汽泄放量（临界流动）:\n  W = 5.25 × A × C × Kd × P1 × √(M/(Z×T1))\n\n  W    — 泄放量 (kg/h)\n  A    — 最小泄放面积 (cm²)\n  C    — 气体特性系数，C=520×√(k×(2/(k+1))^((k+1)/(k-1)))\n  Kd   — 额定泄放系数（由厂家提供，一般0.6~0.98）\n  P1   — 泄放压力 (MPaA)\n  M    — 气体分子量 (kg/kmol)\n  Z    — 压缩因子\n  T1   — 泄放温度 (K)\n  k    — 气体绝热指数\n\n二、液体泄放量:\n  W = 3.16 × A × Kd × √(ΔP × ρ)\n\n  ΔP   — 泄放压差 (MPa)\n  ρ    — 液体密度 (kg/m³)\n\n三、火灾工况液体泄放量:\n  W = 155.4 × F × A_w^0.82 / L\n\n  F    — 环境系数（保温=0.3, 裸露=1.0）\n  A_w  — 润湿面积 (m²)\n  L    — 汽化潜热 (kJ/kg)",
+        "tags": [
+          "安全"
+        ]
+      },
+      {
+        "title": "安全色与安全标志",
+        "description": "管道、设备的安全色标识标准",
+        "source": "GB 2893-2008《安全色》/ GB 7231-2003《工业管路基本识别色》",
+        "type": "table",
+        "headers": [
+          "管道介质",
+          "识别色",
+          "色样(RGB)",
+          "标注方式"
+        ],
+        "rows": [
+          [
+            "水",
+            "艳绿",
+            "#008000",
+            "色环+箭头+文字"
+          ],
+          [
+            "蒸汽",
+            "大红",
+            "#FF0000",
+            "色环+箭头+文字"
+          ],
+          [
+            "空气",
+            "淡灰",
+            "#B0B0B0",
+            "色环+箭头+文字"
+          ],
+          [
+            "气体(可燃)",
+            "中黄",
+            "#FFD700",
+            "色环+箭头+文字"
+          ],
+          [
+            "气体(不可燃)",
+            "银灰",
+            "#C0C0C0",
+            "色环+箭头+文字"
+          ],
+          [
+            "酸/碱",
+            "紫",
+            "#800080",
+            "色环+箭头+文字"
+          ],
+          [
+            "可燃液体",
+            "棕",
+            "#8B4513",
+            "色环+箭头+文字"
+          ],
+          [
+            "其他液体",
+            "黑",
+            "#000000",
+            "色环+箭头+文字"
+          ],
+          [
+            "氧气",
+            "淡蓝",
+            "#ADD8E6",
+            "色环+箭头+文字"
+          ]
+        ],
+        "tags": [
+          "安全",
+          "标识"
+        ]
+      }
+    ],
+    "group": "布置与安全"
   },
   {
     "category": "防爆区域",
@@ -2699,6 +2171,9 @@
             "积尘不易清理的死角区",
             "粉尘防爆 22区专用"
           ]
+        ],
+        "tags": [
+          "防爆"
         ]
       },
       {
@@ -2735,6 +2210,9 @@
             "氢气、乙炔、二硫化碳",
             "必须隔爆 d 或本安，要求最严"
           ]
+        ],
+        "tags": [
+          "防爆"
         ]
       },
       {
@@ -2749,15 +2227,771 @@
           "典型介质"
         ],
         "rows": [
-          ["T1", "450", ">450°C", "氢气、甲烷、丙酮"],
-          ["T2", "300", "300~450°C", "丙烷、丁烷、乙烯"],
-          ["T3", "200", "200~300°C", "汽油、苯、二甲苯"],
-          ["T4", "135", "135~200°C", "乙醚、二硫化碳"],
-          ["T5", "100", "100~135°C", "—"],
-          ["T6", "85", "85~100°C", "亚硝酸乙酯"]
+          [
+            "T1",
+            "450",
+            ">450°C",
+            "氢气、甲烷、丙酮"
+          ],
+          [
+            "T2",
+            "300",
+            "300~450°C",
+            "丙烷、丁烷、乙烯"
+          ],
+          [
+            "T3",
+            "200",
+            "200~300°C",
+            "汽油、苯、二甲苯"
+          ],
+          [
+            "T4",
+            "135",
+            "135~200°C",
+            "乙醚、二硫化碳"
+          ],
+          [
+            "T5",
+            "100",
+            "100~135°C",
+            "—"
+          ],
+          [
+            "T6",
+            "85",
+            "85~100°C",
+            "亚硝酸乙酯"
+          ]
+        ],
+        "tags": [
+          "防爆"
         ]
       }
-    ]
+    ],
+    "group": "布置与安全"
+  },
+  {
+    "category": "消防安全",
+    "icon": "safety",
+    "sections": [
+      {
+        "title": "火灾自动报警系统",
+        "description": "危险化学品作业场所火灾自动报警系统的设计要求",
+        "source": "GB/T 47438.1-2026",
+        "type": "text",
+        "content": "【1 范围】\n本部分规定了危险化学品作业场所火灾自动报警系统的特殊要求。\n\n【2 适用范围】\n适用于涉及危险化学品的生产、储存、使用场所的火灾自动报警系统设计、安装和验收。\n\n【3 系统组成】\n火灾自动报警系统由火灾探测器、手动报警按钮、火灾报警控制器、联动控制装置、电源等组成。\n\n【4 一般要求】\n— 系统应具有自检、故障报警、火警优先功能\n— 探测器选型应考虑场所的危险特性和环境条件\n— 报警信号应传输至有人值守的控制室\n— 系统主电源应采用消防电源，备用电源容量满足24h工作\n\n【5 特殊要求】\n— 爆炸危险区域应选用防爆型探测器\n— 对腐蚀性气体环境应采取防腐措施\n— 联动控制应包括切断非消防电源、关闭防火阀等\n— 可燃/有毒气体报警信号宜接入火灾报警系统\n\n【6 设计参数】\n— 探测器保护面积：感烟≤60m²，感温≤20m²\n— 报警区域划分按防火分区或楼层\n— 手动报警按钮间距≤30m\n— 声光报警器声压级≥75dB(A)（距发声器1m处）",
+        "copy_table": [],
+        "tags": [
+          "消防"
+        ]
+      },
+      {
+        "title": "消防应急照明和疏散指示系统",
+        "description": "危险化学品作业场所消防应急照明和疏散指示系统的特殊要求",
+        "source": "GB/T 47438.2-2026",
+        "type": "text",
+        "content": "【1 范围】\n本部分规定了危险化学品作业场所消防应急照明和疏散指示系统的特殊要求。\n\n【2 系统功能】\n— 为人员安全疏散提供必要的照度和疏散方向指示\n— 为消防救援作业提供应急照明\n\n【3 设计要求】\n— 疏散走道地面最低水平照度≥3.0 lx\n— 疏散楼梯间地面最低水平照度≥5.0 lx\n— 避难层地面最低水平照度≥5.0 lx\n— 消防控制室、消防水泵房等不应低于正常照明照度\n— 应急转换时间≤5s（高危场所≤0.25s）\n— 应急工作时间≥90min\n\n【4 特殊要求】\n— 爆炸危险区域应采用防爆型灯具\n— 腐蚀性环境应采取防腐防护措施\n— 标志灯具表面亮度≥50 cd/m²\n— 疏散指示标志间距≤20m（走道）\n\n【5 电池要求】\n— 蓄电池初装容量应保证应急工作时间≥90min\n— 电池寿命到期后应有更换指示",
+        "copy_table": [],
+        "tags": [
+          "消防"
+        ]
+      },
+      {
+        "title": "可燃气体检测报警系统",
+        "description": "危险化学品作业场所可燃气体检测报警系统的特殊要求",
+        "source": "GB/T 47438.3-2026",
+        "type": "text",
+        "content": "【1 范围】\n本部分规定了危险化学品作业场所可燃气体检测报警系统的特殊要求。\n\n【2 系统组成】\n由可燃气体探测器、报警控制器、声光报警器等组成。\n\n【3 探测器选型】\n— 检测原理：催化燃烧式、红外吸收式、半导体式等\n— 防爆等级不低于 Ex d IIB T4\n— 防护等级不低于 IP65\n— 响应时间（T90）≤30s\n\n【4 报警设定值】\n— 一级报警（预报警）：≤25% LEL\n— 二级报警（高报警）：≤50% LEL\n\n【5 布置要求】\n— 检测比空气轻的气体：探测器安装在释放源上方0.5~2m\n— 检测比空气重的气体：探测器安装在释放源下方0.3~0.6m\n— 探测器覆盖半径：室内≤7.5m，室外≤15m\n— 露天布置需安装防雨罩\n\n【6 报警联动】\n— 一级报警：启动现场声光报警\n— 二级报警：联动切断阀、启动排风、通知消防控制室\n— 报警信号应持续至人工确认消除",
+        "copy_table": [],
+        "tags": [
+          "消防",
+          "防爆"
+        ]
+      },
+      {
+        "title": "报警信息便携显示装置",
+        "description": "危险化学品作业场所报警信息便携显示装置的要求",
+        "source": "GB/T 47438.4-2026",
+        "type": "text",
+        "content": "【1 范围】\n本部分规定了危险化学品作业场所报警信息便携显示装置的要求。\n\n【2 功能要求】\n— 可接收并显示火灾报警、可燃/有毒气体报警等信息\n— 实时显示报警点位、报警类型、报警时间\n— 支持多级报警管理\n\n【3 技术参数】\n— 通信距离：≥100m（空旷环境）\n— 续航时间：≥8h（连续工作）\n— 显示屏幕：≥3.5英寸\n— 响应延迟：≤3s\n\n【4 环境适应性】\n— 工作温度：-10°C~+50°C\n— 防护等级：≥IP54\n— 防爆等级应符合使用场所要求\n\n【5 功能】\n— 具备声、光、振动三种提醒方式\n— 支持历史报警记录查询\n— 低电量报警功能",
+        "copy_table": [],
+        "tags": [
+          "消防"
+        ]
+      },
+      {
+        "title": "电力传输和控制电缆",
+        "description": "危险化学品作业场所报警系统用电力传输和控制电缆的要求",
+        "source": "GB/T 47438.5-2026",
+        "type": "text",
+        "content": "【1 范围】\n本部分规定了危险化学品作业场所报警系统用电力传输和控制电缆的要求。\n\n【2 电缆分类】\n— 电力电缆：为系统设备提供电源\n— 控制电缆：传输报警信号和控制信号\n— 通信电缆：传输数据信号\n\n【3 性能要求】\n— 耐火性能：满足GB/T 19216要求（950°C/180min）\n— 阻燃性能：不低于B1级（GB 31247）\n— 低烟无卤（LSZH）\n— 耐化学腐蚀（耐酸、碱、油等）\n\n【4 特殊要求】\n— 爆炸危险区域电缆应选用铠装电缆\n— 腐蚀性环境电缆护套应具有耐腐蚀性能\n— 消防配电线路应采用矿物绝缘电缆或耐火电缆\n— 不同电压等级线路应分管/槽敷设\n\n【5 安装要求】\n— 电缆接头应采用防爆接线盒\n— 穿越防火分区处应采取防火封堵",
+        "copy_table": [],
+        "tags": [
+          "消防"
+        ]
+      }
+    ],
+    "group": "布置与安全"
+  },
+  {
+    "category": "工业原料标准",
+    "icon": "⚗️",
+    "sections": [
+      {
+        "title": "葡萄糖 (一水/无水)",
+        "description": "一水葡萄糖(C6H12O6·H2O)及无水葡萄糖(C6H12O6)质量指标",
+        "source": "GB/T 20882.1-2025",
+        "type": "text",
+        "content": "【1 范围】\n本标准规定了食用葡萄糖的质量要求,包括一水葡萄糖(C6H12O6·H2O)和无水葡萄糖(C6H12O6)。\n适用于以淀粉或淀粉质为原料,经酶法或酸酶法液化、糖化、精制而制得的食用葡萄糖。\n\n【2 规范性引用文件】\nGB 5009.3 食品安全国家标准 食品中水分的测定\nGB 5009.8 食品安全国家标准 食品中果糖、葡萄糖、蔗糖、麦芽糖、乳糖的测定\nGB 15203 食品安全国家标准 淀粉糖\n\n【3 术语和定义】\n一水葡萄糖(Monohydrate Dextrose):含有一分子结晶水的葡萄糖,化学式C6H12O6·H2O。\n无水葡萄糖(Anhydrous Dextrose):不含结晶水的葡萄糖,化学式C6H12O6。\n\n【4 产品分类】\n按产品形态分为一水葡萄糖和无水葡萄糖。按质量等级分为优级品和一级品。\n\n【5 要求】\n5.1 感官要求\n[TABLE_START]\n<tr><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>项目</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>要求</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>色泽</td><td style='padding:6px 10px; border:1px solid #ddd;'>白色结晶性粉末或颗粒,无正常视力可见杂质</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>气味</td><td style='padding:6px 10px; border:1px solid #ddd;'>具有葡萄糖特有的甜香气味,无异味</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>滋味</td><td style='padding:6px 10px; border:1px solid #ddd;'>甜味柔和,无异味</td></tr>\n[TABLE_END]\n5.2 理化指标\n[TABLE_START]\n<tr><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>指标项目</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>单位</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>一水葡萄糖</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>无水葡萄糖-优级品</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>无水葡萄糖-一级品</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>水分</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤10.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤2.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤2.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>含量(干基)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥99.5</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥99.5</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥99.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>比旋光度</td><td style='padding:6px 10px; border:1px solid #ddd;'/>&#176;</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>52.0~53.5</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>pH</td><td style='padding:6px 10px; border:1px solid #ddd;'>/</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>4.0~6.5</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>氯化物(Cl-)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>≤0.01</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>硫酸灰分</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>≤0.25</td></tr>\n[TABLE_END]\n\n【6 试验方法】\n水分测定按GB 5009.3执行；含量测定按GB 5009.8执行；比旋光度按GB/T 20882.1规定方法测定。\n\n【7 检验规则】\n产品须经生产厂检验部门按本标准逐批检验合格后方可出厂。\n\n【8 标志、包装、运输和贮存】\n产品应贮存在阴凉、干燥、通风的库房内,不得与有毒有害物质混贮。",
+        "copy_table": "GB/T 20882.1-2025 食用葡萄糖\n─────────────────────────────────────────────\n指标项目          单位    一水葡萄糖    无水-优级品    无水-一级品\n水分              %      ≤10.0        ≤2.0          ≤2.0\n含量(干基)         %      ≥99.5        ≥99.5         ≥99.0\n比旋光度          °      52.0~53.5\npH               /      4.0~6.5\n氯化物(Cl⁻)       %      ≤0.01\n硫酸灰分           %      ≤0.25",
+        "tags": [
+          "工业原料",
+          "发酵"
+        ]
+      },
+      {
+        "title": "玉米浆 (Corn Steep Liquor)",
+        "description": "玉米浸泡液浓缩产物,发酵工业常用有机氮源",
+        "source": "QB/T 标准 / 行业通行规格",
+        "type": "text",
+        "content": "【1 概述】\n玉米浆是玉米湿法加工过程中产生的浸泡液经浓缩得到的液体产物,富含氨基酸、多肽、维生素、乳酸\n和无机盐等营养成分,是微生物发酵工业中广泛使用的有机氮源。\n\n【2 产品特性】\n玉米浆含有大量可溶性蛋白质、氨基酸(尤其是丙氨酸、谷氨酸、亮氨酸等)、乳酸、还原糖和B族维生素,具有促进微生物生长的作用。\n其品质主要受玉米品种、浸泡工艺和浓缩程度影响。\n\n【3 感官要求】\n棕褐色粘稠液体,具有玉米浆特有的气味,无腐败异味。\n[TABLE_START]\n<tr><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>项目</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>要求</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>外观</td><td style='padding:6px 10px; border:1px solid #ddd;'>棕褐色粘稠液体</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>气味</td><td style='padding:6px 10px; border:1px solid #ddd;'>典型玉米香气,无腐败异味</td></tr>\n[TABLE_END]\n\n【4 理化指标】\n[TABLE_START]\n<tr><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>指标项目</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>单位</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>指标值</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>干物质(DM)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥45.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>总氮(干基)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥3.5</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>氨基氮(干基)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥1.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>还原糖(以葡萄糖计,干基)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥5.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>乳酸(干基)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤15.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>pH</td><td style='padding:6px 10px; border:1px solid #ddd;'>/</td><td style='padding:6px 10px; border:1px solid #ddd;'>3.8~4.5</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>粘度(25°C)</td><td style='padding:6px 10px; border:1px solid #ddd;'>mPa·s</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤100</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>SO2含量</td><td style='padding:6px 10px; border:1px solid #ddd;'>mg/kg</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤30</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>灰分(干基)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤10.0</td></tr>\n[TABLE_END]",
+        "copy_table": "玉米浆 典型规格\n──────────────────────────────\n指标项目                单位    指标值\n干物质(DM)              %      ≥45.0\n总氮(干基)              %      ≥3.5\n氨基氮(干基)            %      ≥1.0\n还原糖(以葡萄糖计,干基)   %      ≥5.0\n乳酸(干基)              %      ≤15.0\npH                     /      3.8~4.5\n粘度(25°C)             mPa·s  ≤100\nSO₂含量                mg/kg  ≤30\n灰分(干基)              %      ≤10.0",
+        "tags": [
+          "工业原料",
+          "发酵"
+        ]
+      },
+      {
+        "title": "酵母浸粉 (Yeast Extract)",
+        "description": "酵母浸出物经喷雾干燥制得的粉末,微生物培养基原料",
+        "source": "QB/T 2919-2007 / 行业通行规格",
+        "type": "text",
+        "content": "【1 概述】\n酵母浸粉是以食用酵母为原料,经酶解或自溶、分离、浓缩、干燥制成的粉末状产品,富含氨基酸、多肽、核苷酸、B族维生素和微量元素,广泛应用于微生物培养基、发酵工业和生物制药领域。\n\n【2 产品特性】\n酵母浸粉含有丰富的游离氨基酸和小分子肽,可被微生物直接吸收利用,同时含有核酸降解产物(核苷酸和核苷),对多种微生物具有促进生长作用。\n\n【3 感官要求】\n浅黄至棕褐色粉末,具有酵母浸出物特有的气味,无其它不正常气味。\n[TABLE_START]\n<tr><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>项目</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>要求</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>外观</td><td style='padding:6px 10px; border:1px solid #ddd;'>浅黄至棕褐色粉末</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>气味</td><td style='padding:6px 10px; border:1px solid #ddd;'>酵母浸出物特有气味,无异味</td></tr>\n[TABLE_END]\n\n【4 理化指标】\n[TABLE_START]\n<tr><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>指标项目</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>单位</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>指标值</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>水分</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤5.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>总氮(干基)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥8.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>氨基氮(干基)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥3.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>pH(2%溶液)</td><td style='padding:6px 10px; border:1px solid #ddd;'>/</td><td style='padding:6px 10px; border:1px solid #ddd;'>5.0~7.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>氯化物(以NaCl计)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤15.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>干燥失重</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤6.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>灰分</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤15.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>粒度(>0.425mm)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤5.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>菌落总数</td><td style='padding:6px 10px; border:1px solid #ddd;'>CFU/g</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤10000</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>霉菌/酵母菌</td><td style='padding:6px 10px; border:1px solid #ddd;'>CFU/g</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤100</td></tr>\n[TABLE_END]",
+        "copy_table": "酵母浸粉 典型规格\n──────────────────────────────\n指标项目            单位    指标值\n水分               %      ≤5.0\n总氮(干基)          %      ≥8.0\n氨基氮(干基)        %      ≥3.0\npH(2%溶液)         /      5.0~7.0\n氯化物(以NaCl计)    %      ≤15.0\n干燥失重            %      ≤6.0\n灰分               %      ≤15.0\n粒度(>0.425mm)     %      ≤5.0\n菌落总数            CFU/g  ≤10000\n霉菌/酵母菌         CFU/g  ≤100",
+        "tags": [
+          "工业原料",
+          "发酵"
+        ]
+      },
+      {
+        "title": "硫酸铵 (Ammonium Sulfate)",
+        "description": "(NH4)2SO4 工业品/食品级,发酵无机氮源",
+        "source": "GB/T 535-2020 硫酸铵",
+        "type": "text",
+        "content": "【1 范围】\n本标准规定了硫酸铵(NH4)2SO4的产品分类、要求、试验方法、检验规则、标志、包装、运输和贮存。\n适用于由合成氨与硫酸中和制得的工业用硫酸铵。\n\n【2 规范性引用文件】\nGB/T 601 化学试剂 标准滴定溶液的制备\nGB/T 2441.1~2441.8 尿素的测定方法\n\n【3 要求】\n3.1 外观:白色或类白色结晶,无机械杂质。\n3.2 硫酸铵应符合下表要求:\n[TABLE_START]\n<tr><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>指标项目</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>单位</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>优等品</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>一等品</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>合格品</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>外观</td><td style='padding:6px 10px; border:1px solid #ddd;'>/</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>白色或类白色结晶</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>总氮(N,干基)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥21.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥21.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥20.5</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>水分</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.5</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.5</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤1.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>游离酸(H2SO4)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.05</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.10</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.20</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>水不溶物</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>≤0.01</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铁(Fe)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>≤0.005</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>砷(As)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>≤0.0005</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>重金属(以Pb计)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>≤0.001</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>氯化物(Cl)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>≤0.02</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>pH(5%溶液)</td><td style='padding:6px 10px; border:1px solid #ddd;'>/</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>5.0~6.5</td></tr>\n[TABLE_END]\n\n【4 试验方法】\n总氮含量按GB/T 535规定的方法测定;水分按卡尔·费休法或干燥失重法测定。\n\n【5 检验规则】\n产品须经生产厂检验部门按本标准逐批检验合格后方可出厂。\n\n【6 标志、包装、运输和贮存】\n产品采用内衬塑料袋、外套编织袋包装。贮存于阴凉干燥通风处,防止受潮。",
+        "copy_table": "GB/T 535-2020 硫酸铵\n─────────────────────────────────────────\n指标项目          单位    优等品    一等品    合格品\n外观              /      白色或类白色结晶\n总氮(N,干基)      %      ≥21.0    ≥21.0    ≥20.5\n水分              %      ≤0.5     ≤0.5     ≤1.0\n游离酸(H₂SO₄)     %      ≤0.05    ≤0.10    ≤0.20\n水不溶物           %      ≤0.01\n铁(Fe)            %      ≤0.005\n砷(As)            %      ≤0.0005\n重金属(以Pb计)     %      ≤0.001\n氯化物(Cl)         %      ≤0.02\npH(5%溶液)        /      5.0~6.5",
+        "tags": [
+          "工业原料"
+        ]
+      },
+      {
+        "title": "尿素 (Urea)",
+        "description": "CO(NH2)2 工业品/农业品,发酵无机氮源",
+        "source": "GB/T 2440-2017 尿素",
+        "type": "text",
+        "content": "【1 范围】\n本标准规定了尿素CO(NH2)2的要求、试验方法、检验规则、标志、包装、运输和贮存。\n适用于由氨和二氧化碳合成制得的尿素,主要用于农业和工业。\n\n【2 规范性引用文件】\nGB/T 601 化学试剂 标准滴定溶液的制备\nGB/T 2441.1~2441.8 尿素的测定方法\nGB/T 6678 化工产品采样总则\n\n【3 要求】\n3.1 外观:白色或浅色颗粒或结晶,无机械杂质。\n3.2 尿素应符合下表要求:\n[TABLE_START]\n<tr><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>指标项目</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>单位</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>优等品</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>一等品</th><th style='padding:6px 10px; border:1px solid #ddd; background:#ecf0f1;'>合格品</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>外观</td><td style='padding:6px 10px; border:1px solid #ddd;'>/</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>白色或浅色颗粒</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>总氮(N,干基)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥46.4</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥46.2</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥46.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>缩二脲</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.9</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤1.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤1.5</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>水分</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.5</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.5</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤1.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>粒度(0.85~2.80mm)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥90.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥90.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥85.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>游离氨</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>≤0.015</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铁(Fe)</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>≤0.001</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>水不溶物</td><td style='padding:6px 10px; border:1px solid #ddd;'>%</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>≤0.005</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>pH(10%溶液)</td><td style='padding:6px 10px; border:1px solid #ddd;'>/</td><td style='padding:6px 10px; border:1px solid #ddd;' colspan='3'>7.0~8.5</td></tr>\n[TABLE_END]\n\n【4 试验方法】\n总氮含量按GB/T 2441.1规定的方法测定;缩二脲按GB/T 2441.2分光光度法测定;\n水分按GB/T 2441.3规定的方法测定;粒度按GB/T 2441.7规定的方法测定。\n\n【5 检验规则】\n产品须经生产厂检验部门按本标准逐批检验合格后方可出厂。\n\n【6 标志、包装、运输和贮存】\n产品采用内衬塑料袋、外套编织袋包装。贮存在阴凉干燥通风处,避免阳光直射和雨淋。",
+        "copy_table": "GB/T 2440-2017 尿素\n──────────────────────────────────────\n指标项目            单位    优等品    一等品    合格品\n外观                /      白色或浅色颗粒\n总氮(N,干基)        %      ≥46.4    ≥46.2    ≥46.0\n缩二脲              %      ≤0.9     ≤1.0     ≤1.5\n水分                %      ≤0.5     ≤0.5     ≤1.0\n粒度(0.85~2.80mm)   %      ≥90.0    ≥90.0    ≥85.0\n游离氨              %      ≤0.015\n铁(Fe)              %      ≤0.001\n水不溶物             %      ≤0.005\npH(10%溶液)         /      7.0~8.5",
+        "tags": [
+          "工业原料",
+          "发酵"
+        ]
+      },
+      {
+        "title": "工业硫氢化钠",
+        "description": "工业硫氢化钠的技术要求、试验方法、检验规则等",
+        "source": "GB/T 23937-2026",
+        "type": "text",
+        "content": "【1 范围】\n本标准规定了工业硫氢化钠的分类、要求、试验方法、检验规则、标志、包装、\n运输和贮存。适用于工业生产的固体和液体硫氢化钠。\n化学式：NaHS，主要用于硫化染料、合成有机中间体、采矿浮选、皮革脱毛、\n废水处理等行业。\n\n【2 产品分类】\n— 固体硫氢化钠：黄色或橙色片状、粒状固体\n— 液体硫氢化钠：淡黄色或橙黄色透明液体\n— 固体产品按NaHS含量分为：70型（≥70%）、60型（≥60%）\n\n【3 技术要求】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>固体70型</th><th style='padding:6px 10px; border:1px solid #ddd;'>固体60型</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>硫氢化钠(NaHS) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥70.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥60.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>硫化钠(Na₂S) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤3.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤5.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铁(Fe) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.003</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.005</td></tr>\n</table>\n[TABLE_END]\n\n【4 安全与储运】\n— 危险化学品分类：碱性腐蚀品\n— 遇酸放出有毒硫化氢气体\n— 应密封、防潮、防晒，储存于阴凉干燥通风处\n— 运输应符合JT/T 617危险货物道路运输规则",
+        "copy_table": [
+          [
+            "NaHS含量 70型",
+            "≥70.0%"
+          ],
+          [
+            "NaHS含量 60型",
+            "≥60.0%"
+          ],
+          [
+            "Na₂S 70型",
+            "≤3.0%"
+          ],
+          [
+            "Na₂S 60型",
+            "≤5.0%"
+          ],
+          [
+            "铁(Fe) 70型",
+            "≤0.003%"
+          ],
+          [
+            "铁(Fe) 60型",
+            "≤0.005%"
+          ]
+        ],
+        "tags": [
+          "工业原料"
+        ]
+      },
+      {
+        "title": "木质活性炭（净水用）",
+        "description": "净水用木质活性炭的技术指标",
+        "source": "GB/T 13803.3-1999",
+        "type": "text",
+        "content": "【1 范围】\n本标准规定了净水用木质活性炭的技术要求、试验方法及检验规则。\n适用于以木质为原料生产的，用于饮用水净化及工业用水处理的活性炭。\n\n【2 产品分类】\n— 粉末活性炭：90%以上通过80目(0.18mm)筛\n— 颗粒活性炭：粒度为0.4~3mm\n\n【3 技术指标】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>优级品</th><th style='padding:6px 10px; border:1px solid #ddd;'>一级品</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>碘吸附值/(mg/g)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥1000</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥900</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>亚甲基蓝吸附值/(mg/g)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥135</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥105</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>强度/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥94</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥85</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>表观密度/(g/mL)</td><td style='padding:6px 10px; border:1px solid #ddd;'>0.45~0.55</td><td style='padding:6px 10px; border:1px solid #ddd;'>0.40~0.55</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>水分 w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤10</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤10</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>灰分 w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤5</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤6</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>pH值</td><td style='padding:6px 10px; border:1px solid #ddd;'>6.0~8.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>6.0~9.0</td></tr>\n</table>\n[TABLE_END]",
+        "copy_table": [
+          [
+            "碘吸附值 优级",
+            "≥1000 mg/g"
+          ],
+          [
+            "碘吸附值 一级",
+            "≥900 mg/g"
+          ],
+          [
+            "亚甲基蓝吸附值 优级",
+            "≥135 mg/g"
+          ],
+          [
+            "强度 优级",
+            "≥94%"
+          ],
+          [
+            "表观密度 优级",
+            "0.45~0.55 g/mL"
+          ],
+          [
+            "水分",
+            "≤10%"
+          ],
+          [
+            "pH值",
+            "6.0~8.0"
+          ]
+        ],
+        "tags": [
+          "工业原料",
+          "吸附",
+          "水处理"
+        ]
+      },
+      {
+        "title": "工业玉米淀粉",
+        "description": "工业玉米淀粉的技术要求、试验方法及检验规则",
+        "source": "GB/T 12309-2026",
+        "type": "text",
+        "content": "【1 范围】\n本标准规定了工业玉米淀粉的技术要求、试验方法、检验规则以及标签、标志、包装、\n运输和贮存要求。适用于以玉米为原料，经湿磨法加工制成的工业玉米淀粉。\n\n【2 感官要求】\n白色或微带浅黄色阴影的粉末，具有玉米淀粉固有的气味，无异味。\n\n【3 理化指标】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>优级品</th><th style='padding:6px 10px; border:1px solid #ddd;'>一级品</th><th style='padding:6px 10px; border:1px solid #ddd;'>合格品</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>水分/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 13.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 14.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 14.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>细度(100目通过率)/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥ 99.5</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥ 99.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥ 98.5</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>斑点数/(个/cm²)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 0.4</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 1.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 1.5</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>酸度(中和100g干淀粉消耗0.1mol/L NaOH)/mL</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 12.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 18.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 25.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>灰分(干基)/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 0.10</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 0.15</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 0.20</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>蛋白质(干基)/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 0.35</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 0.45</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 0.60</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>脂肪(干基)/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 0.10</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 0.15</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 0.20</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>白度(457nm蓝光反射率)/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥ 92.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥ 90.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥ 88.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>二氧化硫/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 30.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 30.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 30.0</td></tr>\n</table>\n[TABLE_END]",
+        "copy_table": [
+          [
+            "水分 优级",
+            "≤13.0%"
+          ],
+          [
+            "细度(100目) 优级",
+            "≥99.5%"
+          ],
+          [
+            "斑点 优级",
+            "≤0.4个/cm²"
+          ],
+          [
+            "酸度 优级",
+            "≤12.0mL"
+          ],
+          [
+            "灰分(干基) 优级",
+            "≤0.10%"
+          ],
+          [
+            "蛋白质(干基) 优级",
+            "≤0.35%"
+          ],
+          [
+            "脂肪(干基) 优级",
+            "≤0.10%"
+          ],
+          [
+            "白度 优级",
+            "≥92.0%"
+          ],
+          [
+            "SO₂",
+            "≤30.0 mg/kg"
+          ]
+        ],
+        "tags": [
+          "工业原料",
+          "发酵"
+        ]
+      },
+      {
+        "title": "非食用发酵工业酒精",
+        "description": "非食用发酵工业酒精的技术要求、试验方法及检验规则",
+        "source": "GB/T 394.1-2026",
+        "type": "text",
+        "content": "【1 范围】\n本标准规定了非食用发酵工业酒精的分类、技术要求、试验方法、检验规则和标志、\n包装、运输、贮存。适用于以谷物、薯类、糖蜜或其他含淀粉/糖类物质为原料，\n经发酵、蒸馏制成的非食用工业酒精。\n\n【2 感官要求】\n无色透明液体，无杂质，具有酒精特有的气味，无异臭。\n\n【3 理化指标】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>优级</th><th style='padding:6px 10px; border:1px solid #ddd;'>一级</th><th style='padding:6px 10px; border:1px solid #ddd;'>合格</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>乙醇(体积分数)/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥ 96.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥ 95.5</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥ 95.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>硫酸试验色度/号</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 10</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 80</td><td style='padding:6px 10px; border:1px solid #ddd;'>—</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>氧化时间/min</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥ 30</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥ 15</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥ 5</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>醛(以乙醛计)/(mg/L)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 5</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 30</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 50</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>杂醇油(以异丁醇+异戊醇计)/(mg/L)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 4</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 100</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 400</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>甲醇/(mg/L)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 50</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 200</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 800</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>酸(以乙酸计)/(mg/L)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 10</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 20</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 30</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>酯(以乙酸乙酯计)/(mg/L)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 10</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 50</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 100</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>不挥发物/(mg/L)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 15</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 25</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤ 30</td></tr>\n</table>\n[TABLE_END]",
+        "copy_table": [
+          [
+            "乙醇 优级",
+            "≥96.0% vol"
+          ],
+          [
+            "硫酸试验色度 优级",
+            "≤10号"
+          ],
+          [
+            "氧化时间 优级",
+            "≥30min"
+          ],
+          [
+            "醛(乙醛) 优级",
+            "≤5mg/L"
+          ],
+          [
+            "杂醇油 优级",
+            "≤4mg/L"
+          ],
+          [
+            "甲醇 优级",
+            "≤50mg/L"
+          ],
+          [
+            "酸(乙酸) 优级",
+            "≤10mg/L"
+          ]
+        ],
+        "tags": [
+          "工业原料",
+          "发酵"
+        ]
+      }
+    ],
+    "group": "原料与水质"
+  },
+  {
+    "category": "食品添加剂标准",
+    "icon": "🧴",
+    "sections": [
+      {
+        "title": "氢氧化钙（食品添加剂）",
+        "description": "食品安全国家标准 食品添加剂 氢氧化钙",
+        "source": "GB 1886.375-2024",
+        "type": "text",
+        "content": "【1 范围】\n本标准适用于以石灰石或生石灰为原料经消化、精制得到的食品添加剂氢氧化钙。\n分子式：Ca(OH)₂，相对分子质量：74.09（按2022年国际相对原子质量）。\n\n【2 感官要求】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>项目</th><th style='padding:6px 10px; border:1px solid #ddd;'>要求</th><th style='padding:6px 10px; border:1px solid #ddd;'>检验方法</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>色泽</td><td style='padding:6px 10px; border:1px solid #ddd;'>白色</td><td style='padding:6px 10px; border:1px solid #ddd;'>取适量试样置于50mL烧杯中，自然光下观察</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>状态</td><td style='padding:6px 10px; border:1px solid #ddd;'>粉末</td><td style='padding:6px 10px; border:1px solid #ddd;'>—</td></tr>\n</table>\n[TABLE_END]\n\n【3 理化指标】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>要求</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>Ca(OH)₂含量 w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥95.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>镁及碱金属盐 w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤1.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>酸不溶物 w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.1</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>氟(F)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤50</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>钡(Ba) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.03</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铅(Pb)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤2.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>砷(As)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤3.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>细度(0.045mm筛通过率) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥50.0</td></tr>\n</table>\n[TABLE_END]",
+        "copy_table": [
+          [
+            "Ca(OH)₂含量",
+            "≥95.0%"
+          ],
+          [
+            "镁及碱金属盐",
+            "≤1.0%"
+          ],
+          [
+            "酸不溶物",
+            "≤0.1%"
+          ],
+          [
+            "氟(F)",
+            "≤50 mg/kg"
+          ],
+          [
+            "铅(Pb)",
+            "≤2.0 mg/kg"
+          ],
+          [
+            "砷(As)",
+            "≤3.0 mg/kg"
+          ],
+          [
+            "细度(0.045mm)",
+            "≥50.0%"
+          ]
+        ],
+        "tags": [
+          "食品添加剂"
+        ]
+      },
+      {
+        "title": "聚氧乙烯木糖醇酐单油酸酯（食品添加剂）",
+        "description": "食品安全国家标准 食品添加剂 聚氧乙烯木糖醇酐单油酸酯",
+        "source": "GB 1886.72-2016",
+        "type": "text",
+        "content": "【1 范围】\n本标准适用于以木糖醇酐单油酸酯与环氧乙烷聚合而成的食品添加剂聚氧乙烯木糖醇酐单油酸酯。\n主要用于食品加工中作乳化剂。\n\n【2 分子结构】\n化学式：N[(CH₃CHCH₂O)_m (C₂H₄O)_nH]₃\n相对分子质量：3000~4200（参考2007年国际相对原子质量）\n\n【3 感官要求】\n淡黄色至琥珀色油状液体或膏状物，无明显的特殊气味。\n\n【4 理化指标】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>要求</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>酸值(以KOH计)/(mg/g)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤2.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>皂化值(以KOH计)/(mg/g)</td><td style='padding:6px 10px; border:1px solid #ddd;'>40.0~56.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>羟值(以KOH计)/(mg/g)</td><td style='padding:6px 10px; border:1px solid #ddd;'>30.0~45.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铅(Pb)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.5</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>砷(As)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤1.0</td></tr>\n</table>\n[TABLE_END]",
+        "copy_table": [
+          [
+            "酸值(KOH)",
+            "≤2.0 mg/g"
+          ],
+          [
+            "皂化值(KOH)",
+            "40.0~56.0 mg/g"
+          ],
+          [
+            "羟值(KOH)",
+            "30.0~45.0 mg/g"
+          ],
+          [
+            "铅(Pb)",
+            "≤0.5 mg/kg"
+          ],
+          [
+            "砷(As)",
+            "≤1.0 mg/kg"
+          ]
+        ],
+        "tags": [
+          "食品添加剂"
+        ]
+      },
+      {
+        "title": "盐酸（食品添加剂）",
+        "description": "食品安全国家标准 食品添加剂 盐酸",
+        "source": "GB 1886.9-2016",
+        "type": "text",
+        "content": "【1 范围】\n本标准适用于食品添加剂盐酸，主要用于食品加工中pH调节和水解。\n分子式：HCl，相对分子质量：36.46。\n\n【2 感官要求】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>项目</th><th style='padding:6px 10px; border:1px solid #ddd;'>要求</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>色泽</td><td style='padding:6px 10px; border:1px solid #ddd;'>无色或浅黄色透明液体</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>气味</td><td style='padding:6px 10px; border:1px solid #ddd;'>刺激性气味</td></tr>\n</table>\n[TABLE_END]\n\n【3 理化指标】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>要求</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>总酸度(以HCl计) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥31.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铁(Fe) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.0005</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>硫酸盐(以SO₄²⁻计) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.007</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>亚硫酸盐(以SO₃²⁻计) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.0005</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>灼烧残渣 w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.05</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>游离氯(以Cl₂计) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.003</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>砷(As)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤1.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铅(Pb)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤5.0</td></tr>\n</table>\n[TABLE_END]",
+        "copy_table": [
+          [
+            "总酸度(HCl)",
+            "≥31.0%"
+          ],
+          [
+            "铁(Fe)",
+            "≤5 mg/kg"
+          ],
+          [
+            "硫酸盐(SO₄²⁻)",
+            "≤0.007%"
+          ],
+          [
+            "灼烧残渣",
+            "≤0.05%"
+          ],
+          [
+            "游离氯",
+            "≤0.003%"
+          ],
+          [
+            "砷(As)",
+            "≤1.0 mg/kg"
+          ],
+          [
+            "铅(Pb)",
+            "≤5.0 mg/kg"
+          ]
+        ],
+        "tags": [
+          "食品添加剂"
+        ]
+      },
+      {
+        "title": "氢氧化钠（食品添加剂）",
+        "description": "食品安全国家标准 食品添加剂 氢氧化钠",
+        "source": "GB 1886.20-2016",
+        "type": "text",
+        "content": "【1 范围】\n本标准适用于食品添加剂氢氧化钠（烧碱），主要用于食品加工中pH调节、\n中和及清洗等。分子式：NaOH，相对分子质量：40.00。\n\n【2 感官要求】\n固体氢氧化钠为白色固体，有潮解性；液体为无色透明液体。\n\n【3 理化指标】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>固体</th><th style='padding:6px 10px; border:1px solid #ddd;'>液体</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>总碱量(以NaOH计) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>98.0~100.5</td><td style='padding:6px 10px; border:1px solid #ddd;'>98.0~103.5(以干基计)</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>碳酸钠(Na₂CO₃) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤2.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤2.0(以干基计)</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>砷(As)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤3.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤3.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铅(Pb)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤5.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤5.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>汞(Hg)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.1</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.1</td></tr>\n</table>\n[TABLE_END]",
+        "copy_table": [
+          [
+            "总碱量(NaOH) 固体",
+            "98.0~100.5%"
+          ],
+          [
+            "总碱量(NaOH) 液体(干基)",
+            "98.0~103.5%"
+          ],
+          [
+            "碳酸钠(Na₂CO₃)",
+            "≤2.0%"
+          ],
+          [
+            "砷(As)",
+            "≤3.0 mg/kg"
+          ],
+          [
+            "铅(Pb)",
+            "≤5.0 mg/kg"
+          ],
+          [
+            "汞(Hg)",
+            "≤0.1 mg/kg"
+          ]
+        ],
+        "tags": [
+          "食品添加剂"
+        ]
+      },
+      {
+        "title": "硫酸（食品添加剂）",
+        "description": "食品安全国家标准 食品添加剂 硫酸",
+        "source": "GB 29205-2012",
+        "type": "text",
+        "content": "【1 范围】\n本标准适用于食品添加剂硫酸，主要用于食品加工中的pH调节剂、加工助剂等。\n分子式：H₂SO₄，相对分子质量：98.08。\n\n【2 感官要求】\n无色或浅色透明油状液体。\n\n【3 理化指标】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>要求</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>硫酸(H₂SO₄) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>92.0~98.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>灼烧残渣 w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.02</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>氯化物(Cl) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.005</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>硝酸盐(NO₃⁻) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.001</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铁(Fe) w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.020</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>硒(Se)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤20</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铅(Pb)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤5</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>砷(As)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤3</td></tr>\n</table>\n[TABLE_END]",
+        "copy_table": [
+          [
+            "硫酸(H₂SO₄)",
+            "92.0~98.0%"
+          ],
+          [
+            "灼烧残渣",
+            "≤0.02%"
+          ],
+          [
+            "铁(Fe)",
+            "≤0.020%"
+          ],
+          [
+            "硒(Se)",
+            "≤20 mg/kg"
+          ],
+          [
+            "铅(Pb)",
+            "≤5 mg/kg"
+          ],
+          [
+            "砷(As)",
+            "≤3 mg/kg"
+          ]
+        ],
+        "tags": [
+          "食品添加剂"
+        ]
+      },
+      {
+        "title": "植物活性炭（食品添加剂·木质活性炭）",
+        "description": "食品安全国家标准 食品添加剂 植物活性炭（木质活性炭）",
+        "source": "GB 29215-2012",
+        "type": "text",
+        "content": "【1 范围】\n本标准适用于以木质原料（木屑、果核等）经炭化、活化制成的食品添加剂植物活性炭，\n用于食品加工中的脱色、脱臭、净化等。\n\n【2 感官要求】\n黑色粉末或颗粒，无臭无味。\n\n【3 理化指标】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>要求</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>碘吸附值/(mg/g)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥400</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>干燥减量 w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤7.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>pH值</td><td style='padding:6px 10px; border:1px solid #ddd;'>5.0~8.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>灰分 w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤4.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>砷(As)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤3</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铅(Pb)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤5</td></tr>\n</table>\n[TABLE_END]",
+        "copy_table": [
+          [
+            "碘吸附值",
+            "≥400 mg/g"
+          ],
+          [
+            "干燥减量",
+            "≤7.0%"
+          ],
+          [
+            "pH值",
+            "5.0~8.0"
+          ],
+          [
+            "灰分",
+            "≤4.0%"
+          ],
+          [
+            "砷(As)",
+            "≤3 mg/kg"
+          ],
+          [
+            "铅(Pb)",
+            "≤5 mg/kg"
+          ]
+        ],
+        "tags": [
+          "食品添加剂",
+          "吸附"
+        ]
+      },
+      {
+        "title": "复配食品添加剂通则",
+        "description": "食品安全国家标准 复配食品添加剂通则",
+        "source": "GB 26687-2011",
+        "type": "text",
+        "content": "【1 范围】\n本标准适用于除食品用香精和胶基糖果基础剂以外的所有复配食品添加剂。\n复配食品添加剂是指由两种或两种以上单一品种食品添加剂，添加或不添加辅料，\n经物理方法混匀而成的食品添加剂。\n\n【2 命名原则】\n— 由单一功能且功能相同的食品添加剂复配而成：按功能命名，如「复配着色剂」\n— 由功能相同的多种功能食品添加剂复配而成：按功能命名，如「复配防腐剂」\n— 由功能不同的食品添加剂复配而成：按主要功能命名\n\n【3 感官要求】\n应符合相应产品标准的规定，不应有异味、异臭，不应有腐败、霉变现象。\n\n【4 有害物质控制】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>项目</th><th style='padding:6px 10px; border:1px solid #ddd;'>要求</th><th style='padding:6px 10px; border:1px solid #ddd;'>检测方法</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>砷(As)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤2.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>GB/T 5009.76</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铅(Pb)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤2.0</td><td style='padding:6px 10px; border:1px solid #ddd;'>GB/T 5009.75</td></tr>\n</table>\n[TABLE_END]\n\n【5 标签标识】\n— 配料表应标明各单一食品添加剂的通用名称和含量\n— 各单一食品添加剂应按GB 2760的规定标示使用范围和最大使用量\n— 辅料也应列入配料表\n\n【6 限量计算】\n复配食品添加剂中各单一品种的使用量应符合GB 2760的规定。\n加权计算时，各单一品种的实际添加量不得超过其在GB 2760中的最大使用量。",
+        "copy_table": [
+          [
+            "砷(As)",
+            "≤2.0 mg/kg"
+          ],
+          [
+            "铅(Pb)",
+            "≤2.0 mg/kg"
+          ]
+        ],
+        "tags": [
+          "食品添加剂"
+        ]
+      },
+      {
+        "title": "硫酸铵（食品添加剂）",
+        "description": "食品安全国家标准 食品添加剂 硫酸铵",
+        "source": "GB 29206-2012",
+        "type": "text",
+        "content": "【1 范围】\n本标准适用于食品添加剂硫酸铵，主要用于食品加工助剂、发酵用氮源等。\n分子式：(NH₄)₂SO₄，相对分子质量：132.14。\n\n【2 感官要求】\n白色结晶或颗粒，无可见杂质。\n\n【3 理化指标】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>要求</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>硫酸铵[(NH₄)₂SO₄] w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>99.0~100.5</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>灼烧残渣 w/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.25</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>硒(Se)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤30</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铅(Pb)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤3</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>砷(As)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤3</td></tr>\n</table>\n[TABLE_END]",
+        "copy_table": [
+          [
+            "(NH₄)₂SO₄含量",
+            "99.0~100.5%"
+          ],
+          [
+            "灼烧残渣",
+            "≤0.25%"
+          ],
+          [
+            "硒(Se)",
+            "≤30 mg/kg"
+          ],
+          [
+            "铅(Pb)",
+            "≤3 mg/kg"
+          ],
+          [
+            "砷(As)",
+            "≤3 mg/kg"
+          ]
+        ],
+        "tags": [
+          "食品添加剂"
+        ]
+      },
+      {
+        "title": "硅藻土（食品工业用）",
+        "description": "食品工业用硅藻土的卫生要求与质量指标",
+        "source": "GB 14936-2012",
+        "type": "text",
+        "content": "【1 范围】\n本标准规定了食品工业用硅藻土的卫生要求。适用于以天然硅藻土为原料，经干燥、\n焙烧、酸洗等加工工艺制得的食品工业用硅藻土（助滤剂）。\n\n【2 感官要求】\n类白色至浅黄色粉末，无异味，无肉眼可见外来杂质。\n\n【3 理化指标】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>要求</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>pH值(10%水浸液)</td><td style='padding:6px 10px; border:1px solid #ddd;'>5.0~11.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>水可溶物/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.5</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>盐酸可溶物/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤3.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>灼烧减量(天然品)/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤7.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>灼烧减量(焙烧品)/%</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤2.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>砷(As)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤4.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铅(Pb)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤4.0</td></tr>\n</table>\n[TABLE_END]",
+        "copy_table": [
+          [
+            "pH值(10%水浸液)",
+            "5.0~11.0"
+          ],
+          [
+            "水可溶物",
+            "≤0.5%"
+          ],
+          [
+            "盐酸可溶物",
+            "≤3.0%"
+          ],
+          [
+            "灼烧减量(天然)",
+            "≤7.0%"
+          ],
+          [
+            "灼烧减量(焙烧)",
+            "≤2.0%"
+          ],
+          [
+            "砷(As)",
+            "≤4.0 mg/kg"
+          ],
+          [
+            "铅(Pb)",
+            "≤4.0 mg/kg"
+          ]
+        ],
+        "tags": [
+          "食品添加剂"
+        ]
+      },
+      {
+        "title": "食品工业用酶制剂",
+        "description": "食品工业用酶制剂的通用质量要求",
+        "source": "GB 1886.174-2024",
+        "type": "text",
+        "content": "【1 范围】\n本标准规定了食品工业用酶制剂的通用质量要求。适用于食品工业用各种酶制剂，\n包括从动植物可食或非可食部分直接提取，以及由传统或经基因修饰的微生物发酵提取的酶制剂。\n\n【2 感官要求】\n固体为粉末或颗粒，液体为澄清或微浑液体，具有该酶制剂特有的气味，无异味。\n\n【3 理化指标】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>要求</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>酶活力(标示值)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥标示值的85%</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铅(Pb)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤5.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>总砷(As)/(mg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤3.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>沙门氏菌(25g)</td><td style='padding:6px 10px; border:1px solid #ddd;'>不得检出</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>大肠菌群/(CFU/g或CFU/mL)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤30</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>菌落总数/(CFU/g或CFU/mL)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤50000</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>大肠埃希氏菌(25g或25mL)</td><td style='padding:6px 10px; border:1px solid #ddd;'>不得检出</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>黄曲霉毒素B₁/(μg/kg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤5.0(仅限真菌来源)</td></tr>\n</table>\n[TABLE_END]",
+        "copy_table": [
+          [
+            "酶活力",
+            "≥标示值85%"
+          ],
+          [
+            "铅(Pb)",
+            "≤5.0 mg/kg"
+          ],
+          [
+            "总砷(As)",
+            "≤3.0 mg/kg"
+          ],
+          [
+            "沙门氏菌",
+            "不得检出"
+          ],
+          [
+            "大肠菌群",
+            "≤30 CFU/g(mL)"
+          ],
+          [
+            "菌落总数",
+            "≤50000 CFU/g(mL)"
+          ],
+          [
+            "大肠埃希氏菌",
+            "不得检出"
+          ]
+        ],
+        "tags": [
+          "食品添加剂",
+          "发酵"
+        ]
+      }
+    ],
+    "group": "原料与水质"
+  },
+  {
+    "category": "水质标准",
+    "icon": "water",
+    "sections": [
+      {
+        "title": "生活饮用水卫生标准",
+        "description": "生活饮用水水质常规指标及限值",
+        "source": "GB 5749-2022",
+        "type": "text",
+        "content": "【1 范围】\n本标准规定了生活饮用水水质要求、水源水质要求、集中式供水单位卫生要求等。\n适用于城乡各类集中式供水和分散式供水的生活饮用水。\n\n【2 水质常规指标（微生物指标）】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>限值</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>总大肠菌群</td><td style='padding:6px 10px; border:1px solid #ddd;'>不得检出(MPN/100mL或CFU/100mL)</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>大肠埃希氏菌</td><td style='padding:6px 10px; border:1px solid #ddd;'>不得检出(MPN/100mL或CFU/100mL)</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>菌落总数</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤100 CFU/mL</td></tr>\n</table>\n[TABLE_END]\n\n【3 毒理指标】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>限值(mg/L)</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>砷(As)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.01</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>镉(Cd)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.005</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铬(Cr⁶⁺)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.05</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铅(Pb)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.01</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>汞(Hg)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.001</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>氰化物</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.05</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>氟化物</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤1.0</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>硝酸盐(以N计)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤10</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>三氯甲烷</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.06</td></tr>\n</table>\n[TABLE_END]\n\n【4 感官性状和一般化学指标】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>指标</th><th style='padding:6px 10px; border:1px solid #ddd;'>限值</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>色度(铂钴色度单位)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤15</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>浑浊度(NTU)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤1，水源与净水条件限制时≤3</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>pH</td><td style='padding:6px 10px; border:1px solid #ddd;'>6.5~8.5</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>总硬度(以CaCO₃计)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤450 mg/L</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铁(Fe)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.3 mg/L</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>锰(Mn)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.1 mg/L</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>氯化物</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤250 mg/L</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>硫酸盐</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤250 mg/L</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>溶解性总固体(TDS)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤1000 mg/L</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>铝(Al)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≤0.2 mg/L</td></tr>\n</table>\n[TABLE_END]\n\n【5 消毒剂常规指标】\n[TABLE_START]\n<table style='border-collapse:collapse; width:100%; margin:8px 0; font-size:13px;'>\n<tr style='background:#ecf0f1;'><th style='padding:6px 10px; border:1px solid #ddd;'>消毒剂</th><th style='padding:6px 10px; border:1px solid #ddd;'>与水接触时间</th><th style='padding:6px 10px; border:1px solid #ddd;'>出厂水余量(mg/L)</th><th style='padding:6px 10px; border:1px solid #ddd;'>管网末梢余量(mg/L)</th></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>氯气及游离氯制剂</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥30min</td><td style='padding:6px 10px; border:1px solid #ddd;'>0.3~2</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥0.05</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>一氯胺(总氯)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥120min</td><td style='padding:6px 10px; border:1px solid #ddd;'>0.5~3</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥0.05</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>臭氧(O₃)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥12min</td><td style='padding:6px 10px; border:1px solid #ddd;'>—</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥0.02(如加氯则总氯≥0.05)</td></tr>\n<tr><td style='padding:6px 10px; border:1px solid #ddd;'>二氧化氯(ClO₂)</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥30min</td><td style='padding:6px 10px; border:1px solid #ddd;'>0.1~0.8</td><td style='padding:6px 10px; border:1px solid #ddd;'>≥0.02</td></tr>\n</table>\n[TABLE_END]",
+        "copy_table": [
+          [
+            "总大肠菌群",
+            "不得检出"
+          ],
+          [
+            "菌落总数",
+            "≤100 CFU/mL"
+          ],
+          [
+            "pH",
+            "6.5~8.5"
+          ],
+          [
+            "总硬度(CaCO₃)",
+            "≤450 mg/L"
+          ],
+          [
+            "铁(Fe)",
+            "≤0.3 mg/L"
+          ],
+          [
+            "锰(Mn)",
+            "≤0.1 mg/L"
+          ],
+          [
+            "氯化物",
+            "≤250 mg/L"
+          ],
+          [
+            "硫酸盐",
+            "≤250 mg/L"
+          ],
+          [
+            "TDS",
+            "≤1000 mg/L"
+          ],
+          [
+            "浊度",
+            "≤1 NTU"
+          ],
+          [
+            "游离余氯",
+            "0.3~2 mg/L(出厂) / ≥0.05(末梢)"
+          ]
+        ],
+        "tags": [
+          "水处理",
+          "饮用水"
+        ]
+      }
+    ],
+    "group": "原料与水质"
   },
   {
     "category": "投资估算",
@@ -2823,6 +3057,10 @@
             "变更管理、最终决算",
             "工程量精确计量+市场询价"
           ]
+        ],
+        "tags": [
+          "投资",
+          "估算方法"
         ]
       },
       {
@@ -2861,8 +3099,13 @@
             "无明显类别倾向时",
             "快速量级估算时常用默认值"
           ]
+        ],
+        "tags": [
+          "投资",
+          "估算方法"
         ]
       }
-    ]
+    ],
+    "group": "投资估算"
   }
 ]

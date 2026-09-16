@@ -28,6 +28,11 @@ from PySide6.QtCore import Qt, QTimer, QUrl, QMetaObject, Q_ARG, Slot, QThread, 
 from data_manager import DataManager
 from theme_manager import ThemeManager
 from module_loader import ModuleLoader
+
+try:
+    from modules.reference.ref_exchange import EXCHANGE
+except Exception:                                    # 资料库缺失时不影响主程序
+    EXCHANGE = None
 from updater import (
     check_for_updates, download_update, create_update_bat,
     is_frozen, get_app_dir, GITHUB_REPO,
@@ -107,6 +112,11 @@ class ChemCal(QMainWindow):
 
         self.tab_widget.currentChanged.connect(self._on_tab_changed)
         self.theme_manager.theme_changed.connect(self._apply_theme)
+
+        # 资料库 ↔ 计算器 的取值交接（详见 modules/reference/ref_exchange.py）
+        if EXCHANGE is not None:
+            EXCHANGE.fill_requested.connect(self._on_reference_fill)
+            EXCHANGE.section_requested.connect(self._on_reference_section)
 
     def _create_modules(self):
         for module_file, class_name, tab_name in self.MODULES_CONFIG:
@@ -476,6 +486,38 @@ class ChemCal(QMainWindow):
             widget = self.tab_widget.widget(index)
             if hasattr(widget, "on_activate"):
                 widget.on_activate()
+
+    # ── 资料库 ↔ 计算器 取值交接 ──────────────────────────────────
+
+    def _on_reference_fill(self, module_name, field, value):
+        """资料库「送入计算器」：切到工程计算 → 打开目标计算器 → 填进输入框。"""
+        page = self.modules.get("工程计算")
+        if page is None:
+            return
+        try:
+            self.tab_widget.setCurrentWidget(page)          # 触发 on_activate
+            calc = page.open_calculator(module_name)        # 含惰性实例化
+            if calc is not None and hasattr(calc, "apply_reference_value"):
+                calc.apply_reference_value(field, value)
+                self.statusBar().showMessage(
+                    f"已从资料库取值 {value} → {getattr(calc, '_calc_meta', {}).get('name', module_name)}",
+                    4000)
+        except Exception as e:
+            logger.error("资料库→计算器 失败: {} {} {} | {}", module_name, field, value, e)
+
+    def _on_reference_section(self, category, title):
+        """计算器 📚 按钮：切到资料库并定位到该节。"""
+        ref = self.modules.get("资料库")
+        if ref is None:
+            return
+        try:
+            self.tab_widget.setCurrentWidget(ref)
+            if hasattr(ref, "focus_section"):
+                ok = ref.focus_section(title, category)
+                if not ok:
+                    logger.warning("资料库未找到条目: {} / {}", category, title)
+        except Exception as e:
+            logger.error("计算器→资料库 失败: {} {} | {}", category, title, e)
 
     def _apply_theme(self, theme_name):
         QApplication.instance().setStyleSheet(self.theme_manager.get_theme())

@@ -165,26 +165,33 @@ check("主窗口会在主题切换时通知各页面",
 section("C. 资料库页面")
 
 from modules.reference.reference_widget import (              # noqa: E402
-    ReferenceWidget, CATEGORY_ICONS,
+    ReferenceWidget, CATEGORY_ICONS, GROUP_ORDER,
 )
 
 ref = ReferenceWidget()
 check("实例化无异常，数据已加载", len(ref.ref_data) > 0, len(ref.ref_data))
-check("分类数为 14（README 数字须与此一致）", len(ref.ref_data) == 14, len(ref.ref_data))
-check("树顶层节点数 = 分类数", ref.tree.topLevelItemCount() == len(ref.ref_data))
+# 2026-09-16 资料库整理：原辅料标准(19) 拆成 食品添加剂标准(10)+工业原料标准(9)，
+# 由 14 类变为 15 类；树顶层改为「分组」（5 个），分类降为第二层。
+check("分类数为 15（README 数字须与此一致）", len(ref.ref_data) == 15, len(ref.ref_data))
+check("分组数为 5", len({c.get("group") for c in ref.ref_data}) == 5)
+check("树顶层节点数 = 分组数", ref.tree.topLevelItemCount() == len(GROUP_ORDER),
+      ref.tree.topLevelItemCount())
 
 missing_icons = [c.get("category") for c in ref.ref_data
                  if c.get("category") not in CATEGORY_ICONS]
 check("每个分类都有图标（新增分类别忘了补 CATEGORY_ICONS）",
       not missing_icons, missing_icons)
+check("每个条目都有标签（标签筛选的数据源）",
+      all(s.get("tags") for c in ref.ref_data for s in c.get("sections", [])))
 
-# 搜索路径（本次改造漏改变量引用正出在这里）
+# 搜索路径
 ref._on_search("蒸汽")
 check("搜索不抛异常且命中", "匹配" in ref.search_count_label.text(),
       ref.search_count_label.text())
 check("搜索后树非空", ref.tree.topLevelItemCount() > 0)
 ref._on_search("")
-check("清空搜索后恢复完整树", ref.tree.topLevelItemCount() == len(ref.ref_data))
+check("清空搜索后恢复完整树", ref.tree.topLevelItemCount() == len(GROUP_ORDER),
+      ref.tree.topLevelItemCount())
 
 # 渲染两类内容
 table_sec = text_sec = None
