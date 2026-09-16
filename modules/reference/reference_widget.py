@@ -12,7 +12,20 @@ from PySide6.QtWidgets import (
     QPushButton,
 )
 from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QFont, QColor, QBrush, QClipboard
+from PySide6.QtGui import QFont, QClipboard
+
+from theme_manager import get_content_colors, normalize_legacy_content_colors
+
+
+#: 分类图标（新增分类记得补，否则会掉到默认文件夹图标）
+CATEGORY_ICONS = {
+    "设备布置": "🏭", "管道设计": "🔧", "安全规范": "🛡️",
+    "计算依据": "📐", "物性数据": "📊", "材料规范": "🔩",
+    "原辅料标准": "🧪", "蒸汽参数": "♨️", "压缩空气": "💨",
+    "消防安全": "🚒", "水质标准": "💧", "热工设备": "🔥",
+    "防爆区域": "⚡", "投资估算": "💰",
+}
+DEFAULT_CATEGORY_ICON = "📁"
 
 
 # ── 加载参考数据 ──────────────────────────────────────────────
@@ -100,9 +113,10 @@ class ReferenceWidget(QWidget):
         self.search_input.setMinimumHeight(36)
         left_layout.addWidget(self.search_input)
 
-        # 搜索结果计数
+        # 搜索结果计数（颜色交给主题的 mutedLabel，勿写死颜色）
         self.search_count_label = QLabel("")
-        self.search_count_label.setStyleSheet("color: #888; font-size: 11px; padding-left: 4px;")
+        self.search_count_label.setObjectName("mutedLabel")
+        self.search_count_label.setStyleSheet("font-size: 11px; padding-left: 4px;")
         left_layout.addWidget(self.search_count_label)
 
         # 树形导航
@@ -134,22 +148,16 @@ class ReferenceWidget(QWidget):
         title_row.addWidget(self.content_title, 1)
 
         copy_btn = QPushButton("复制")
+        copy_btn.setObjectName("primaryBtn")
         copy_btn.setToolTip("复制 → Tab分隔直接粘贴Excel\n文本页：自动复制关联参数表\n表格页：选中行→复制选中 | 无选中→复制全部\n小技巧：直接鼠标选中文字后 Ctrl+C 也可复制")
         copy_btn.setFixedHeight(30)
-        copy_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db; color: white;
-                border: none; border-radius: 4px;
-                padding: 4px 14px; font-size: 12px; font-weight: bold;
-            }
-            QPushButton:hover { background-color: #2980b9; }
-        """)
         copy_btn.clicked.connect(self._copy_content)
         title_row.addWidget(copy_btn)
 
-        # 双语提示标志
+        # 双语提示标志（颜色交给主题的 accentLabel）
         self.bilingual_label = QLabel("")
-        self.bilingual_label.setStyleSheet("color: #e67e22; font-size: 11px; font-weight: bold; padding: 0 6px;")
+        self.bilingual_label.setObjectName("accentLabel")
+        self.bilingual_label.setStyleSheet("font-size: 11px; padding: 0 6px;")
         title_row.addWidget(self.bilingual_label)
 
         right_layout.addLayout(title_row)
@@ -157,13 +165,15 @@ class ReferenceWidget(QWidget):
         # 描述
         self.content_desc = QLabel("")
         self.content_desc.setWordWrap(True)
-        self.content_desc.setStyleSheet("color: #555; font-size: 12px; margin-top: 4px;")
+        self.content_desc.setObjectName("mutedLabel")
+        self.content_desc.setStyleSheet("font-size: 12px; margin-top: 4px;")
         right_layout.addWidget(self.content_desc)
 
         # 来源
         self.content_source = QLabel("")
         self.content_source.setWordWrap(True)
-        self.content_source.setStyleSheet("color: #888; font-size: 11px; margin-top: 2px; margin-bottom: 8px;")
+        self.content_source.setObjectName("mutedLabel")
+        self.content_source.setStyleSheet("font-size: 11px; margin-top: 2px; margin-bottom: 8px;")
         right_layout.addWidget(self.content_source)
 
         # 内容区域（表格或文本）
@@ -178,11 +188,11 @@ class ReferenceWidget(QWidget):
         self.table_widget.setAlternatingRowColors(True)
         self.table_widget.horizontalHeader().setStretchLastSection(True)
         self.table_widget.verticalHeader().setVisible(False)
+        # 表头背景/边框交给主题的 QHeaderView::section 规则，这里只留字号与内边距
         self.table_widget.setStyleSheet(
             "QTableWidget { font-size: 12px; }"
             "QTableWidget::item { padding: 6px 8px; }"
-            "QHeaderView::section { font-weight: bold; padding: 6px 8px; "
-            "  background: #f0f0f0; border: 1px solid #ddd; }"
+            "QHeaderView::section { font-weight: bold; padding: 6px 8px; }"
         )
         self.content_stack.addWidget(self.table_widget)
 
@@ -198,7 +208,8 @@ class ReferenceWidget(QWidget):
         # 空白页
         empty_label = QLabel("从左侧选择条目，或使用搜索框查找数据")
         empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        empty_label.setStyleSheet("color: #aaa; font-size: 14px;")
+        empty_label.setObjectName("mutedLabel")
+        empty_label.setStyleSheet("font-size: 14px;")
         self.content_stack.addWidget(empty_label)
 
         self.content_stack.setCurrentIndex(2)
@@ -220,15 +231,9 @@ class ReferenceWidget(QWidget):
         self.tree.clear()
         self._tree_items = {}  # item -> section data
 
-        icon_map = {
-            "设备布置": "🏭", "管道设计": "🔧", "安全规范": "🛡️",
-            "计算依据": "📐", "物性数据": "📊", "材料规范": "🔩",
-            "原辅料标准": "🧪", "蒸汽参数": "♨️", "压缩空气": "💨",
-        }
-
         for cat in self.ref_data:
             cat_name = cat.get("category", "")
-            icon = icon_map.get(cat_name, "📁")
+            icon = CATEGORY_ICONS.get(cat_name, DEFAULT_CATEGORY_ICON)
             cat_item = QTreeWidgetItem(self.tree, [f"{icon} {cat_name}"])
             cat_item.setFont(0, QFont("Microsoft YaHei", 11, QFont.Weight.Bold))
             cat_item.setExpanded(True)
@@ -248,12 +253,6 @@ class ReferenceWidget(QWidget):
         keyword = keyword.strip().lower()
         self.tree.clear()
         self._tree_items = {}
-
-        icon_map = {
-            "设备布置": "🏭", "管道设计": "🔧", "安全规范": "🛡️",
-            "计算依据": "📐", "物性数据": "📊", "材料规范": "🔩",
-            "原辅料标准": "🧪", "蒸汽参数": "♨️", "压缩空气": "💨",
-        }
 
         match_count = 0
 
@@ -275,7 +274,7 @@ class ReferenceWidget(QWidget):
 
         # 填充搜索结果树
         for cat_name, sections in matched_cats.items():
-            icon = icon_map.get(cat_name, "📁")
+            icon = CATEGORY_ICONS.get(cat_name, DEFAULT_CATEGORY_ICON)
             cat_item = QTreeWidgetItem(self.tree, [f"{icon} {cat_name}"])
             cat_item.setFont(0, QFont("Microsoft YaHei", 11, QFont.Weight.Bold))
             cat_item.setExpanded(True)
@@ -347,9 +346,8 @@ class ReferenceWidget(QWidget):
             for c, cell in enumerate(row):
                 item = QTableWidgetItem(str(cell))
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                # 偶数行浅底色
-                if r % 2 == 0:
-                    item.setBackground(QBrush(QColor("#f8f9fa")))
+                # 隔行底色交给主题（主题的 QTableWidget 已有 alternate-background-color），
+                # 以前手写浅色会让深色主题出现"浅底压浅字"
                 self.table_widget.setItem(r, c, item)
 
         # 自适应列宽
@@ -369,7 +367,13 @@ class ReferenceWidget(QWidget):
         self.content_stack.setCurrentIndex(1)
 
     def _format_text_to_html(self, text):
-        """将纯文本格式化为美观的 HTML（支持 [TABLE_START]/[TABLE_END] 内嵌表格）"""
+        """将纯文本格式化为美观的 HTML（支持 [TABLE_START]/[TABLE_END] 内嵌表格）
+
+        颜色取自主题（`get_content_colors()`）：富文本读不到 QSS，
+        写死浅色主题的颜色会让深色主题出现"深底压深字"。
+        公式块用左侧强调条而非浅色填充块，这样在任何主题底色上都成立。
+        """
+        c = get_content_colors()
         lines = text.split("\n")
         html_parts = []
         in_table = False
@@ -405,14 +409,14 @@ class ReferenceWidget(QWidget):
 
             # 一级标题：一、二、三…
             if len(stripped) > 2 and stripped[0] in "一二三四五六七八九十" and stripped[1] in "、. ":
-                html_parts.append(f"<h3 style='color:#2c3e50; margin-top:16px; margin-bottom:6px;'>{stripped}</h3>")
+                html_parts.append(f"<h3 style='margin-top:16px; margin-bottom:6px;'>{stripped}</h3>")
                 continue
 
             # 公式行：含 = 或希腊字母
             if "=" in stripped and ("×" in stripped or "÷" in stripped or "/" in stripped or "√" in stripped or "λ" in stripped or "Δ" in stripped or "≥" in stripped or "≤" in stripped):
                 html_parts.append(
-                    f"<div style='background:#f4f6f7; padding:8px 12px; margin:4px 0; "
-                    f"border-radius:4px; font-family:Consolas,\"Microsoft YaHei\"; font-size:13px;'>{stripped}</div>"
+                    f"<div style='border-left:3px solid {c['banner_bg']}; padding:4px 12px; "
+                    f"margin:6px 0; font-family:Consolas,\"Microsoft YaHei\"; font-size:13px;'>{stripped}</div>"
                 )
                 continue
 
@@ -423,7 +427,7 @@ class ReferenceWidget(QWidget):
 
             # 注释行：以 // 或 # 开头
             if stripped.startswith("//") or stripped.startswith("#"):
-                html_parts.append(f"<div style='color:#888; font-style:italic;'>{stripped}</div>")
+                html_parts.append(f"<div style='color:{c['muted']}; font-style:italic;'>{stripped}</div>")
                 continue
 
             # 普通行
@@ -432,14 +436,26 @@ class ReferenceWidget(QWidget):
                 parts = stripped.split("—", 1)
                 html_parts.append(
                     f"<div style='margin-left:20px; padding:2px 0;'>"
-                    f"<b style='color:#2c3e50;'>{parts[0].strip()}</b>"
+                    f"<b>{parts[0].strip()}</b>"
                     f" — {parts[1].strip()}</div>"
                 )
                 continue
 
             html_parts.append(f"<div style='padding:2px 0;'>{stripped}</div>")
 
-        return "".join(html_parts)
+        # 数据文件里的内嵌表格 HTML 带历史遗留的浅色主题专用颜色，统一归一化
+        return normalize_legacy_content_colors("".join(html_parts), c)
+
+    def on_theme_changed(self):
+        """主题切换后重渲染当前条目（HTML 里的颜色取自主题，必须重画）。"""
+        sec = getattr(self, "_current_section", None)
+        if not sec:
+            return
+        sec_type = sec.get("type", "")
+        if sec_type in ("table", "bilingual_table"):
+            self._show_table(sec)
+        elif sec_type == "text":
+            self._show_text(sec)
 
     # ── 复制 ────────────────────────────────────────────────
 

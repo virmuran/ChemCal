@@ -2,7 +2,6 @@
 import sys
 import os
 import threading
-import tempfile
 import traceback
 from datetime import datetime
 
@@ -31,7 +30,8 @@ from theme_manager import ThemeManager
 from module_loader import ModuleLoader
 from updater import (
     check_for_updates, download_update, create_update_bat,
-    is_frozen, get_app_dir, compare_versions, GITHUB_REPO
+    is_frozen, get_app_dir, GITHUB_REPO,
+    classify_asset, get_last_check, get_temp_dir
 )
 
 # 配置日志：输出到控制台 + 写入文件
@@ -217,6 +217,19 @@ class ChemCal(QMainWindow):
         else:
             if not silent:
                 msg = notes or "当前已是最新版本 v" + CHEMICAL_VERSION
+                if not notes:
+                    # 无更新时把远端 tag 一并显示，便于发现「tag 写错」这类发布失误
+                    info = get_last_check()
+                    tag = info.get("tag", "")
+                    if tag:
+                        msg += f"\n\nGitHub 最新发布：v{tag}"
+                    if info.get("version_mismatch"):
+                        msg += (
+                            "\n\n⚠ 该 Release 的资产名为「"
+                            f"{info.get('asset_name')}」（版本 {info.get('asset_version')}），"
+                            f"与 tag v{tag} 不一致。\n"
+                            "自动更新只识别 tag，请在 Releases 页把 tag 改为对应版本。"
+                        )
                 QMetaObject.invokeMethod(
                     self, "_show_no_update",
                     Qt.ConnectionType.QueuedConnection,
@@ -259,8 +272,16 @@ class ChemCal(QMainWindow):
         layout.addWidget(title_lbl)
 
         cur_lbl = QLabel(f"当前版本：v{CHEMICAL_VERSION}")
-        cur_lbl.setStyleSheet("color:#666;")
         layout.addWidget(cur_lbl)
+
+        # 更新方式（安装包 / 便携包的动作不同，提前告知）
+        _kind = get_last_check().get("asset_kind", "")
+        _kind_text = {
+            "installer": "安装包 — 下载后启动安装向导，自动覆盖升级",
+            "portable": "便携压缩包 — 下载后解压覆盖原目录",
+        }.get(_kind, "更新文件")
+        kind_lbl = QLabel(f"更新方式：{_kind_text}")
+        layout.addWidget(kind_lbl)
 
         # 更新日志（截取前 2000 字）
         if notes:
@@ -268,7 +289,6 @@ class ChemCal(QMainWindow):
             notes_lbl.setReadOnly(True)
             notes_lbl.setPlainText(notes[:2000])
             notes_lbl.setMaximumHeight(180)
-            notes_lbl.setStyleSheet("background:#f8f9fa; border:1px solid #ddd; border-radius:4px; padding:6px;")
             layout.addWidget(notes_lbl)
 
         # 按钮区
@@ -291,7 +311,15 @@ class ChemCal(QMainWindow):
 
     def _start_download_update(self, parent_dialog, latest, url):
         """开始下载更新，切换为进度视图"""
+        # 旧下载线程仍在跑则不重复启动（QThread 新建后旧线程被 GC 会导致段错误闪退）
+        if getattr(self, "_download_thread", None) is not None and self._download_thread.isRunning():
+            return
+
         parent_dialog.setWindowTitle(f"正在下载 v{latest}...")
+
+        # 沿用 Release 里的资产文件名：setup.exe 与便携 zip 的后续动作不同，名字必须留住
+        asset_name = get_last_check().get("asset_name") or f"ChemCal_v{latest}.exe"
+        self._pending_latest = latest
 
         # 清空旧内容，换成进度界面
         layout = parent_dialog.layout()
@@ -306,7 +334,7 @@ class ChemCal(QMainWindow):
                     if sub.widget():
                         sub.widget().deleteLater()
 
-        status_lbl = QLabel(f"正在从 GitHub 下载 v{latest}...")
+        status_lbl = QLabel(f"正在下载 v{latest}（{asset_name}）...")
         status_lbl.setStyleSheet("font-size:13px;")
         layout.addWidget(status_lbl)
 
@@ -347,7 +375,7 @@ class ChemCal(QMainWindow):
                 except Exception as e:
                     self.error.emit(str(e))
 
-        save_path = os.path.join(tempfile.gettempdir(), f"ChemCal_v{latest}.exe")
+        save_path = os.path.join(get_temp_dir(), asset_name)
         self._download_thread = DownloadThread(url, save_path)
 
         self._download_thread.progress.connect(
@@ -362,11 +390,34 @@ class ChemCal(QMainWindow):
         self._download_thread.start()
 
     def _on_download_complete(self, dialog, filepath):
-        """下载完成，询问是否安装"""
+        """下载完成，按资产类型选择落地方式（安装包 / 便携 zip / 单文件 exe）"""
         dialog.close()
 
+        kind = classify_asset(os.path.basename(filepath))
+        new_ver = getattr(self, "_pending_latest", "")
+
+        # 便携 zip：整目录替换无法自动完成，打开所在目录引导手工解压
+        if kind == "portable":
+            QMessageBox.information(
+                self, "下载完成",
+                f"便携版已下载到：\n{filepath}\n\n"
+                "便携版是压缩包：解压后覆盖原程序目录即可完成升级。\n"
+                "（安装版用户请改下载 Releases 页的 setup.exe，可自动升级）"
+            )
+            os.startfile(os.path.dirname(filepath))
+            return
+
         if not is_frozen():
-            # Python 源码运行模式：打开下载目录
+            # Python 源码运行模式：无法自我替换
+            if kind == "installer":
+                reply = QMessageBox.question(
+                    self, "下载完成",
+                    f"安装包已下载到：\n{filepath}\n\n当前为源码运行模式，是否直接运行安装包？",
+                    QMessageBox.Yes | QMessageBox.No
+                )
+                if reply == QMessageBox.Yes:
+                    os.startfile(filepath)
+                return
             reply = QMessageBox.question(
                 self, "下载完成",
                 f"更新文件已下载到：\n{filepath}\n\n"
@@ -377,7 +428,22 @@ class ChemCal(QMainWindow):
                 os.startfile(os.path.dirname(filepath))
             return
 
-        # exe 模式：询问安装
+        # 安装包：交给安装向导覆盖升级（不能把 setup.exe 当成 ChemCal.exe 去替换）
+        if kind == "installer":
+            reply = QMessageBox.question(
+                self, "下载完成",
+                f"ChemCal v{CHEMICAL_VERSION} → v{new_ver} 安装包已就绪\n\n"
+                "点击「安装并重启」将关闭当前程序并启动安装向导，\n"
+                "由安装向导自动覆盖升级（计算历史与设置不受影响）。",
+                QMessageBox.Yes | QMessageBox.No
+            )
+            if reply == QMessageBox.Yes:
+                bat = create_update_bat(filepath, get_app_dir())
+                os.startfile(bat)
+                self.close()
+            return
+
+        # 历史发行的单文件 exe：关闭后自动替换并重启
         reply = QMessageBox.question(
             self, "下载完成",
             f"ChemCal v{CHEMICAL_VERSION} → 新版本已就绪\n\n"
@@ -414,6 +480,16 @@ class ChemCal(QMainWindow):
     def _apply_theme(self, theme_name):
         QApplication.instance().setStyleSheet(self.theme_manager.get_theme())
         self.theme_label.setText(f"主题: {theme_name.capitalize()}")
+
+        # 通知各页面重渲染富文本内容（HTML 里的颜色取自主题，换了主题必须重画，
+        # 否则已显示的详情会留着旧主题的配色 —— 深色下就成了"深底压深字"）
+        for _name, _widget in getattr(self, "modules", {}).items():
+            hook = getattr(_widget, "on_theme_changed", None)
+            if callable(hook):
+                try:
+                    hook()
+                except Exception as e:
+                    logger.warning("{} 主题重渲染失败: {}", _name, e)
         settings = self.data_manager.get_settings()
         settings["theme"] = theme_name
         self.data_manager.update_settings(settings)
@@ -670,12 +746,7 @@ Copyright 2025-2026 ChemCal Team | virmuran@163.com<br><br>
 - 代码 MIT 开源：https://github.com/virmuran/ChemCal<br><br>
 
 <b>更新日志：</b><br>
-<b>v1.5.50</b> - 45 个计算器公式全量对照标准核对收官（GB 150/50341、IAPWS-IF97、GHS 等），19 个回归测试文件固化锚点；恢复「常压储罐壁厚」（GB 50341 一英尺法+NB/T 47003）；移除「法兰查询」演示模块；安全阀 Kd 阀型映射修正；危化品 GHS 分类/腐蚀分级/COD 平衡等查询类修正<br>
-<b>v1.4</b> - 新增参考资料库（6大类26条规范数据/全文搜索/表格与公式展示）；循环水计算器增强：多效蒸发器模式（效数自动匹配汽化潜热）、结晶罐分项计算（结晶放热+显热降温+搅拌热）、溶液量拆分为罐有效体积×物料密度；SVG参数化示意图箭头优化<br>
-<b>v1.3</b> - 全局报告导出升级（TXT→DOCX，提取 ReportExporter 公共模块）；新增循环水用水量计算器（9种设备模式/发酵罐/结晶罐/脱色罐/蒸馏釜等）；安全阀模式驱动重构（6种计算类型/Kd阀型分类/火灾工况）；NPSHa增强（液面压力/12种泵型安全裕量/泵吸入SVG）；新增"未知侧设计"换热器模式；防闪退保护层；看门狗自动重启；UI全面规范化；主题系统全面优化<br>
-<b>v1.2</b> - 新增查询类计算器；历史记录系统上线；IAPWS-IF97 蒸汽物性精度升级<br>
-<b>v1.1</b> - 帮助菜单、水蒸气性质模块、日志系统<br>
-<b>v1.0</b> - 初始版本发布<br><br>
+最新改动见项目 README 的「更新日志」章节，或 GitHub Releases 页面<br><br>
 
 <b>免责声明：</b> 计算结果仅供参考，实际工程应用请由专业工程师审核确认。"""
         self._show_scrollable_dialog("关于 ChemCal", text)
@@ -693,7 +764,7 @@ def resource_path(relative_path):
 def main():
     app = SafeApplication(sys.argv)
     app.setApplicationName("ChemCal")
-    app.setApplicationVersion(CHEMICAL_VERSION.split(".", 1)[0])  # e.g. "1.4"
+    app.setApplicationVersion(CHEMICAL_VERSION)  # 完整版本号，便于诊断定位
     app.setOrganizationName("ChemCal")
 
     try:

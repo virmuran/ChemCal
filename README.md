@@ -13,7 +13,7 @@
     <img alt="license" src="https://img.shields.io/badge/license-MIT-blue">
 </div>
 <div>
-    <img alt="version" src="https://img.shields.io/badge/version-1.5.50-green">
+    <img alt="version" src="https://img.shields.io/badge/version-1.6.0-green">
     <img alt="stars" src="https://img.shields.io/github/stars/virmuran/ChemCal?style=social">
 </div>
 <br>
@@ -35,6 +35,9 @@
 
 两种发行均无需安装 Python 环境。用户数据保存在用户目录 `.ChemCal/`，安装版卸载不会删除你的计算历史与数据。
 
+> **安装报错“错误 5：拒绝访问”怎么办？** 少数受管控的电脑（公司终端安全软件、收紧的 Temp 权限）双击安装包会提示“安装程序无法创建目录 …\Temp\is-XXXX.tmp，错误 5：拒绝访问”。
+> 请**右键 → 以管理员身份运行**；仍不行则在 cmd 中执行 `set TEMP=C:\Windows\Temp` 后运行；或直接改用上面的**便携版**（免安装、不写临时目录、无需管理员权限）。
+
 如需从源码运行：
 
 ```bash
@@ -47,8 +50,8 @@ python main.py
 ## 亮点功能
 
 - 🧪 **45 种工程计算器** — 覆盖物性查询、管道系统、换热设备、容器设计、安全消防、制冷热工六大类，每个计算器均支持 DOCX / PDF 计算书一键导出，公式均对照 GB / HG / NB/T 等标准逐项核对并固化回归测试
-- 📚 **内置参考资料库** — 化工设计常用规范数据电子化，全文搜索，6 大类 26 条数据，告别翻书查表
-- 🔄 **14 类单位换算** — 长度、重量、温度、压力、流量、粘度等，即输即算
+- 📚 **内置参考资料库** — 化工设计常用规范数据电子化，全文搜索，14 大类 65 小节（262 条表格数据 + 30 条公式与规范说明），告别翻书查表
+- 🔄 **21 类单位换算** — 基础量（长度、重量、面积、体积、流量、温度、速度、进制）+ 力学热工（热能、压强、功率、力）+ 化工物性（密度、动力/运动粘度、表面张力、导热系数、传热系数、比热容、热值、浓度），即输即算
 - 📝 **自动计算历史** — SQLite 数据库全程记录，支持按模块筛选和关键词搜索
 - 🎨 **三套主题配色** — 亮色 / 暗色 / 蓝色，白天办公不刺眼，夜间低光不伤眼
 - 🔒 **数据本地存储** — 不联网、不上传、不收集任何隐私信息，所有数据仅保存在用户目录 `.ChemCal/` 下
@@ -99,7 +102,11 @@ python main.py
 
 - **代码规范**：中文注释 + Python 类型注解
 - **新增计算器**：参照 `modules/chemical_calculations/calculators/` 中的现有实现，继承 `CalculatorBase`
-- **发版打包**：改 `version.py` 后运行 `.venv/Scripts/python.exe build_release.py`，一键完成 PyInstaller + Inno Setup 安装包 + 便携 zip，产物在 `installer/` 与 `dist/`
+- **版本号规范**：版本号采用 `主.次.修订` 三段式，**只允许手改 `version.py`**，其余位置由脚本同步。完整标准与升号判定见 [VERSIONING.md](VERSIONING.md)。升号命令：
+  `.venv/Scripts/python.exe bump_version.py patch "修复 xxx"`（patch / minor / major 三选一；`--dry-run` 可先预览）
+- **发版打包**：升号后运行 `.venv/Scripts/python.exe build_release.py`，一键完成 PyInstaller + Inno Setup 安装包 + 便携 zip，产物在 `installer/` 与 `dist/`。
+  脚本内置**版本号闸门**：格式不合法、版本号没前进、与已有 tag 撞号，都会直接中断打包。
+  ⚠ **发布时 Release 的 tag 必须与 `version.py` 完全一致**（如 `v1.6.0`）：客户端自动更新只读 tag，资产文件名不参与比较；tag 写错版本号（例如资产是 1.5.51、tag 仍写 v1.5.50），所有老用户都会显示"已是最新版本"。tag 也不要写成 `update` 这类自由文本，解析不出数字会让更新通道整体静默失效。脚本末尾会做一次远端一致性检查，发现不一致会直接提示。另外 Draft / Pre-release 不会被更新器识别，必须 Publish。
 - **新增参考数据**：按 `data/reference_db.json` 格式追加条目
 
 ### 贡献/参与者
@@ -126,7 +133,49 @@ python main.py
 - 制冷剂物性：Peng-Robinson 状态方程 + REFPROP 参考数据
 - 设计规范：GB 150 / GB 50316 / GB 50974 / HG/T 20570 / TSG 21 / API 520 等
 
+## 版本号规范
+
+版本号采用 **`主版本.次版本.修订号`** 三段式（如 `1.6.0`），完整标准见 **[VERSIONING.md](VERSIONING.md)**。
+
+| 升哪位 | 什么时候 | 举例 |
+|---|---|---|
+| 修订号 | 修 bug、公式勘误、默认值、文案、依赖与打包配置 | `1.6.1` |
+| 次版本 | 新增功能：新增/恢复计算器、新增标签页或发行方式（向后兼容） | `1.7.0` |
+| 主版本 | 不兼容变更：数据存储结构破坏性调整、用户必须手动迁移 | `2.0.0` |
+
+三条最容易踩的规矩：
+
+1. `version.py` 是**唯一**手写版本号的地方 —— 升号用 `bump_version.py`，别手改其他文件
+2. Release 的 **tag 必须等于 `version.py` 的版本号**（`v1.6.0`）—— 更新器只读 tag
+3. 版本号**只增不减、绝不复用**；**修订号每次只 +1**，禁止跳号，禁止把 `1.6.0.1` 写成 `1.6.01`
+
+> 历史遗留说明：`1.4.202606xx`（日期当版本号）与 `1.5.21/1.5.41/1.5.50`（四段丢点、跳号）属旧命名，
+> 已不再沿用。`1.5.51` 作为旧序列收尾保留，规范自 `1.6.0` 起生效。
+
 ## 更新日志
+
+### v1.6.0 (2026-09-15)
+
+- 🎨 **主题一致性专项**：清除计算历史（22 处）与资料库（8 处）的硬编码颜色 —— 此前深色主题下历史详情弹窗与资料库内容是"深底压深字"，基本看不见
+- 🎨 主题新增**语义组件规则**（`mutedLabel` / `accentLabel` / `primaryBtn` / `dangerBtn`）与 **HTML 内容配色**（`theme_manager.CONTENT_COLORS`），三套主题同进同出；切换主题时页面自动重渲染
+- 🛠 资料库数据内嵌表格 HTML 的浅色底/浅色边框（`#ecf0f1` × 50、`#ddd` × 582）在渲染时归一化为主题色，数据文件无需改动
+- ✅ **其余 4 个标签页首次拥有回归测试**（`tests/test_pages_theme.py`，94 项）：页面功能 + 主题配色对比度闸门（≥4.0:1）+ 源码硬编码颜色黑名单
+- 📋 **版本号规范落地**：新增 [VERSIONING.md](VERSIONING.md) 与 `bump_version.py` 升号工具，`build_release.py` 增加版本号闸门，`tests/test_versioning.py`（73 项）固化三处版本号一致性
+- 📄 README 与实物对齐：参考资料库实为 **14 大类 65 小节**（262 条表格数据 + 30 条公式与规范说明），单位换算原为 **11 类**（下条已扩充）
+- 🔄 单位换算由 11 类扩至 **21 类**：新增流量、密度、动力粘度、运动粘度、表面张力、导热系数、传热系数、比热容、热值、浓度（含 % ↔ mol/L 跨组换算，需密度与摩尔质量）
+- 🧱 换算器新增通用基类 `unit_converter_base.UnitConverterPage`：新换算器只声明一张单位表，布局/清空/实时换算/辅助参数重算全部复用（原 11 个换算器每个约 150 行重复代码，改一处要改 11 个文件）
+- 🕘 **计算历史增强**：新增时间范围筛选（今天/近 7 天/近 30 天/本月）、列表多选与**批量删除**、按筛选**清空**（二次确认）、**使用统计**（总量/分类分布/计算器排行/日期趋势）、**导出**（CSV 供 Excel 直接打开；Word/PDF 计算书）
+- 🛠 历史库层（`history_db.py`）配套扩展：统一筛选口径的查询/计数/统计/删除，时间端点闭合（当天的记录不会被漏掉），批量删除走单条 SQL；新增 `tests/test_history.py`（134 项）直接打真实 SQLite 固化以上行为
+- 🛠 资料库补全 5 个新分类的图标（消防安全/水质标准/热工设备/防爆区域/投资估算），分类图标表去重
+- ⏱ **倒计时页改造**：卡片颜色改为主题 QSS 驱动（动态属性 `cdState`/`cdSelected`，配色集中在 `theme_manager`）—— 此前背景/边框/文字色写死在控件上，深色主题下卡片文字看不清；**秒针不再整页重建卡片**（此前每秒 deleteLater + 重建全部卡片，拖窗口时更狠），只在数据/筛选/列数变化时重建；日期时间输入改用日历选择器 + 快捷按钮（+1小时/+1天/+7天/+30天）；新增/编辑合并为一个对话框（替代连弹三个输入框）；新增状态筛选（全部/未到期/已过期）、排序（剩余时间/添加时间）、**一键清理已过期**、卡片进度条（创建 → 目标的已等待比例）、到点提醒只响一次；星期文案不再依赖系统 locale；新增 `tests/test_countdowns.py`（183 项）
+
+### v1.5.51 (2026-09-14)
+
+- 🛠 **自动更新机制修复**：客户端只认 Release 的 tag，此前 tag（v1.5.50）与资产名（1.5.51）不一致导致所有老用户都显示"已是最新版本"，更新通道静默失效
+- 🛠 下载的资产按原名存盘；安装包（setup.exe）与历史单文件 exe 的升级动作分流，修复自更新把 `ChemCal.exe` 覆盖成安装包的问题
+- 🛠 更新临时目录在 `%TEMP%` 被 ACL 限制时自动回退用户目录，配合"以管理员身份运行"解决受控电脑上的"错误 5：拒绝访问"
+- 📋 新增 `tests/test_updater.py`（44 项），固化 tag/资产一致性等易错点
+- 📄 **版本号规范落地**：新增 [VERSIONING.md](VERSIONING.md) 与 `bump_version.py`，`build_release.py` 增加版本号闸门
 
 ### v1.5.50 (2026-09-14)
 
@@ -180,10 +229,12 @@ ChemCal/
 ├── module_loader.py            # 模块动态加载器
 ├── history_db.py               # 历史记录（SQLite）
 ├── updater.py                  # 自动更新（GitHub Releases）
-├── version.py                  # 版本号定义
+├── version.py                  # 版本号唯一来源 + 规范校验
+├── VERSIONING.md               # 版本号规范（权威文档）
+├── bump_version.py             # 升版本号（校验 + 同步 iss / README）
 ├── ChemCal.spec                # PyInstaller 打包配置（onedir）
 ├── ChemCal.iss                 # Inno Setup 安装包脚本
-├── build_release.py            # 一键发版（版本同步 + 打包 + 双产物）
+├── build_release.py            # 一键发版（版本闸门 + 打包 + 双产物）
 ├── requirements.txt
 ├── ChemCal.ico                 # 应用图标
 ├── ChemCal.png                 # Logo
@@ -194,9 +245,6 @@ ChemCal/
 ├── utils/                      # 公共工具
 │   ├── __init__.py
 │   └── docx_utils.py           # DOCX 报告生成（ReportExporter）
-│
-├── scripts/                    # 维护脚本
-│   └── migrate_reports.py      # 批量迁移导出方法
 │
 ├── modules/
 │   ├── chemical_calculations/
@@ -213,7 +261,7 @@ ChemCal/
 │   │   └── chemical_calculations_widget.py
 │   │
 │   ├── reference/              # 参考资料库
-│   ├── converter/              # 单位换算器（14 类）
+│   ├── converter/              # 单位换算器（21 类）
 │   ├── history_viewer.py       # 计算历史
 │   └── countdowns.py           # 倒计时
 │

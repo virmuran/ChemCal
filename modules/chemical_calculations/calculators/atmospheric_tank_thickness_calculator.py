@@ -182,8 +182,10 @@ class AtmosphericTankThicknessCalculator(CalculatorBase):
             w = QLineEdit(default)
             w.setPlaceholderText(tooltip or f"请输入{label}")
             if readonly:
+                # 颜色由主题 QSS 的动态属性选择器接管（theme_manager.SEMANTIC_RULES
+                # 的 QLineEdit[roField="true"]），此处禁写死颜色 —— 深色主题下会浅底压浅字
                 w.setReadOnly(True)
-                w.setStyleSheet("background-color: #f0f0f0;")
+                w.setProperty("roField", True)
             v = QDoubleValidator()
             v.setDecimals(0 if name.endswith("_int") else 3)
             w.setValidator(v)
@@ -191,7 +193,8 @@ class AtmosphericTankThicknessCalculator(CalculatorBase):
         w.setObjectName(f"w_{name}")
 
         unit_lbl = QLabel(unit)
-        unit_lbl.setStyleSheet("color: #666;")
+        # 同上：单位标签颜色走主题（QLabel[unitLabel="true"]），不写死
+        unit_lbl.setProperty("unitLabel", True)
         unit_lbl.setObjectName(f"unit_{name}")
 
         grid.addWidget(lbl, row, 0)
@@ -345,16 +348,26 @@ class AtmosphericTankThicknessCalculator(CalculatorBase):
         if data is None:
             return
         density, sd, st = data
+        targets = [self._input_widgets[k]
+                   for k in ("allowable_stress_d", "allowable_stress_t", "steel_density")]
         if sd is not None:
-            self._input_widgets["allowable_stress_d"].setText(str(sd))
-            self._input_widgets["allowable_stress_t"].setText(str(st))
-            self._input_widgets["steel_density"].setText(str(density))
+            for w, v in zip(targets, (sd, st, density)):
+                self._set_ro_field(w, True)
+                w.setText(str(v))
         else:
-            for k in ("allowable_stress_d", "allowable_stress_t", "steel_density"):
-                w = self._input_widgets[k]
-                w.setReadOnly(False)
-                w.setStyleSheet("")
+            # 无数据的材质 → 三个框开放手填；切回来时自动恢复只读自动填入
+            for w in targets:
                 w.setText("")
+                self._set_ro_field(w, False)
+
+    @staticmethod
+    def _set_ro_field(w: QLineEdit, ro: bool):
+        """切换只读自动填入态。动态属性改了必须 unpolish/polish，否则 QSS 不刷新。"""
+        w.setReadOnly(ro)
+        w.setProperty("roField", ro)
+        style = w.style()
+        style.unpolish(w)
+        style.polish(w)
 
     # ═════════════════════════════════════════════════════════
     #  工具方法

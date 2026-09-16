@@ -1,5 +1,137 @@
 # ChemCal/theme_manager.py
+import re
+
 from PySide6.QtCore import QObject, Signal
+
+#: 当前生效的主题名（由 ThemeManager 实例同步，供拿不到实例的页面读取）
+_ACTIVE_THEME = "light"
+
+#: 历史数据（如 data/reference_db.json 里内嵌的表格 HTML）中残留的"亮色主题专用"颜色。
+#: 它们会压过主题：`#ecf0f1` 这种浅色表头底在深色主题下就是"浅底压浅字"，表格头看不见。
+#: 渲染时统一归一化 —— 数据可保持原样，新加数据即便又写了浅色也不会再炸。
+LEGACY_LIGHT_FILLS = ("#ecf0f1", "#f8f9fa", "#f0f0f0", "#fef9e7", "#ffffff")
+LEGACY_LIGHT_BORDERS = ("#ddd", "#dddddd", "#ccc", "#cccccc", "#e0e0e0")
+
+
+def normalize_legacy_content_colors(html: str, colors: dict = None) -> str:
+    """把富文本里残留的亮色主题专用颜色改写成主题色。
+
+    浅色填充块 → 主题强调色底 + 反白文字（保证任何主题下都读得清）；
+    浅色边框 → 主题边框色。
+    """
+    c = colors or get_content_colors()
+    out = html
+    for light in LEGACY_LIGHT_FILLS:
+        out = re.sub(r"(?i)background\s*:\s*" + re.escape(light) + r"\s*;?",
+                     f"background: {c['banner_bg']}; color: {c['banner_fg']};", out)
+    for light in LEGACY_LIGHT_BORDERS:
+        out = re.sub(r"(?i)(1px\s+solid\s+)" + re.escape(light),
+                     r"\g<1>" + c["rule"], out)
+    return out
+
+
+def get_active_theme() -> str:
+    """当前生效的主题名。"""
+    return _ACTIVE_THEME
+
+
+def get_content_colors(theme_name: str = None) -> dict:
+    """取当前主题的 HTML 内容配色。
+
+    Qt 富文本（QTextEdit / QTextBrowser 里的 HTML）**读不到 QSS 变量**，
+    所以正文色、强调色必须由主题提供。页面在渲染 HTML 时调用本函数，
+    并在 on_theme_changed() 里重渲染，避免出现"深底压深字""浅底压浅字"。
+    """
+    name = theme_name or _ACTIVE_THEME
+    palettes = ThemeManager.CONTENT_COLORS
+    return dict(palettes.get(name, palettes["light"]))
+
+
+#: ── 倒计时卡片状态配色 ────────────────────────────────────────────
+#: 三套主题必须给全**同样的键**（缺一个键 → 该主题下卡片那一块就没颜色）。
+#: 状态由控件动态属性驱动：cdState = normal|soon|overdue，cdSelected = 0|1。
+CD_COLORS = {
+    "light": {
+        "muted": "#6b7280",
+        "card_bg": "#f7f9fc", "card_border": "#d1d5db", "card_hover": "#9db4d0",
+        "sel_bg": "#eaf1fa", "sel_border": "#4a6fa5",
+        "soon_bg": "#fef6e7", "soon_border": "#d97706", "soon_fg": "#b45309",
+        "over_bg": "#fdf2f2", "over_border": "#b91c1c", "over_fg": "#b91c1c",
+        "time": "#2f5d94",
+        "badge_fg": "#4b5563", "badge_bg": "#eceff3",
+        "soon_badge_bg": "#fbe3bd", "over_badge_bg": "#f7d9d9",
+        "track": "#e3e8ef",
+    },
+    "dark": {
+        "muted": "#a3a3a3",
+        "card_bg": "#333333", "card_border": "#555555", "card_hover": "#7f9fc4",
+        "sel_bg": "#3a4453", "sel_border": "#6ba1e0",
+        "soon_bg": "#3a352a", "soon_border": "#e0a94a", "soon_fg": "#e0a94a",
+        "over_bg": "#3a2b2b", "over_border": "#d4513f", "over_fg": "#f08a8a",
+        "time": "#8ab6e8",
+        "badge_fg": "#c9c9c9", "badge_bg": "#444444",
+        "soon_badge_bg": "#4a3d24", "over_badge_bg": "#4a2f2f",
+        "track": "#4a4a4a",
+    },
+    "blue": {
+        "muted": "#5b6b7c",
+        "card_bg": "#ffffff", "card_border": "#bee3f8", "card_hover": "#7fb8e6",
+        "sel_bg": "#e8f2fd", "sel_border": "#3182ce",
+        "soon_bg": "#fff8ec", "soon_border": "#d97706", "soon_fg": "#b45309",
+        "over_bg": "#fdf2f2", "over_border": "#b91c1c", "over_fg": "#b91c1c",
+        "time": "#2b6cb0",
+        "badge_fg": "#2c5282", "badge_bg": "#e2eefa",
+        "soon_badge_bg": "#fbe3bd", "over_badge_bg": "#f7d9d9",
+        "track": "#d6e8f7",
+    },
+}
+
+#: 倒计时卡片样式模板 —— `$key` 用 CD_COLORS 对应主题的值替换。
+#: 之所以用 $ 占位而不是 str.format：QSS 里全是花括号，转义起来必错。
+CD_RULES_SRC = """
+        /* ═══════ 倒计时卡片（cdState: normal/soon/overdue，cdSelected: 0/1） ═══════ */
+        QScrollArea#cdScroll { border: none; }
+        /* 全局 QWidget 规则会把背景铺到 QLabel 上，卡片里的文字标签必须显式透明，
+           否则浅色主题下白色标签盖住卡片底色、深色主题下深灰标签盖住卡片底色 */
+        QFrame#cdCard { background-color: $card_bg; border: 1px solid $card_border;
+                        border-radius: 8px; }
+        QFrame#cdCard:hover { border-color: $card_hover; }
+        QFrame#cdCard[cdState="soon"] { background-color: $soon_bg; border-color: $soon_border; }
+        QFrame#cdCard[cdState="overdue"] { background-color: $over_bg;
+                                           border-color: $over_border; }
+        /* 选中态规则放最后：与状态规则同优先级，靠后生效 —— 保证选中永远看得见 */
+        QFrame#cdCard[cdSelected="1"] { background-color: $sel_bg; border: 2px solid $sel_border; }
+        QLabel#cdName { font-weight: bold; font-size: 13px; background-color: transparent; }
+        QLabel#cdTarget { font-size: 11px; color: $muted; background-color: transparent; }
+        QLabel#cdTime { color: $time; background-color: transparent; }
+        QLabel#cdTime[cdState="soon"] { color: $soon_fg; }
+        QLabel#cdTime[cdState="overdue"] { color: $over_fg; }
+        QLabel#cdBadge { color: $badge_fg; background-color: $badge_bg; border-radius: 8px;
+                         padding: 1px 8px; font-size: 11px; }
+        QLabel#cdBadge[cdState="soon"] { color: $soon_fg; background-color: $soon_badge_bg; }
+        QLabel#cdBadge[cdState="overdue"] { color: $over_fg; background-color: $over_badge_bg; }
+        QLabel#cdEmpty { color: $muted; font-size: 13px; background-color: transparent; }
+        QProgressBar#cdProgress { background-color: $track; border: none; border-radius: 3px;
+                                  min-height: 6px; max-height: 6px; }
+        QProgressBar#cdProgress::chunk { background-color: $time; border-radius: 3px; }
+"""
+
+
+def countdown_card_rules(theme_name: str) -> str:
+    """取某主题的倒计时卡片样式。
+
+    占位符必须全部替换掉 —— 漏一个就会在 QSS 里留下 `$xxx`，Qt 解析整段规则失败，
+    卡片会静默变成"没有样式"。所以这里自己守一道，宁可报错也不要静默降级。
+    """
+    colors = CD_COLORS.get(theme_name, CD_COLORS["light"])
+    out = CD_RULES_SRC
+    for key, value in colors.items():
+        out = out.replace(f"${key}", value)
+    leftover = [w for w in out.split() if w.startswith("$")]
+    if leftover:
+        raise ValueError(f"倒计时卡片样式存在未替换占位符: {leftover}")
+    return out
+
 
 class ThemeManager(QObject):
     """主题管理器 - 管理应用程序主题"""
@@ -14,7 +146,96 @@ class ThemeManager(QObject):
             "dark": self.get_dark_theme(),
             "blue": self.get_blue_theme()
         }
+        # 语义组件规则集中追加到三套主题 —— 保证永远同步，别只在某一套里加规则
+        for _name in list(self.themes):
+            self.themes[_name] += self.SEMANTIC_RULES[_name]
+        # 同步模块级当前主题（页面通过 theme_manager.get_content_colors() 取色）
+        global _ACTIVE_THEME
+        _ACTIVE_THEME = self.current_theme
     
+    #: ── HTML 富文本内容配色 ─────────────────────────────────────
+    #: Qt 富文本读不到 QSS，页面渲染 HTML 时从这里取色（三套主题必须给全同样的键）
+    CONTENT_COLORS = {
+        "light": {
+            "muted": "#6b7280",       # 次要文字（时间、来源、说明）
+            "accent": "#b45309",      # 强调小标签
+            "ok": "#15803d",          # 计算结果 / 正向
+            "danger": "#b91c1c",      # 警示
+            "rule": "#d1d5db",        # 表格分隔线（与主题边框同色）
+            "banner_bg": "#4a6fa5",   # 顶部色块背景
+            "banner_fg": "#ffffff",   # 顶部色块文字
+        },
+        "dark": {
+            "muted": "#a3a3a3",
+            "accent": "#e0a94a",
+            "ok": "#6fcf97",
+            "danger": "#f08a8a",
+            "rule": "#555555",
+            "banner_bg": "#4a6fa5",
+            "banner_fg": "#ffffff",
+        },
+        "blue": {
+            "muted": "#5b6b7c",
+            "accent": "#b45309",
+            "ok": "#15803d",
+            "danger": "#b91c1c",
+            "rule": "#bee3f8",
+            "banner_bg": "#3182ce",
+            "banner_fg": "#ffffff",
+        },
+    }
+
+    #: ── 语义组件规则（集中追加，保证三套主题一致） ──────────────
+    #: 页面用法：控件 setObjectName("mutedLabel" / "primaryBtn" / "dangerBtn" ...)，
+    #: 不要把颜色写进控件自己的 setStyleSheet —— 那会压过主题，深色下就看不见了
+    SEMANTIC_RULES = {
+        "light": """
+        /* ═══════ 语义组件（三套主题同步，详见 theme_manager.SEMANTIC_RULES） ═══════ */
+        QLabel#mutedLabel { color: #6b7280; }
+        QLabel#accentLabel { color: #b45309; font-weight: bold; }
+        QPushButton#primaryBtn { background-color: #4a6fa5; color: white;
+                                 border: none; border-radius: 6px; padding: 0 16px; }
+        QPushButton#primaryBtn:hover:!checked { background-color: #3d5c8a; }
+        QPushButton#dangerBtn { background-color: #c0392b; color: white;
+                                border: none; border-radius: 6px; padding: 0 16px; }
+        QPushButton#dangerBtn:hover:!checked { background-color: #a03024; }
+        QPushButton#primaryBtn:disabled, QPushButton#dangerBtn:disabled {
+            background-color: #c4c7c5; color: #8a8a8a; }
+        QLineEdit[roField="true"] { background-color: #f0f0f0; color: #6b7280; }
+        QLabel[unitLabel="true"] { color: #6b7280; }
+        """ + countdown_card_rules("light"),
+        "dark": """
+        /* ═══════ 语义组件（三套主题同步，详见 theme_manager.SEMANTIC_RULES） ═══════ */
+        QLabel#mutedLabel { color: #a3a3a3; }
+        QLabel#accentLabel { color: #e0a94a; font-weight: bold; }
+        QPushButton#primaryBtn { background-color: #4a6fa5; color: white;
+                                 border: none; border-radius: 6px; padding: 0 16px; }
+        QPushButton#primaryBtn:hover:!checked { background-color: #5b82bd; }
+        QPushButton#dangerBtn { background-color: #c0392b; color: white;
+                                border: none; border-radius: 6px; padding: 0 16px; }
+        QPushButton#dangerBtn:hover:!checked { background-color: #d4513f; }
+        QPushButton#primaryBtn:disabled, QPushButton#dangerBtn:disabled {
+            background-color: #4a4a4a; color: #8a8a8a; }
+        QLineEdit[roField="true"] { background-color: #2b2b2b; color: #a3a3a3; }
+        QLabel[unitLabel="true"] { color: #a3a3a3; }
+        """ + countdown_card_rules("dark"),
+        "blue": """
+        /* ═══════ 语义组件（三套主题同步，详见 theme_manager.SEMANTIC_RULES） ═══════ */
+        QLabel#mutedLabel { color: #5b6b7c; }
+        QLabel#accentLabel { color: #b45309; font-weight: bold; }
+        QPushButton#primaryBtn { background-color: #3182ce; color: white;
+                                 border: none; border-radius: 6px; padding: 0 16px; }
+        QPushButton#primaryBtn:hover:!checked { background-color: #2b6cb0; }
+        QPushButton#dangerBtn { background-color: #c0392b; color: white;
+                                border: none; border-radius: 6px; padding: 0 16px; }
+        QPushButton#dangerBtn:hover:!checked { background-color: #a03024; }
+        QPushButton#primaryBtn:disabled, QPushButton#dangerBtn:disabled {
+            background-color: #bee3f8; color: #8a8a8a; }
+        QLineEdit[roField="true"] { background-color: #edf2f7; color: #5b6b7c; }
+        QLabel[unitLabel="true"] { color: #5b6b7c; }
+        """ + countdown_card_rules("blue"),
+    }
+
     def get_light_theme(self):
         """浅色主题 — 白色底色 + 蓝灰色控件"""
         return """
@@ -110,7 +331,7 @@ class ThemeManager(QObject):
         }
 
         /* ═══════ 输入框 (单行/多行/下拉) ═══════ */
-        QLineEdit, QTextEdit, QComboBox {
+        QLineEdit, QTextEdit, QComboBox, QDateTimeEdit, QDateEdit, QTimeEdit, QSpinBox {
             border: 1px solid #d1d5db;                      /* 边框 */
             border-radius: 6px;                             /* 圆角 */
             padding: 6px 10px;                              /* 内边距 */
@@ -119,7 +340,8 @@ class ThemeManager(QObject):
             color: #374151;                                 /* 文字颜色 */
         }
 
-        QLineEdit:focus, QTextEdit:focus, QComboBox:focus {
+        QLineEdit:focus, QTextEdit:focus, QComboBox:focus,
+        QDateTimeEdit:focus, QSpinBox:focus {
             border-color: #4a6fa5;                          /* 获焦时边框高亮 */
         }
 
@@ -429,7 +651,7 @@ class ThemeManager(QObject):
         }
         
         /* 输入框样式 */
-        QLineEdit, QTextEdit, QComboBox {
+        QLineEdit, QTextEdit, QComboBox, QDateTimeEdit, QDateEdit, QTimeEdit, QSpinBox {
             border: 1px solid #555;
             border-radius: 6px;
             padding: 6px 10px;
@@ -438,7 +660,8 @@ class ThemeManager(QObject):
             color: #e0e0e0;
         }
         
-        QLineEdit:focus, QTextEdit:focus, QComboBox:focus {
+        QLineEdit:focus, QTextEdit:focus, QComboBox:focus,
+        QDateTimeEdit:focus, QSpinBox:focus {
             border-color: #4a6fa5;
         }
 
@@ -726,7 +949,7 @@ class ThemeManager(QObject):
         }
         
         /* 输入框样式 */
-        QLineEdit, QTextEdit, QComboBox {
+        QLineEdit, QTextEdit, QComboBox, QDateTimeEdit, QDateEdit, QTimeEdit, QSpinBox {
             border: 1px solid #bee3f8;
             border-radius: 6px;
             padding: 6px 10px;
@@ -735,7 +958,8 @@ class ThemeManager(QObject):
             color: #2d3748;
         }
         
-        QLineEdit:focus, QTextEdit:focus, QComboBox:focus {
+        QLineEdit:focus, QTextEdit:focus, QComboBox:focus,
+        QDateTimeEdit:focus, QSpinBox:focus {
             border-color: #3182ce;
         }
 
@@ -901,7 +1125,14 @@ class ThemeManager(QObject):
         """设置主题"""
         if theme_name in self.themes:
             self.current_theme = theme_name
+            # 同步模块级当前主题，页面在渲染 HTML 时据此取色
+            global _ACTIVE_THEME
+            _ACTIVE_THEME = theme_name
             self.theme_changed.emit(theme_name)
+
+    def get_content_colors(self, theme_name=None) -> dict:
+        """当前主题的 HTML 内容配色（模块级 get_content_colors 的实例版入口）。"""
+        return get_content_colors(theme_name or self.current_theme)
     
     def get_theme(self):
         """获取当前主题"""

@@ -37,6 +37,9 @@ desktop.ini
 ChemCal_data.json
 *.log
 
+# ── WorkBuddy 工作目录（调试脚本/截图/测试报告，非源码）──
+.workbuddy/
+
 # ── 临时文件 ──
 *.tmp
 *.bak
