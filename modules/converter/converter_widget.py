@@ -94,20 +94,13 @@ class ConverterWidget(QWidget):
         self.content_stack = QStackedWidget()
         self.content_stack.setObjectName("converterContentStack")  # 样式由主题 QSS 提供
 
-        # 添加导航项和对应的页面
+        # 添加导航项和对应的页面（真页面按需创建，见 _ensure_page_built）
         self.pages = []
 
         for _module_path, class_name, title in CALCULATOR_MODULES:
-            calculator_class = globals().get(class_name)
-            if not calculator_class:
+            if not globals().get(class_name):
                 continue                       # 导入就失败：打印已在上方，直接跳过
-            try:
-                widget = calculator_class()
-                self.add_page(title, widget)
-            except Exception as e:
-                print(f"{title} 页面创建失败: {e}")
-                traceback.print_exc()
-                self.add_page(f"{title} (错误)", self.create_error_widget(title, str(e)))
+            self.add_lazy_page(title, class_name)
 
         # 如果没有成功导入任何页面，显示错误信息
         if len(self.pages) == 0:
@@ -115,8 +108,8 @@ class ConverterWidget(QWidget):
             self.content_stack.addWidget(error_widget)
             self.nav_list.addItem("错误")
 
-        # 连接选择事件
-        self.nav_list.currentRowChanged.connect(self.content_stack.setCurrentIndex)
+        # 连接选择事件（先按需实例化页面，再切换显示）
+        self.nav_list.currentRowChanged.connect(self._on_nav_row_changed)
 
         # 默认选择第一项
         if self.nav_list.count() > 0:
@@ -149,3 +142,76 @@ class ConverterWidget(QWidget):
 
         # 保存页面引用
         self.pages.append(widget)
+
+    # ══════════════════════════════════════════
+    # 惰性加载（换算页按需实例化）
+    #
+    # 21 个换算页全量实例化 ≈ 840 个控件，Qt 换 QSS 时每个控件都要重算样式 ——
+    # 改成"先登记导航 + 占位页，首次打开才建"后常驻控件数大幅下降（切主题更快）。
+    # ══════════════════════════════════════════
+
+    def add_lazy_page(self, title, class_name):
+        """登记导航项 + 占位页（不实例化真页面）"""
+        placeholder = QWidget()
+        lay = QVBoxLayout(placeholder)
+        lay.setContentsMargins(0, 0, 0, 0)
+        hint = QLabel(f"{title}\n\n首次打开时加载…")
+        hint.setObjectName("mutedLabel")     # 颜色交给主题，勿写死
+        hint.setAlignment(Qt.AlignCenter)
+        lay.addWidget(hint)
+
+        placeholder._lazy_spec = class_name
+        self.add_page(title, placeholder)
+        return placeholder
+
+    def _on_nav_row_changed(self, row):
+        """导航切换：先把该行页面实例化出来，再切显示"""
+        if row < 0:
+            return
+        try:
+            self._ensure_page_built(row)
+        except Exception as e:                 # noqa: BLE001
+            print(f"[惰性加载] 第 {row} 页实例化失败: {e}")
+            traceback.print_exc()
+        self.content_stack.setCurrentIndex(row)
+
+    def _ensure_page_built(self, row):
+        """若该行还是占位页则换成真页面，返回当前页控件"""
+        if not (0 <= row < len(self.pages)):
+            return None
+        page = self.pages[row]
+        class_name = getattr(page, "_lazy_spec", None)
+        if class_name is None:
+            return page                        # 已经建好了
+
+        title = self.nav_list.item(row).text()
+        calculator_class = globals().get(class_name)
+        if calculator_class is None:
+            widget = self.create_error_widget(title, f"模块 {class_name} 未加载")
+        else:
+            try:
+                widget = calculator_class()
+            except Exception as e:             # noqa: BLE001
+                print(f"{title} 页面创建失败: {e}")
+                traceback.print_exc()
+                widget = self.create_error_widget(title, str(e))
+
+        self.content_stack.removeWidget(page)
+        self.content_stack.insertWidget(row, widget)
+        self.pages[row] = widget
+        page.deleteLater()
+        return widget
+
+    def ensure_all_pages(self):
+        """把全部换算页实例化出来（测试/批量操作用），返回页面列表"""
+        for row in range(len(self.pages)):
+            self._ensure_page_built(row)
+        return self.pages
+
+    def open_converter(self, title):
+        """按导航标题打开换算页（含实例化），成功返回页面控件"""
+        for row in range(self.nav_list.count()):
+            if self.nav_list.item(row).text() == title:
+                self.nav_list.setCurrentRow(row)
+                return self.pages[row]
+        return None

@@ -88,8 +88,8 @@ class ChemicalCalculationsWidget(QWidget):
         # 添加导航项和对应的页面
         self.add_calculator_pages()
         
-        # 连接选择事件
-        self.nav_list.currentRowChanged.connect(self.content_stack.setCurrentIndex)
+        # 连接选择事件（先按需实例化页面，再切换显示）
+        self.nav_list.currentRowChanged.connect(self._on_nav_row_changed)
         
         # 创建左侧区域（包含标题和导航列表）
         left_widget = QWidget()
@@ -216,25 +216,13 @@ class ChemicalCalculationsWidget(QWidget):
 
         configs = sorted(page_configs, key=sort_key)
 
-        # 添加页面（隐藏的直接跳过：不导入模块、不构建控件，加快启动）
-        success_count = 0
+        # 登记导航项 + 轻量占位页（真正的计算器等首次打开时才建），隐藏的直接跳过
         for title, calculator_name, module_name, supports_data_manager in configs:
             if module_name in hidden:
                 continue
-            try:
-                widget = self.create_calculator_widget(calculator_name, module_name, supports_data_manager, title)
-                self.add_page(title, widget)
-                success_count += 1
-            except Exception as e:
-                err_msg = f"FAIL: {title} 页面创建失败: {e}"
-                print(err_msg)
-                _log = _get_logger()
-                if _log:
-                    _log.error("计算器页面创建失败: {} | {}", title, e)
-                # 创建错误页面
-                error_widget = self.create_error_widget(title, str(e))
-                self.add_page(f"{title} (错误)", error_widget)
-        
+            self.add_lazy_page(title, calculator_name, module_name,
+                               supports_data_manager, title)
+
         # 如果没有成功添加任何页面，添加一个提示页面
         if len(self.pages) == 0:
             self.add_fallback_page()
@@ -360,6 +348,82 @@ class ChemicalCalculationsWidget(QWidget):
 
         # 保存页面引用
         self.pages.append(widget)
+
+    # ══════════════════════════════════════════
+    # 惰性加载（页面按需实例化）
+    #
+    # 为什么：45 个计算器全量实例化 ≈ 4200 个控件，Qt 每次换 QSS 都要给每个控件
+    # 重算样式 —— 实测「切主题 5.5s、启动 8s」。改成"先登记导航 + 轻量占位页，
+    # 首次打开才建真页面"后，常驻控件数降一个数量级，切主题/启动随之变快。
+    # 占位页同样带 _calc_meta，因此右键隐藏、管理面板、显隐排序逻辑无需改动。
+    # ══════════════════════════════════════════
+
+    def add_lazy_page(self, title, calculator_name, module_name,
+                      supports_data_manager, display_name=None):
+        """登记导航项 + 占位页（不导入模块、不建控件）"""
+        placeholder = QWidget()
+        lay = QVBoxLayout(placeholder)
+        lay.setContentsMargins(0, 0, 0, 0)
+        hint = QLabel(f"{title}\n\n首次打开时加载…")
+        hint.setObjectName("mutedLabel")     # 颜色交给主题，勿写死
+        hint.setAlignment(Qt.AlignCenter)
+        lay.addWidget(hint)
+
+        placeholder._calc_meta = {
+            "id": module_name,
+            "name": display_name or calculator_name,
+            "category": self._get_category_from_module(module_name),
+        }
+        placeholder._lazy_spec = (calculator_name, module_name,
+                                  supports_data_manager, display_name or title)
+
+        self.add_page(title, placeholder)
+        return placeholder
+
+    def _on_nav_row_changed(self, row):
+        """导航切换：先把该行页面实例化出来，再切显示"""
+        if row < 0:
+            return
+        try:
+            self._ensure_page_built(row)
+        except Exception as e:
+            print(f"[惰性加载] 行 {row} 实例化失败: {e}")
+            _log = _get_logger()
+            if _log:
+                _log.error("计算器实例化失败: row={} | {}", row, e)
+        self.content_stack.setCurrentIndex(row)
+
+    def _ensure_page_built(self, row):
+        """若该行还是占位页则换成真页面，返回当前页控件"""
+        if not (0 <= row < len(self.pages)):
+            return None
+        page = self.pages[row]
+        spec = getattr(page, "_lazy_spec", None)
+        if spec is None:
+            return page                        # 已经建好了
+
+        calculator_name, module_name, supports_dm, display_name = spec
+        widget = self.create_calculator_widget(calculator_name, module_name,
+                                              supports_dm, display_name)
+        # 占位页上的元数据原样继承（create_calculator_widget 也会写一份，这里兜底）
+        meta = getattr(page, "_calc_meta", None)
+        if meta is not None:
+            widget._calc_meta = meta
+
+        self.content_stack.removeWidget(page)
+        self.content_stack.insertWidget(row, widget)
+        self.pages[row] = widget
+        page.deleteLater()
+        return widget
+
+    def open_calculator(self, module_name):
+        """按模块名打开计算器（含实例化），成功返回页面控件"""
+        for row, page in enumerate(self.pages):
+            meta = getattr(page, "_calc_meta", None)
+            if meta and meta.get("id") == module_name:
+                self.nav_list.setCurrentRow(row)      # 触发按需实例化 + 显示
+                return self.pages[row]
+        return None
 
     # ══════════════════════════════════════════
     # 计算器显隐与排序（配置存 settings.calculator_hidden / calculator_order）

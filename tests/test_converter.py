@@ -79,6 +79,13 @@ check("导航项数 == 页面数 == 清单条目数",
       f"nav={conv_widget.nav_list.count()} pages={len(conv_widget.pages)}")
 check("页面标题与清单顺序一致",
       [conv_widget.nav_list.item(i).text() for i in range(21)] == TITLE_LIST)
+# 页面是**按需实例化**的（首次打开才建真页面）——本文件后续要直接读各页控件，
+# 这里统一点亮全部页面；惰性行为本身由 tests/test_lazy_pages.py 专门验证。
+check("惰性加载：构造后只有首行是真页面",
+      sum(1 for p in conv_widget.pages if not hasattr(p, "_lazy_spec")) == 1)
+conv_widget.ensure_all_pages()
+check("ensure_all_pages() 后全部 21 页都是真页面",
+      all(not hasattr(p, "_lazy_spec") for p in conv_widget.pages))
 
 SUB_MODULES = [
     "flow_converter", "density_converter", "dynamic_viscosity_converter",
