@@ -13,7 +13,7 @@
     <img alt="license" src="https://img.shields.io/badge/license-MIT-blue">
 </div>
 <div>
-    <img alt="version" src="https://img.shields.io/badge/version-1.6.0-green">
+    <img alt="version" src="https://img.shields.io/badge/version-1.6.1-green">
     <img alt="stars" src="https://img.shields.io/github/stars/virmuran/ChemCal?style=social">
 </div>
 <br>
@@ -158,6 +158,13 @@ python main.py
 > 已不再沿用。`1.5.51` 作为旧序列收尾保留，规范自 `1.6.0` 起生效。
 
 ## 更新日志
+
+### v1.6.1 (2026-09-16)
+
+- 🔴 **修复自动升级"安装包已损坏"**（本机实测踩到）：自动升级下载完成后，安装向导弹 *The setup files are corrupted*。取证结论是**下载被网络出口掐断**——下载件恰为 **52 428 800 字节（正好 50.00 MiB）**，与完整安装包（52 950 018 字节）做前缀比对**逐字节相同**，即尾部约 0.5 MB 从未到达；Inno 安装包自带的 CRC 校验只是忠实报了错。此前 `download_update()` 没有任何完整性校验，把残缺文件当成了成功
+- 🛡 **下载链路加固**：更新检测时记下 GitHub 给出的资产大小 → 下载后**比对字节数**；不足则带 `Range` 头**自动断点续传**（最多 6 次），已存在的半截文件也会直接接着下，不浪费流量；服务器不支持续传时明确报错而不是交付残缺文件；终检还校验**文件头魔术字节**（`.exe`=`MZ` / `.zip`=`PK`），可当场识破"网络返回了 HTML 错误页"
+- 💬 **更新界面更透明**：更新对话框与下载进度页显示**文件大小**（如 50.5 MB）；下载不完整时弹专用提示，明确告知"已中止、不会启动残缺的安装程序"，并提供**重试**与**打开下载页**按钮
+- ✅ `tests/test_updater.py` 扩充至 **64 项**：新增下载完整性 22 项（本地回环 HTTP 服务模拟"截断但支持续传 / 不支持续传 / 返回错误页"三种网络出口行为，不依赖外网）
 
 ### v1.6.0 (2026-09-15)
 

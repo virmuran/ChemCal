@@ -36,7 +36,8 @@ except Exception:                                    # 资料库缺失时不影�
 from updater import (
     check_for_updates, download_update, create_update_bat,
     is_frozen, get_app_dir, GITHUB_REPO,
-    classify_asset, get_last_check, get_temp_dir
+    classify_asset, get_last_check, get_temp_dir,
+    DownloadIncomplete, human_size
 )
 
 # 配置日志：输出到控制台 + 写入文件
@@ -285,12 +286,14 @@ class ChemCal(QMainWindow):
         layout.addWidget(cur_lbl)
 
         # 更新方式（安装包 / 便携包的动作不同，提前告知）
-        _kind = get_last_check().get("asset_kind", "")
+        _info = get_last_check()
+        _kind = _info.get("asset_kind", "")
         _kind_text = {
             "installer": "安装包 — 下载后启动安装向导，自动覆盖升级",
             "portable": "便携压缩包 — 下载后解压覆盖原目录",
         }.get(_kind, "更新文件")
-        kind_lbl = QLabel(f"更新方式：{_kind_text}")
+        _size_text = f"（{human_size(_info.get('asset_size'))}）" if _info.get("asset_size") else ""
+        kind_lbl = QLabel(f"更新方式：{_kind_text}{_size_text}")
         layout.addWidget(kind_lbl)
 
         # 更新日志（截取前 2000 字）
@@ -329,6 +332,8 @@ class ChemCal(QMainWindow):
 
         # 沿用 Release 里的资产文件名：setup.exe 与便携 zip 的后续动作不同，名字必须留住
         asset_name = get_last_check().get("asset_name") or f"ChemCal_v{latest}.exe"
+        # 资产真实字节数：下载后据此校验完整性（企业网络出口会把长响应截断在 50 MiB）
+        expected_size = int(get_last_check().get("asset_size") or 0)
         self._pending_latest = latest
 
         # 清空旧内容，换成进度界面
@@ -347,6 +352,13 @@ class ChemCal(QMainWindow):
         status_lbl = QLabel(f"正在下载 v{latest}（{asset_name}）...")
         status_lbl.setStyleSheet("font-size:13px;")
         layout.addWidget(status_lbl)
+
+        size_lbl = QLabel(
+            f"文件大小：{human_size(expected_size)}" if expected_size
+            else "文件大小：未知（将按响应头校验）"
+        )
+        size_lbl.setObjectName("mutedLabel")          # 由主题接管颜色，避免硬编码
+        layout.addWidget(size_lbl)
 
         progress = QProgressBar()
         progress.setMinimum(0)
@@ -371,22 +383,28 @@ class ChemCal(QMainWindow):
             finished_path = Signal(str)
             error = Signal(str)
 
-            def __init__(self, url, save_path):
+            def __init__(self, url, save_path, expected_size=0):
                 super().__init__()
                 self.url = url
                 self.save_path = save_path
+                self.expected_size = expected_size
 
             def run(self):
                 try:
                     def cb(done, total):
                         self.progress.emit(done, total)
-                    download_update(self.url, self.save_path, progress_callback=cb)
+                    download_update(self.url, self.save_path,
+                                    progress_callback=cb,
+                                    expected_size=self.expected_size)
                     self.finished_path.emit(self.save_path)
+                except DownloadIncomplete as e:
+                    # 用前缀区分「下载不完整」与普通网络错误，好给出不同处置建议
+                    self.error.emit(f"TRUNCATED|{e}")
                 except Exception as e:
                     self.error.emit(str(e))
 
         save_path = os.path.join(get_temp_dir(), asset_name)
-        self._download_thread = DownloadThread(url, save_path)
+        self._download_thread = DownloadThread(url, save_path, expected_size)
 
         self._download_thread.progress.connect(
             lambda cur, tot: progress.setValue(int(cur / tot * 100)) if tot > 0 else None
@@ -466,8 +484,34 @@ class ChemCal(QMainWindow):
             self.close()
 
     def _on_download_error(self, dialog, error_msg):
-        """下载失败"""
+        """下载失败：区分「网络截断」与普通错误，给不同的处置建议"""
         dialog.close()
+
+        # 下载不完整（企业网络出口常把长响应掐断在固定大小）：
+        # 残件已保留，重试会自动续传，也可直接去 Releases 页手动下载
+        if error_msg.startswith("TRUNCATED|"):
+            detail = error_msg.split("|", 1)[1]
+            box = QMessageBox(self)
+            box.setIcon(QMessageBox.Warning)
+            box.setWindowTitle("下载不完整")
+            box.setText("更新包下载不完整，已中止（不会启动残缺的安装程序）")
+            box.setInformativeText(
+                f"{detail}\n\n"
+                "常见原因：公司网络出口/代理会把较大的下载掐断。\n"
+                "已下载的部分会保留，点「立即更新」重试即可自动接着下；\n"
+                "也可以直接打开 Releases 页面手动下载。"
+            )
+            retry_btn = box.addButton("重试", QMessageBox.AcceptRole)
+            open_btn = box.addButton("打开下载页", QMessageBox.ActionRole)
+            box.addButton("关闭", QMessageBox.RejectRole)
+            box.exec()
+            if box.clickedButton() is retry_btn:
+                self._check_version(silent=False)
+            elif box.clickedButton() is open_btn:
+                QDesktopServices.openUrl(
+                    QUrl(f"https://github.com/{GITHUB_REPO}/releases/latest"))
+            return
+
         QMessageBox.warning(self, "下载失败", f"更新下载失败：\n{error_msg}\n\n请稍后重试或手动访问 GitHub 下载。")
 
     # ------------------------------------------------------------------ 设置

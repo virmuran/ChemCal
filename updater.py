@@ -25,6 +25,7 @@ import os
 import re
 import sys
 import tempfile
+import time
 import urllib.request
 
 from version import VERSION, parse_version, compare_versions  # noqa: F401  (re-export)
@@ -124,6 +125,8 @@ def check_for_updates():
             "asset_kind": classify_asset(asset_name),
             "asset_url": asset.get("browser_download_url", ""),
             "asset_version": asset_ver,
+            # 资产真实字节数：下载后必须比对，少了就说明被网络截断了
+            "asset_size": int(asset.get("size") or 0),
             # tag 与资产名版本不一致 = 发布配置错误，客户端只认 tag
             "version_mismatch": bool(asset_ver) and asset_ver != latest_tag,
         })
@@ -188,34 +191,144 @@ def _pick_asset(data: dict) -> dict:
 
 # ------------------------------------------------------------------ 下载
 
-def download_update(url: str, save_path: str, progress_callback=None):
-    """下载更新文件，支持进度回调。
+class DownloadIncomplete(IOError):
+    """下载未完成：文件比预期短（网络中途截断）。
+
+    不完整文件**绝不能**交给安装向导——Inno 安装包自带 CRC 校验，
+    残缺文件一运行就弹 "The setup files are corrupted"（用户实际踩到）。
+    """
+
+
+# 为什么需要续传：企业网络出口/代理会把长响应掐断在固定大小上。
+# 2026-09-16 实测本机在 **50 MiB = 52 428 800 字节**处被截断，拿到的文件是完整
+# 安装包的**逐字节前缀**（MD5 与完整件同长度前缀一致），差值 521 218 字节。
+# 因此：①拿到 API 给的资产大小，下完必须比对；②短了就带 Range 头接着下。
+_RETRY_WAIT = 2           # 截断后重试前的等待秒数
+_DOWNLOAD_RETRIES = 6     # 最大尝试次数（含首次）
+_BLOCK = 65536            # 64 KB
+
+# 文件头魔术字节：网络返回错误页（HTML）时也能当场识破
+_MAGIC = {
+    ".exe": b"MZ",
+    ".msi": b"\xd0\xcf\x11\xe0",
+    ".zip": b"PK\x03\x04",
+}
+
+
+def _file_magic_ok(path: str) -> bool:
+    """检查文件头是否与扩展名相符（.exe/.msi/.zip；其他类型不检查）。"""
+    want = _MAGIC.get(os.path.splitext(path)[1].lower())
+    if not want:
+        return True
+    try:
+        with open(path, "rb") as f:
+            return f.read(len(want)) == want
+    except OSError:
+        return False
+
+
+def human_size(n: int) -> str:
+    """字节数转可读文本：52950018 -> '50.5 MB'。"""
+    try:
+        n = float(n)
+    except (TypeError, ValueError):
+        return "未知大小"
+    for unit in ("B", "KB", "MB", "GB"):
+        if n < 1024 or unit == "GB":
+            return f"{n:.1f} {unit}" if unit != "B" else f"{int(n)} B"
+        n /= 1024
+    return f"{n:.1f} GB"
+
+
+def download_update(url: str, save_path: str, progress_callback=None,
+                    expected_size: int = 0, retries: int = _DOWNLOAD_RETRIES):
+    """下载更新文件：支持进度回调、断点续传与完整性校验。
 
     Args:
         url: 下载地址
         save_path: 保存路径（含文件名）
         progress_callback: fn(downloaded_bytes, total_bytes)，在下载线程中调用
+        expected_size: 期望字节数（取自 GitHub API 的 asset.size）；
+                       传 0 时会退化为用响应的 Content-Length 判定
+        retries: 最大尝试次数（网络截断后自动续传重试）
 
     Returns:
-        save_path — 下载完成后的文件路径
+        save_path — 下载完整后的文件路径
 
     Raises:
-        urllib.error.URLError / HTTPError
+        DownloadIncomplete: 重试用尽仍不完整（大小不足 / 文件头不对）
+        urllib.error.HTTPError / URLError: 网络或 HTTP 错误
     """
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(req, timeout=600) as resp:
-        total = int(resp.headers.get("Content-Length", 0))
-        downloaded = 0
-        block_size = 65536  # 64 KB
-        with open(save_path, "wb") as f:
-            while True:
-                chunk = resp.read(block_size)
-                if not chunk:
-                    break
-                f.write(chunk)
-                downloaded += len(chunk)
-                if progress_callback and total > 0:
-                    progress_callback(downloaded, total)
+    expected = int(expected_size or 0)
+
+    # 残件续传：上次下载留下的半截文件直接接着下，不白费流量
+    offset = 0
+    if expected > 0 and os.path.exists(save_path):
+        got = os.path.getsize(save_path)
+        if 0 < got < expected:
+            offset = got
+
+    for attempt in range(1, max(1, int(retries)) + 1):
+        headers = {"User-Agent": USER_AGENT}
+        if offset > 0:
+            headers["Range"] = f"bytes={offset}-"
+        received = 0
+        try:
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=600) as resp:
+                # 服务器忽略 Range（返回 200 全量）→ 丢掉残件从头写
+                if offset > 0 and getattr(resp, "status", 200) != 206:
+                    offset = 0
+                head_len = int(resp.headers.get("Content-Length") or 0)
+                if not expected:
+                    expected = offset + head_len      # 首轮用 Content-Length 兜底
+                total = expected or (offset + head_len)
+                with open(save_path, "ab" if offset > 0 else "wb") as f:
+                    while True:
+                        chunk = resp.read(_BLOCK)
+                        if not chunk:
+                            break
+                        f.write(chunk)
+                        received += len(chunk)
+                        if progress_callback and total > 0:
+                            progress_callback(offset + received, total)
+
+            got = offset + received
+            if expected and got < expected:
+                # 连接被掐断：记下已收字节，下一轮带 Range 接着下
+                offset = got
+                if attempt < retries:
+                    time.sleep(_RETRY_WAIT)
+                    continue
+                raise DownloadIncomplete(
+                    f"下载被网络截断：仅收到 {got:,} / {expected:,} 字节"
+                    f"（{human_size(got)} / {human_size(expected)}）")
+            if expected and got > expected:
+                with open(save_path, "r+b") as f:      # 超出则截齐，保证字节精确
+                    f.truncate(expected)
+            break
+        except urllib.error.HTTPError:
+            raise                                       # 403/404 等重试无意义
+        except Exception as e:
+            # 连接重置 / IncompleteRead 等：只要还能判定"没下满"就继续续传
+            got = os.path.getsize(save_path) if os.path.exists(save_path) else 0
+            if expected and 0 <= got < expected and attempt < retries:
+                offset = got
+                time.sleep(_RETRY_WAIT)
+                continue
+            raise
+
+    # ---------------- 终检：大小 + 文件头 ----------------
+    if not os.path.exists(save_path):
+        raise DownloadIncomplete("下载未产生文件（网络异常或被中断）")
+    actual = os.path.getsize(save_path)
+    if expected and actual != expected:
+        raise DownloadIncomplete(
+            f"文件大小不符：{actual:,} ≠ 期望 {expected:,} 字节，下载不完整")
+    if not _file_magic_ok(save_path):
+        raise DownloadIncomplete(
+            f"文件头不正确：{os.path.basename(save_path)} 不是有效的 exe/zip，"
+            "可能是网络返回了错误页面或被安全软件改写")
     return save_path
 
 

@@ -25,6 +25,7 @@ from updater import (
     parse_version, compare_versions, classify_asset, is_installer_asset,
     extract_asset_version, _pick_asset, check_for_updates, create_update_bat,
     get_last_check, get_temp_dir, LAST_CHECK,
+    download_update, DownloadIncomplete, human_size, _file_magic_ok,
 )
 
 PASS = FAIL = 0
@@ -56,12 +57,16 @@ class _Resp:
         return False
 
 
+ASSET_SIZE = 52950018      # 真实资产大小（ChemCal_1.6.0_setup.exe）
+
+
 def make_release(tag, assets, body="notes"):
     return {
         "tag_name": tag,
         "body": body,
         "html_url": f"https://github.com/virmuran/ChemCal/releases/tag/{tag}",
-        "assets": [{"name": n, "browser_download_url": f"https://example/{n}"}
+        "assets": [{"name": n, "size": ASSET_SIZE,
+                    "browser_download_url": f"https://example/{n}"}
                    for n in assets],
     }
 
@@ -190,6 +195,150 @@ check("不传 kind 时按文件名自动识别为安装包",
       "move /Y" not in open(bat_a, encoding="utf-8").read())
 
 check("get_temp_dir 可写", os.path.isdir(tmpdir) and os.access(tmpdir, os.W_OK), tmpdir)
+
+# ══════════════ E. 下载完整性：网络截断 + 断点续传（loopback，无需外网）══════════════
+# 2026-09-16 用户实测：自动升级下到 52 428 800 字节（正好 50 MiB）就被掐断，
+# 拿到的是完整安装包的逐字节前缀，安装向导一跑就报 "The setup files are corrupted"。
+# 根因在网络出口，但 updater 当时没有完整性校验——残缺文件被当成功交付。
+# 下面用本地 HTTP 服务复现"截断 + 支持 Range"的代理行为。
+import hashlib                                                         # noqa: E402
+import tempfile                                                        # noqa: E402
+import threading                                                       # noqa: E402
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer    # noqa: E402
+
+print("\nE. 下载完整性校验与断点续传")
+
+PAYLOAD = b"MZ" + bytes(range(256)) * 400          # 102 402 字节，头部是合法 PE 魔术字节
+CUT = 40000                                        # 首次响应只发这么多（模拟被掐断）
+
+
+class _Handler(BaseHTTPRequestHandler):
+    """按模式模拟网络出口行为。"""
+
+    mode = "truncate"          # truncate=截断但支持续传 / norange=不支持续传 / html=返回错误页
+    hits = []                  # 记录每次请求的 Range 头
+
+    def log_message(self, *a):
+        pass
+
+    def do_GET(self):
+        type(self).hits.append(self.headers.get("Range"))
+        rng = self.headers.get("Range")
+        start = 0
+        if rng and self.mode != "norange":
+            start = int(rng.split("=")[1].split("-")[0])
+
+        if self.mode == "html":
+            body = b"<html><body>403 Forbidden</body></html>"
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+
+        rest = PAYLOAD[start:]
+        # 每次响应最多再发 CUT 字节（模拟固定上限）；支持续传时返回 206
+        chunk = rest[:CUT]
+        if rng and self.mode != "norange":
+            self.send_response(206)
+            self.send_header("Content-Range",
+                             f"bytes {start}-{start + len(chunk) - 1}/{len(PAYLOAD)}")
+        else:
+            self.send_response(200)
+        self.send_header("Content-Length", str(len(chunk)))
+        self.end_headers()
+        self.wfile.write(chunk)
+
+
+srv = ThreadingHTTPServer(("127.0.0.1", 0), _Handler)
+threading.Thread(target=srv.serve_forever, daemon=True).start()
+BASE = f"http://127.0.0.1:{srv.server_address[1]}"
+
+
+def fresh(name):
+    return os.path.join(tempfile.mkdtemp(), name)
+
+
+# E1. 截断 → 自动续传 → 文件与源逐字节一致
+_Handler.mode = "truncate"
+_Handler.hits = []
+dl = fresh("ChemCal_1.6.0_setup.exe")
+prog = []
+r = download_update(f"{BASE}/x/ChemCal_1.6.0_setup.exe", dl,
+                    progress_callback=lambda d, t: prog.append((d, t)),
+                    expected_size=len(PAYLOAD), retries=4)
+_blob = open(dl, "rb").read()
+check("E1 被截断的下载能自动续传补齐（多轮 Range 拼接）", _blob == PAYLOAD,
+      f"got {len(_blob)} / want {len(PAYLOAD)}")
+check("E1 确实发生了多次请求（第一次被截断，后续带 Range）", len(_Handler.hits) >= 2,
+      _Handler.hits)
+check("E1 续传请求带了 Range 头", any(h for h in _Handler.hits), _Handler.hits)
+check("E1 首次请求无 Range（从头下）", _Handler.hits[0] is None, _Handler.hits)
+check("E1 文件大小 = 期望值", os.path.getsize(dl) == len(PAYLOAD))
+_last = prog[-1][0] if prog else 0
+check("E1 进度回调最终值 = 文件总大小（不是单次响应大小）",
+      _last == len(PAYLOAD), f"{_last} vs {len(PAYLOAD)}")
+
+# E2. 残件续传：已存在的半截文件不会被白白重下
+_Handler.hits = []
+dl2 = fresh("ChemCal_1.6.0_setup.exe")
+open(dl2, "wb").write(PAYLOAD[:CUT])               # 预置上次留下的残件
+r = download_update(f"{BASE}/x/setup.exe", dl2, expected_size=len(PAYLOAD), retries=4)
+check("E2 从已有残件续传，结果仍逐字节一致", open(dl2, "rb").read() == PAYLOAD)
+check("E2 首个请求就带 Range（断点续传，不重头下）",
+      _Handler.hits and _Handler.hits[0] == f"bytes={CUT}-", _Handler.hits)
+
+# E3. 服务器不支持续传 → 明确报错，绝不返回残缺文件
+_Handler.mode = "norange"
+dl3 = fresh("ChemCal_1.6.0_setup.exe")
+try:
+    download_update(f"{BASE}/x/setup.exe", dl3, expected_size=len(PAYLOAD), retries=2)
+    _e3 = None
+except DownloadIncomplete as e:
+    _e3 = e
+check("E3 无法补齐时抛 DownloadIncomplete（不静默交付残缺文件）",
+      _e3 is not None, _e3)
+check("E3 报错文案里带上了「只收到多少 / 期望多少」",
+      _e3 is not None and "截断" in str(_e3) and "," in str(_e3), _e3)
+
+# E4. 响应被换成错误页（HTML）→ 文件头校验拦住
+_Handler.mode = "html"
+dl4 = fresh("ChemCal_1.6.0_setup.exe")
+try:
+    download_update(f"{BASE}/x/setup.exe", dl4, retries=1)     # expected=0，靠文件头兜底
+    _e4 = None
+except DownloadIncomplete as e:
+    _e4 = e
+check("E4 返回 HTML 错误页时被文件头校验拦住", _e4 is not None, _e4)
+check("E4 报错点明不是有效的 exe/zip",
+      _e4 is not None and "文件头" in str(_e4), _e4)
+
+srv.shutdown()
+
+# E5. 文件头校验单元锚点
+_fd, _fp = tempfile.mkstemp(suffix=".exe")
+os.write(_fd, b"MZ\x90\x00rest")
+os.close(_fd)
+check("E5 exe 魔术字节 MZ 判定通过", _file_magic_ok(_fp))
+with open(_fp, "wb") as f:
+    f.write(b"<html>not an installer</html>")
+check("E5 HTML 内容冒充 exe 判定失败", not _file_magic_ok(_fp))
+_fz = _fp[:-4] + ".zip"
+with open(_fz, "wb") as f:
+    f.write(b"PK\x03\x04xxxx")
+check("E5 zip 魔术字节 PK\\x03\\x04 判定通过", _file_magic_ok(_fz))
+check("E5 未知扩展名不做魔术字节校验（放行）", _file_magic_ok(_fp[:-4] + ".txt"))
+
+# E6. 大小可读化
+check("E6 human_size(52950018) = 50.5 MB", human_size(52950018) == "50.5 MB",
+      human_size(52950018))
+check("E6 human_size(0) 不崩", human_size(0) == "0 B", human_size(0))
+check("E6 human_size(None) 返回「未知大小」", human_size(None) == "未知大小")
+
+# E7. 检测更新时记下资产大小（供下载后比对）
+has, latest, url, notes = with_release("v1.6.0", ["ChemCal_1.6.0_setup.exe"], "1.5.51")
+check("E7 check_for_updates 记下 asset_size", get_last_check().get("asset_size") == ASSET_SIZE,
+      get_last_check().get("asset_size"))
 
 # ══════════════════════════════ 汇总 ══════════════════════════════
 print()

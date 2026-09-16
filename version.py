@@ -15,7 +15,7 @@
     · 升号一律通过 `python bump_version.py <major|minor|patch> "说明"` 完成，不手改
 """
 
-VERSION = "1.6.0"
+VERSION = "1.6.1"
 
 #: 规范版本号：三段，无前导零，主/次 1~2 位、修订 1~3 位
 VERSION_PATTERN = r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$"
