@@ -23,6 +23,7 @@
 """
 import importlib.util
 import io
+import json
 import os
 import re
 import sys
@@ -201,6 +202,25 @@ check("对不上底表的物质留「—」而不是硬凑一个数",
       _unmatched)
 check("50%乙二醇水溶液没有被错配成纯乙二醇（溶液 ≠ 纯物质）",
       "50%乙二醇水溶液" in _unmatched, sorted(_unmatched))
+# note 曾谎称后两列「各计算器实际使用」—— 实测计算器侧不读 FLUID_PROPERTIES，
+# 一旦将来有计算器读它，这个断言会失败，届时 note 的措辞必须同步改
+_calc_src = ""
+for _r, _d, _fs in os.walk(os.path.join(ROOT, "modules", "chemical_calculations")):
+    for _f in _fs:
+        if _f.endswith(".py"):
+            with open(os.path.join(_r, _f), encoding="utf-8") as _fp:
+                _calc_src += _fp.read()
+check("计算器侧确实不读 FLUID_PROPERTIES（note 措辞据此）",
+      "FLUID_PROPERTIES" not in _calc_src)
+check("物性表 note 已去掉「各计算器实际使用」的错误说法，并点明「—」的含义",
+      "各计算器实际使用" not in (prop.get("note") or "")
+      and "只供本表做对照" in (prop.get("note") or "")
+      and "宁缺不造数" in (prop.get("note") or ""))
+_raw_db = json.load(open(os.path.join(ROOT, "data", "reference_db.json"), encoding="utf-8"))
+_raw_prop = next(s for c in _raw_db for s in c.get("sections", [])
+                 if s.get("title") == "常用液体物性（25°C）")
+check("物性表 note 不在 JSON 里存第二份（由 _inject_derived 现场生成）",
+      "note" not in _raw_prop, list(_raw_prop.keys()))
 
 # ══════════════════════════════ B. 数据勘误锚点 ══════════════════════════════
 section("B. 数据勘误锚点（与计算器底层一致）")

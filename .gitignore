@@ -32,6 +32,9 @@ desktop.ini
 *.exe
 *.msi
 
+# ── PyInstaller 归档（PYZ 打包中间产物，验证时会在根目录生成）──
+*.pyz
+
 # ── 用户运行时数据 ──
 .ChemCal/
 ChemCal_data.json
