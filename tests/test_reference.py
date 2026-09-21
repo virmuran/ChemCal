@@ -129,10 +129,10 @@ def leaf_count():
 section("A. 数据派生（单一来源）与规模闸门")
 
 check("实例化无异常", ref is not None)
-check("分类数 15（原 14：原辅料标准拆成食品添加剂/工业原料）", len(ref.ref_data) == 15,
-      len(ref.ref_data))
+check("分类数 16（原 14：原辅料标准拆成食品添加剂/工业原料；2026-09-21 增设计规范）",
+      len(ref.ref_data) == 16, len(ref.ref_data))
 _groups = {c.get("group") for c in ref.ref_data}
-check("分组数 5 且与 GROUP_ORDER 完全一致", _groups == set(GROUP_ORDER),
+check("分组数 6 且与 GROUP_ORDER 完全一致", _groups == set(GROUP_ORDER),
       _groups ^ set(GROUP_ORDER))
 check("树顶层节点数 = 分组数", ref.tree.topLevelItemCount() == len(GROUP_ORDER),
       ref.tree.topLevelItemCount())
@@ -143,10 +143,11 @@ check("每个条目都有标签（标签筛选的数据源）",
       all(s.get("tags") for c in ref.ref_data for s in c.get("sections", [])))
 
 _all_secs = [s for c in ref.ref_data for s in c.get("sections", [])]
-check("小节总数 67 = 33 表 + 34 文（README 数字须与此一致）", len(_all_secs) == 67,
+check("小节总数 68 = 34 表 + 34 文（README 数字须与此一致）", len(_all_secs) == 68,
       len(_all_secs))
 _rows = sum(len(s.get("rows") or []) for s in _all_secs)
-check("表格数据行合计 618（含派生的粗糙度 14 行 + 波美度详表 333 行）", _rows == 618, _rows)
+check("表格数据行合计 626（含派生的粗糙度 14 行 + 波美度详表 333 行 + 标准清单 8 行）",
+      _rows == 626, _rows)
 check("未搜索时树里的节数 = 全库节数", leaf_count() == len(_all_secs), leaf_count())
 
 # 派生节：管道粗糙度（原本只活在计算器下拉框里）
@@ -582,7 +583,7 @@ except Exception as e:      # noqa: BLE001
     _ok2 = f"{type(e).__name__}: {e}"
 check("refresh() 重载数据不抛异常", _ok2 is True, _ok2)
 check("refresh() 后分类数与标签项仍正确",
-      len(ref.ref_data) == 15 and ref.tag_combo.count() > 20,
+      len(ref.ref_data) == 16 and ref.tag_combo.count() > 20,
       (len(ref.ref_data), ref.tag_combo.count()))
 check("on_activate() 存在（标签页切换回调）",
       callable(getattr(ref, "on_activate", None)))
@@ -731,6 +732,51 @@ if _bx2 is not None:
           "企业换算表" in _bx2.get("source", ""), _bx2.get("source"))
     check("详表标签齐备（含 波美度 / 比重，供标签筛选）",
           {"波美度", "比重"} <= set(_bx2.get("tags", [])), _bx2.get("tags"))
+
+# ══════════════════════════ 设计标准采用清单（8 行转录表） ══════════════════════════
+print()
+print("=" * 60)
+print("O. 设计标准采用清单")
+print("=" * 60)
+
+_std_cat, _std = find("设计标准采用清单")
+check("设计标准采用清单存在", _std is not None)
+if _std is not None:
+    check("清单归入「设计规范」分类（库内末位新分类）",
+          _std_cat.get("category") == "设计规范", _std_cat.get("category"))
+    _h3 = _std.get("headers", [])
+    check("清单 4 列（类别/标准/采用说明/库内覆盖）",
+          _h3 == ["类别", "标准/规范", "采用说明", "库内覆盖"], _h3)
+    _r3 = _std.get("rows", [])
+    check("清单 8 行", len(_r3) == 8, len(_r3))
+    _names = [r[0] for r in _r3]
+    check("清单 8 个类别与照片一致",
+          _names == ["PFD 工艺流程方框图", "P&ID 管道及仪表流程图", "生物工艺设备",
+                     "食品机械安全", "钢制焊接容器", "爆炸环境设备", "投资估算分级",
+                     "设计开发控制"], _names)
+    _stds = " ".join(r[1] for r in _r3)
+    check("标准号齐全（ISO 10628/ISA-5.1/ASME BPE/GB 16798/GB 14881/GB 150/"
+          "GB 50058/AACE/ISO 9001）",
+          all(k in _stds for k in ["ISO 10628", "ISA-5.1", "ASME BPE", "GB 16798",
+                                   "GB 14881", "GB 150", "GB 50058", "AACE",
+                                   "ISO 9001"]), _stds)
+    _cov = [r[3] for r in _r3]
+    check("覆盖列三种状态齐备（✅/⚠️/❌）",
+          any(c.startswith("✅") for c in _cov) and any(c.startswith("⚠️") for c in _cov)
+          and any(c.startswith("❌") for c in _cov), _cov)
+    check("覆盖状态与实际相符：GB 50058/AACE ✅，ISO 10628/ISA-5.1/BPE/16798/9001 ❌",
+          _cov[5].startswith("✅") and _cov[6].startswith("✅")
+          and all(_cov[i].startswith("❌") for i in (0, 1, 2, 3, 7)), _cov)
+    check("采用说明为清单原文（含【建议】前缀）",
+          all(r[2].startswith("【建议】") for r in _r3),
+          [r[2] for r in _r3[:2]])
+    check("清单说明注明转录日期与覆盖列含义",
+          "2026-09-21" in _std.get("description", "")
+          and "库内覆盖" in _std.get("description", ""))
+    check("清单出处标注照片转录来源",
+          "照片转录" in _std.get("source", ""), _std.get("source"))
+    check("清单标签齐备（含 标准/清单）",
+          {"标准", "清单"} <= set(_std.get("tags", [])), _std.get("tags"))
 
 # ══════════════════════════════ 汇总 ══════════════════════════════
 print()

@@ -172,8 +172,8 @@ ref = ReferenceWidget()
 check("实例化无异常，数据已加载", len(ref.ref_data) > 0, len(ref.ref_data))
 # 2026-09-16 资料库整理：原辅料标准(19) 拆成 食品添加剂标准(10)+工业原料标准(9)，
 # 由 14 类变为 15 类；树顶层改为「分组」（5 个），分类降为第二层。
-check("分类数为 15（README 数字须与此一致）", len(ref.ref_data) == 15, len(ref.ref_data))
-check("分组数为 5", len({c.get("group") for c in ref.ref_data}) == 5)
+check("分类数为 16（README 数字须与此一致）", len(ref.ref_data) == 16, len(ref.ref_data))
+check("分组数为 6", len({c.get("group") for c in ref.ref_data}) == 6)
 check("树顶层节点数 = 分组数", ref.tree.topLevelItemCount() == len(GROUP_ORDER),
       ref.tree.topLevelItemCount())
 

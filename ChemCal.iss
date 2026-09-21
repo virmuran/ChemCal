@@ -3,7 +3,7 @@
 ; 发新版时改 AppVersion 和 OutputBaseFilename 两处（与 version.py 保持一致）
 
 #define MyAppName "ChemCal 化算"
-#define MyAppVersion "1.6.1"
+#define MyAppVersion "1.7.0"
 #define MyAppPublisher "ChemCal Team"
 #define MyAppURL "https://github.com/virmuran/ChemCal"
 
