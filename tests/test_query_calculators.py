@@ -70,6 +70,124 @@ check("UI: H2SO4 60%/20°C → 1497.6", "1497.6" in w_sd.result_text.toPlainText
       w_sd.result_text.toPlainText()[:200])
 check("UI: get_project_info 返回 dict",
       isinstance(w_sd.get_project_info(), dict))
+
+# ── 密度反查（密度 → 浓度，2026-09-20 新增） ──────────────────────
+print()
+print("A2. 溶液密度反查")
+check("反查: 单位 kg/m³", sd.to_rho_kgm3(1081.0, "kg/m³") == 1081.0)
+check("反查: 单位 g/cm³", approx(sd.to_rho_kgm3(1.081, "g/cm³"), 1081.0, 1e-9))
+check("反查: 单位 d20/20 = 1.0831×998.2071",
+      approx(sd.to_rho_kgm3(1.0831, "相对密度 d20/20"), 1081.158, 0.01),
+      sd.to_rho_kgm3(1.0831, "相对密度 d20/20"))
+try:
+    sd.to_rho_kgm3(1.0, "不存在的单位")
+    check("反查: 未知单位抛 ValueError", False)
+except ValueError:
+    check("反查: 未知单位抛 ValueError", True)
+
+_w = sd.solve_concentration(sd.SUBSTANCE_CONFIG["葡萄糖溶液"], 1081.0, 20)
+check("反查: 葡萄糖 1081 kg/m³(20°C) → w = 0.19993",
+      approx(_w, 0.199931, 5e-5), _w)
+check("反查: 回代自洽 ρ(w, 20) = 1081.0",
+      approx(sd.rho_glucose(_w, 20), 1081.0, 0.01), sd.rho_glucose(_w, 20))
+check("反查: 表观锤度 @1081 = 19.89 °Bx（须是 °Bx 不是质量分数）",
+      approx(sd.apparent_brix(1081.0, 20), 19.889, 0.05),
+      sd.apparent_brix(1081.0, 20))
+check("反查: 表观锤度超蔗糖适用域返回 None",
+      sd.apparent_brix(2000.0, 20) is None)
+check("反查: mol/L = w·ρ/M = 1.2000",
+      approx(sd.mass_frac_to_molarity(0.2, 1081, 180.16), 1.20004, 1e-4),
+      sd.mass_frac_to_molarity(0.2, 1081, 180.16))
+try:
+    sd.mass_frac_to_molarity(0.2, 1081, 0)
+    check("反查: 分子量 0 抛 ValueError", False)
+except ValueError:
+    check("反查: 分子量 0 抛 ValueError", True)
+
+_rt_ok, _rt_msg = True, ""
+for _name, _cfg in sd.SUBSTANCE_CONFIG.items():
+    if _cfg.get("w_max", 0) <= 0:
+        continue
+    _wt = _cfg["w_max"] * 0.6
+    _back = sd.solve_concentration(_cfg, _cfg["func"](_wt, 25), 25)
+    if abs(_back - _wt) > 1e-9:
+        _rt_ok = False
+        _rt_msg += f"{_name}:{_back:.6f}≠{_wt:.6f} "
+check("反查: 7 种物料 正算→反查 往返一致（Δ<1e-9）", _rt_ok, _rt_msg)
+
+for _rho, _tag in ((900.0, "低于纯水"), (3000.0, "超上限")):
+    try:
+        sd.solve_concentration(sd.SUBSTANCE_CONFIG["葡萄糖溶液"], _rho, 20)
+        check(f"反查: {_tag}应拒绝", False)
+    except ValueError:
+        check(f"反查: {_tag}应拒绝", True)
+try:
+    sd.solve_concentration(sd.SUBSTANCE_CONFIG["纯水"], 1000.0, 20)
+    check("反查: 纯水应拒绝（无浓度可查）", False)
+except ValueError:
+    check("反查: 纯水应拒绝（无浓度可查）", True)
+
+# UI 层
+check("反查UI: 模式下拉 2 项", w_sd.mode_combo.count() == 2)
+w_sd.mode_combo.setCurrentText("反查（密度 → 浓度）")
+check("反查UI: 反查时隐藏质量分数行、显示实测密度行",
+      w_sd.w_label.isHidden() and not w_sd.rho_label.isHidden())
+w_sd.substance_combo.setCurrentText("葡萄糖溶液")
+w_sd.rho_unit.setCurrentText("g/cm³")
+w_sd.rho_input.setText("1.0810")
+w_sd.T_input.setText("20")
+w_sd.calculate()
+_txt = w_sd.result_text.toPlainText()
+check("反查UI: 1.0810 g/cm³ → 19.9931%", "19.9931%" in _txt, _txt[:160])
+check("反查UI: 换算标注 1081.00 kg/m³", "1081.00 kg/m³" in _txt)
+check("反查UI: 输出表观锤度 19.89 °Bx", "19.89 °Bx" in _txt)
+check("反查UI: 输出摩尔浓度 1.1996 mol/L", "1.1996 mol/L" in _txt)
+
+w_sd.rho_input.setText("1.0797")
+w_sd.T_input.setText("50")
+w_sd.calculate()
+check("反查UI: 温度≠20 °C 时标注「同温度换算」",
+      "同温度换算" in w_sd.result_text.toPlainText(),
+      w_sd.result_text.toPlainText()[:120])
+
+w_sd.T_input.setText("20")
+w_sd.rho_input.setText("0.900")
+w_sd.calculate()
+check("反查UI: 密度低于纯水 → 拒绝并说明原因",
+      "反查失败" in w_sd.result_text.toPlainText() and
+      "低于" in w_sd.result_text.toPlainText())
+w_sd.rho_input.setText("2.500")
+w_sd.calculate()
+check("反查UI: 密度超适用范围 → 拒绝并给出上限",
+      "超出适用范围" in w_sd.result_text.toPlainText())
+w_sd.substance_combo.setCurrentText("纯水")
+w_sd.calculate()
+check("反查UI: 纯水 → 拒绝并说明",
+      "纯水没有浓度可反查" in w_sd.result_text.toPlainText())
+
+w_sd.substance_combo.setCurrentText("葡萄糖溶液")
+w_sd.rho_input.setText("1.0810")
+w_sd.calculate()
+_h = w_sd._get_history_data().get("inputs", {})
+check("反查UI: 历史记录带计算模式", "计算模式" in _h, _h)
+check("反查UI: 历史记录带实测密度（含单位）",
+      "g/cm³" in str(_h.get("实测密度", "")), _h)
+check("反查UI: 密度行提示给出可反查区间",
+      "可反查" in w_sd.rho_hint.text(), w_sd.rho_hint.text())
+
+w_sd.clear_inputs()
+check("反查UI: clear 后模式复位为正算",
+      w_sd.mode_combo.currentText().startswith("正算"))
+check("反查UI: clear 后密度行隐藏、质量分数行显示",
+      w_sd.rho_label.isHidden() and not w_sd.w_label.isHidden())
+check("反查UI: clear 后密度输入复位 1.0810",
+      w_sd.rho_input.text() == "1.0810", w_sd.rho_input.text())
+w_sd.calculate()
+check("反查UI: clear 后可直接重算（正算）",
+      bool(w_sd.result_text.toPlainText()),
+      w_sd.result_text.toPlainText()[:120])
+check("正算UI: 结果含摩尔浓度 mol/L",
+      "mol/L" in w_sd.result_text.toPlainText())
 w_sd.result_text.setPlainText("")
 check("UI: 未计算时 generate_report 返回 None", w_sd.generate_report() is None)
 

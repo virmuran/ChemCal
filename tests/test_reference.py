@@ -143,10 +143,10 @@ check("每个条目都有标签（标签筛选的数据源）",
       all(s.get("tags") for c in ref.ref_data for s in c.get("sections", [])))
 
 _all_secs = [s for c in ref.ref_data for s in c.get("sections", [])]
-check("小节总数 65 = 31 表 + 34 文（README 数字须与此一致）", len(_all_secs) == 65,
+check("小节总数 67 = 33 表 + 34 文（README 数字须与此一致）", len(_all_secs) == 67,
       len(_all_secs))
 _rows = sum(len(s.get("rows") or []) for s in _all_secs)
-check("表格数据行合计 270（含派生的粗糙度 14 行）", _rows == 270, _rows)
+check("表格数据行合计 618（含派生的粗糙度 14 行 + 波美度详表 333 行）", _rows == 618, _rows)
 check("未搜索时树里的节数 = 全库节数", leaf_count() == len(_all_secs), leaf_count())
 
 # 派生节：管道粗糙度（原本只活在计算器下拉框里）
@@ -586,6 +586,151 @@ check("refresh() 后分类数与标签项仍正确",
       (len(ref.ref_data), ref.tag_combo.count()))
 check("on_activate() 存在（标签页切换回调）",
       callable(getattr(ref, "on_activate", None)))
+
+# ══════════════════════════════ 锤度(°Bx)-密度对照表（2026-09-20 新增） ══════════════════
+print()
+print("=" * 60)
+print("N. 锤度(°Bx)-蔗糖密度对照表")
+print("=" * 60)
+
+_bx, _bx_cat = None, None
+for _c in ref.ref_data:
+    for _s in _c.get("sections", []):
+        if str(_s.get("title", "")).startswith("锤度"):
+            _bx, _bx_cat = _s, _c.get("category")
+check("锤度对照表存在", _bx is not None)
+if _bx is not None:
+    check("锤度表归入「物性数据」分类", _bx_cat == "物性数据", _bx_cat)
+    _h = _bx.get("headers", [])
+    check("锤度表 6 列（锤度/真密度/d20-20/波美度/折光率/葡萄糖）",
+          len(_h) == 6, _h)
+    check("波美度列标出口径（144.3 口径）",
+          len(_h) > 3 and "波美度" in _h[3] and "144.3" in _h[3], _h[3:4])
+    check("锤度表 15 行（0~70 °Bx 每 5 度）",
+          len(_bx["rows"]) == 15, len(_bx["rows"]))
+    check("锤度表锤度列为 0,5,…,70",
+          [r[0] for r in _bx["rows"]] == [str(i) for i in range(0, 75, 5)],
+          [r[0] for r in _bx["rows"]])
+
+    _by = {r[0]: r for r in _bx["rows"]}
+    # 独立锚点：NBS Circular 440 表 109（d20/20）+ ICUMSA 1974（nD）+ LB（真密度）
+    # 波美度无独立出处（纯代数派生），只做自洽核验，见下一条
+    for _b, _rho, _d, _be, _nd in [("0", "998.21", "1.00000", "0.00", "1.33299"),
+                                   ("10", "1038.11", "1.03998", "5.55", "1.34782"),
+                                   ("20", "1080.93", "1.08287", "11.04", "1.36384"),
+                                   ("50", "1229.53", "1.23174", "27.15", "1.42009"),
+                                   ("70", "1347.14", "1.34956", "37.38", "1.46546")]:
+        _r = _by.get(_b, [])
+        check(f"锚点 {_b} °Bx → ρ20={_rho} / d={_d} / °Bé={_be} / nD={_nd}",
+              len(_r) == 6 and _r[1] == _rho and _r[2] == _d
+              and _r[3] == _be and _r[4] == _nd, _r)
+
+    _bad_d = [r[0] for r in _bx["rows"][1:]
+              if abs(float(r[1]) / 998.203 - float(r[2])) > 3e-5]
+    check("d20/20 与真密度按 20 °C 水 998.203 自洽（≤3e-5）", not _bad_d, _bad_d)
+
+    _bad_be = [(r[0], r[3]) for r in _bx["rows"]
+               if abs((144.3 - 144.3 / float(r[2])) - float(r[3])) > 0.005]
+    check("波美度列 = 144.3 − 144.3/d20/20 自洽（≤0.005 °Bé）", not _bad_be, _bad_be)
+
+    # 葡萄糖列必须与计算器的葡萄糖关联式同源（改一边另一边就红）
+    _spec_sd = importlib.util.spec_from_file_location(
+        "t_solution_density_bx", os.path.join(CALC_DIR, "solution_density_calculator.py"))
+    _sd = importlib.util.module_from_spec(_spec_sd)
+    _spec_sd.loader.exec_module(_sd)
+    _cfg_g = _sd.SUBSTANCE_CONFIG["葡萄糖溶液"]
+    _mismatch = []
+    for _r in _bx["rows"]:
+        if _r[5] == "—":
+            continue
+        try:
+            _w = _sd.solve_concentration(_cfg_g, float(_r[1]), 20.0) * 100.0
+        except ValueError as _e:                      # noqa: PERF203
+            _mismatch.append((_r[0], f"反解失败 {_e}"))
+            continue
+        if abs(_w - float(_r[5])) > 0.02:
+            _mismatch.append((_r[0], round(_w, 4), _r[5]))
+    check("葡萄糖列 = 计算器葡萄糖式反解（Δ≤0.02 wt%）", not _mismatch, _mismatch)
+    check("葡萄糖列在关联式适用域外标「—」（0 / 65 / 70 °Bx）",
+          _by["0"][5] == "—" and _by["65"][5] == "—" and _by["70"][5] == "—",
+          [_by[k][5] for k in ("0", "65", "70")])
+
+    _desc_bx = _bx.get("description", "")
+    check("葡萄糖列已标注「非查表值」与其适用区间",
+          "非查表值" in _desc_bx and "10~60" in _desc_bx, _desc_bx[:60])
+    check("说明锤度为蔗糖基准且非蔗糖液读数为表观值",
+          "表观锤度" in _desc_bx and "蔗糖" in _desc_bx)
+    check("说明含波美度常数口径警告（美制重表 145 vs 144.3）",
+          "美制重表" in _desc_bx and "144.3" in _desc_bx, _desc_bx[-160:])
+    check("说明含相对密度基准警告（d20/20 vs 4 °C 水 SG）",
+          "4 °C 水" in _desc_bx and "998.203" in _desc_bx, _desc_bx[-160:])
+    check("出处含 NBS / ICUMSA / Landolt-Börnstein",
+          all(k in _bx.get("source", "") for k in ("NBS", "ICUMSA", "Landolt")),
+          _bx.get("source"))
+    check("锤度表标签齐备（供标签筛选）", bool(_bx.get("tags")), _bx.get("tags"))
+
+# ── 波美度-比重-糖度换算详表（333 行，粒度 = 企业换算表） ────────────────────
+_cat2, _bx2 = find("波美度-比重-糖度换算详表（20 °C，比重每 0.001）")
+check("波美度详表存在", _bx2 is not None)
+if _bx2 is not None:
+    check("详表归入「物性数据」分类", _cat2.get("category") == "物性数据", _cat2.get("category"))
+    _h2 = _bx2.get("headers", [])
+    check("详表 5 列（波美度/比重/糖度/干物量/真密度）",
+          len(_h2) == 5 and all(k in "".join(_h2)
+                                for k in ("波美度", "比重", "糖度", "干物量", "真密度")), _h2)
+    _r2 = _bx2["rows"]
+    check("详表 333 行（比重 1.000~1.332 每 0.001；改关联式须重建全表）",
+          len(_r2) == 333, len(_r2))
+    check("详表首行 = 纯水（Be 0.00 / D 1.000 / Bx 0.08）",
+          _r2[0][:3] == ["0.00", "1.000", "0.08"], _r2[0])
+    check("详表末行 = 20 °C 蔗糖溶解度上限（Be 35.97 / D 1.332 / Bx 66.88 / 干物量 89.08）",
+          _r2[-1][:4] == ["35.97", "1.332", "66.88", "89.08"], _r2[-1])
+    _d2 = [float(r[1]) for r in _r2]
+    check("比重列严格递增且步长恒 0.001",
+          all(abs(_d2[_i + 1] - _d2[_i] - 0.001) < 1e-9 for _i in range(len(_d2) - 1)),
+          _d2[:3])
+    _b2 = [float(r[2]) for r in _r2]
+    check("糖度列严格单调递增（二分反解无跳变）",
+          all(_b2[_i + 1] > _b2[_i] for _i in range(len(_b2) - 1)))
+    check("详表上限不超 20 °C 蔗糖溶解度（≤67 °Bx）", max(_b2) <= 67.0, max(_b2))
+
+    _bad2 = [r[1] for r in _r2
+             if abs((144.3 - 144.3 / float(r[1])) - float(r[0])) > 0.005
+             or abs(float(r[3]) - round(float(r[2]), 2) * float(r[1])) > 0.005
+             or abs(float(r[4]) - float(r[1]) * 998.203) > 0.005]
+    check("三列派生自洽（Be=144.3 式 / 干物量=糖度×比重 / 真密度=比重×998.203）",
+          not _bad2, _bad2[:3])
+
+    _cfg_s = _sd.SUBSTANCE_CONFIG["蔗糖溶液"]
+    _mis2 = [(r[1], r[2]) for r in _r2[::37]
+             if abs(_sd.solve_concentration(_cfg_s, float(r[4]), 20.0) * 100 - float(r[2])) > 0.01]
+    check("糖度列 = 计算器蔗糖式反解（抽样 Δ≤0.01 °Bx，改关联式必须重建全表）",
+          not _mis2, _mis2)
+
+    _grid2 = {r[1]: r for r in _r2}
+    _dev2 = [(r[0], _grid2["%.3f" % (round(float(r[2]) * 1000) / 1000.0)][2])
+             for r in _bx["rows"]
+             if "%.3f" % (round(float(r[2]) * 1000) / 1000.0) in _grid2
+             and abs(float(_grid2["%.3f" % (round(float(r[2]) * 1000) / 1000.0)][2])
+                     - float(r[0])) > 0.35]
+    check("详表与锤度表在重叠节点一致（≤0.35 °Bx；70 °Bx 在溶解度上限外）", not _dev2, _dev2)
+
+    # 企业换算表锚点（用户 2026-09 提供照片，糖度/比重/干物量三列实测）
+    _badent = [(_d, _grid2[_d][2], _v) for _d, _v in
+               [("1.007", "1.80"), ("1.150", "34.30"), ("1.215", "46.88"),
+                ("1.276", "57.77"), ("1.286", "59.30")]
+               if _d not in _grid2 or abs(float(_grid2[_d][2]) - float(_v)) > 0.35]
+    check("详表与企业换算表锚点吻合（≤0.35 °Bx）", not _badent, _badent)
+
+    _desc2 = _bx2.get("description", "")
+    check("详表说明含口径 / 溶解度上限 / 不外推三要点",
+          "144.3" in _desc2 and "67" in _desc2 and "不外推" in _desc2, _desc2[-90:])
+    check("详表说明声明派生性质（关联式生成，非独立查表数据）",
+          "关联式" in _desc2 and "派生" in _desc2)
+    check("详表出处含比对基准（企业换算表）",
+          "企业换算表" in _bx2.get("source", ""), _bx2.get("source"))
+    check("详表标签齐备（含 波美度 / 比重，供标签筛选）",
+          {"波美度", "比重"} <= set(_bx2.get("tags", [])), _bx2.get("tags"))
 
 # ══════════════════════════════ 汇总 ══════════════════════════════
 print()

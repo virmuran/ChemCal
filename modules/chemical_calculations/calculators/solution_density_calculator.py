@@ -292,6 +292,100 @@ SUBSTANCE_CONFIG = {
     },
 }
 
+# ── 各物料溶质分子量（g/mol，用于质量分数 ↔ 摩尔浓度换算） ──
+# 独立成表而不塞进 SUBSTANCE_CONFIG：正算路径不需要它，改分子量也只动一处
+MOLAR_MASS = {
+    "纯水": 18.015,
+    "柠檬酸溶液": 192.12,
+    "葡萄糖溶液": 180.16,
+    "蔗糖溶液": 342.30,
+    "NaOH 溶液": 40.00,
+    "盐酸 (HCl)": 36.46,
+    "硫酸 (H₂SO₄)": 98.08,
+    "NaCl 溶液": 58.44,
+}
+
+# ─────────────────────────── 密度反查（密度 → 浓度） ───────────────────────────
+# 2026-09-20 新增：原实现只能正算（浓度→密度），拿到比重计/锤度计读数无法反推浓度。
+# 各物料的 ρ(w, T) 在 w∈[0, w_max] 上单调递增，用二分法反解，不引入新的经验式。
+
+RHO_WATER_20 = 998.2071      # 20 °C 纯水密度，作相对密度 d20/20 的基准
+
+# 密度输入单位 → 换算为 kg/m³ 的系数
+DENSITY_UNITS = {
+    "kg/m³":            1.0,
+    "g/cm³":            1000.0,
+    "相对密度 d20/20":  RHO_WATER_20,
+}
+
+
+def to_rho_kgm3(value: float, unit: str) -> float:
+    """把用户输入的密度值按单位换算为 kg/m³"""
+    factor = DENSITY_UNITS.get(unit)
+    if factor is None:
+        raise ValueError(f"未知密度单位：{unit}")
+    return value * factor
+
+
+def solve_concentration(cfg: dict, rho_target: float, T: float) -> float:
+    """
+    由密度反解质量分数（二分法，80 次迭代 → 分辨力远优于 1e-12）
+
+    cfg: SUBSTANCE_CONFIG 中的物料配置
+    rho_target: 目标密度 kg/m³
+    T: 温度 °C
+    返回: 质量分数（0~w_max）
+    越界/非单调时抛 ValueError（附可读原因，由调用方展示）
+    """
+    w_max = cfg.get("w_max", 0.0)
+    if w_max <= 0:
+        raise ValueError("纯水没有浓度可反查（密度只随温度变）")
+    func = cfg["func"]
+    rho_lo = func(0.0, T)
+    rho_hi = func(w_max, T)
+    if rho_hi <= rho_lo:
+        raise ValueError("该物料关联式在给定温度下不是单调递增，无法反查")
+    if rho_target < rho_lo:
+        raise ValueError(
+            f"实测密度 {rho_target:.1f} kg/m³ 低于 {T:.0f} °C 纯水密度 "
+            f"{rho_lo:.1f} kg/m³，反查无解——请核对读数与温度")
+    if rho_target > rho_hi:
+        raise ValueError(
+            f"实测密度 {rho_target:.1f} kg/m³ 超出适用范围（w = {w_max:.0%} 时 "
+            f"ρ = {rho_hi:.1f} kg/m³）——请核对读数，或已超出关联式适用浓度")
+    lo, hi = 0.0, w_max
+    for _ in range(80):
+        mid = 0.5 * (lo + hi)
+        if func(mid, T) < rho_target:
+            lo = mid
+        else:
+            hi = mid
+    return 0.5 * (lo + hi)
+
+
+def apparent_brix(rho_target: float, T: float = 20.0):
+    """
+    用蔗糖基准反解"表观锤度" —— 即若用锤度计测同一溶液会读到的值。
+
+    锤度(°Bx)定义就是 20 °C 下纯蔗糖溶液的质量百分数（ICUMSA/NBS 表 109），
+    故非蔗糖溶液只能给表观值。
+    ⚠ 返回的是 °Bx 数值（0~67 量级），不是质量分数 —— 蔗糖式内部按质量分数求解，
+      这里已 ×100 换算；超出蔗糖适用范围时返回 None。
+    """
+    try:
+        w = solve_concentration(SUBSTANCE_CONFIG["蔗糖溶液"], rho_target, T)
+    except ValueError:
+        return None
+    return w * 100.0
+
+
+def mass_frac_to_molarity(w: float, rho: float, mw: float) -> float:
+    """质量分数 → 体积摩尔浓度 mol/L：c = w·ρ / M（ρ: kg/m³ 数值等同 g/L）"""
+    if mw <= 0:
+        raise ValueError("分子量必须 > 0")
+    return w * rho / mw
+
+
 # ─────────────────────────── UI 主类 ───────────────────────────
 
 
@@ -408,7 +502,7 @@ class SolutionDensityCalculator(CalculatorBase):
     # ── 输入参数组（单点计算） ────────────────────────────────
 
     def _build_input_group(self, parent_layout):
-        """输入参数组：物料 + 质量分数 + 温度（单点计算与温度扫描共用）"""
+        """输入参数组：物料 + 计算模式 + (质量分数 | 实测密度) + 温度（单点计算与温度扫描共用）"""
         group = QGroupBox("输入参数")
         grid = QGridLayout(group)
         grid.setSpacing(12)
@@ -418,6 +512,7 @@ class SolutionDensityCalculator(CalculatorBase):
         grid.setColumnStretch(2, 5)
 
         label_style = "font-weight: bold; padding-right: 10px;"
+        hint_style = "font-style: italic;"
 
         # 物料种类 - 第0行
         substance_label = QLabel("物料种类:")
@@ -433,39 +528,85 @@ class SolutionDensityCalculator(CalculatorBase):
         grid.addWidget(self.substance_combo, 0, 1)
 
         sub_hint = QLabel("支持 8 种常见物料")
-        sub_hint.setStyleSheet("font-style: italic;")
+        sub_hint.setStyleSheet(hint_style)
         grid.addWidget(sub_hint, 0, 2)
 
-        # 质量分数 - 第1行
-        w_label = QLabel("质量分数 w:")
-        w_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        w_label.setStyleSheet(label_style)
-        grid.addWidget(w_label, 1, 0)
+        # 计算模式 - 第1行（正算：浓度→密度 / 反查：密度→浓度）
+        mode_label = QLabel("计算模式:")
+        mode_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        mode_label.setStyleSheet(label_style)
+        grid.addWidget(mode_label, 1, 0)
+
+        self.mode_combo = QComboBox()
+        self.mode_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.mode_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        grid.addWidget(self.mode_combo, 1, 1)
+
+        self.mode_hint = QLabel("反查：由比重计/密度计读数求浓度")
+        self.mode_hint.setStyleSheet(hint_style)
+        self.mode_hint.setWordWrap(True)
+        grid.addWidget(self.mode_hint, 1, 2)
+
+        # 质量分数 - 第2行（正算模式显示）
+        self.w_label = QLabel("质量分数 w:")
+        self.w_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.w_label.setStyleSheet(label_style)
+        grid.addWidget(self.w_label, 2, 0)
 
         self.w_input = QLineEdit("0.20")
         self.w_input.setValidator(QDoubleValidator(0.0, 1.0, 6))
         self.w_input.setPlaceholderText("例如: 0.20 表示 20%")
         self.w_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        grid.addWidget(self.w_input, 1, 1)
+        grid.addWidget(self.w_input, 2, 1)
 
         self.w_hint = QLabel("范围：0~0.70")
-        self.w_hint.setStyleSheet("font-style: italic;")
-        grid.addWidget(self.w_hint, 1, 2)
+        self.w_hint.setStyleSheet(hint_style)
+        grid.addWidget(self.w_hint, 2, 2)
 
-        # 温度 - 第2行
+        # 实测密度 - 第3行（反查模式显示）
+        self.rho_label = QLabel("实测密度 ρ:")
+        self.rho_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.rho_label.setStyleSheet(label_style)
+        grid.addWidget(self.rho_label, 3, 0)
+
+        rho_box = QWidget()
+        rho_hl = QHBoxLayout(rho_box)
+        rho_hl.setContentsMargins(0, 0, 0, 0)
+        rho_hl.setSpacing(8)
+        self.rho_input = QLineEdit("1.0810")
+        self.rho_input.setValidator(QDoubleValidator(0.0, 5000.0, 6))
+        self.rho_input.setPlaceholderText("密度计 / 比重计读数")
+        self.rho_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.rho_unit = QComboBox()
+        self.rho_unit.setStyleSheet(COMBOBOX_STYLE)
+        self.rho_unit.addItems(list(DENSITY_UNITS.keys()))
+        self.rho_unit.setCurrentText("g/cm³")
+        self.rho_unit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        rho_hl.addWidget(self.rho_input, 3)
+        rho_hl.addWidget(self.rho_unit, 2)
+        grid.addWidget(rho_box, 3, 1)
+
+        self.rho_hint = QLabel("")
+        self.rho_hint.setStyleSheet(hint_style)
+        self.rho_hint.setWordWrap(True)
+        grid.addWidget(self.rho_hint, 3, 2)
+
+        self._rho_row_widgets = (self.rho_label, rho_box, self.rho_hint)
+
+        # 温度 - 第4行
         T_label = QLabel("温度 T (°C):")
         T_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         T_label.setStyleSheet(label_style)
-        grid.addWidget(T_label, 2, 0)
+        grid.addWidget(T_label, 4, 0)
 
         self.T_input = QLineEdit("25")
         self.T_input.setValidator(QDoubleValidator(-10.0, 200.0, 2))
         self.T_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        grid.addWidget(self.T_input, 2, 1)
+        grid.addWidget(self.T_input, 4, 1)
 
         T_hint = QLabel("有效范围见公式参考")
-        T_hint.setStyleSheet("font-style: italic;")
-        grid.addWidget(T_hint, 2, 2)
+        T_hint.setStyleSheet(hint_style)
+        grid.addWidget(T_hint, 4, 2)
 
         # 当前物料公式说明
         self.formula_label = QLabel("")
@@ -473,11 +614,18 @@ class SolutionDensityCalculator(CalculatorBase):
             "color: inherit; font-size: 12px; padding: 5px;"
         )
         self.formula_label.setWordWrap(True)
-        grid.addWidget(self.formula_label, 3, 0, 1, 3)
+        grid.addWidget(self.formula_label, 5, 0, 1, 3)
 
         parent_layout.addWidget(group)
 
+        # ⚠ 控件全部建好之后才填选项、连信号（先连信号会让 setCurrentIndex 立刻回调，
+        #   而槽函数要读上面这些控件；顺序颠倒会抛 AttributeError 且被 Qt 吞掉）
+        self.mode_combo.addItems(["正算（浓度 → 密度）", "反查（密度 → 浓度）"])
+        self.mode_combo.currentTextChanged.connect(self._on_mode_changed)
+        self.T_input.textChanged.connect(self._update_rho_hint)
+
         # 初始化显示
+        self._on_mode_changed(self.mode_combo.currentText())
         self._on_substance_changed(self.substance_combo.currentText())
 
     # ── 温度扫描参数组 ────────────────────────────────────────
@@ -610,6 +758,44 @@ class SolutionDensityCalculator(CalculatorBase):
 
     # ── 事件处理 ──────────────────────────────────────────────
 
+    def _is_reverse_mode(self) -> bool:
+        """当前是否处于反查（密度 → 浓度）模式"""
+        return self.mode_combo.currentText().startswith("反查")
+
+    def _on_mode_changed(self, text: str):
+        """切换正算/反查：显隐「质量分数」行与「实测密度」行"""
+        reverse = text.startswith("反查")
+        for wdg in (self.w_label, self.w_input, self.w_hint):
+            wdg.setVisible(not reverse)
+        for wdg in getattr(self, "_rho_row_widgets", ()):
+            wdg.setVisible(reverse)
+        self.mode_hint.setText(
+            "反查：由比重计/密度计读数求浓度" if reverse
+            else "正算：由质量分数求密度")
+        self._update_rho_hint()
+
+    def _update_rho_hint(self):
+        """反查行提示：由关联式端点现算该温度的可用密度区间（不写死数字）"""
+        hint = getattr(self, "rho_hint", None)
+        if hint is None:
+            return
+        cfg = SUBSTANCE_CONFIG.get(self.substance_combo.currentText(), {})
+        try:
+            T = float(self.T_input.text())
+        except (ValueError, AttributeError):
+            T = 20.0
+        w_max = cfg.get("w_max", 0.0)
+        if w_max <= 0:
+            hint.setText("纯水不支持反查（密度只随温度变）")
+            return
+        try:
+            lo = cfg["func"](0.0, T)
+            hi = cfg["func"](w_max, T)
+        except Exception:
+            hint.setText("")
+            return
+        hint.setText(f"{T:.0f} °C 可反查 {lo:.0f} ~ {hi:.0f} kg/m³（w ≤ {w_max:.0%}）")
+
     def _on_substance_changed(self, name: str):
         cfg = SUBSTANCE_CONFIG.get(name, {})
         w_max = cfg.get("w_max", 1.0)
@@ -619,11 +805,14 @@ class SolutionDensityCalculator(CalculatorBase):
         if is_water:
             self.w_input.setText("0")
 
+        mw = MOLAR_MASS.get(name, 0.0)
+        mw_text = f"  |  M = {mw:g} g/mol" if mw else ""
         formula_text = (
             f"📐 公式: {cfg.get('formula', '')}\n"
-            f"📚 来源: {cfg.get('ref', '')}  |  精度: {cfg.get('accuracy', '')}"
+            f"📚 来源: {cfg.get('ref', '')}  |  精度: {cfg.get('accuracy', '')}{mw_text}"
         )
         self.formula_label.setText(formula_text)
+        self._update_rho_hint()
 
     def _calculate_single(self):
         name = self.substance_combo.currentText()
@@ -656,11 +845,81 @@ class SolutionDensityCalculator(CalculatorBase):
         result += f"温度 T = {T:.1f} °C\n\n"
         result += f"{'─' * 30}\n\n"
         result += f"  密度 ρ = {rho:.2f} kg/m³\n"
-        result += f"  密度 ρ = {rho/1000:.4f} g/cm³\n\n"
+        result += f"  密度 ρ = {rho/1000:.4f} g/cm³\n"
+        mw = MOLAR_MASS.get(name, 0.0)
+        if mw > 0:
+            result += (f"  体积摩尔浓度 c = "
+                       f"{mass_frac_to_molarity(w, rho, mw):.4f} mol/L"
+                       f"  （M = {mw:g} g/mol）\n")
+        result += "\n"
         result += f"{'─' * 30}\n"
         result += f"公式：{cfg.get('formula', '')}\n"
         result += f"来源：{cfg.get('ref', '')}\n"
         result += f"精度：{cfg.get('accuracy', '')}\n"
+        self.result_text.setPlainText(result)
+
+        # 保存到历史记录
+
+    def _calculate_reverse(self):
+        """反查：由实测密度（可 kg/m³ / g/cm³ / 相对密度）反解质量分数"""
+        name = self.substance_combo.currentText()
+        cfg = SUBSTANCE_CONFIG.get(name)
+        if not cfg:
+            return
+
+        try:
+            raw = float(self.rho_input.text())
+            T = float(self.T_input.text())
+            unit = self.rho_unit.currentText()
+        except ValueError:
+            self.result_text.setPlainText("⚠ 输入无效，请检查实测密度与温度的数值格式")
+            return
+
+        try:
+            rho = to_rho_kgm3(raw, unit)
+        except ValueError as e:
+            self.result_text.setPlainText(f"⚠ {e}")
+            return
+
+        try:
+            w = solve_concentration(cfg, rho, T)
+        except ValueError as e:
+            self.result_text.setPlainText(f"⚠ 反查失败：{e}")
+            return
+
+        mw = MOLAR_MASS.get(name, 0.0)
+        result = f"=== {name} 密度反查结果 ===\n\n"
+        result += f"物料：{name}\n"
+        if unit == "kg/m³":
+            result += f"实测密度 ρ = {raw:g} kg/m³\n"
+        else:
+            result += f"实测密度 ρ = {raw:g} {unit}  =  {rho:.2f} kg/m³\n"
+        result += f"温度 T = {T:.1f} °C\n\n"
+        result += f"{'─' * 30}\n\n"
+        result += f"  质量分数 w = {w:.4f}  （{w:.4%}）\n"
+        if mw > 0:
+            result += (f"  体积摩尔浓度 c = "
+                       f"{mass_frac_to_molarity(w, rho, mw):.4f} mol/L"
+                       f"  （M = {mw:g} g/mol）\n")
+        if "糖" in name:
+            bx = apparent_brix(rho, T)
+            if bx is not None:
+                basis = "同温度换算" if abs(T - 20.0) > 1.0 else "20 °C 基准"
+                result += (f"  表观锤度 ≈ {bx:.2f} °Bx（{basis}，按蔗糖基准；"
+                           f"与质量分数 {w * 100:.2f}% 相差 {bx - w * 100:+.2f}）\n")
+                if bx < 10:
+                    result += ("    ⚠ 稀液段（<10 °Bx）关联式在近纯水处截距偏高，"
+                               "该值仅供粗估\n")
+        result += f"\n{'─' * 30}\n"
+        result += f"解法：对 ρ(w, T) 在 w ∈ [0, 上限] 上二分反解（关联式单调递增）\n"
+        result += f"公式：{cfg.get('formula', '')}\n"
+        result += f"来源：{cfg.get('ref', '')}\n"
+        result += f"精度：{cfg.get('accuracy', '')}\n"
+
+        t_lo, t_hi = cfg.get("T_range", (0, 100))
+        if T < t_lo or T > t_hi:
+            result += (f"⚠ 温度 {T:.1f} °C 超出关联式适用区间 "
+                       f"{t_lo}~{t_hi} °C，结果仅供参考\n")
         self.result_text.setPlainText(result)
 
         # 保存到历史记录
@@ -708,12 +967,25 @@ class SolutionDensityCalculator(CalculatorBase):
     def _get_history_data(self):
         name = self.substance_combo.currentText()
         try:
-            w = float(self.w_input.text()) if self.w_input.isEnabled() else 0.0
             T = float(self.T_input.text())
         except Exception:
             return {}
+        inputs = {
+            "物料": name,
+            "计算模式": self.mode_combo.currentText(),
+            "温度 T(°C)": T,
+        }
+        if self._is_reverse_mode():
+            # 反查模式记实测密度（含单位，否则历史记录里的数没有意义）
+            inputs["实测密度"] = f"{self.rho_input.text()} {self.rho_unit.currentText()}"
+        else:
+            try:
+                inputs["质量分数 w"] = (float(self.w_input.text())
+                                        if self.w_input.isEnabled() else 0.0)
+            except Exception:
+                return {}
         return {
-            "inputs":  {"物料": name, "质量分数 w": w, "温度 T(°C)": T},
+            "inputs":  inputs,
             "outputs": {"结果": self.result_text.toPlainText()},
             "notes":   "",
         }
@@ -721,13 +993,19 @@ class SolutionDensityCalculator(CalculatorBase):
     # ── 规范要求的方法 ──────────────────────────────────────────
 
     def calculate(self):
-        """统一计算入口"""
-        self._calculate_single()
+        """统一计算入口（按模式分流：正算 浓度→密度 / 反查 密度→浓度）"""
+        if self._is_reverse_mode():
+            self._calculate_reverse()
+        else:
+            self._calculate_single()
 
     def _clear_inputs(self):
-        """清空输入"""
+        """清空输入（恢复出厂默认值，清空后可直接重算）"""
         self.substance_combo.setCurrentIndex(0)
+        self.mode_combo.setCurrentIndex(0)          # 回到正算模式
         self.w_input.setText("0.20")
+        self.rho_input.setText("1.0810")
+        self.rho_unit.setCurrentText("g/cm³")
         self.T_input.setText("25")
         self.result_text.clear()
 
@@ -781,7 +1059,9 @@ class SolutionDensityCalculator(CalculatorBase):
 
   1. 溶液密度按所选物料的经验关联式计算，随温度、浓度变化
   2. 关联式适用范围以结果中标注的温度/浓度区间为准
-  3. 计算结果仅供参考，实际工程需经专业工程师审核确认
+  3. 反查模式为数值反解（对密度关联式二分求根），精度不高于正算
+  4. 表观锤度按蔗糖基准（°Bx 定义）换算，非蔗糖溶液读数不等于溶质质量分数
+  5. 计算结果仅供参考，实际工程需经专业工程师审核确认
 
 ---
 生成于 ChemCal 工程计算模块
