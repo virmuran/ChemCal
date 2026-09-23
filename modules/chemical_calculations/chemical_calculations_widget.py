@@ -156,6 +156,9 @@ class ChemicalCalculationsWidget(QWidget):
             ("容器设计计算", "VesselDesignCalculator", "vessel_design_calculator", True),
             ("常压储罐壁厚", "AtmosphericTankThicknessCalculator", "atmospheric_tank_thickness_calculator", True),
             ("篮式过滤器", "篮式过滤器", "basket_filter_design_calculator", True),
+            ("板框压滤机面积", "FilterPressAreaCalculator", "filter_press_area_calculator", True),
+            ("浓缩蒸发器计算", "EvaporatorCalculator", "evaporator_calculator", True),
+            ("喷射液化器用汽量", "InjectionLiquefierCalculator", "injection_liquefier_calculator", True),
             ("风机功率计算", "FanPowerCalculator", "fan_power_calculator", True),
             #
             # ══════════════════════════════════════════
@@ -352,7 +355,7 @@ class ChemicalCalculationsWidget(QWidget):
     # ══════════════════════════════════════════
     # 惰性加载（页面按需实例化）
     #
-    # 为什么：45 个计算器全量实例化 ≈ 4200 个控件，Qt 每次换 QSS 都要给每个控件
+    # 为什么：47 个计算器全量实例化 ≈ 4200 个控件，Qt 每次换 QSS 都要给每个控件
     # 重算样式 —— 实测「切主题 5.5s、启动 8s」。改成"先登记导航 + 轻量占位页，
     # 首次打开才建真页面"后，常驻控件数降一个数量级，切主题/启动随之变快。
     # 占位页同样带 _calc_meta，因此右键隐藏、管理面板、显隐排序逻辑无需改动。
@@ -678,6 +681,9 @@ class ChemicalCalculationsWidget(QWidget):
         "vessel_design_calculator": "工艺设备",
         "atmospheric_tank_thickness_calculator": "工艺设备",
         "basket_filter_design_calculator": "工艺设备",
+        "filter_press_area_calculator": "工艺设备",
+        "evaporator_calculator": "工艺设备",
+        "injection_liquefier_calculator": "工艺设备",
         "fan_power_calculator": "工艺设备",
         # 三、流体输送
         "pipe_diameter_calculator": "流体输送",
