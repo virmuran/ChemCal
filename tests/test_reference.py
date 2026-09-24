@@ -143,11 +143,11 @@ check("每个条目都有标签（标签筛选的数据源）",
       all(s.get("tags") for c in ref.ref_data for s in c.get("sections", [])))
 
 _all_secs = [s for c in ref.ref_data for s in c.get("sections", [])]
-check("小节总数 68 = 34 表 + 34 文（README 数字须与此一致）", len(_all_secs) == 68,
+check("小节总数 69 = 35 表 + 34 文（README 数字须与此一致）", len(_all_secs) == 69,
       len(_all_secs))
 _rows = sum(len(s.get("rows") or []) for s in _all_secs)
-check("表格数据行合计 626（含派生的粗糙度 14 行 + 波美度详表 333 行 + 标准清单 8 行）",
-      _rows == 626, _rows)
+check("表格数据行合计 665（含派生的粗糙度 14 行 + 波美度详表 333 行 + 饱和水蒸气详表 39 行 + 标准清单 8 行）",
+      _rows == 665, _rows)
 check("未搜索时树里的节数 = 全库节数", leaf_count() == len(_all_secs), leaf_count())
 
 # 派生节：管道粗糙度（原本只活在计算器下拉框里）
