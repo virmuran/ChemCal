@@ -58,6 +58,22 @@ Part G  契约
 
 Part H  UI 显隐
     一次模式：二次喷射温度行隐藏；两次模式：显示（offscreen 用 isHidden()）
+
+Part I  浆料比重 / 温度修正 / 体积 ↔ 质量换算（v1.9.0 新增）
+    修正比重 d = d₂₀ − 0.001×(t₁ − 20)/1.5        （20 °C 基准，每 1.5 °C 一格 0.001）
+    波美度 °Bé = 145·(1 − 1/d)；干物含量估算 X ≈ 1.7770·°Bé（行业表线性式）
+    体积流量 Q(m³/h) × d = 质量流量 G(t/h)；默认仍是质量流量（原有口径不变）
+
+Part J  设计表格逐列对齐（v1.9.1 新增）
+    表格「Q=（）方法一」（谷物与水分开累计，分项展开）与「Q=（）方法二」
+    （调浆液 × 比热 × 温差，整体式）**数学恒等**，两者必须同值且等于主算 Q
+        Q₁ = [G(100−X)·4.18·t₂ + G·X·C₀·t₂ − G·t₁·C·100] / 100 / 3600
+    表格「总焓（查表）」可直接填（填了即用它；留空由 IAPWS 自动算），
+    两者相差 >1 % 给「查错蒸汽表」提示，且填错值仍被采用（不静默改数）
+    表格口径 λ′ = 4.19·t₂ 与本器 λ = h_f(t₂) 等价（偏差 < 0.5 %），并列对照
+    汽耗两个口径：吨淀粉乳气耗 = D/G（表格口径）；吨干物汽耗 = D/干物量
+                 换算：吨干物汽耗 = 吨乳气耗 ÷ (X/100)
+    喷射器规格 = 物料量 ÷ 密度（= 体积流量 m³/h）；历史/clear 契约同步
 ════════════════════════════════════════════════════════════════════════
 """
 import os
@@ -354,6 +370,208 @@ check('两次模式：二次喷射温度行显示',
       not c.t2b_in_input.isHidden() and not c.t2b_out_input.isHidden())
 c.mode_combo.setCurrentText(L.MODES[0])
 check('切回一次模式：重新隐藏', c.t2b_in_input.isHidden())
+
+# ════════════════════════════════════════════════════════════════
+print('\n══ Part I  浆料比重 / 温度修正 / 体积↔质量换算 ══')
+
+# I1 温度修正：d = d₂₀ − 0.001×(t₁ − 20)/1.5
+check('基准温度 20 °C → 不做修正（d = d₂₀）',
+      close(L._sg_corrected(1.1330, 20.0), 1.1330, 1e-9))
+check('25 °C：1.1330 → 1.129667（0.001×5/1.5）',
+      close(L._sg_corrected(1.1330, 25.0), 1.1296667, 1e-6),
+      f'{L._sg_corrected(1.1330, 25.0):.6f}')
+check('35 °C：1.1330 → 1.1230', close(L._sg_corrected(1.1330, 35.0), 1.1230, 1e-9))
+check('方向正确：料温越高，比重越小',
+      L._sg_corrected(1.1330, 60.0) < L._sg_corrected(1.1330, 20.0))
+
+# I2 波美度换算（重表 145 口径）——逐点对齐行业淀粉乳波美换算表
+for _sg, _be in ((1.0358, 5.0), (1.0742, 10.0), (1.1156, 15.0),
+                 (1.1330, 17.0), (1.1602, 20.0), (1.2086, 25.0)):
+    check(f'比重 {_sg:.4f} ↔ {_be:.1f} °Bé（行业表锚点，容差 0.05）',
+          close(L._baume_from_sg(_sg), _be, 0.05),
+          f'算得 {L._baume_from_sg(_sg):.3f}')
+
+# I3 由比重估算干物含量（表自带式 X = 1.7770×°Bé）
+for _sg, _x in ((1.0742, 17.77), (1.1156, 26.66), (1.1330, 30.21), (1.1602, 35.54)):
+    check(f'比重 {_sg:.4f} → 干物估算 ≈ {_x:.2f} wt%（表值，容差 0.15）',
+          close(L._solid_from_sg(_sg), _x, 0.15),
+          f'算得 {L._solid_from_sg(_sg):.2f}')
+
+# I4 默认口径不变：仍是质量流量
+c = mk()
+check('默认仍为质量流量（原有口径不变）',
+      c.flow_mode_combo.currentText() == L.FLOW_MODES[0])
+c.calculate()
+r = c._last_result
+check('质量模式下 G_t 等于输入值（不做密度换算）', close(r['G_t'], 20.0, 1e-9))
+check('折合体积流量 = 20/1.129667 ≈ 17.704 m³/h',
+      close(r['Q_m3h'], 17.7037, 1e-3), f"{r['Q_m3h']:.4f}")
+check('结果文本含「修正比重」与密度单位',
+      '修正比重' in c.result_text.toPlainText()
+      and 'kg/m³' in c.result_text.toPlainText())
+
+# I5 体积流量模式：Q × d = G
+c.clear_inputs()
+c.flow_mode_combo.setCurrentIndex(1)
+c.calculate()
+rv = c._last_result
+check('体积模式：20 m³/h → G = 20×1.129667 = 22.593 t/h',
+      close(rv['G_t'], 22.59333, 1e-4), f"{rv['G_t']:.5f}")
+c2 = mk()
+c2.feed_input.setText('22.59333')
+c2.calculate()
+check('体积模式与质量模式在等价质量流量下用汽量一致',
+      close(rv['D1'], c2._last_result['D1'], 0.05),
+      f"{rv['D1']:.2f} vs {c2._last_result['D1']:.2f}")
+
+# I6 UI 标签随模式切换
+check('体积模式：流量行标签改为「体积流量」',
+      '体积流量' in c._rows['feed'][0].text(), c._rows['feed'][0].text())
+c.flow_mode_combo.setCurrentIndex(0)
+check('切回质量模式：标签复原', '体积流量' not in c._rows['feed'][0].text(),
+      c._rows['feed'][0].text())
+
+# I7 校验与互校提示
+c = mk()
+c.d20_input.setText('0.5')
+c.calculate()
+check('比重越界（0.5）→ 报错',
+      c.result_text.toPlainText().startswith('错误'))
+c = mk()
+c.flow_mode_combo.setCurrentIndex(1)
+c.conc_input.setText('40')            # 40 % 却配 30 % 的比重
+c.calculate()
+_t = c.result_text.toPlainText()
+check('浓度与比重打架 → 给出对照提示',
+      '查表估算干物含量' in _t and '个百分点' in _t)
+c = mk()
+c.calculate()
+check('默认工况（30 % / 1.133）不触发浓度互校提示',
+      '个百分点' not in c.result_text.toPlainText())
+
+# I8 clear 与历史
+c = mk()
+c.flow_mode_combo.setCurrentIndex(1)
+c.clear_inputs()
+check('clear 后浆料量方式回到质量流量', c.flow_mode_combo.currentIndex() == 0)
+check('浆料比重恢复默认 1.133', c.d20_input.text() == '1.133')
+c.calculate()
+h = c._get_history_data()
+check('历史 inputs 含「浆料量方式」与「浆料比重_d20」',
+      '浆料量方式' in h['inputs'] and '浆料比重_d20' in h['inputs'])
+check('历史 outputs 含「修正比重」', '修正比重' in h['outputs'])
+
+# ════════════════════════════════════════════════════════════════
+print('\n══ Part J  设计表格逐列对齐（两法互校 / 总焓查表 / 汽耗口径）══')
+
+# J1 方法一 ≡ 方法二（多组工况）
+for _g, _x, _t1, _t2, _ps in ((20, 30, 25, 105, 0.3), (48.44, 24.57, 20, 90, 0.3),
+                              (5, 40, 35, 108, 0.25), (33.3, 18.5, 60, 95, 0.4)):
+    cc = mk()
+    cc.feed_input.setText(str(_g))
+    cc.conc_input.setText(str(_x))
+    cc.t1_input.setText(str(_t1))
+    cc.t2a_input.setText(str(_t2))
+    cc.ps_input.setText(str(_ps))
+    cc.calculate()
+    rr = cc._last_result
+    check(f'J1 两法恒等（G={_g} X={_x} {_t1}→{_t2}）',
+          close(rr['Q1_A_kW'], rr['Q1_B_kW'], 1e-6) and rr['q_diff_pct'] < 1e-7,
+          f"A={rr['Q1_A_kW']:.6f} B={rr['Q1_B_kW']:.6f} 差={rr['q_diff_pct']:.3e}")
+    check('J1 两法都等于主算 Q（同工况）',
+          close(rr['Q1_A_kW'], rr['Q1_kW'], 1e-6)
+          and close(rr['Q1_B_kW'], rr['Q1_kW'], 1e-6))
+
+# J2 方法一按表格口径独立复算
+c = mk()
+c.calculate()
+r = c._last_result
+_G, _Xp, _t2a, _t1 = r['G'], r['X'], r['t2a'], r['t1']
+_qA = (_G * (100 - _Xp) * WATER_CP * _t2a
+       + _G * _Xp * r['cp0'] * _t2a
+       - _G * _t1 * r['C'] * 100) / 100 / 3600
+check('J2 方法一独立复算一致（分项展开式）', close(r['Q1_A_kW'], _qA, 1e-9),
+      f"{r['Q1_A_kW']:.6f} vs {_qA:.6f}")
+
+# J3 汽耗两个口径
+check('J3 吨乳气耗 = D₁ ÷ 物料量（t/h）',
+      close(r['unit_slurry'], r['D1'] / r['G_t'], 1e-9), f"{r['unit_slurry']:.3f}")
+check('J3 吨干物汽耗 = 吨乳气耗 ÷ (X/100)',
+      close(r['unit_steam'], r['unit_slurry'] / (r['X'] / 100), 1e-6),
+      f"{r['unit_steam']:.2f} vs {r['unit_slurry'] / (r['X'] / 100):.2f}")
+check('J3 吨乳气耗 < 吨干物汽耗（分母含水的乳液更大）',
+      r['unit_slurry'] < r['unit_steam'])
+
+# J4 喷射器规格 = 物料量 ÷ 密度
+check('J4 喷射器规格 = 物料量 ÷ 密度（= 体积流量 m³/h）',
+      close(r['spec_vol'], r['G_t'] / r['d_corr'], 1e-9), f"{r['spec_vol']:.4f}")
+
+# J5 总焓「查表」输入生效
+c = mk()
+c.total_h_input.setText('2738.5')
+c.calculate()
+r5 = c._last_result
+check('J5 填了总焓 → I 用查表值', close(r5['I'], 2738.5, 1e-9), f"{r5['I']:.2f}")
+check('J5 来源标注为「查表输入」', r5['I_src'] == '查表输入')
+c2 = mk()
+c2.calculate()
+check('J5 留空 → I 自动算（= h_g(0.4013 MPa)）',
+      close(c2._last_result['I'],
+            IAPWS.saturation_properties(P_MPa=0.3 + ATM)['h_g'], 1e-9),
+      f"{c2._last_result['I']:.2f}")
+check('J5 总焓相同时用汽量一致',
+      close(r5['D1'], c2._last_result['D1'], 0.05),
+      f"{r5['D1']:.2f} vs {c2._last_result['D1']:.2f}")
+c = mk()
+c.total_h_input.setText('2500')
+c.calculate()
+check('J5 查错蒸汽表（2500，偏低 8.7 %）→ 给出提示',
+      any('查错了蒸汽表' in w for w in c._last_result['warn']))
+check('J5 查表值仍被采用（总焓小 → D₁ 变大）',
+      c._last_result['D1'] > c2._last_result['D1'])
+
+# J6 表格口径 λ′ = 4.19·t₂ 与本器口径等价
+c = mk()
+c.calculate()
+r6 = c._last_result
+check('J6 λ′ = 4.19×t₂₁（表格口径）', close(r6['lam1_tab'], 4.19 * r6['t2a'], 1e-9))
+check('J6 表格口径 D₁′ 与本器 D₁ 偏差 < 0.5 %',
+      abs(r6['d1_tab_pct']) < 0.5, f"{r6['d1_tab_pct']:+.3f} %")
+check('J6 λ 与 λ′ 相差 < 1 kJ/kg（口径等价）',
+      abs(r6['lam1'] - r6['lam1_tab']) < 1.0,
+      f"{r6['lam1']:.2f} vs {r6['lam1_tab']:.2f}")
+c = mk()
+c.mode_combo.setCurrentText(L.MODES[1])
+c.calculate()
+check('J6 二次段同样给出 4.19 口径对照且偏差 < 0.5 %',
+      abs(c._last_result['d2_tab_pct']) < 0.5,
+      f"{c._last_result['d2_tab_pct']:+.3f} %")
+
+# J7 结果文本逐列可读
+_t = c2.result_text.toPlainText()
+for _kw in ('喷射器规格', '物料比热', '方法一', '方法二', '两法差值',
+            '吨淀粉乳气耗', '吨干物汽耗', '总焓 I'):
+    check(f'J7 结果含「{_kw}」', _kw in _t)
+
+# J8 历史与 clear
+c = mk()
+c.total_h_input.setText('2700')
+c.calculate()
+h = c._get_history_data()
+check('J8 填了总焓 → 历史 inputs 含「总焓_查表_kJ_kg」',
+      '总焓_查表_kJ_kg' in h['inputs'])
+check('J8 历史 outputs 含「喷射器规格_m3_h」「吨乳气耗_kg_t」',
+      '喷射器规格_m3_h' in h['outputs'] and '吨乳气耗_kg_t' in h['outputs'])
+c = mk()
+c.calculate()
+check('J8 未填总焓 → 历史不写该项',
+      '总焓_查表_kJ_kg' not in c._get_history_data()['inputs'])
+c.total_h_input.setText('2700')
+c.clear_inputs()
+check('J8 clear 后总焓框清空', c.total_h_input.text() == '')
+c.calculate()
+check('J8 clear 后可直接重算（总焓留空走自动）',
+      c._last_result.get('I_src') == '自动（按压力与干度）')
 
 # ════════════════════════════════════════════════════════════════
 print('\n' + '═' * 58)
