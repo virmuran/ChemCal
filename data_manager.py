@@ -564,48 +564,9 @@ class DataManager(QObject):
             self.data_changed.emit("folders")
         return True
 
-    # ==================== 倒计时相关方法 ====================
-    def get_countdowns(self):
-        return self._get_items("countdowns")
-    
-    def add_countdown(self, name, target_date, target_time="23:59"):
-        countdown = {
-            "name": name,
-            "target_date": target_date,
-            "target_time": target_time,
-            "created_at": datetime.now().isoformat()
-        }
-        return self._add_item("countdowns", countdown)
-    
-    def update_countdown(self, countdown_id, **kwargs):
-        return self._update_item("countdowns", countdown_id, kwargs)
-    
-    def delete_countdown(self, countdown_id):
-        self._delete_item("countdowns", countdown_id)
-    
-    # ==================== 自定义倒计时按钮 ====================
-    def get_custom_countdown_buttons(self):
-        return self._get_items("custom_countdown_buttons")
-    
-    def add_custom_countdown_button(self, name, minutes):
-        button = {
-            "name": name,
-            "minutes": minutes,
-            "created_at": datetime.now().isoformat()
-        }
-        return self._add_item("custom_countdown_buttons", button)
-    
-    def update_custom_countdown_button(self, button_id, **kwargs):
-        return self._update_item("custom_countdown_buttons", button_id, kwargs)
-    
-    def delete_custom_countdown_button(self, button_id):
-        self._delete_item("custom_countdown_buttons", button_id)
-    
     def get_default_data(self):
         """返回默认数据结构（新格式）"""
         default_data = {
-            "countdowns": [],
-            "custom_countdown_buttons": [],
             "folders": ["工作", "生活", "学习"],
             "project_info": {
                 "company_name": "",

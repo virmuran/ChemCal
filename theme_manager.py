@@ -47,92 +47,6 @@ def get_content_colors(theme_name: str = None) -> dict:
     return dict(palettes.get(name, palettes["light"]))
 
 
-#: ── 倒计时卡片状态配色 ────────────────────────────────────────────
-#: 三套主题必须给全**同样的键**（缺一个键 → 该主题下卡片那一块就没颜色）。
-#: 状态由控件动态属性驱动：cdState = normal|soon|overdue，cdSelected = 0|1。
-CD_COLORS = {
-    "light": {
-        "muted": "#6b7280",
-        "card_bg": "#f7f9fc", "card_border": "#d1d5db", "card_hover": "#9db4d0",
-        "sel_bg": "#eaf1fa", "sel_border": "#4a6fa5",
-        "soon_bg": "#fef6e7", "soon_border": "#d97706", "soon_fg": "#b45309",
-        "over_bg": "#fdf2f2", "over_border": "#b91c1c", "over_fg": "#b91c1c",
-        "time": "#2f5d94",
-        "badge_fg": "#4b5563", "badge_bg": "#eceff3",
-        "soon_badge_bg": "#fbe3bd", "over_badge_bg": "#f7d9d9",
-        "track": "#e3e8ef",
-    },
-    "dark": {
-        "muted": "#a3a3a3",
-        "card_bg": "#333333", "card_border": "#555555", "card_hover": "#7f9fc4",
-        "sel_bg": "#3a4453", "sel_border": "#6ba1e0",
-        "soon_bg": "#3a352a", "soon_border": "#e0a94a", "soon_fg": "#e0a94a",
-        "over_bg": "#3a2b2b", "over_border": "#d4513f", "over_fg": "#f08a8a",
-        "time": "#8ab6e8",
-        "badge_fg": "#c9c9c9", "badge_bg": "#444444",
-        "soon_badge_bg": "#4a3d24", "over_badge_bg": "#4a2f2f",
-        "track": "#4a4a4a",
-    },
-    "blue": {
-        "muted": "#5b6b7c",
-        "card_bg": "#ffffff", "card_border": "#bee3f8", "card_hover": "#7fb8e6",
-        "sel_bg": "#e8f2fd", "sel_border": "#3182ce",
-        "soon_bg": "#fff8ec", "soon_border": "#d97706", "soon_fg": "#b45309",
-        "over_bg": "#fdf2f2", "over_border": "#b91c1c", "over_fg": "#b91c1c",
-        "time": "#2b6cb0",
-        "badge_fg": "#2c5282", "badge_bg": "#e2eefa",
-        "soon_badge_bg": "#fbe3bd", "over_badge_bg": "#f7d9d9",
-        "track": "#d6e8f7",
-    },
-}
-
-#: 倒计时卡片样式模板 —— `$key` 用 CD_COLORS 对应主题的值替换。
-#: 之所以用 $ 占位而不是 str.format：QSS 里全是花括号，转义起来必错。
-CD_RULES_SRC = """
-        /* ═══════ 倒计时卡片（cdState: normal/soon/overdue，cdSelected: 0/1） ═══════ */
-        QScrollArea#cdScroll { border: none; }
-        /* 全局 QWidget 规则会把背景铺到 QLabel 上，卡片里的文字标签必须显式透明，
-           否则浅色主题下白色标签盖住卡片底色、深色主题下深灰标签盖住卡片底色 */
-        QFrame#cdCard { background-color: $card_bg; border: 1px solid $card_border;
-                        border-radius: 8px; }
-        QFrame#cdCard:hover { border-color: $card_hover; }
-        QFrame#cdCard[cdState="soon"] { background-color: $soon_bg; border-color: $soon_border; }
-        QFrame#cdCard[cdState="overdue"] { background-color: $over_bg;
-                                           border-color: $over_border; }
-        /* 选中态规则放最后：与状态规则同优先级，靠后生效 —— 保证选中永远看得见 */
-        QFrame#cdCard[cdSelected="1"] { background-color: $sel_bg; border: 2px solid $sel_border; }
-        QLabel#cdName { font-weight: bold; font-size: 13px; background-color: transparent; }
-        QLabel#cdTarget { font-size: 11px; color: $muted; background-color: transparent; }
-        QLabel#cdTime { color: $time; background-color: transparent; }
-        QLabel#cdTime[cdState="soon"] { color: $soon_fg; }
-        QLabel#cdTime[cdState="overdue"] { color: $over_fg; }
-        QLabel#cdBadge { color: $badge_fg; background-color: $badge_bg; border-radius: 8px;
-                         padding: 1px 8px; font-size: 11px; }
-        QLabel#cdBadge[cdState="soon"] { color: $soon_fg; background-color: $soon_badge_bg; }
-        QLabel#cdBadge[cdState="overdue"] { color: $over_fg; background-color: $over_badge_bg; }
-        QLabel#cdEmpty { color: $muted; font-size: 13px; background-color: transparent; }
-        QProgressBar#cdProgress { background-color: $track; border: none; border-radius: 3px;
-                                  min-height: 6px; max-height: 6px; }
-        QProgressBar#cdProgress::chunk { background-color: $time; border-radius: 3px; }
-"""
-
-
-def countdown_card_rules(theme_name: str) -> str:
-    """取某主题的倒计时卡片样式。
-
-    占位符必须全部替换掉 —— 漏一个就会在 QSS 里留下 `$xxx`，Qt 解析整段规则失败，
-    卡片会静默变成"没有样式"。所以这里自己守一道，宁可报错也不要静默降级。
-    """
-    colors = CD_COLORS.get(theme_name, CD_COLORS["light"])
-    out = CD_RULES_SRC
-    for key, value in colors.items():
-        out = out.replace(f"${key}", value)
-    leftover = [w for w in out.split() if w.startswith("$")]
-    if leftover:
-        raise ValueError(f"倒计时卡片样式存在未替换占位符: {leftover}")
-    return out
-
-
 class ThemeManager(QObject):
     """主题管理器 - 管理应用程序主题"""
     
@@ -214,7 +128,7 @@ class ThemeManager(QObject):
                                              border-color: #4a6fa5; }
         QLineEdit[roField="true"] { background-color: #f0f0f0; color: #6b7280; }
         QLabel[unitLabel="true"] { color: #6b7280; }
-        """ + countdown_card_rules("light"),
+        """,
         "dark": """
         /* ═══════ 语义组件（三套主题同步，详见 theme_manager.SEMANTIC_RULES） ═══════ */
         QLabel#mutedLabel { color: #a3a3a3; }
@@ -234,7 +148,7 @@ class ThemeManager(QObject):
                                              border-color: #4a6fa5; }
         QLineEdit[roField="true"] { background-color: #2b2b2b; color: #a3a3a3; }
         QLabel[unitLabel="true"] { color: #a3a3a3; }
-        """ + countdown_card_rules("dark"),
+        """,
         "blue": """
         /* ═══════ 语义组件（三套主题同步，详见 theme_manager.SEMANTIC_RULES） ═══════ */
         QLabel#mutedLabel { color: #5b6b7c; }
@@ -254,7 +168,7 @@ class ThemeManager(QObject):
                                              border-color: #3182ce; }
         QLineEdit[roField="true"] { background-color: #edf2f7; color: #5b6b7c; }
         QLabel[unitLabel="true"] { color: #5b6b7c; }
-        """ + countdown_card_rules("blue"),
+        """,
     }
 
     def get_light_theme(self):

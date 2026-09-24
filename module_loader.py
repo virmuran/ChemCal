@@ -12,8 +12,8 @@ class ModuleLoader:
     def load_module(module_path: str, class_name: str, parent=None, data_manager=None):
         """
         动态加载模块并实例化。
-        :param module_path: 模块路径，如 "modules.countdown"
-        :param class_name: 类名，如 "CountdownWidget"
+        :param module_path: 模块路径，如 "modules.history_viewer"
+        :param class_name: 类名，如 "HistoryViewer"
         :param parent: Qt 父部件
         :param data_manager: DataManager 实例
         :return: 模块实例（加载失败时返回错误部件）

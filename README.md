@@ -13,14 +13,14 @@
     <img alt="license" src="https://img.shields.io/badge/license-MIT-blue">
 </div>
 <div>
-    <img alt="version" src="https://img.shields.io/badge/version-1.11.0-green">
+    <img alt="version" src="https://img.shields.io/badge/version-1.12.0-green">
     <img alt="stars" src="https://img.shields.io/github/stars/virmuran/ChemCal?style=social">
 </div>
 <br>
 
 化工工程师的桌面生产力工具
 
-基于 Python + PySide6，集成 51 种工程计算器、参考资料库、单位换算、计算历史与可视化倒计时。
+基于 Python + PySide6，集成 51 种工程计算器、参考资料库、单位换算与计算历史。
 
 </div>
 
@@ -158,6 +158,13 @@ python main.py
 > 已不再沿用。`1.5.51` 作为旧序列收尾保留，规范自 `1.6.0` 起生效。
 
 ## 更新日志
+
+### v1.12.0 (2026-09-24)
+
+- 🧹 **移除「倒计时」板块** —— 精简为纯工程计算工具集，导航栏从 5 个标签回到 **4 个**（工程计算 / 计算历史 / 换算器 / 资料库）。移除原因：该板块（通用**事件**倒计时）与工程计算主线**零耦合** —— 不涉及物料、热量、标准与单位，也不与计算历史、计算书、计算链任何一处交互；而其**核心能力「到点提醒」恰恰在它最该发挥作用的场景下失效**：`_notify_finished()` 用的是模态 `QMessageBox`，人若在 CAD / Excel / 浏览器里干活（ChemCal 不在前台）既看不到提醒、切回来还被弹窗挡住，且没有任何系统托盘气泡 / 提示音 / 任务栏闪烁的兜底。**兼容性：不涉及数据迁移** —— 用户数据文件里的 `countdowns` / `custom_countdown_buttons` 键保留原位、不再读写，升级后无报错、无需人工处理任何数据；若日后需要找回，`git checkout <移除前的提交> -- modules/countdowns.py tests/test_countdowns.py` 即可完整取回（该页实现与 183 项回归测试一并移除）
+- 🧽 **清掉两块无人调用的死代码**：`data_manager.py` 里 `custom_countdown_buttons` 的 4 个方法（get / add / update / delete）与默认数据键 —— 全项目**零引用、零测试覆盖**，是早期「快捷计时按钮」的遗留；`theme_manager.py` 里专为倒计时卡片准备的整套配色（`CD_COLORS` 三主题取色表 + `CD_RULES_SRC` 样式模板 + `countdown_card_rules()` + 三处主题拼装调用）属**只服务该页的死配置**，一并移除 —— 注意**「语义 objectName + 动态属性 + 主题 QSS」这套配色机制本身不受影响**，其余页面照旧走 `SEMANTIC_RULES`，三套主题（亮 / 暗 / 蓝）切换全部通过回归测试
+- 📝 **顺带修正主窗口里两处与实际不符的界面文案**（帮助手册 + 关于对话框）：原文案仍在宣传**早已不存在的模块**（「待办事项」「笔记」「今年余额」三项在 `MODULES_CONFIG` 里根本没有），「工程计算」也还写着过时的「38+ 化工计算器」。现按**当前真实的四个标签页**重写（工程计算 / 计算历史 / 换算器 / 资料库），且计算器数量**不再写死数字**（写死的数量最容易漂移，本处此前就是这么过时的；数量以 README 与 GitHub Release 为准）；`module_loader.py` 的文档示例同步换掉已删模块名
+- ✅ 回归测试调整后为 **31 文件 / 2093 项断言 / 0 失败**（较 v1.11.0 的 32 文件 / 2287 项**净减 194 项**：整体移除 `tests/test_countdowns.py`（183 项）+ 移除 `tests/test_pages_theme.py` 的「F. 倒计时页面」段（11 项））；其余 31 个文件全部照常通过，**计算器总数闸门 51**、资料库 69 小节 / 665 行、换算器 21 类、惰性加载 35 项等闸门均未受影响
 
 ### v1.11.0 (2026-09-24)
 
@@ -331,8 +338,7 @@ ChemCal/
 │   │
 │   ├── reference/              # 参考资料库
 │   ├── converter/              # 单位换算器（21 类）
-│   ├── history_viewer.py       # 计算历史
-│   └── countdowns.py           # 倒计时
+│   └── history_viewer.py       # 计算历史
 │
 └── docs/                       # 文档（计划中）
 ```

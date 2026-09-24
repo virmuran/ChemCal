@@ -62,7 +62,6 @@ class ChemCal(QMainWindow):
         ("modules.history_viewer", "HistoryViewer", "计算历史"),
         ("modules.converter.converter_widget", "ConverterWidget", "换算器"),
         ("modules.reference.reference_widget", "ReferenceWidget", "资料库"),
-        ("modules.countdowns", "CountdownsWidget", "倒计时"),
     ]
 
     def __init__(self):
@@ -656,14 +655,10 @@ class ChemCal(QMainWindow):
 <h3>欢迎使用 ChemCal 化工工程师生产力工具！</h3><br>
 
 <b>功能模块：</b><br>
-- <b>工程计算</b>：38+ 化工计算器，涵盖管道、换热、泵、制冷等<br>
-- <b>参考资料库</b>：6大类规范数据，全文搜索，快速查表<br>
-- <b>换算器</b>：长度、重量、温度、压力等多类单位换算<br>
-
-- <b>待办事项</b>：任务管理，优先级标记<br>
-- <b>笔记</b>：分文件夹笔记管理，支持搜索<br>
-- <b>倒计时</b>：多事件倒计时，实时更新<br>
-- <b>今年余额</b>：年度时间进度可视化<br><br>
+- <b>工程计算</b>：化工计算器集 —— 覆盖管道、换热、泵、容器、固液分离、蒸发浓缩、淀粉糖液化、安全消防、制冷热工等<br>
+- <b>计算历史</b>：记录查询、筛选、详情查看，支持计算书导出<br>
+- <b>换算器</b>：长度、重量、温度、压力、浓度等多类单位换算<br>
+- <b>资料库</b>：规范数据全文搜索，快速查表<br><br>
 
 <b>基本操作：</b><br>
 - 顶部标签页切换功能模块<br>
@@ -824,8 +819,7 @@ Copyright 2025-2026 ChemCal Team | virmuran@163.com<br><br>
 - 参考资料库（设备布置、管道设计、安全规范、计算依据、物性数据、材料规范）<br>
 - 计算历史（记录查询、筛选、详情查看）<br>
 - 换算器（多类单位换算）<br>
-- 计算书导出（DOCX/PDF）<br>
-- 倒计时<br><br>
+- 计算书导出（DOCX/PDF）<br><br>
 
 <b>数据安全：</b><br>
 - 数据仅本地存储，不联网，不收集隐私<br>

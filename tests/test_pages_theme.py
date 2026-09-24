@@ -1,17 +1,13 @@
 # -*- coding: utf-8 -*-
-"""其余标签页的页面级回归测试（资料库 / 计算历史 / 换算器 / 倒计时）
+"""其余标签页的页面级回归测试（资料库 / 计算历史 / 换算器）
 
-为什么要有这个文件：这 4 个页面此前**零测试覆盖**，而它们各自藏着一类"发布时看不见、
+为什么要有这个文件：这 3 个页面此前**零测试覆盖**，而它们各自藏着一类"发布时看不见、
 用户切到深色主题才炸"的硬编码颜色（2026-09-15 实测：计算历史详情 22 处、资料库 8 处）。
-
-倒计时页 2026-09-15 做过一次改造（卡片改为动态属性驱动、秒针不再整页重建、
-新增/编辑统一对话框），细粒度回归在 tests/test_countdowns.py；本文件只保留
-"实例化 + 语义 objectName + 主题合规"这一层的烟测。
 
 固化三条不变式：
   A. 主题侧 —— 三套主题的语义规则与 HTML 内容配色必须同进同出；且内容配色的
      对比度必须达标（≥4.0:1），否则就是"深底压深字 / 浅底压浅字"
-  B. 页面侧 —— 这 4 个页面的源码里不得再出现"亮色主题专用"的硬编码颜色，
+  B. 页面侧 —— 这 3 个页面的源码里不得再出现"亮色主题专用"的硬编码颜色，
      而且必须真的用上语义 objectName（防止又被改回 inline 颜色）
   C. 页面功能 —— 实例化、搜索、渲染、交互不抛异常（这次改造正是在资料库
      搜索路径上踩到一个漏改的变量引用）
@@ -64,7 +60,6 @@ PAGE_FILES = {
     "资料库": "modules/reference/reference_widget.py",
     "计算历史": "modules/history_viewer.py",
     "换算器": "modules/converter/converter_widget.py",
-    "倒计时": "modules/countdowns.py",
 }
 
 
@@ -149,15 +144,12 @@ for label, rel in PAGE_FILES.items():
 
 ref_src = code_text(os.path.join(PROJ, PAGE_FILES["资料库"]))
 his_src = code_text(os.path.join(PROJ, PAGE_FILES["计算历史"]))
-cd_src_page = code_text(os.path.join(PROJ, PAGE_FILES["倒计时"]))
 check("资料库用了语义 objectName（mutedLabel/accentLabel/primaryBtn）",
       all(n in ref_src for n in ("mutedLabel", "accentLabel", "primaryBtn")))
 check("计算历史用了语义 objectName（primaryBtn/dangerBtn）",
       all(n in his_src for n in ("primaryBtn", "dangerBtn")))
-check("倒计时用了语义 objectName（accentLabel/primaryBtn/dangerBtn）",
-      all(n in cd_src_page for n in ("accentLabel", "primaryBtn", "dangerBtn")))
-check("三个页面都实现了 on_theme_changed 钩子",
-      all("def on_theme_changed" in s for s in (ref_src, his_src, cd_src_page)))
+check("资料库 / 计算历史两页都实现了 on_theme_changed 钩子",
+      all("def on_theme_changed" in s for s in (ref_src, his_src)))
 check("主窗口会在主题切换时通知各页面",
       "on_theme_changed" in code_text(os.path.join(PROJ, "main.py")))
 
@@ -410,79 +402,6 @@ for i in range(conv.nav_list.count()):
 check("逐个切换全部换算页面不抛异常", switch_ok, switch_err)
 check("换算器页面无硬编码亮色",
       not (hex_colors(code_text(os.path.join(PROJ, PAGE_FILES["换算器"])))
-           & LIGHT_ONLY_COLORS))
-
-# ══════════════════════════════ F. 倒计时 ══════════════════════════════
-section("F. 倒计时页面")
-
-
-class FakeDataManager(QObject):
-    """只提供倒计时页用到的接口，不落盘。
-
-    接口须与 modules/countdowns.py 的调用保持同步 —— 页面改成
-    `update_countdown(id, **kwargs)` 之后这里也必须跟上，否则测试直接 TypeError。
-    """
-
-    def __init__(self):
-        super().__init__()
-        self.items = []
-        self.added = []
-
-    def get_countdowns(self):
-        return [dict(r) for r in self.items]
-
-    def add_countdown(self, name, target_date, target_time):
-        self.added.append((name, target_date, target_time))
-        self.items.append({"id": len(self.items) + 1, "name": name,
-                           "target_date": target_date, "target_time": target_time,
-                           "created_at": datetime.now().isoformat()})
-        return len(self.items)
-
-    def update_countdown(self, countdown_id, **kwargs):
-        return True
-
-    def delete_countdown(self, countdown_id):
-        self.items = [r for r in self.items if r["id"] != countdown_id]
-        return True
-
-
-from modules.countdowns import CountdownsWidget                 # noqa: E402
-
-dm = FakeDataManager()
-cd = CountdownsWidget(None, dm)
-# 三个弹窗开关全关：离屏下 QMessageBox 的 exec() 会永久阻塞
-cd.confirm_enabled = False
-cd.notify_enabled = False
-cd.message_enabled = False
-try:
-    check("实例化无异常", cd is not None)
-    check("日期/时间标签已填充",
-          cd.current_date_label.text() not in ("", "正在加载..."),
-          cd.current_date_label.text())
-    check("内置计时器在跑（实时刷新）",
-          cd.datetime_timer.isActive() and cd.countdown_timer.isActive())
-
-    plan = (datetime.now() + timedelta(days=30)).replace(second=0, microsecond=0)
-    cd.name_entry.setText("演示倒计时")
-    cd._set_form_datetime(plan)
-    cd.add_countdown()
-    check("新增倒计时写入 data_manager", len(dm.added) == 1, dm.added)
-    check("新增的名称正确", dm.added and dm.added[0][0] == "演示倒计时")
-    check("新增后输入框已清空", cd.name_entry.text() == "")
-    check("新增后建出卡片且状态属性已就位",
-          list(cd._cards) == [1]
-          and cd._cards[1]["frame"].property("cdState") == "normal",
-          list(cd._cards))
-    check("卡片颜色不来自控件自身样式表（交给主题 QSS）",
-          "cdCard" not in (cd._cards[1]["frame"].styleSheet() or ""))
-finally:
-    for t in ("countdown_timer", "datetime_timer"):
-        timer = getattr(cd, t, None)
-        if timer is not None:
-            timer.stop()
-
-check("倒计时页面无硬编码亮色",
-      not (hex_colors(code_text(os.path.join(PROJ, PAGE_FILES["倒计时"])))
            & LIGHT_ONLY_COLORS))
 
 # ══════════════════════════════ 汇总 ══════════════════════════════
