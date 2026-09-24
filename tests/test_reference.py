@@ -473,8 +473,8 @@ ref.table_widget.selectRow(0)
 ref._on_send_clicked()
 check("选中数值行点按钮 → menu_enabled=False 时静默返回不阻塞", True)
 
-check("计算器注册表解析到 50 个模块 id（口径与 README 一致）",
-      len(_REGISTERED) == 50, len(_REGISTERED))
+check("计算器注册表解析到 51 个模块 id（口径与 README 一致）",
+      len(_REGISTERED) == 51, len(_REGISTERED))
 check("TARGETS 全部指向已注册的计算器模块",
       all(m in _REGISTERED for _t, m, _f, _d in TARGETS),
       [m for _t, m, _f, _d in TARGETS if m not in _REGISTERED])

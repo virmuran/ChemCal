@@ -160,7 +160,9 @@ class FlashEvaporationCalculator(CalculatorBase):
         self._last_result = {}
         self._rows = {}                       # 行控件登记（供标记/显隐）
         self._hint_base = {}                  # 提示文本原值（标记还原用）
-        self._chain_ref = {}                  # 本次引用的上游标记
+        self._chain_refs = []                 # 本次引用的上游标记（**列表**：可多个来源）
+        self._chain_detail = ""               # 本次取用的字段明细（供状态行显示）
+        self._chain_status_fallback = False   # 「无可用传递值」提示已直接给出
         self._chain_sources = []              # 下拉里可用的来源（与序号对应）
         self.setup_ui()
         self.setup_default_values()
@@ -185,7 +187,8 @@ class FlashEvaporationCalculator(CalculatorBase):
         desc = QLabel(
             "料液减压闪蒸核算：喷射液化后的高温料液进闪蒸罐 → 绝热闪蒸降温 → "
             "闪蒸汽量（二次蒸汽）→ 闪蒸后料液量与浓度。"
-            "「进料」各项可取上游（喷射液化器）的计算结果，不必手抄。")
+            "点「取上游值」即按工艺链一次取全（进料量 / 比热 / 浓度 / 出口温度 ← 喷射液化器），"
+            "不必手抄、也不用逐段取。")
         desc.setWordWrap(True)
         desc.setStyleSheet("font-size:12px;padding:5px;")
         ll.addWidget(desc)
@@ -375,7 +378,7 @@ class FlashEvaporationCalculator(CalculatorBase):
         """刷新可用上游来源下拉（保留当前选中项）"""
         self.chain_combo.blockSignals(True)
         self.chain_combo.clear()
-        self.chain_combo.addItem("（不使用上游数据）")
+        self.chain_combo.addItem("（自动：取全部上游，整链一键取全）")
         self._chain_sources = []
         try:
             for e in ChainContext.sources():
@@ -389,38 +392,80 @@ class FlashEvaporationCalculator(CalculatorBase):
         self.chain_combo.blockSignals(False)
 
     def _apply_chain_source(self):
-        """把选中上游页的可传递输出填进本页输入框"""
+        """取上游值：默认取**全部上游**（整链一键取全），也可下拉限定单个来源
+
+        本页输入目前都来自喷射液化器（物料量 / 蒸汽用量 / 比热 / 浓度 / 出口温度），
+        一键取全链与选单个来源等价；保留该机制以便上游增多（如维持罐、预热器）时
+        不必再改页面。
+        """
         idx = self.chain_combo.currentIndex()
-        if idx <= 0 or idx - 1 >= len(self._chain_sources):
-            self.chain_status.setText("未选择上游来源（可直接手填各项）。")
+        whole_chain = idx <= 0
+        if whole_chain:
+            entries = ChainContext.ordered_sources(exclude=(self.CHAIN_MODULE,))
+        else:
+            if idx - 1 >= len(self._chain_sources):
+                self.chain_status.setText("未选择上游来源（可直接手填各项）。")
+                return
+            entries = [self._chain_sources[idx - 1]]
+        if not entries:
+            self.chain_status.setText(
+                "当前没有可用上游 —— 请先到上游页（喷射液化器用汽量）点「计算」。")
             return
-        entry = self._chain_sources[idx - 1]
-        vals = entry.get("values", {})
-        filled = []
+
+        keys = [k for k, _attr, _f, _u in self.CHAIN_MAP]
+        merged = ChainContext.merge_values(entries, keys)      # 先到先得：上游优先
+        applied, used = {}, []
         for key, attr, factor, unit in self.CHAIN_MAP:
-            if key not in vals:
+            hit = merged.get(key)
+            w = getattr(self, attr, None)
+            if not hit or w is None:
                 continue
             try:
-                v = float(vals[key]) * factor
+                v = float(hit[0]) * factor
             except (TypeError, ValueError):
-                continue
-            w = getattr(self, attr, None)
-            if w is None:
                 continue
             w.setText(f"{v:.10g}")
             self._set_row_mark(attr, "←上游")
-            filled.append(key)
-        self._chain_ref = ChainContext.make_ref(entry.get("module"))
+            src = hit[1]
+            applied[key] = src["page"]
+            if all(u["module"] != src["module"] for u in used):
+                used.append(src)
+
+        self._chain_refs = ChainContext.make_refs([e["module"] for e in used])
+        self._chain_detail = "、".join(f"{k}←{p}" for k, p in applied.items())
         self._update_feed_total_label()
-        if filled:
+        if not applied:
+            self._chain_refs = ChainContext.make_refs([e["module"] for e in entries])
+            self._chain_status_fallback = True
             self.chain_status.setText(
-                f"已取用：{ChainContext.describe_ref(self._chain_ref)}"
-                f"　→　{('、'.join(filled))}"
-                f"（填进输入框后仍可手工修改）")
-        else:
-            self.chain_status.setText(
-                f"{ChainContext.describe_ref(self._chain_ref)} 没有可用的传递值。")
+                f"{ChainContext.describe_refs(self._chain_refs)} 没有可用的传递值。")
+            return
+        self._chain_status_fallback = False
         self._refresh_chain_status()
+
+    def _refresh_chain_status(self, *_a):
+        """渲染状态行：已取来源 + 字段明细 + 过期提示（覆盖**全部**来源）"""
+        if not self._chain_refs:
+            return
+        if getattr(self, "_chain_status_fallback", False):
+            return                          # 「无可用传递值」提示由取数函数直接给出
+        try:
+            stale = ChainContext.stale_refs(self._chain_refs)
+            src = ChainContext.describe_refs(self._chain_refs)
+            detail = f"　→　{self._chain_detail}" if self._chain_detail else ""
+            if stale:
+                latest = "；".join(
+                    f"{ChainContext.describe_ref(r)} 最新 "
+                    f"{(ChainContext.get(r.get('module')) or {}).get('time_str', '')}"
+                    for r in stale)
+                self.chain_status.setText(
+                    f"⚠ 数据来源 {src}{detail}，但其中 {latest} 已重算"
+                    f"——当前输入可能已过期，建议重新「取上游值」。")
+            else:
+                self.chain_status.setText(
+                    f"已取用：{src}{detail}（最新，未过期）")
+        except Exception:                                        # noqa: BLE001
+            pass
 
     def _set_row_mark(self, attr, mark):
         """在对应输入的提示列打/清「←上游」标记"""
@@ -436,23 +481,6 @@ class FlashEvaporationCalculator(CalculatorBase):
     def _clear_row_mark(self, attr):
         """用户手改输入后撤掉该行的上游标记（引用只是填值，不做绑定）"""
         self._set_row_mark(attr, "")
-
-    def _refresh_chain_status(self, *_a):
-        """检查上游是否在本页引用之后又重算过（过期提示）"""
-        if not self._chain_ref:
-            return
-        try:
-            if ChainContext.is_stale(self._chain_ref):
-                now = ChainContext.get(self._chain_ref.get("module")) or {}
-                self.chain_status.setText(
-                    f"⚠ 数据来源 {ChainContext.describe_ref(self._chain_ref)}"
-                    f"，但该页之后已重算（最新 {now.get('time_str', '')}）"
-                    f"——当前输入可能已过期，建议重新「取上游值」。")
-            else:
-                self.chain_status.setText(
-                    f"数据来源：{ChainContext.describe_ref(self._chain_ref)}（最新，未过期）")
-        except Exception:                                        # noqa: BLE001
-            pass
 
     def showEvent(self, event):                                  # noqa: N802
         """页面显示时刷新来源列表与过期状态（上游可能刚重算过）"""
@@ -714,7 +742,7 @@ class FlashEvaporationCalculator(CalculatorBase):
             # 二次蒸汽
             "v_flash": v_flash, "dn": dn, "d_calc": d_calc, "u_act": u_act,
             # 计算链来源
-            "chain_src": ChainContext.describe_ref(self._chain_ref),
+            "chain_src": ChainContext.describe_refs(self._chain_refs),
             "warn": warn,
         }
 
@@ -844,7 +872,9 @@ class FlashEvaporationCalculator(CalculatorBase):
     def clear_inputs(self):
         """恢复出厂默认值（可直接重算）；同时解除上游引用"""
         self.setup_default_values()
-        self._chain_ref = {}
+        self._chain_refs = []
+        self._chain_detail = ""
+        self._chain_status_fallback = False
         for attr in self._MARK_ROWS:
             self._set_row_mark(attr, "")
         self.chain_combo.blockSignals(True)

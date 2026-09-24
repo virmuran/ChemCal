@@ -334,8 +334,132 @@ check('D7 其余行标记保留',
 # clear 上下文
 ChainContext.clear()
 wr._reload_chain_sources()
-check('D8 清空上下文 → 下拉只剩「不使用上游数据」',
+check('D8 清空上下文 → 下拉只剩「（自动：取全部上游，整链一键取全）」',
       wr.chain_combo.count() == 1)
+
+# ════════════════════════════════════════════════════════════════
+print('\n══ Part D2  一键取全链（本页输入分属两个上游，一次取全）══')
+
+# 背景：回收页的 4 个输入分属两个上游 ——
+#   物料比热 / 浆料比重 ← 喷射液化器；闪蒸汽量 / 闪蒸压力 ← 闪蒸降温浓缩
+# 旧实现要选两次才凑齐；新实现：默认不选来源，点一次「取上游值」即取全链。
+ChainContext.clear()
+wi2 = INJ()
+wi2.calculate()
+wf2 = F()
+wf2._reload_chain_sources()
+wf2.chain_combo.setCurrentIndex(0)
+wf2._apply_chain_source()
+wf2.calculate()
+wr2 = R()
+
+wr2._reload_chain_sources()
+items2 = [wr2.chain_combo.itemText(i) for i in range(wr2.chain_combo.count())]
+check('D9 下拉首项 = 自动取全部上游（整链）',
+      '自动' in items2[0] and '全部上游' in items2[0], items2[0])
+check('D9 默认停在首项（不选来源即取全链）', wr2.chain_combo.currentIndex() == 0)
+check('D9 来源数 ≥ 2（喷射液化器 + 闪蒸降温浓缩）',
+      wr2.chain_combo.count() >= 3, str(items2))
+
+wr2._apply_chain_source()
+check('D10 ★ 一次点击填满全部 4 个输入框（无需分两次取）',
+      all(getattr(wr2, a).text().strip() for a in
+          ('df_input', 'p_input', 'cp_input', 'rho_input')),
+      f"{wr2.df_input.text()}/{wr2.p_input.text()}/"
+      f"{wr2.cp_input.text()}/{wr2.rho_input.text()}")
+check('D11 闪蒸汽量 ← 闪蒸页 D_f',
+      close(float(wr2.df_input.text()), wf2._last_result['D_f'], 1e-6),
+      f"{wr2.df_input.text()} vs {wf2._last_result['D_f']}")
+check('D11 闪蒸压力 ← 闪蒸页 p_abs × 1000（MPa→kPa）',
+      close(float(wr2.p_input.text()), wf2._last_result['p_abs'] * 1000.0, 1e-6))
+check('D11 物料比热 ← 喷射器的稀释后比热',
+      close(float(wr2.cp_input.text()),
+            ChainContext.value('injection_liquefier_calculator', '物料比热'), 1e-9))
+check('D11 浆料比重 ← 喷射器的修正比重',
+      close(float(wr2.rho_input.text()),
+            ChainContext.value('injection_liquefier_calculator', '浆料比重'), 1e-9))
+
+srcs2 = ChainContext.describe_refs(wr2._chain_refs)
+check('D12 引用集合含**两个**上游页',
+      '闪蒸降温浓缩' in srcs2 and '喷射液化器' in srcs2, srcs2)
+check('D13 状态栏列出两页来源 + 逐项归属明细',
+      '闪蒸汽量←闪蒸降温浓缩' in wr2.chain_status.text()
+      and '物料比热←喷射液化器' in wr2.chain_status.text(),
+      wr2.chain_status.text())
+check('D13 4 行全部打了「←上游」标记',
+      all('←上游' in wr2._rows[k][2].text() for k in ('df', 'p', 'cp', 'rho')))
+
+# 链序（同名键先到先得：上游优先）
+_ord = ChainContext.ordered_sources(exclude=('flash_steam_recovery_calculator',))
+check('D14 ordered_sources 按链序排（喷射器在闪蒸之前）',
+      [e['module'] for e in _ord][:2] ==
+      ['injection_liquefier_calculator', 'flash_evaporation_calculator'],
+      str([e['module'] for e in _ord]))
+_mv = ChainContext.merge_values(_ord, ['物料比热', '蒸汽用量', '闪蒸汽量'])
+check('D14 merge_values 带回来源页（物料比热 ← 喷射器）',
+      _mv['物料比热'][1]['module'] == 'injection_liquefier_calculator',
+      _mv['物料比热'][1]['module'])
+check('D14 merge_values 只取 keys 内的键',
+      set(_mv.keys()) <= {'物料比热', '蒸汽用量', '闪蒸汽量'}, str(sorted(_mv)))
+
+# 同名字段先到先得：让闪蒸页也发布「物料比热」，应仍取喷射器那份
+_fl = ChainContext.get('flash_evaporation_calculator')
+_fl_vals = dict(_fl['values'])
+_fl_vals['物料比热'] = 9.99
+_fl_saved = dict(_fl['values'])
+_fl['values'] = _fl_vals
+_mv2 = ChainContext.merge_values(ChainContext.ordered_sources(), ['物料比热'])
+check('D14 同名键先到先得 → 取更上游那条（不是后发布的 9.99）',
+      close(float(_mv2['物料比热'][0]), ChainContext.value(
+          'injection_liquefier_calculator', '物料比热'), 1e-9),
+      str(_mv2['物料比热'][0]))
+_fl['values'] = _fl_saved
+
+# 多来源过期提示：只重算喷射器 → 提示里点名该页
+wi2.calculate()
+wr2._reload_chain_sources()
+wr2._refresh_chain_status()
+_st = wr2.chain_status.text()
+check('D15 多来源过期提示点名具体来源（喷射液化器）',
+      '过期' in _st and '喷射液化器' in _st, _st[:120])
+
+# 下拉限定单个来源 → 引用集合只剩该页
+wr2._reload_chain_sources()
+_i = next(i for i, t in enumerate(
+    [wr2.chain_combo.itemText(j) for j in range(wr2.chain_combo.count())])
+    if '喷射液化器' in t)
+wr2.chain_combo.setCurrentIndex(_i)
+wr2._apply_chain_source()
+_single = ChainContext.describe_refs(wr2._chain_refs)
+check('D16 下拉限定单来源 → 引用集合只剩该页',
+      '喷射液化器' in _single and '闪蒸降温浓缩' not in _single, _single)
+check('D16 单来源模式下只填该页提供的 2 项（汽量/压力不被覆盖）',
+      wr2.df_input.text().strip() != '' and wr2.cp_input.text().strip() != '')
+
+# 无上游时给出可操作提示（不静默）
+ChainContext.clear()
+wr3 = R()
+wr3._reload_chain_sources()
+wr3.chain_combo.setCurrentIndex(0)
+wr3._apply_chain_source()
+check('D17 无任何上游 → 提示去上游页计算（有可操作指引）',
+      '没有可用上游' in wr3.chain_status.text()
+      and '喷射液化器' in wr3.chain_status.text(), wr3.chain_status.text())
+
+# 基础 API
+ChainContext.publish('m1', '页一', {'x': 1})
+ChainContext.publish('m2', '页二', {'y': 2})
+_rf = ChainContext.make_refs(['m1', 'm2', 'm1'])
+check('D18 make_refs 生成 2 条（重复 module 去重）', len(_rf) == 2, str(len(_rf)))
+check('D18 describe_refs = 「页一 … + 页二 …」',
+      '页一' in ChainContext.describe_refs(_rf) and '页二' in ChainContext.describe_refs(_rf),
+      ChainContext.describe_refs(_rf))
+check('D18 stale_refs 全新鲜时为空', ChainContext.stale_refs(_rf) == [])
+ChainContext.publish('m1', '页一', {'x': 3})                     # m1 重算
+_stale = ChainContext.stale_refs(_rf)
+check('D18 stale_refs 命中重算过的那一条（且只一条）',
+      [r['module'] for r in _stale] == ['m1'], str([r['module'] for r in _stale]))
+ChainContext.clear()
 
 # ════════════════════════════════════════════════════════════════
 print('\n══ Part E  契约 ══')
