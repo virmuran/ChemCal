@@ -128,6 +128,8 @@ from datetime import datetime
 from calculator_base import CalculatorBase
 # 项目硬契约：饱和蒸汽（表压）一律走 common_constants.get_steam_props
 from common_constants import get_steam_props, WATER_CP
+# 计算链：算完把「可传递给下游的出口状态」登记到会话上下文（闪蒸等下游页取用）
+from chain_context import ChainContext
 
 # IAPWS-IF97 完整物性（动态导入，写法与浓缩蒸发器计算器一致）
 try:
@@ -168,6 +170,10 @@ class InjectionLiquefierCalculator(CalculatorBase):
     """蒸汽喷射液化器用汽量计算器（一次喷射 / 两次喷射）"""
 
     MODES = ["一次喷射液化（低温喷射）", "两次喷射液化（一次 + 二次高温）"]
+
+    #: 计算链标识（下游页面按此标识取本页输出）
+    CHAIN_MODULE = "injection_liquefier_calculator"
+    CHAIN_PAGE = "喷射液化器用汽量"
 
     #: 浆料量输入方式（体积流量需过一道密度换算）
     FLOW_MODES = ["质量流量 (t/h)", "体积流量 (m³/h)"]
@@ -510,12 +516,44 @@ class InjectionLiquefierCalculator(CalculatorBase):
         try:
             res = self._compute()
             self._last_result = res
+            self._publish_chain(res)          # 先登记，结果区才能列出可传递项
             self._render(res)
             self._update_svg_diagram()
         except ValueError as e:
             self._show_error(str(e))
         except Exception as e:                                   # noqa: BLE001
             self._show_error(f"计算错误：{e}")
+
+    def _publish_chain(self, r):
+        """把「可传递给下游的出口状态」登记到计算链上下文
+
+        下游（如闪蒸计算）据此一键取值：浆料量、蒸汽用量、喷射后液量、
+        物料比热、干物浓度、出口温度。登记失败不影响本页计算。"""
+        vals = {
+            "浆料量": r.get("G_t", 0.0),                     # t/h（进喷射器的原始浆料）
+            "蒸汽用量": r.get("D_total", 0.0),               # kg/h（一次+二次合计）
+            "喷射后液量": r.get("G_final", 0.0) / 1000.0,    # t/h（含凝水，闪蒸进料）
+            "物料比热": r.get("C_final", 0.0),               # kJ/(kg·K)
+            "干物浓度": r.get("X_final", 0.0),               # wt%
+            "出口温度": r.get("t_out", 0.0),                 # °C
+            "生蒸汽表压": r.get("ps", 0.0),                  # MPa(g)
+            "总焓": r.get("I", 0.0),                         # kJ/kg
+            "浆料比重": r.get("d_corr", 0.0),                # t/m³（20 °C 修正比重）
+        }
+        units = {"浆料量": "t/h", "蒸汽用量": "kg/h", "喷射后液量": "t/h",
+                 "物料比热": "kJ/(kg·K)", "干物浓度": "wt%", "出口温度": "°C",
+                 "生蒸汽表压": "MPa(g)", "总焓": "kJ/kg", "浆料比重": "t/m³"}
+        try:
+            entry = ChainContext.publish(self.CHAIN_MODULE, self.CHAIN_PAGE,
+                                         values=vals, units=units,
+                                         note=r.get("mode", ""))
+            r["chain_published"] = bool(entry)
+            r["chain_values"] = vals
+            r["chain_units"] = units
+            r["chain_time_str"] = entry["time_str"] if entry else ""
+        except Exception as e:                                   # noqa: BLE001
+            print(f"计算链登记失败（不影响计算）: {e}")
+            r["chain_published"] = False
 
     def _compute(self):
         two_stage = (self.mode_combo.currentText() == self.MODES[1])
@@ -725,6 +763,12 @@ class InjectionLiquefierCalculator(CalculatorBase):
         p_min_a = self._p_sat_abs(t2a) + 0.05 - ATM
         p_min_b = (self._p_sat_abs(t2b_out) + 0.05 - ATM) if two_stage else None
 
+        # ── 7. 「最终出口状态」：供计算链下游（闪蒸、预热等）取用 ──
+        if two_stage:
+            t_out, G_final, X_final, C_final = t2b_out, G2, X2 * 100.0, C2
+        else:
+            t_out, G_final, X_final, C_final = t2a, G1, X1 * 100.0, C1
+
         return {
             "mode": self.mode_combo.currentText(),
             "two_stage": two_stage,
@@ -767,6 +811,8 @@ class InjectionLiquefierCalculator(CalculatorBase):
             "D_design": D_design, "dn_total": dn_total,
             "d_calc": d_calc, "u_act": u_act,
             "p_min_a": p_min_a, "p_min_b": p_min_b,
+            # 计算链下游用的最终出口状态
+            "t_out": t_out, "G_final": G_final, "X_final": X_final, "C_final": C_final,
             "warn": warn,
         }
 
@@ -892,6 +938,14 @@ class InjectionLiquefierCalculator(CalculatorBase):
             L.append("【提示与警告】")
             for i, w in enumerate(r["warn"], 1):
                 L.append(f"  {i}) {w}")
+        if r.get("chain_published"):
+            L.append("")
+            L.append("【计算链】本页出口状态已登记，下游页面（闪蒸等）可用「取上游值」一键引用：")
+            for k, v in (r.get("chain_values") or {}).items():
+                u = (r.get("chain_units") or {}).get(k, "")
+                L.append(f"      {k:<8s} = {v:>10.4f} {u}")
+            L.append(f"      登记时间：{r.get('chain_time_str', '')}"
+                     f"（本页重算后登记自动更新，下游会提示「已过期」）")
         L.append("")
         L.append("=" * 58)
         L.append("  口径说明：凝结水焓 λ 取**出口料温下的饱和水焓**（非蒸汽压力下的），")

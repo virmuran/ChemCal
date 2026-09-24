@@ -159,6 +159,8 @@ class ChemicalCalculationsWidget(QWidget):
             ("板框压滤机面积", "FilterPressAreaCalculator", "filter_press_area_calculator", True),
             ("浓缩蒸发器计算", "EvaporatorCalculator", "evaporator_calculator", True),
             ("喷射液化器用汽量", "InjectionLiquefierCalculator", "injection_liquefier_calculator", True),
+            ("闪蒸降温浓缩", "FlashEvaporationCalculator", "flash_evaporation_calculator", True),
+            ("闪蒸蒸汽回收", "FlashSteamRecoveryCalculator", "flash_steam_recovery_calculator", True),
             ("风机功率计算", "FanPowerCalculator", "fan_power_calculator", True),
             #
             # ══════════════════════════════════════════
@@ -684,6 +686,8 @@ class ChemicalCalculationsWidget(QWidget):
         "filter_press_area_calculator": "工艺设备",
         "evaporator_calculator": "工艺设备",
         "injection_liquefier_calculator": "工艺设备",
+        "flash_evaporation_calculator": "工艺设备",
+        "flash_steam_recovery_calculator": "工艺设备",
         "fan_power_calculator": "工艺设备",
         # 三、流体输送
         "pipe_diameter_calculator": "流体输送",
