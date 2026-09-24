@@ -13,7 +13,7 @@
     <img alt="license" src="https://img.shields.io/badge/license-MIT-blue">
 </div>
 <div>
-    <img alt="version" src="https://img.shields.io/badge/version-1.12.0-green">
+    <img alt="version" src="https://img.shields.io/badge/version-1.12.1-green">
     <img alt="stars" src="https://img.shields.io/github/stars/virmuran/ChemCal?style=social">
 </div>
 <br>
@@ -159,6 +159,14 @@ python main.py
 
 ## 更新日志
 
+### v1.12.1 (2026-09-24)
+
+- 🧹 **清空 `data_manager.py` 里成片的工艺设计与笔记遗骸**（**746 → 194 行，-552 行**）：这个文件是早年工艺设计工具的旧数据层，功能砍掉后**方法留在原地没人删**。本次逐项 grep 确认**全项目含测试零引用**后一并移除 —— `folders` 增删改查（**笔记「分文件夹」的遗骸**）、设备 CRUD 与设备名称中英映射、物料 / MSDS / 项目 各 2 个方法、报告计数器（`get_report_counter` / `get_next_report_number`）、流程图存取（`save_flow_diagram` / `load_flow_diagram`）、只被上述死方法调用的 5 个通用 CRUD 辅助（`_add_item` / `_update_item` / `_delete_item` / `_get_items` / `_get_next_id`）、已迁到 `modules/history_db.py` 的 `add_record` 壳，以及 `_ensure_process_design_data` / `_ensure_equipment_data` 两个结构迁移函数。**保留**：`project_info` 读写（**51 个计算器的计算书抬头全靠 `get_project_info()`**，属导出契约）、`settings` 读写（主题持久化）、数据文件加载 / 保存 / 单例。**`get_default_data()` 同步瘦身** —— 新装机的数据文件不再生成 `folders` / `process_design` / `equipment_name_mapping` 三个空壳键，也不再塞示例物料（水 / 乙醇 / 甲烷）与示例 MSDS（盐酸 / 甲醇），只留 `project_info` + `settings`；**兼容性：不涉及数据迁移** —— 老数据文件里的这些键保留原位、不再读写，升级后无报错
+- 🧹 **`modules/__init__.py` 同源清理**：移除零调用的 `init_database()`（它会往数据文件里写 `process_design` 与示例物料）与 `get_data_manager()` —— 两者挂在 `__all__` 里但**全项目从无一处调用**；保留下真正在用的 `setup_module_paths()`（「子包一律包限定导入」那条铁律的注释就写在这里）
+- 🗑️ **删除 4 个孤立死文件**（合计 273 行 —— 无人导入，却一直被 PyInstaller 打进包）：`launcher.py`（看门狗启动器，但它要拉起的 `calc_main.py` **根本不存在**，一跑就崩）、`base_module.py`（文件里自己就写着「旧版，已废弃」）、`resource_helper.py`（与 `main.py` 内自带的同名 `resource_path()` 重复）、`app_diagnostics.py`；`ChemCal.spec` 的 `datas` 同步去掉前两个（否则打包会因源文件缺失而失败）
+- 📖 **文档校正**：README 项目结构树与实际不符 —— 原把 `history_db.py` 画在根目录（实际在 `modules/` 下）、漏掉 `calculator_base.py` / `chain_context.py` / `common_constants.py` / `app_styles.py` / `svg_utils.py` / `reference_data.py` 等根目录模块与 `installer/`、`tests/`、`modules/combo_box_utils.py`，还挂着一个从不存在的 `docs/`；顺带移除本地遗留的空目录 `tools/`（未被 git 跟踪、无任何内容）
+- ✅ 回归测试 **31 文件 / 2093 项断言 / 0 失败**，与 v1.12.0 **完全持平**（本次纯删死代码与改文档，**未增删任何测试**）；计算器总数 51、资料库 69 小节 / 665 行、换算器 21 类、惰性加载 35 项等闸门一项未动；主窗口启动烟测通过（**4 个标签页**、资料库 6 大类、亮 / 暗 / 蓝三主题切换正常）；打包产物经 31 项终检全过，且**包内已无 `countdown` / `launcher` / `base_module` / `resource_helper` / `app_diagnostics` 任何残留**
+
 ### v1.12.0 (2026-09-24)
 
 - 🧹 **移除「倒计时」板块** —— 精简为纯工程计算工具集，导航栏从 5 个标签回到 **4 个**（工程计算 / 计算历史 / 换算器 / 资料库）。移除原因：该板块（通用**事件**倒计时）与工程计算主线**零耦合** —— 不涉及物料、热量、标准与单位，也不与计算历史、计算书、计算链任何一处交互；而其**核心能力「到点提醒」恰恰在它最该发挥作用的场景下失效**：`_notify_finished()` 用的是模态 `QMessageBox`，人若在 CAD / Excel / 浏览器里干活（ChemCal 不在前台）既看不到提醒、切回来还被弹窗挡住，且没有任何系统托盘气泡 / 提示音 / 任务栏闪烁的兜底。**兼容性：不涉及数据迁移** —— 用户数据文件里的 `countdowns` / `custom_countdown_buttons` 键保留原位、不再读写，升级后无报错、无需人工处理任何数据；若日后需要找回，`git checkout <移除前的提交> -- modules/countdowns.py tests/test_countdowns.py` 即可完整取回（该页实现与 183 项回归测试一并移除）
@@ -293,11 +301,15 @@ python main.py
 ChemCal/
 ├── main.py                     # 主入口，窗口框架与菜单
 ├── crash_shield.py             # 防闪退保护层 + 看门狗
-├── launcher.py                 # 启动器（异常重启）
 ├── data_manager.py             # 数据管理（JSON 单例）
 ├── theme_manager.py            # 主题管理（亮色 / 暗色 / 蓝色）
 ├── module_loader.py            # 模块动态加载器
-├── history_db.py               # 历史记录（SQLite）
+├── calculator_base.py          # 计算器基类（导出契约 / 历史钩子）
+├── chain_context.py            # 计算链上下文（跨页一键取上游值）
+├── common_constants.py         # 公共物性（水蒸气表 / 常数）
+├── reference_data.py           # 参考资料库数据层
+├── app_styles.py               # 全局控件样式
+├── svg_utils.py                # SVG 绘图工具
 ├── updater.py                  # 自动更新（GitHub Releases）
 ├── version.py                  # 版本号唯一来源 + 规范校验
 ├── VERSIONING.md               # 版本号规范（权威文档）
@@ -312,11 +324,15 @@ ChemCal/
 ├── data/                       # 数据文件
 │   └── reference_db.json       # 参考资料库
 │
+├── installer/                  # 打包产物（Inno Setup 安装包）
+├── tests/                      # 无显示器回归测试（31 个文件）
+│
 ├── utils/                      # 公共工具
 │   ├── __init__.py
 │   └── docx_utils.py           # DOCX 报告生成（ReportExporter）
 │
 ├── modules/
+│   ├── __init__.py             # 包路径设置
 │   ├── chemical_calculations/
 │   │   ├── calculators/        # 51 个计算器
 │   │   │   ├── steam_property_calculator.py
@@ -336,11 +352,11 @@ ChemCal/
 │   │   ├── refrigerant_eos.py  # 制冷剂 PR 状态方程
 │   │   └── chemical_calculations_widget.py
 │   │
-│   ├── reference/              # 参考资料库
+│   ├── reference/              # 参考资料库（reference_widget / ref_exchange）
 │   ├── converter/              # 单位换算器（21 类）
+│   ├── combo_box_utils.py      # 计算器级联下拉工具
+│   ├── history_db.py           # 历史记录（SQLite）
 │   └── history_viewer.py       # 计算历史
-│
-└── docs/                       # 文档（计划中）
 ```
 
 ## 免责声明
