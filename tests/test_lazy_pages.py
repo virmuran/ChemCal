@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """页面惰性加载回归测试（2026-09-16）
 
-**为什么有这个文件**：51 个计算器 + 21 个换算页原先在启动时**全部实例化**，
+**为什么有这个文件**：52 个计算器 + 21 个换算页原先在启动时**全部实例化**，
 全窗口 5293 个控件。Qt 每次 `setStyleSheet` 都要给每个控件重算样式，实测：
     启动 7.14s、切主题 5.5s（见 .workbuddy/_perf_theme.py 的实测输出）
 改成"登记导航 + 占位页，首次打开才建真页面"后：启动 0.41s、切主题 0.84s。
@@ -89,11 +89,11 @@ NAV = cc.nav_list.count()
 check("导航项数 == 页面数", NAV == len(cc.pages), f"nav={NAV} pages={len(cc.pages)}")
 check("导航项数 == 内容堆栈页数",
       NAV == cc.content_stack.count(), cc.content_stack.count())
-check("导航项数为 51（51 个计算器）", NAV == 51, NAV)
+check("导航项数为 52（52 个计算器）", NAV == 52, NAV)
 
 built = [i for i, p in enumerate(cc.pages) if not is_placeholder(p)]
 check("构造后只有 1 个真页面（首行）", built == [0], built)
-check("其余 50 页都是占位页", sum(1 for p in cc.pages if is_placeholder(p)) == 50)
+check("其余 51 页都是占位页", sum(1 for p in cc.pages if is_placeholder(p)) == 51)
 check("占位页也带 _calc_meta（右键隐藏/管理面板依赖它）",
       all(getattr(p, "_calc_meta", None) for p in cc.pages))
 check("占位页元数据键齐全（id/name/category）",

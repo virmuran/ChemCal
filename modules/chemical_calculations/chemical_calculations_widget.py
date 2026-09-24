@@ -162,6 +162,7 @@ class ChemicalCalculationsWidget(QWidget):
             ("闪蒸降温浓缩", "FlashEvaporationCalculator", "flash_evaporation_calculator", True),
             ("闪蒸蒸汽回收", "FlashSteamRecoveryCalculator", "flash_steam_recovery_calculator", True),
             ("闪蒸罐计算", "FlashTankCalculator", "flash_tank_calculator", True),
+            ("脱色柱计算", "DecolorizationCalculator", "decolorization_column_calculator", True),
             ("风机功率计算", "FanPowerCalculator", "fan_power_calculator", True),
             #
             # ══════════════════════════════════════════
@@ -690,6 +691,7 @@ class ChemicalCalculationsWidget(QWidget):
         "flash_evaporation_calculator": "工艺设备",
         "flash_steam_recovery_calculator": "工艺设备",
         "flash_tank_calculator": "工艺设备",
+        "decolorization_column_calculator": "工艺设备",
         "fan_power_calculator": "工艺设备",
         # 三、流体输送
         "pipe_diameter_calculator": "流体输送",

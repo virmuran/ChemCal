@@ -20,7 +20,8 @@ from loguru import logger
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QTabWidget, QWidget, QVBoxLayout,
     QMessageBox, QStatusBar, QLabel, QDialog, QScrollArea, QPushButton,
-    QHBoxLayout, QProgressBar, QDialogButtonBox, QTextEdit
+    QHBoxLayout, QProgressBar, QDialogButtonBox, QTextEdit,
+    QFormLayout, QLineEdit
 )
 from PySide6.QtGui import QAction, QFont, QDesktopServices
 from PySide6.QtCore import Qt, QTimer, QUrl, QMetaObject, Q_ARG, Slot, QThread, Signal
@@ -51,6 +52,77 @@ logger.add(
     level="INFO",
     format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}"
 )
+
+
+class ProjectInfoDialog(QDialog):
+    """工程信息录入对话框 —— 计算书抬头的唯一录入入口
+
+    各计算器的计算书（DOCX / PDF）抬头通过 DataManager.get_project_info()
+    读取 company_name / project_number / project_name / subproject_name
+    四个标准键；此前只有读没有写，本对话框补上写入口。
+    """
+
+    FIELDS = [
+        ("company_name", "公司名称"),
+        ("project_number", "工程编号"),
+        ("project_name", "工程名称"),
+        ("subproject_name", "子项名称"),
+    ]
+
+    def __init__(self, data_manager, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("工程信息")
+        self.setMinimumWidth(400)
+        self._dm = data_manager
+
+        layout = QVBoxLayout(self)
+        form = QFormLayout()
+        form.setLabelAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self._edits = {}
+        placeholders = {
+            "company_name": "如：XX 生物科技股份有限公司",
+            "project_number": "如：2026-071",
+            "project_name": "如：10 万吨/年麦芽糖醇项目",
+            "subproject_name": "如：脱色工段",
+        }
+        for key, label in self.FIELDS:
+            edit = QLineEdit(self)
+            edit.setPlaceholderText(placeholders[key])
+            self._edits[key] = edit
+            form.addRow(label + "：", edit)
+        layout.addLayout(form)
+
+        hint = QLabel(
+            "以上信息将作为所有计算书（DOCX / PDF）的抬头，\n"
+            "保存后对全部计算器立即生效。"
+        )
+        hint.setWordWrap(True)
+        layout.addWidget(hint)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.button(QDialogButtonBox.Ok).setText("保存")
+        buttons.button(QDialogButtonBox.Cancel).setText("取消")
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+        self._load()
+
+    def _load(self):
+        """从 DataManager 预填当前工程信息"""
+        info = self._dm.get_project_info() or {}
+        for key, _ in self.FIELDS:
+            self._edits[key].setText(str(info.get(key, "") or ""))
+
+    def values(self):
+        """当前各字段值（已去首尾空白）"""
+        return {key: self._edits[key].text().strip()
+                for key, _ in self.FIELDS}
+
+    def accept(self):
+        """保存到 DataManager 并关闭"""
+        self._dm.update_project_info(self.values())
+        super().accept()
 
 
 class ChemCal(QMainWindow):
@@ -139,6 +211,7 @@ class ChemCal(QMainWindow):
 
         # 文件菜单
         file_menu = menubar.addMenu("文件")
+        self._add_action(file_menu, "工程信息...", self._edit_project_info)
         self._add_action(file_menu, "备份数据", self._backup_data)
         self._add_action(file_menu, "刷新所有模块", self._refresh_all_modules)
         file_menu.addSeparator()
@@ -581,6 +654,13 @@ class ChemCal(QMainWindow):
         logger.info("主题切换为: {}", theme_name)
 
     # ------------------------------------------------------------------ 功能
+
+    def _edit_project_info(self):
+        """工程信息录入（计算书抬头的唯一写入口）"""
+        dlg = ProjectInfoDialog(DataManager.get_instance(), self)
+        if dlg.exec():
+            self.statusBar().showMessage(
+                "工程信息已保存，计算书抬头已更新", 5000)
 
     def _refresh_all_modules(self):
         count = 0

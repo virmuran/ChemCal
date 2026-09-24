@@ -142,7 +142,11 @@ class DataManager(QObject):
         })
     
     def update_project_info(self, project_info):
-        """更新工程信息（新格式）"""
+        """更新工程信息（新格式）
+
+        基于当前值合并：只传部分键时其余字段保持原值不被清空；
+        显式传空串则视为清空该字段。
+        """
         # 确保包含所有必需的字段
         default_info = {
             "company_name": "",
@@ -150,10 +154,11 @@ class DataManager(QObject):
             "project_name": "",
             "subproject_name": ""
         }
-        
-        # 合并默认值和提供的值
-        merged_info = {**default_info, **project_info}
-        
+
+        # 现值打底 + 传入键覆盖（缺省键保留现值，而非默认空串）
+        merged_info = {**default_info, **self.get_project_info(),
+                       **project_info}
+
         self.data["project_info"] = merged_info
         if self._save_data():
             self.data_changed.emit("project_info")

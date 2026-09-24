@@ -58,6 +58,7 @@ class ChainContext:
         "flash_evaporation_calculator",        # 闪蒸降温浓缩
         "flash_steam_recovery_calculator",     # 闪蒸蒸汽回收
         "flash_tank_calculator",               # 闪蒸罐计算（汽液分离罐定径）
+        "decolorization_column_calculator",    # 脱色柱计算（活性炭柱酸洗再生）
     ]
 
     #: module_id → entry；entry = {
