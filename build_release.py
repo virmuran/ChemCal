@@ -10,6 +10,7 @@
 """
 import os
 import re
+import shutil
 import subprocess
 import sys
 import zipfile
@@ -136,6 +137,18 @@ def main():
              "-m", "PyInstaller", "ChemCal.spec", "--noconfirm"])
 
     # 3) Inno Setup 安装包
+    step("把许可协议放进程序目录")
+    # 安装包由 iss 的 LicenseFile 在安装时展示协议，但便携 zip 没有安装流程、
+    # 装完的程序目录里也翻不到 —— 统一在 dist\ChemCal 放一份，两份产物就都自带。
+    # （iss 的 [Files] 是把 dist\ChemCal\* 整个装进 {app}，故安装版同样受益）
+    _lic_src = os.path.join(ROOT, "LICENSE")
+    _lic_dst = os.path.join(ROOT, "dist", "ChemCal", "LICENSE")
+    if os.path.exists(_lic_src):
+        shutil.copy2(_lic_src, _lic_dst)
+        print(f"  LICENSE -> {os.path.relpath(_lic_dst, ROOT)}")
+    else:
+        print("  ⚠ 未找到 LICENSE，跳过")
+
     step("Inno Setup 编译安装包")
     run([ISCC, "ChemCal.iss"])
 

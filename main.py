@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout, QProgressBar, QDialogButtonBox, QTextEdit,
     QFormLayout, QLineEdit
 )
-from PySide6.QtGui import QAction, QFont, QDesktopServices
+from PySide6.QtGui import QAction, QActionGroup, QFont, QDesktopServices
 from PySide6.QtCore import Qt, QTimer, QUrl, QMetaObject, Q_ARG, Slot, QThread, Signal
 
 from data_manager import DataManager
@@ -206,34 +206,63 @@ class ChemCal(QMainWindow):
 
     # ------------------------------------------------------------------ 菜单
 
+    #: 主题 key → 菜单显示名（中文界面里不混英文；顺序固定 浅/深/蓝）
+    THEME_LABELS = (("light", "浅色主题"), ("dark", "深色主题"),
+                    ("blue", "蓝色主题"))
+
     def _setup_menu(self):
+        """菜单栏 —— 只放「设置与元信息」，高频动作都在标签页里
+
+        精简原则（v1.13.1）：菜单项必须「点开有东西、点了有反馈」。
+            删「备份数据」     → 备份文件落在隐藏目录里找不到，改用「打开数据目录」自己拷
+            删「刷新所有模块」 → 开发期调试功能，界面看不出变化
+            删「常见问题」     → 与「用户手册」合并为「使用说明」（原文案中的
+                                数据路径、pip 安装说明均与本项目实现不符）
+            删「开源许可」     → 并入「关于」
+            「系统信息」+「查看日志」 → 合并为「诊断信息」
+            主题菜单加勾选标记 → 原先切完看不出当前用的是哪套
+        """
         menubar = self.menuBar()
 
         # 文件菜单
         file_menu = menubar.addMenu("文件")
         self._add_action(file_menu, "工程信息...", self._edit_project_info)
-        self._add_action(file_menu, "备份数据", self._backup_data)
-        self._add_action(file_menu, "刷新所有模块", self._refresh_all_modules)
+        self._add_action(file_menu, "打开数据目录", self._open_data_dir)
         file_menu.addSeparator()
         exit_act = self._add_action(file_menu, "退出", self.close)
         exit_act.setShortcut("Ctrl+Q")
 
-        # 主题菜单
+        # 主题菜单 —— 互斥勾选，一眼看出当前用的是哪套
         theme_menu = menubar.addMenu("主题")
-        for name in self.theme_manager.get_theme_names():
-            act = QAction(f"{name.capitalize()}主题", self)
-            act.triggered.connect(lambda checked, n=name: self.theme_manager.set_theme(n))
+        self._theme_group = QActionGroup(self)
+        self._theme_group.setExclusive(True)
+        labels = dict(self.THEME_LABELS)
+        self._theme_actions = {}
+        for key in self.theme_manager.get_theme_names():
+            act = QAction(labels.get(key, f"{key.capitalize()}主题"), self)
+            act.setCheckable(True)
+            act.setChecked(key == self.theme_manager.current_theme)
+            act.triggered.connect(
+                lambda checked, k=key: self.theme_manager.set_theme(k))
+            self._theme_group.addAction(act)
             theme_menu.addAction(act)
+            self._theme_actions[key] = act
+        # 主题若经其它入口（状态栏等）改变，勾选同步
+        self.theme_manager.theme_changed.connect(self._sync_theme_check)
 
         # 帮助菜单
         help_menu = menubar.addMenu("帮助")
-        self._add_action(help_menu, "检查更新", lambda: self._check_version(silent=False))
-        self._add_action(help_menu, "用户手册", self._show_user_manual)
-        self._add_action(help_menu, "常见问题", self._show_faq)
-        self._add_action(help_menu, "系统信息", self._show_system_info)
-        self._add_action(help_menu, "查看日志", self._show_logs)
-        self._add_action(help_menu, "开源许可", self._show_license)
+        self._add_action(help_menu, "检查更新",
+                         lambda: self._check_version(silent=False))
+        self._add_action(help_menu, "使用说明", self._show_usage_guide)
+        self._add_action(help_menu, "诊断信息", self._show_diagnostics)
         self._add_action(help_menu, "关于 ChemCal", self._show_about)
+
+    def _sync_theme_check(self, theme_name):
+        """同步主题菜单勾选状态（与当前主题保持一致）"""
+        act = getattr(self, "_theme_actions", {}).get(theme_name)
+        if act is not None and not act.isChecked():
+            act.setChecked(True)
 
     @staticmethod
     def _add_action(menu, text, slot):
@@ -662,32 +691,23 @@ class ChemCal(QMainWindow):
             self.statusBar().showMessage(
                 "工程信息已保存，计算书抬头已更新", 5000)
 
-    def _refresh_all_modules(self):
-        count = 0
-        for name, widget in self.modules.items():
-            if hasattr(widget, "refresh"):
-                try:
-                    widget.refresh()
-                    count += 1
-                except Exception as e:
-                    logger.error("模块刷新失败: {} | {}", name, e)
-        QMessageBox.information(self, "刷新完成", f"已刷新 {count} 个模块")
+    def _open_data_dir(self):
+        """在文件管理器里打开本地数据目录（~/.ChemCal，内含 data/ 与 logs/）
 
-    def _backup_data(self):
-        import shutil
-        src = self.data_manager.data_file
-        if not os.path.exists(src):
-            QMessageBox.warning(self, "备份失败", "数据文件不存在")
+        取代原「备份数据」：那个只把 JSON 复制到同目录，用户既找不到备份文件、
+        也无从确认备份去了哪。直接打开目录，看得到、拷得走、可整个备份。
+        """
+        data_dir = os.path.dirname(self.data_manager.data_file)
+        # 打开父目录（~/.ChemCal），data 与 logs 都一览无余
+        target = os.path.dirname(data_dir) or data_dir
+        if not os.path.isdir(target):
+            QMessageBox.warning(
+                self, "打开失败",
+                f"数据目录不存在：\n{target}\n\n首次保存数据后会自动创建。")
             return
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        dst = src.replace(".json", f"_backup_{ts}.json")
-        try:
-            shutil.copy2(src, dst)
-            logger.info("数据备份成功: {}", dst)
-            QMessageBox.information(self, "备份成功", f"数据已备份至:\n{dst}")
-        except Exception as e:
-            logger.error("数据备份失败: {}", e)
-            QMessageBox.warning(self, "备份失败", str(e))
+        QDesktopServices.openUrl(QUrl.fromLocalFile(target))
+        logger.info("打开数据目录: {}", target)
+        self.statusBar().showMessage(f"已打开数据目录：{target}", 6000)
 
     def closeEvent(self, event):
         if hasattr(self, "_time_timer"):
@@ -730,63 +750,77 @@ class ChemCal(QMainWindow):
         layout.addWidget(btn, alignment=Qt.AlignmentFlag.AlignCenter)
         dialog.exec()
 
-    def _show_user_manual(self):
-        text = """<h2>ChemCal 用户手册</h2>
-<h3>欢迎使用 ChemCal 化工工程师生产力工具！</h3><br>
+    def _show_usage_guide(self):
+        """使用说明 —— 由原「用户手册」+「常见问题」两篇合并重写
 
-<b>功能模块：</b><br>
-- <b>工程计算</b>：化工计算器集 —— 覆盖管道、换热、泵、容器、固液分离、蒸发浓缩、淀粉糖液化、安全消防、制冷热工等<br>
-- <b>计算历史</b>：记录查询、筛选、详情查看，支持计算书导出<br>
-- <b>换算器</b>：长度、重量、温度、压力、浓度等多类单位换算<br>
-- <b>资料库</b>：规范数据全文搜索，快速查表<br><br>
+        原文案与本项目实现多处不符：数据目录写成 AppData\\Roaming（实际在
+        用户主目录的 .ChemCal 下）、教安装包用户 `pip install -r requirements.txt`、
+        提早已不需要的 reportlab 手动安装、且还在宣传"压降计算支持导出 PDF"
+        （实际全部计算器都能出 DOCX/PDF）。两篇各说各话也难维护，故合一。
+        """
+        text = """<h2>ChemCal 使用说明</h2><br>
 
-<b>基本操作：</b><br>
-- 顶部标签页切换功能模块<br>
-- 菜单「主题」切换亮/暗/蓝三套主题，自动保存<br>
-- 菜单「文件→备份数据」备份 JSON 数据文件<br>
-- 数据自动保存在 <code>~/.ChemCal/</code> 目录<br><br>
+<b>一、四个标签页</b><br>
+· <b>工程计算</b> —— 52 个计算器，分物性数据 / 工艺设备 / 流体输送 / 热工制冷 / 安全环保 五类<br>
+· <b>计算历史</b> —— 每次计算的记录（输入、结果、时间），可按计算器筛选、看使用统计、导出计算书<br>
+· <b>换算器</b> —— 21 类单位换算<br>
+· <b>资料库</b> —— 化工设计常用规范数据（16 大类 69 小节），支持搜索、数值反查与送入计算器<br><br>
 
-<b>工程计算使用：</b><br>
-1. 选择计算类别（左侧列表）<br>
-2. 在右侧填写参数<br>
-3. 点击「计算」查看结果<br>
-4. 压降计算支持导出 PDF 计算书<br><br>
+<b>二、算一个东西</b><br>
+1. 在「工程计算」左侧列表里选计算器（列表可用右键或管理入口调整顺序、隐藏暂时不用的）<br>
+2. 右侧填参数 —— 有默认值的输入框可以直接改成你的工况值<br>
+3. 点绿色「计算」，结果显示在下方<br>
+4. 需要存档就点「下载 DOCX」或「下载 PDF」，抬头取自「文件 → 工程信息」<br><br>
 
-<b>数据安全：</b><br>
-- 所有数据仅本地存储，不上传任何服务器<br>
-- 日志保存在 <code>~/.ChemCal/logs/</code>，保留 7 天<br><br>
+<b>三、跨计算器取数（计算链）</b><br>
+工艺参数往往一环扣一环（例如 喷射液化器用汽量 → 闪蒸降温浓缩 → 闪蒸蒸汽回收 → 闪蒸罐 → 脱色柱）。
+下游页面的「<b>取上游值</b>」下拉里能直接选上游算出的结果，一键填进输入框，不用手抄；
+结果页会标明这个值取自哪一页。上游参数改了，旧值会被标记为过期。<br><br>
 
-<b>联系方式：</b> virmuran@163.com"""
-        self._show_scrollable_dialog("用户手册", text)
+<b>四、资料库怎么用</b><br>
+· 搜索框输关键词，结果直接<b>定位到具体数据行</b>，命中的单元格会高亮<br>
+· 输<b>纯数值</b>（如 <code>0.6</code> / <code>143.7</code> / <code>0.6MPa</code>）自动切换为<b>全库反查</b>，
+  在 ±1% 容差内找这个数出现在哪张表里 —— 手里只有实测数据时特别好用<br>
+· 查到数据后点「<b>送入计算器</b>」，自动跳到对应计算器并填进输入框；
+  计算器里的 📚 按钮则反向跳到数据出处<br><br>
 
-    def _show_faq(self):
-        text = """<h2>常见问题</h2><br>
+<b>五、数据存在哪 / 怎么备份</b><br>
+· 数据目录：<code>用户主目录 / .ChemCal /</code><br>
+　　├ <code>data / ChemCal_data.json</code> —— 工程信息抬头与界面设置<br>
+　　├ <code>history / calc_history.db</code> —— 计算历史记录<br>
+　　└ <code>logs /</code> —— 运行日志（按天记录，保留 7 天）<br>
+· 备份：菜单「<b>文件 → 打开数据目录</b>」直接打开上面这个文件夹，
+  把整个 <code>.ChemCal</code> 目录拷走即完成备份（含工程信息、历史记录与日志）<br><br>
 
-<b>Q: 依赖怎么安装？</b><br>
-A: <code>pip install -r requirements.txt</code>，需要 Python 3.8+ 和 PySide6 6.5+。<br><br>
+<b>六、改计算书抬头</b><br>
+菜单「<b>文件 → 工程信息...</b>」填公司名称 / 工程编号 / 工程名称 / 子项名称，
+保存后对全部计算器的计算书立即生效，重启软件也会保留。<br><br>
 
-<b>Q: 数据存在哪里？</b><br>
-A: Windows 下存储在 <code>C:\\Users\\[用户名]\\AppData\\Roaming\\ChemCal\\ChemCal_data.json</code>。<br><br>
+<b>七、检查更新</b><br>
+菜单「帮助 → 检查更新」。启动时也会自动静默检查一次，
+发现新版本会在状态栏右侧提示，点它可看更新说明并下载。<br><br>
 
-<b>Q: 如何备份数据？</b><br>
-A: 菜单「文件→备份数据」，备份文件与原文件同目录，带时间戳命名。<br><br>
+<b>八、出问题怎么办</b><br>
+1. 菜单「<b>帮助 → 诊断信息</b>」：显示版本、系统环境、数据文件位置与最近的运行日志，
+   反馈问题时把这里的内容一并附上，定位最快<br>
+2. 某个计算器打不开或界面空白：多为安装不完整，重新安装一次通常即可解决<br>
+3. 数据文件损坏：程序<b>不会删除</b>它，而是改名成 <code>ChemCal_data.corrupt-时间戳.json</code>
+   留在同一目录，可从里面手工找回内容<br><br>
 
-<b>Q: 某个模块加载失败怎么办？</b><br>
-A: 查看「帮助→查看日志」确认错误原因，通常是依赖未安装或文件缺失。<br><br>
+<b>九、免责</b><br>
+计算结果仅供参考，实际工程应用须由专业工程师审核确认。<br><br>
 
-<b>Q: PDF 计算书生成失败？</b><br>
-A: 需要安装 reportlab：<code>pip install reportlab</code>。<br><br>
+<b>反馈 / 建议：</b> virmuran@163.com　|　源码：https://github.com/virmuran/ChemCal"""
+        self._show_scrollable_dialog("使用说明", text)
 
-<b>Q: 支持哪些操作系统？</b><br>
-A: 主要在 Windows 10/11 测试，理论上支持 macOS 和 Linux（PySide6 跨平台）。<br><br>
+    def _show_diagnostics(self):
+        """诊断信息 —— 由原「系统信息」与「查看日志」两项合并
 
-<b>Q: 计算结果能用于实际工程吗？</b><br>
-A: 结果仅供参考，实际工程须由专业工程师审核确认。<br><br>
-
-<b>反馈问题：</b> virmuran@163.com"""
-        self._show_scrollable_dialog("常见问题", text)
-
-    def _show_system_info(self):
+        原先拆成两个菜单项，实际是同一件事的两半（运行环境 + 日志），报错时
+        用户得点两次、看两处；合并为一屏，便于整体复制反馈。
+        顺带修一处深色主题缺陷：原日志块只写了浅色底、没写深色字，
+        深色主题下浅底压浅字不可读（浅底必须配深色字）。
+        """
         import platform
         try:
             import psutil
@@ -801,114 +835,92 @@ A: 结果仅供参考，实际工程须由专业工程师审核确认。<br><br>
         file_info = ""
         if os.path.exists(data_file):
             sz = os.path.getsize(data_file)
-            mt = datetime.fromtimestamp(os.path.getmtime(data_file)).strftime("%Y-%m-%d %H:%M:%S")
-            file_info = f"- 数据文件：{data_file}<br>- 文件大小：{sz} 字节 ({sz/1024:.1f} KB)<br>- 最后修改：{mt}<br>"
+            mt = (datetime.fromtimestamp(os.path.getmtime(data_file))
+                  .strftime("%Y-%m-%d %H:%M:%S"))
+            file_info = (f"- 数据文件：{data_file}<br>"
+                         f"- 文件大小：{sz} 字节（{sz / 1024:.1f} KB）<br>"
+                         f"- 最后修改：{mt}<br>")
         loaded = sum(1 for ok in self._module_status.values() if ok)
         total = len(self._module_status)
 
-        text = f"""<h2>系统信息</h2><br>
-<b>操作系统：</b><br>
-- {platform.system()} {platform.release()}（{platform.machine()}）<br>
-- {platform.version()}<br><br>
-
-<b>Python 环境：</b><br>
-- Python {platform.python_version()}（{platform.python_implementation()}）<br><br>
-
-<b>硬件信息：</b><br>
-- 处理器：{platform.processor() or '未知'}<br>
-{hw}<br>
-
-<b>ChemCal 信息：</b><br>
-- 版本：v{CHEMICAL_VERSION}<br>
-- 数据目录：{os.path.dirname(data_file)}<br>
-- 已加载模块：{loaded}/{total}<br>
-- 运行时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}<br><br>
-
-<b>数据文件：</b><br>
-{file_info}"""
-        self._show_scrollable_dialog("系统信息", text)
-
-    def _show_logs(self):
+        # 以下为原「查看日志」菜单项的内容
         log_dir = os.path.join(os.path.expanduser("~"), ".ChemCal", "logs")
-        today = datetime.now().strftime("%Y-%m-%d")
-        log_file = os.path.join(log_dir, f"ChemCal_{today}.log")
-
-        status_lines = "".join(
-            f"- {name}：{'已加载' if ok else '加载失败'}<br>" for name, ok in self._module_status.items()
-        )
-
+        log_file = os.path.join(
+            log_dir, f"ChemCal_{datetime.now().strftime('%Y-%m-%d')}.log")
         if os.path.exists(log_file):
             try:
                 with open(log_file, encoding="utf-8") as f:
                     recent = f.readlines()[-50:]
-                log_content = "".join(recent).replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>")
+                log_content = ("".join(recent).replace("<", "&lt;")
+                               .replace(">", "&gt;").replace("\n", "<br>"))
             except Exception:
                 log_content = "读取日志文件失败"
         else:
             log_content = "今日暂无日志记录"
-        text = f"""<h2>运行日志</h2><br>
-<b>模块加载状态：</b><br>
+
+        status_lines = "".join(
+            f"- {name}：{'已加载' if ok else '加载失败'}<br>"
+            for name, ok in self._module_status.items())
+
+        text = f"""<h2>诊断信息</h2>
+<i>反馈问题时，请把本页内容整体复制一并附上。</i><br><br>
+
+<b>版本与运行环境：</b><br>
+- ChemCal：v{CHEMICAL_VERSION}<br>
+- 操作系统：{platform.system()} {platform.release()}（{platform.machine()}）<br>
+- 系统版本：{platform.version()}<br>
+- Python：{platform.python_version()}（{platform.python_implementation()}）<br>
+- 处理器：{platform.processor() or '未知'}<br>
+- 当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}<br><br>
+
+<b>硬件：</b><br>
+{hw}<br>
+
+<b>标签页加载状态：</b> {loaded}/{total}<br>
 {status_lines}<br>
 
-<b>日志文件：</b> <code>{log_file}</code><br>
-<b>日志目录：</b> <code>{log_dir}</code><br><br>
+<b>数据与日志位置：</b><br>
+{file_info}- 数据目录：<code>{os.path.dirname(data_file)}</code><br>
+- 日志文件：<code>{log_file}</code><br>
+- 日志目录：<code>{log_dir}</code><br><br>
 
 <b>最近 50 条日志：</b><br>
-<pre style="font-size:11px; background:#f5f5f5; padding:8px; border-radius:4px;">{log_content}</pre>"""
-        self._show_scrollable_dialog("查看日志", text)
-
-    def _show_license(self):
-        text = """<h2>开源许可协议</h2><br>
-<b>ChemCal - MIT License</b><br>
-Copyright 2025 ChemCal Team<br><br>
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:<br><br>
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.<br><br>
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.<br><br>
-
-<b>第三方依赖许可：</b><br>
-- PySide6 - LGPLv3（https://doc.qt.io/qt-6/licensing.html）<br>
-- NumPy - BSD-3-Clause<br>
-- SciPy - BSD-3-Clause<br>
-- ReportLab - BSD-like（https://www.reportlab.com/docs/reportlab-userguide.pdf）<br>
-- psutil - BSD-3-Clause<br>
-- Loguru - MIT<br><br>
-
-<b>源码：</b> https://github.com/virmuran/ChemCal<br>
-<b>联系：</b> virmuran@163.com"""
-        self._show_scrollable_dialog("开源许可", text)
+<pre style="font-size:11px; background:#f5f5f5; color:#1f2937; padding:8px; border-radius:4px;">{log_content}</pre>"""
+        self._show_scrollable_dialog("诊断信息", text)
 
     def _show_about(self):
-        text = f"""<h2>ChemCal - 化工工程师个人生产力工具</h2>
-<h3>v{CHEMICAL_VERSION}</h3><br>
-Copyright 2025-2026 ChemCal Team | virmuran@163.com<br><br>
+        """关于 —— 并入原「开源许可」菜单项
 
-<b>核心功能：</b><br>
-- 工程计算（换热、管道、泵、安全阀、循环水、结晶罐等）<br>
-- 自动更新（GitHub Releases，帮助→检查更新）<br>
-- 参考资料库（设备布置、管道设计、安全规范、计算依据、物性数据、材料规范）<br>
-- 计算历史（记录查询、筛选、详情查看）<br>
-- 换算器（多类单位换算）<br>
-- 计算书导出（DOCX/PDF）<br><br>
+        许可全文太长不宜塞进对话框，改为：版权与许可名称 + 第三方依赖清单
+        + 指向随包分发的 LICENSE 文件（安装目录 / 便携包根目录），
+        菜单项少一个、信息反而不缺。
+        """
+        text = f"""<h2>ChemCal · 化算</h2>
+<h3>v{CHEMICAL_VERSION}</h3>
+化工工程师的桌面计算工具集 —— 公式对照 GB / HG / NB/T / IAPWS 等标准逐项核对，
+每个计算器都带手算锚点回归测试。<br><br>
 
-<b>数据安全：</b><br>
-- 数据仅本地存储，不联网，不收集隐私<br>
-- 代码 MIT 开源：https://github.com/virmuran/ChemCal<br><br>
+<b>四个标签页：</b><br>
+- <b>工程计算</b>：52 个计算器（物性数据 / 工艺设备 / 流体输送 / 热工制冷 / 安全环保）<br>
+- <b>计算历史</b>：记录查询、筛选、统计与计算书复导出<br>
+- <b>换算器</b>：21 类单位换算<br>
+- <b>资料库</b>：16 大类 69 小节规范数据，可搜索、可数值反查、可送入计算器<br><br>
 
-<b>更新日志：</b><br>
-最新改动见项目 README 的「更新日志」章节，或 GitHub Releases 页面<br><br>
+<b>数据与隐私：</b><br>
+- 全部计算在本机完成，数据仅存于本机 <code>.ChemCal</code> 目录，不上传、不收集<br>
+- 唯一联网行为是检查更新（GitHub Releases），且下载由你手动触发<br><br>
 
-<b>免责声明：</b> 计算结果仅供参考，实际工程应用请由专业工程师审核确认。"""
+<b>许可：</b><br>
+- ChemCal 本体：<b>MIT License</b>　Copyright 2025-2026 ChemCal Team<br>
+　完整协议见安装目录（或便携包根目录）的 <code>LICENSE</code> 文件<br>
+- 第三方依赖：PySide6（LGPLv3）、NumPy（BSD-3）、SciPy（BSD-3）、
+  ReportLab（BSD-like）、psutil（BSD-3）、Loguru（MIT）<br><br>
+
+<b>更新日志：</b> 见项目 README 的「更新日志」章节或 GitHub Releases 页面<br>
+<b>源码 / 反馈：</b> https://github.com/virmuran/ChemCal　|　virmuran@163.com<br>
+<b>使用帮助：</b> 菜单「帮助 → 使用说明」；遇到故障用「帮助 → 诊断信息」<br><br>
+
+<b>免责声明：</b> 计算结果仅供参考，实际工程应用须由专业工程师审核确认。"""
         self._show_scrollable_dialog("关于 ChemCal", text)
 
 

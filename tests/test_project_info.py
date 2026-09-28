@@ -27,6 +27,18 @@ Part B  ProjectInfoDialog
 Part C  主窗口集成
     C1 主窗口可构造（4 标签）；C2 文件菜单含「工程信息...」动作
     C3 动作已连接槽（triggered 有接收器）
+
+Part D  重启持久化（v1.13.1 修的回归缺陷）
+    D1 重启后四项工程信息完整保留 ← 核心回归
+    D2 落盘内容与内存一致；D3 旧格式仍能正确迁移；D4 迁移幂等
+    D5 已移除模块的遗留数据键被丢弃（并固化到磁盘）
+    D6 数据文件损坏时另存为 .corrupt-*.json（不就地覆盖）
+
+背景（Part D）：_migrate_project_info_data() 位于每次启动的加载路径上，判据误写成
+「存在 project_info 键」—— 新格式同样有这个键，于是**每次启动都把新格式数据当旧格式
+重迁一遍**：company_name 取自旧键 design_unit（新格式没有）被清空、project_number 取
+project_name 中的阿拉伯数字（中文工程名一律抠不到）被清空、subproject_name 硬编码为空。
+用户实测现象：录入四项 → 关闭软件 → 重开，只有工程名称还在（3/4 字段丢失）。
 ════════════════════════════════════════════════════════════════════════
 """
 import os
@@ -165,8 +177,88 @@ check('C3 动作已连接槽（triggered 有接收器且启用）',
       target is not None and target.isEnabled()
       and target.receivers(_SIG('triggered()')) > 0)
 
+# ── Part D 重启持久化 ─────────────────────────────────────────────────
+# v1.13.1 修的回归缺陷：_migrate_project_info_data() 位于每次启动的加载路径上，
+# 判据误写成「存在 project_info 键」（新格式同样有），于是新格式数据每次启动都被
+# 当旧格式重迁一遍 —— 公司名/编号/子项被静默清空，只剩 project_name。
+# 用户实测现象：录入四项 → 关闭软件 → 重开，只有工程名称还在。
+print('Part D  重启持久化（模拟关闭软件再打开）')
+
+
+def _restart(data_file):
+    """模拟「关闭软件再打开」：清掉单例，重走 _load_or_create_data"""
+    DataManager._instance = None
+    DataManager._initialized = False
+    return DataManager.get_instance(data_file=data_file)
+
+
+R_FILE = os.path.join(TMPDIR, 'restart_test.json')
+dm_r = _restart(R_FILE)
+FULL = {
+    'company_name': '沐然生物科技股份有限公司',
+    'project_number': '2026-071',
+    'project_name': '一万吨木糖醇项目',
+    'subproject_name': '脱色工段',
+}
+dm_r.update_project_info(FULL)
+
+dm_r2 = _restart(R_FILE)
+back = dm_r2.get_project_info()
+check('D1 重启后四项工程信息完整保留（本次修复的核心回归）',
+      back == FULL, str(back))
+
+with open(R_FILE, encoding='utf-8') as f:
+    disk_r = json.load(f).get('project_info', {})
+check('D2 落盘内容与内存一致（未被迁移篡改后写回）', disk_r == FULL,
+      str(disk_r))
+
+# 旧格式仍能迁移（迁移能力本身不能被修掉）
+L_FILE = os.path.join(TMPDIR, 'legacy_test.json')
+with open(L_FILE, 'w', encoding='utf-8') as f:
+    json.dump({'project_info': {'design_unit': '旧设计院',
+                                'project_name': '2026-088 老项目'}}, f,
+              ensure_ascii=False)
+dm_l = _restart(L_FILE)
+legacy = dm_l.get_project_info()
+check('D3 旧格式（design_unit）仍正确迁移为新格式',
+      legacy['company_name'] == '旧设计院'
+      and legacy['project_name'] == '2026-088 老项目'
+      and legacy['project_number'] == '2026-088 老项目'
+      and legacy['subproject_name'] == '', str(legacy))
+
+dm_l2 = _restart(L_FILE)
+check('D4 迁移结果幂等（再启动一次不被二次迁移）',
+      dm_l2.get_project_info() == legacy, str(dm_l2.get_project_info()))
+
+# 已移除模块的遗留键应在加载时丢弃
+G_FILE = os.path.join(TMPDIR, 'legacy_keys_test.json')
+with open(G_FILE, 'w', encoding='utf-8') as f:
+    json.dump({'project_info': dict(FULL),
+               'countdowns': [{'name': '2027年'}], 'folders': ['工作'],
+               'report_counter': {'count': 0},
+               'process_design': {'projects': []}}, f, ensure_ascii=False)
+dm_g = _restart(G_FILE)
+with open(G_FILE, encoding='utf-8') as f:
+    after_g = json.load(f)
+check('D5 已移除模块的遗留数据键被丢弃（且立即固化到磁盘）',
+      not any(k in after_g for k in ('countdowns', 'folders',
+                                     'report_counter', 'process_design'))
+      and after_g.get('project_info') == FULL, str(list(after_g)))
+
+# 坏文件必须另存保留，绝不就地覆盖
+B_FILE = os.path.join(TMPDIR, 'broken_test.json')
+with open(B_FILE, 'w', encoding='utf-8') as f:
+    f.write('{"project_info": { 这不是合法 JSON')
+dm_b = _restart(B_FILE)
+import glob as _glob                                            # noqa: E402
+kept = _glob.glob(os.path.join(TMPDIR, 'broken_test.corrupt-*.json'))
+check('D6 数据文件损坏时另存为 .corrupt-*.json（不就地覆盖用户数据）',
+      len(kept) == 1
+      and dm_b.get_project_info() == dict.fromkeys(STD_KEYS, ''),
+      str(kept))
+
 # ── 汇总 ─────────────────────────────────────────────────────────────
 failed = globals().get('FAILED', 0)
-total = 3 + 6 + 3
+total = 3 + 6 + 3 + 6
 print(f'\n共 {total} 项，通过 {total - failed}，失败 {failed}')
 sys.exit(1 if failed else 0)
