@@ -434,9 +434,7 @@ class ChemCal(QMainWindow):
         收进托盘也算一次落盘 —— 此后即使直接从托盘退出或被强杀，数据都不丢。
         """
         if self._tray is None:          # 没有托盘就别把窗口藏起来，否则找不回来
-            self._really_quit = True
-            self._shutdown()
-            QApplication.quit()
+            self._quit_app()            # 退回真退出（同关闭窗口时选「直接退出」）
             return False
         self._pre_tray_state = self.windowState()
         self._save_all()
@@ -465,9 +463,23 @@ class ChemCal(QMainWindow):
         logger.info("主窗口已从托盘恢复")
 
     def _quit_app(self):
-        """真正退出（托盘菜单「退出 ChemCal」）—— 不再询问、不再收托盘"""
+        """**结束进程的唯一出口** —— 不再询问、不再收托盘
+
+        三件事缺一不可：① 标记真退出（拦住托盘逻辑）② 收尾落盘并摘掉托盘图标
+        ③ `QApplication.quit()` 结束事件循环。
+
+        ⚠ ③ 不能省：`main()` 里设了 `setQuitOnLastWindowClosed(False)`（收进托盘
+        时防止被 Qt 当成「最后一个窗口已关闭」而结束进程），副作用是**光关窗口
+        不会结束进程**。只 `accept()` 关闭事件的话，窗口关了、托盘也摘了，进程
+        却在后台活着 —— 窗口和托盘两个入口都没了，用户再也找不回来（v1.14.0
+        的真实缺陷，点 X 选「直接退出」即触发）。
+
+        所以「文件→退出」「托盘→退出 ChemCal」「关闭窗口时选直接退出」「安装并
+        重启」「无托盘时降级退出」全部走这里，别再各自复制一段。
+        """
         self._really_quit = True
         self._shutdown()
+        logger.info("ChemCal 正常退出")
         QApplication.quit()
 
     def _shutdown(self):
@@ -946,10 +958,12 @@ class ChemCal(QMainWindow):
         出厂默认「每次询问」（本次界面上三选一，可勾选记住）；记住之后点 X 直接
         照办、不再打扰，改回来的入口在托盘右键菜单「关闭窗口时」。收进托盘只是
         hide() —— 窗口对象仍存活，从托盘唤回即可，只有真退出才落盘并结束进程。
+
+        ⚠ 「直接退出」这一支**必须走 `_quit_app()`**，不能只 `event.accept()`：
+        main() 设了 `setQuitOnLastWindowClosed(False)`，关掉窗口不会结束进程，
+        否则窗口和托盘同时消失、进程却在后台活着，用户两边都找不回来。
         """
-        if self._really_quit:              # 已知要退出的路径（托盘菜单「退出」等）
-            self._shutdown()
-            logger.info("ChemCal 正常退出")
+        if self._really_quit:              # 已在退出流程中（_quit_app 的重入）
             event.accept()
             return
 
@@ -965,10 +979,8 @@ class ChemCal(QMainWindow):
             return
 
         if action == "quit":
-            self._really_quit = True
-            self._shutdown()
-            logger.info("ChemCal 正常退出")
-            event.accept()
+            event.accept()                 # 先按用户意愿关窗
+            self._quit_app()               # 再结束进程（落盘 + 摘托盘 + quit）
             return
 
         event.ignore()                     # 取消：留在界面上继续用

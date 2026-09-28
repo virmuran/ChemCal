@@ -46,8 +46,21 @@ Part E  真退出入口不经过询问
     E3 更新「安装并重启」不再用 self.close()（否则文件被占用）
 Part F  状态栏主题短名
     F1 三套主题短名；F2 未知 key 回退不崩；F3 状态栏不再出现英文主题名
+Part G  点 X 选「直接退出」必须真的结束进程（**真跑事件循环**）
+    G1 事件循环已结束 —— 不是「窗口关了、托盘摘了、进程还在」的后台僵尸
+    G2/G3 结构性约束：结束进程只有 _quit_app 一个出口，closeEvent 不自带 quit
+
+⚠ Part G 是 v1.14.1 补的。v1.14.0 的 closeEvent「直接退出」分支只调了
+`event.accept()`、没调 `QApplication.quit()`，配合 `setQuitOnLastWindowClosed(False)`
+就是僵尸进程。它之所以逃过早先的测试，原因有两条，都很容易再犯：
+    ① 前面所有 Part 都**不启动 `app.exec()`** —— 不跑事件循环，就看不出进程没结束；
+    ② 测试自建的 QApplication **没设** `setQuitOnLastWindowClosed(False)`（只在
+       `main()` 里设），前提不成立，即使跑了循环也会假通过。
+另外注意：`QApplication.quit()` 在 exec() 尚未启动时是**空操作**，所以必须
+「先 exec、再由定时器触发点 X」，写成「先 close 再 exec」会得到假阳性。
 ════════════════════════════════════════════════════════════════════════
 """
+import ast
 import json
 import os
 import sys
@@ -74,7 +87,7 @@ QMessageBox.information = _mk('info')
 
 from data_manager import DataManager                      # noqa: E402
 from version import VERSION                               # noqa: E402
-from PySide6.QtCore import SIGNAL                         # noqa: E402
+from PySide6.QtCore import QTimer, SIGNAL                   # noqa: E402
 from PySide6.QtWidgets import QSystemTrayIcon             # noqa: E402
 
 # DataManager 单例必须**先**指向临时文件，否则 ChemCal() 会用默认路径
@@ -84,6 +97,10 @@ DATA_FILE = os.path.join(TMPDIR, 'tray_test.json')
 DM = DataManager.get_instance(data_file=DATA_FILE)
 
 app = QApplication(sys.argv)
+# 与 main() 保持一致 —— 这正是「点 X 选直接退出」那条缺陷的前提条件：
+# 设了 setQuitOnLastWindowClosed(False) 之后，关掉窗口**不会**结束进程，
+# 「直接退出」这一支必须自己调 QApplication.quit()。测试若不设，Part G 会假通过。
+app.setQuitOnLastWindowClosed(False)
 
 FAILED = 0
 TOTAL = 0
@@ -274,6 +291,56 @@ check('F3 状态栏不再出现英文主题名',
       '主题: 浅色' in win.theme_label.text()
       and 'Light' not in win.theme_label.text(),
       win.theme_label.text())
+
+
+# ── Part G 点 X 选「直接退出」必须真的结束进程（真跑事件循环） ─────────
+print('Part G  点 X 选「直接退出」真的结束进程')
+win3 = ChemCal()
+win3._tray_available = lambda: True
+win3._setup_tray()
+win3.show()
+win3._set_close_action('quit')             # 等价于勾过「记住 → 直接退出」
+
+_G = {}
+
+
+def _g_watchdog():
+    """1.2 s 后仍在跑 ⇒ 事件循环没被结束 ⇒ 后台僵尸（顺手收尾，别挂住测试）"""
+    _G['zombie'] = True
+    _G['hidden'] = win3.isHidden()
+    _G['tray'] = None if win3._tray is None else win3._tray.isVisible()
+    app.quit()
+
+
+# 点 X 必须发生在**事件循环已在运行**时：quit() 先于 exec() 是空操作
+QTimer.singleShot(0, win3.close)
+QTimer.singleShot(1200, _g_watchdog)
+app.exec()                                 # ← 真跑事件循环（前面各 Part 都不跑）
+
+check('G1 点 X 选「直接退出」后事件循环已结束（不是后台僵尸）',
+      'zombie' not in _G,
+      f"循环仍在运行：窗口isHidden={_G.get('hidden')} "
+      f"托盘isVisible={_G.get('tray')}")
+
+with open(os.path.join(ROOT, 'main.py'), encoding='utf-8') as f:
+    _TREE = ast.parse(f.read())
+_quit_calls = [n.lineno for n in ast.walk(_TREE)
+               if isinstance(n, ast.Call)
+               and isinstance(n.func, ast.Attribute)
+               and n.func.attr == 'quit'
+               and getattr(n.func.value, 'id', '') == 'QApplication']
+_quit_fn = next(n for n in ast.walk(_TREE)
+                if isinstance(n, ast.FunctionDef) and n.name == '_quit_app')
+check('G2 结束进程只有 _quit_app 一个出口（唯一一处 QApplication.quit()）',
+      len(_quit_calls) == 1 and _quit_fn.lineno < _quit_calls[0] <= _quit_fn.end_lineno,
+      f'calls={_quit_calls} _quit_app=L{_quit_fn.lineno}-{_quit_fn.end_lineno}')
+
+_ce = next(n for n in ast.walk(_TREE)
+           if isinstance(n, ast.FunctionDef) and n.name == 'closeEvent')
+_ce_calls = {n.func.attr for n in ast.walk(_ce)
+             if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)}
+check('G3 closeEvent 走 self._quit_app() 退出、不自带 quit 逻辑',
+      '_quit_app' in _ce_calls and 'quit' not in _ce_calls, str(sorted(_ce_calls)))
 
 
 # ── 汇总 ─────────────────────────────────────────────────────────────

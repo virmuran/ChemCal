@@ -13,7 +13,7 @@
     <img alt="license" src="https://img.shields.io/badge/license-MIT-blue">
 </div>
 <div>
-    <img alt="version" src="https://img.shields.io/badge/version-1.14.0-green">
+    <img alt="version" src="https://img.shields.io/badge/version-1.14.1-green">
     <img alt="stars" src="https://img.shields.io/github/stars/virmuran/ChemCal?style=social">
 </div>
 <br>
@@ -159,6 +159,12 @@ python main.py
 > 已不再沿用。`1.5.51` 作为旧序列收尾保留，规范自 `1.6.0` 起生效。
 
 ## 更新日志
+
+### v1.14.1 (2026-09-28)
+
+- 🐞 **修复：点 X 选「直接退出」后进程还在后台活着**（v1.14.0 引入的缺陷）。现象是**窗口关了、托盘图标也消失了，程序却没结束** —— 窗口和托盘两个入口同时消失，任务管理器之外再也找不回来。根因是 `closeEvent` 的「直接退出」分支只 `event.accept()` 关掉窗口，没调 `QApplication.quit()`；而 v1.14.0 为收托盘新加的 `setQuitOnLastWindowClosed(False)` 恰好让「关掉窗口」不再等于「结束进程」，两者凑出了这个僵尸态
+- 🛡️ **顺带把「结束进程」收敛成唯一出口 `_quit_app()`**：真退出必须三件事齐全 —— 标记真退出（拦住托盘逻辑）、收尾落盘并摘掉托盘图标、`QApplication.quit()` 结束事件循环。原先这段逻辑在四处各写一遍（文件菜单退出 / 托盘退出 / 直接退出 / 无托盘降级），少写一句就复现上面的僵尸态，现在「文件→退出」「托盘→退出 ChemCal」「关闭窗口时→直接退出」「安装并重启」「无托盘时降级退出」全部走这一个方法
+- 🧪 **回归测试补上真事件循环这一环**（`tests/test_tray.py` Part G，36 项）。此前所有测试**从不启动 `app.exec()`**，因而看不出「窗口关闭后进程是否还在跑」；现在真的跑起事件循环、由定时器触发点 X、再用看门狗盯 1.2 秒，并断言结束进程只有 `_quit_app` 一个出口。⚠ 另有个坑写进了测试注释：`QApplication.quit()` 在 `exec()` 尚未启动时是**空操作**，所以必须「先 exec、再点 X」，顺序反了会得到假阳性
 
 ### v1.14.0 (2026-09-28)
 
