@@ -21,9 +21,9 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QTabWidget, QWidget, QVBoxLayout,
     QMessageBox, QStatusBar, QLabel, QDialog, QScrollArea, QPushButton,
     QHBoxLayout, QProgressBar, QDialogButtonBox, QTextEdit,
-    QFormLayout, QLineEdit
+    QFormLayout, QLineEdit, QCheckBox, QMenu, QSystemTrayIcon
 )
-from PySide6.QtGui import QAction, QActionGroup, QFont, QDesktopServices
+from PySide6.QtGui import QAction, QActionGroup, QFont, QDesktopServices, QIcon
 from PySide6.QtCore import Qt, QTimer, QUrl, QMetaObject, Q_ARG, Slot, QThread, Signal
 
 from data_manager import DataManager
@@ -125,6 +125,53 @@ class ProjectInfoDialog(QDialog):
         super().accept()
 
 
+class CloseChoiceDialog(QDialog):
+    """点窗口「X」时的三选一 —— 最小化到托盘 / 退出 ChemCal / 取消
+
+    只在「关闭窗口时 = 每次询问」（出厂默认）下弹出。勾选「记住我的选择」后写入
+    `settings.close_action`，之后点 X 直接照办、不再打扰；想改回来走**托盘右键
+    菜单 → 关闭窗口时**（那是唯一入口）。
+
+    ⚠ 离屏（offscreen）下 `exec()` 会永久阻塞，测试切勿触发本对话框；
+    请直接调用 `ChemCal._resolve_close_action()` / `_minimize_to_tray()`。
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("关闭 ChemCal")
+        self.setMinimumWidth(420)
+
+        #: 结果 —— "tray" / "quit" / "cancel"（点 X 或 Esc 关掉时保持 cancel）
+        self.choice = "cancel"
+        self.remember = False
+
+        layout = QVBoxLayout(self)
+        tip = QLabel("要收进右下角托盘继续后台运行，还是直接退出 ChemCal？")
+        tip.setWordWrap(True)
+        layout.addWidget(tip)
+
+        self.remember_box = QCheckBox(
+            "记住我的选择（可在托盘右键菜单「关闭窗口时」改回）")
+        layout.addWidget(self.remember_box)
+
+        row = QHBoxLayout()
+        row.addStretch(1)
+        for text, value, is_default in (("最小化到托盘", "tray", True),
+                                        ("退出 ChemCal", "quit", False),
+                                        ("取消", "cancel", False)):
+            btn = QPushButton(text)
+            if is_default:
+                btn.setDefault(True)
+            btn.clicked.connect(lambda _=False, v=value: self._choose(v))
+            row.addWidget(btn)
+        layout.addLayout(row)
+
+    def _choose(self, value):
+        self.choice = value
+        self.remember = self.remember_box.isChecked()
+        self.accept()
+
+
 class ChemCal(QMainWindow):
     """ChemCal 主窗口"""
 
@@ -161,6 +208,13 @@ class ChemCal(QMainWindow):
         self.modules = {}          # tab_name -> widget
         self._module_status = {}   # tab_name -> bool (加载成功与否)
 
+        # 托盘 / 关闭行为状态
+        self._tray = None              # QSystemTrayIcon；系统托盘不可用时为 None
+        self._tray_menu = None         # 必须持有，否则 GC 连带删掉底层 C++ 菜单
+        self._pre_tray_state = None    # 收进托盘前的窗口状态（最大化要还原）
+        self._tray_tip_shown = False   # 每次运行只提示一次「程序还在后台」
+        self._really_quit = False      # True = 本次关闭是真退出，不再走托盘逻辑
+
         self._setup_ui()
         self._load_settings()
         # 启动后延迟1秒检查更新（确保 UI 就绪）
@@ -181,6 +235,7 @@ class ChemCal(QMainWindow):
         self._create_modules()
         self._setup_menu()
         self._setup_status_bar()
+        self._setup_tray()
 
         self.tab_widget.currentChanged.connect(self._on_tab_changed)
         self.theme_manager.theme_changed.connect(self._apply_theme)
@@ -210,6 +265,10 @@ class ChemCal(QMainWindow):
     THEME_LABELS = (("light", "浅色主题"), ("dark", "深色主题"),
                     ("blue", "蓝色主题"))
 
+    #: 关闭窗口时的行为 key → 显示名（存 settings.close_action）
+    CLOSE_LABELS = (("ask", "每次询问"), ("tray", "最小化到托盘"),
+                    ("quit", "直接退出"))
+
     def _setup_menu(self):
         """菜单栏 —— 只放「设置与元信息」，高频动作都在标签页里
 
@@ -229,7 +288,8 @@ class ChemCal(QMainWindow):
         self._add_action(file_menu, "工程信息...", self._edit_project_info)
         self._add_action(file_menu, "打开数据目录", self._open_data_dir)
         file_menu.addSeparator()
-        exit_act = self._add_action(file_menu, "退出", self.close)
+        # 显式「退出」= 真退出，不能走「收进托盘」那条路（用户点的是退出）
+        exit_act = self._add_action(file_menu, "退出", self._quit_app)
         exit_act.setShortcut("Ctrl+Q")
 
         # 主题菜单 —— 互斥勾选，一眼看出当前用的是哪套
@@ -271,6 +331,16 @@ class ChemCal(QMainWindow):
         menu.addAction(act)
         return act
 
+    @classmethod
+    def theme_short_name(cls, key):
+        """主题 key → 状态栏用的短名（浅色 / 深色 / 蓝色）
+
+        菜单项是「浅色主题」，状态栏只写「主题: 浅色」才不重复；此前状态栏
+        直接 `key.capitalize()`，中文界面里冒出「主题: Light」。
+        """
+        label = dict(cls.THEME_LABELS).get(key, f"{key.capitalize()}主题")
+        return label[:-2] if label.endswith("主题") else label
+
     # ------------------------------------------------------------------ 状态栏
 
     def _setup_status_bar(self):
@@ -279,7 +349,7 @@ class ChemCal(QMainWindow):
 
         bar.addWidget(QLabel("ChemCal - 化工工程师的桌面生产力工具"))
         bar.addPermanentWidget(QLabel("|"))
-        self.theme_label = QLabel(f"主题: {self.theme_manager.current_theme.capitalize()}")
+        self.theme_label = QLabel(f"主题: {self.theme_short_name(self.theme_manager.current_theme)}")
         bar.addPermanentWidget(self.theme_label)
         bar.addPermanentWidget(QLabel("|"))
         self.update_label = QLabel()
@@ -296,6 +366,154 @@ class ChemCal(QMainWindow):
 
     def _update_time(self):
         self.time_label.setText(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+    # ------------------------------------------------------------------ 托盘
+
+    @staticmethod
+    def _tray_available():
+        """系统托盘是否可用（抽成方法，便于离屏测试替换）"""
+        return QSystemTrayIcon.isSystemTrayAvailable()
+
+    def _setup_tray(self):
+        """右下角托盘图标 —— 收进托盘后程序继续在后台运行
+
+        关闭行为由 `settings.close_action` 决定（ask / tray / quit，出厂 ask）。
+        系统托盘不可用的环境里静默跳过，点 X 仍照原样退出 —— 绝不出现
+        「窗口不见了、程序还在」这种找不回来的状态。
+        """
+        if not self._tray_available():
+            logger.warning("系统托盘不可用，关闭窗口将直接退出")
+            return None
+
+        tray = QSystemTrayIcon(QIcon(resource_path("ChemCal.ico")), self)
+        tray.setToolTip(f"ChemCal v{CHEMICAL_VERSION} - 化工工程师的桌面生产力工具")
+        tray.setContextMenu(self._build_tray_menu())
+        tray.activated.connect(self._on_tray_activated)
+        tray.show()
+        self._tray = tray
+        logger.info("托盘图标已就绪，关闭行为: {}", self._resolve_close_action())
+        return tray
+
+    def _build_tray_menu(self):
+        """托盘右键菜单（与「托盘是否可用」解耦，离屏测试可直接取用）
+
+        ⚠ 返回的 QMenu 必须长期持有（self._tray_menu）—— PySide6 里 wrapper
+        一被回收就连带删掉底层 C++ 对象，菜单随即失效。
+        """
+        menu = QMenu(self)
+        self._add_action(menu, "显示主窗口", self._restore_from_tray)
+        self._add_action(menu, "工程信息...", self._edit_project_info)
+        menu.addSeparator()
+        # 「关闭窗口时」—— 记住选择之后想改回来，这里是唯一入口
+        behavior = menu.addMenu("关闭窗口时")
+        self._close_group = QActionGroup(self)
+        self._close_group.setExclusive(True)
+        self._close_actions = {}
+        for key, label in self.CLOSE_LABELS:
+            act = QAction(label, self)
+            act.setCheckable(True)
+            act.setChecked(key == self._resolve_close_action())
+            act.triggered.connect(lambda checked, k=key: self._set_close_action(k))
+            self._close_group.addAction(act)
+            behavior.addAction(act)
+            self._close_actions[key] = act
+        menu.addSeparator()
+        self._add_action(menu, "退出 ChemCal", self._quit_app)
+        self._tray_menu = menu
+        return menu
+
+    def _on_tray_activated(self, reason):
+        """单击 / 双击托盘图标 → 唤回主窗口"""
+        if reason in (QSystemTrayIcon.ActivationReason.Trigger,
+                      QSystemTrayIcon.ActivationReason.DoubleClick):
+            self._restore_from_tray()
+
+    def _minimize_to_tray(self):
+        """把主窗口收进托盘（窗口对象仍存活，停掉计时器，数据落盘）
+
+        收进托盘也算一次落盘 —— 此后即使直接从托盘退出或被强杀，数据都不丢。
+        """
+        if self._tray is None:          # 没有托盘就别把窗口藏起来，否则找不回来
+            self._really_quit = True
+            self._shutdown()
+            QApplication.quit()
+            return False
+        self._pre_tray_state = self.windowState()
+        self._save_all()
+        self.hide()
+        if self._time_timer is not None:
+            self._time_timer.stop()
+        logger.info("主窗口已收进托盘")
+        if not self._tray_tip_shown:
+            self._tray_tip_shown = True
+            self._tray.showMessage(
+                "ChemCal 仍在后台运行",
+                "双击右下角图标可重新打开窗口；右键图标 → 退出 ChemCal 可完全关闭。",
+                QSystemTrayIcon.MessageIcon.Information, 5000)
+        return True
+
+    def _restore_from_tray(self):
+        """把主窗口从托盘唤回来（保持收进去之前的大小状态）"""
+        self.show()
+        if self._pre_tray_state is not None:
+            self.setWindowState(self._pre_tray_state)
+        self.raise_()
+        self.activateWindow()
+        if self._time_timer is not None and not self._time_timer.isActive():
+            self._time_timer.start(1000)
+        self._update_time()
+        logger.info("主窗口已从托盘恢复")
+
+    def _quit_app(self):
+        """真正退出（托盘菜单「退出 ChemCal」）—— 不再询问、不再收托盘"""
+        self._really_quit = True
+        self._shutdown()
+        QApplication.quit()
+
+    def _shutdown(self):
+        """退出前收尾：停计时器 + 摘掉托盘图标 + 落盘（可重复调用）"""
+        if self._time_timer is not None:
+            self._time_timer.stop()
+        if self._tray is not None:
+            self._tray.hide()
+        self._save_all()
+
+    def _save_all(self):
+        """落盘：各标签页的 save_data() + 主数据文件（可重复调用）"""
+        for name, widget in self.modules.items():
+            if hasattr(widget, "save_data"):
+                try:
+                    widget.save_data()
+                except Exception as e:
+                    logger.error("保存模块数据失败: {} | {}", name, e)
+        try:
+            self.data_manager._save_data()
+        except Exception as e:
+            logger.error("主数据保存失败: {}", e)
+
+    def _resolve_close_action(self):
+        """当前生效的关闭行为（未知取值一律退回「每次询问」）"""
+        action = self.data_manager.get_settings().get("close_action", "ask")
+        return action if action in dict(self.CLOSE_LABELS) else "ask"
+
+    def _set_close_action(self, action):
+        """写入关闭行为偏好，并同步托盘菜单里的勾选"""
+        if action not in dict(self.CLOSE_LABELS):
+            return False
+        settings = self.data_manager.get_settings()
+        settings["close_action"] = action
+        self.data_manager.update_settings(settings)
+        act = getattr(self, "_close_actions", {}).get(action)
+        if act is not None and not act.isChecked():
+            act.setChecked(True)
+        logger.info("关闭窗口时的行为已设为: {}", action)
+        return True
+
+    def _ask_close_action(self):
+        """弹三选一；返回 (action, remember)"""
+        dlg = CloseChoiceDialog(self)
+        dlg.exec()
+        return dlg.choice, dlg.remember
 
     # ------------------------------------------------------------------ 版本检查
 
@@ -569,7 +787,8 @@ class ChemCal(QMainWindow):
             if reply == QMessageBox.Yes:
                 bat = create_update_bat(filepath, get_app_dir())
                 os.startfile(bat)
-                self.close()
+                # 必须真退出：安装向导要覆盖 exe，程序若被收进托盘继续存活会锁住文件
+                self._quit_app()
             return
 
         # 历史发行的单文件 exe：关闭后自动替换并重启
@@ -582,7 +801,8 @@ class ChemCal(QMainWindow):
         if reply == QMessageBox.Yes:
             bat = create_update_bat(filepath, get_app_dir())
             os.startfile(bat)
-            self.close()
+            # 同上：真退出，避免被收进托盘后仍占用待替换的文件
+            self._quit_app()
 
     def _on_download_error(self, dialog, error_msg):
         """下载失败：区分「网络截断」与普通错误，给不同的处置建议"""
@@ -666,7 +886,7 @@ class ChemCal(QMainWindow):
 
     def _apply_theme(self, theme_name):
         QApplication.instance().setStyleSheet(self.theme_manager.get_theme())
-        self.theme_label.setText(f"主题: {theme_name.capitalize()}")
+        self.theme_label.setText(f"主题: {self.theme_short_name(theme_name)}")
 
         # 通知各页面重渲染富文本内容（HTML 里的颜色取自主题，换了主题必须重画，
         # 否则已显示的详情会留着旧主题的配色 —— 深色下就成了"深底压深字"）
@@ -685,8 +905,19 @@ class ChemCal(QMainWindow):
     # ------------------------------------------------------------------ 功能
 
     def _edit_project_info(self):
-        """工程信息录入（计算书抬头的唯一写入口）"""
+        """工程信息录入（计算书抬头的唯一写入口）
+
+        也可能从托盘右键菜单进来 —— 此时主窗口是隐藏的，得把对话框摆到屏幕正中，
+        否则它以隐藏窗口为参照定位，可能落到屏幕外、点了像没反应。
+        """
         dlg = ProjectInfoDialog(DataManager.get_instance(), self)
+        if self.isHidden():
+            dlg.adjustSize()
+            screen = QApplication.primaryScreen()
+            if screen is not None:
+                geo = dlg.frameGeometry()
+                geo.moveCenter(screen.availableGeometry().center())
+                dlg.move(geo.topLeft())
         if dlg.exec():
             self.statusBar().showMessage(
                 "工程信息已保存，计算书抬头已更新", 5000)
@@ -710,20 +941,37 @@ class ChemCal(QMainWindow):
         self.statusBar().showMessage(f"已打开数据目录：{target}", 6000)
 
     def closeEvent(self, event):
-        if hasattr(self, "_time_timer"):
-            self._time_timer.stop()
-        for name, widget in self.modules.items():
-            if hasattr(widget, "save_data"):
-                try:
-                    widget.save_data()
-                except Exception as e:
-                    logger.error("保存模块数据失败: {} | {}", name, e)
-        try:
-            self.data_manager._save_data()
-        except Exception as e:
-            logger.error("主数据保存失败: {}", e)
-        logger.info("ChemCal 正常退出")
-        event.accept()
+        """点窗口「X」的关闭流程
+
+        出厂默认「每次询问」（本次界面上三选一，可勾选记住）；记住之后点 X 直接
+        照办、不再打扰，改回来的入口在托盘右键菜单「关闭窗口时」。收进托盘只是
+        hide() —— 窗口对象仍存活，从托盘唤回即可，只有真退出才落盘并结束进程。
+        """
+        if self._really_quit:              # 已知要退出的路径（托盘菜单「退出」等）
+            self._shutdown()
+            logger.info("ChemCal 正常退出")
+            event.accept()
+            return
+
+        action = self._resolve_close_action()
+        if action == "ask":
+            action, remember = self._ask_close_action()
+            if remember and action != "cancel":
+                self._set_close_action(action)
+
+        if action == "tray":
+            event.ignore()
+            self._minimize_to_tray()
+            return
+
+        if action == "quit":
+            self._really_quit = True
+            self._shutdown()
+            logger.info("ChemCal 正常退出")
+            event.accept()
+            return
+
+        event.ignore()                     # 取消：留在界面上继续用
 
     # ------------------------------------------------------------------ 对话框
 
@@ -807,7 +1055,15 @@ class ChemCal(QMainWindow):
 3. 数据文件损坏：程序<b>不会删除</b>它，而是改名成 <code>ChemCal_data.corrupt-时间戳.json</code>
    留在同一目录，可从里面手工找回内容<br><br>
 
-<b>九、免责</b><br>
+<b>九、关闭窗口与右下角托盘</b><br>
+点右上角「X」默认会<b>先问一次</b>：<b>最小化到托盘</b>（程序继续在后台运行，缩到右下角图标里）
+还是<b>直接退出</b>。勾上「记住我的选择」以后就不再问，点 X 直接照办；
+想改回来走<b>托盘右键菜单 → 关闭窗口时</b>（每次询问 / 最小化到托盘 / 直接退出）。<br>
+· 收进托盘后：<b>单击或双击右下角图标</b>即可唤回窗口；右键图标有
+  <b>显示主窗口</b> / <b>工程信息...</b> / <b>退出 ChemCal</b><br>
+· 托盘右键的「退出 ChemCal」与菜单「文件 → 退出 Ctrl+Q」都是<b>真退出</b>，不会再问<br><br>
+
+<b>十、免责</b><br>
 计算结果仅供参考，实际工程应用须由专业工程师审核确认。<br><br>
 
 <b>反馈 / 建议：</b> virmuran@163.com　|　源码：https://github.com/virmuran/ChemCal"""
@@ -879,6 +1135,9 @@ class ChemCal(QMainWindow):
 <b>标签页加载状态：</b> {loaded}/{total}<br>
 {status_lines}<br>
 
+<b>关闭行为：</b> {dict(self.CLOSE_LABELS).get(self._resolve_close_action(), '?')}
+（托盘图标：{'已就绪' if self._tray is not None else '不可用'}，窗口当前{'已收进托盘' if self.isHidden() else '在桌面上'}）<br><br>
+
 <b>数据与日志位置：</b><br>
 {file_info}- 数据目录：<code>{os.path.dirname(data_file)}</code><br>
 - 日志文件：<code>{log_file}</code><br>
@@ -905,6 +1164,10 @@ class ChemCal(QMainWindow):
 - <b>计算历史</b>：记录查询、筛选、统计与计算书复导出<br>
 - <b>换算器</b>：21 类单位换算<br>
 - <b>资料库</b>：16 大类 69 小节规范数据，可搜索、可数值反查、可送入计算器<br><br>
+
+<b>常驻方式：</b><br>
+- 点右上角「X」可选「最小化到右下角托盘」（后台继续运行）或「直接退出」，可记住选择<br>
+- 收进托盘后：单击 / 双击托盘图标唤回，右键图标可显示主窗口 / 改工程信息 / 真退出<br><br>
 
 <b>数据与隐私：</b><br>
 - 全部计算在本机完成，数据仅存于本机 <code>.ChemCal</code> 目录，不上传、不收集<br>
@@ -938,6 +1201,9 @@ def main():
     app.setApplicationName("ChemCal")
     app.setApplicationVersion(CHEMICAL_VERSION)  # 完整版本号，便于诊断定位
     app.setOrganizationName("ChemCal")
+    # 主窗口可以被收进托盘（hide()）—— 此时"最后一个窗口关闭"不代表要退出进程，
+    # 否则一收托盘程序就没了。真退出统一走 ChemCal._quit_app() → QApplication.quit()
+    app.setQuitOnLastWindowClosed(False)
 
     try:
         window = ChemCal()
