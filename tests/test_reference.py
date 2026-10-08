@@ -129,8 +129,9 @@ def leaf_count():
 section("A. 数据派生（单一来源）与规模闸门")
 
 check("实例化无异常", ref is not None)
-check("分类数 16（原 14：原辅料标准拆成食品添加剂/工业原料；2026-09-21 增设计规范）",
-      len(ref.ref_data) == 16, len(ref.ref_data))
+check("分类数 25（原 14：原辅料标准拆成食品添加剂/工业原料；2026-09-21 增设计规范；"
+      "2026-10-08 设备报价改为 9 个设备大类分类）",
+      len(ref.ref_data) == 25, len(ref.ref_data))
 _groups = {c.get("group") for c in ref.ref_data}
 check("分组数 6 且与 GROUP_ORDER 完全一致", _groups == set(GROUP_ORDER),
       _groups ^ set(GROUP_ORDER))
@@ -143,11 +144,11 @@ check("每个条目都有标签（标签筛选的数据源）",
       all(s.get("tags") for c in ref.ref_data for s in c.get("sections", [])))
 
 _all_secs = [s for c in ref.ref_data for s in c.get("sections", [])]
-check("小节总数 69 = 35 表 + 34 文（README 数字须与此一致）", len(_all_secs) == 69,
+check("小节总数 98 = 63 表 + 35 文（README 数字须与此一致）", len(_all_secs) == 98,
       len(_all_secs))
 _rows = sum(len(s.get("rows") or []) for s in _all_secs)
-check("表格数据行合计 665（含派生的粗糙度 14 行 + 波美度详表 333 行 + 饱和水蒸气详表 39 行 + 标准清单 8 行）",
-      _rows == 665, _rows)
+check("表格数据行合计 812（含派生的粗糙度 14 行 + 波美度详表 333 行 + 饱和水蒸气详表 39 行 + 标准清单 8 行 + 设备报价 147 行）",
+      _rows == 812, _rows)
 check("未搜索时树里的节数 = 全库节数", leaf_count() == len(_all_secs), leaf_count())
 
 # 派生节：管道粗糙度（原本只活在计算器下拉框里）
@@ -583,7 +584,7 @@ except Exception as e:      # noqa: BLE001
     _ok2 = f"{type(e).__name__}: {e}"
 check("refresh() 重载数据不抛异常", _ok2 is True, _ok2)
 check("refresh() 后分类数与标签项仍正确",
-      len(ref.ref_data) == 16 and ref.tag_combo.count() > 20,
+      len(ref.ref_data) == 25 and ref.tag_combo.count() > 20,
       (len(ref.ref_data), ref.tag_combo.count()))
 check("on_activate() 存在（标签页切换回调）",
       callable(getattr(ref, "on_activate", None)))
@@ -777,6 +778,293 @@ if _std is not None:
           "照片转录" in _std.get("source", ""), _std.get("source"))
     check("清单标签齐备（含 标准/清单）",
           {"标准", "清单"} <= set(_std.get("tags", [])), _std.get("tags"))
+
+# ══════════════════════ P. 「询价实价」用户自填（2026-10-08） ══════════════════════
+print()
+print("=" * 60)
+print("P. 询价实价用户自填（只存本机）")
+print("=" * 60)
+
+from modules.reference.user_prices import (                            # noqa: E402
+    UserPriceStore, clean_price, default_store_path, STORE_VERSION,
+)
+from PySide6.QtWidgets import QFileDialog                              # noqa: E402
+
+# ── P1. 存储层 ────────────────────────────────────────────────
+_pdir = tempfile.mkdtemp()
+_pfile = os.path.join(_pdir, "equipment_prices.json")
+_spec0 = "Q ≈ 25 m³/h，H ≤ 32 m"
+
+check("clean_price：纯整数 / 小数 / 前导空白都接受",
+      clean_price("3") == ("3", True) and clean_price(" 0.45 ") == ("0.45", True),
+      [clean_price("3"), clean_price(" 0.45 ")])
+check("clean_price：空串与「—」同义 = 清除该条",
+      clean_price("") == ("", True) and clean_price("—") == ("", True))
+check("clean_price：拒绝带单位写法（「3.2万」会与「万元」口径打架）",
+      clean_price("3.2万")[1] is False and clean_price("4500元")[1] is False)
+check("clean_price：拒绝非数字文字", clean_price("约三万")[1] is False)
+
+_st = UserPriceStore(_pfile)
+check("新建存储为空且查询返回空串",
+      _st.count() == 0 and _st.get("泵类设备报价", "离心泵", _spec0) == "", _st.prices)
+check("set 返回 True 并即时落盘",
+      _st.set("泵类设备报价", "离心泵", _spec0, "0.42") is True
+      and _st.get("泵类设备报价", "离心泵", _spec0) == "0.42")
+check("换一个实例重新打开仍在（确认真写进盘里，不是只在内存）",
+      UserPriceStore(_pfile).get("泵类设备报价", "离心泵", _spec0) == "0.42")
+check("落盘文件带 version / prices 外壳",
+      (lambda _d: _d.get("version") == STORE_VERSION and "prices" in _d)(
+          json.load(open(_pfile, encoding="utf-8"))))
+check("非法值被 set 拒绝且不改变内存",
+      _st.set("泵类设备报价", "离心泵", "另一规格", "4500元") is False
+      and _st.count() == 1)
+check("set 空串 = 删除该条（并清掉空掉的父层）",
+      _st.set("泵类设备报价", "离心泵", _spec0, "") is True
+      and _st.count() == 0 and _st.prices == {}, _st.prices)
+_st.set("泵类设备报价", "离心泵", "A", "1")
+_st.set("泵类设备报价", "螺杆泵", "B", "2")
+check("count / count_in / has_any 口径正确",
+      _st.count() == 2 and _st.count_in("泵类设备报价", "离心泵") == 1
+      and _st.has_any() is True, (_st.count(), _st.count_in("泵类设备报价", "离心泵")))
+
+# 导出 → 另一个库导入（并入语义）
+_exp = os.path.join(_pdir, "export.json")
+_ok, _n, _err = _st.export_to(_exp)
+check("导出成功且条数正确", _ok is True and _n == 2, (_ok, _n, _err))
+_st2 = UserPriceStore(os.path.join(_pdir, "other.json"))
+_st2.set("公用工程报价", "冷却塔", "C", "9")
+_ok2, _add, _upd, _tot, _err2 = _st2.import_from(_exp)
+check("导入 = 并入（本机原有的那条没被冲掉）",
+      _ok2 is True and _add == 2 and _tot == 2
+      and _st2.get("公用工程报价", "冷却塔", "C") == "9"
+      and _st2.count() == 3, (_add, _upd, _st2.prices))
+_ok3, _add2, _upd2, _tot2, _ = _st2.import_from(_exp)
+check("重复导入同一份 → 新增 0 覆盖 0（幂等）",
+      _add2 == 0 and _upd2 == 0 and _tot2 == 2 and _st2.count() == 3,
+      (_add2, _upd2, _st2.count()))
+check("导入不存在的文件 → 失败并给错误信息，不抛异常",
+      _st2.import_from(os.path.join(_pdir, "nope.json"))[0] is False)
+
+# 坏文件：改名保留、不就地覆盖
+_bad = os.path.join(_pdir, "broken.json")
+with open(_bad, "w", encoding="utf-8") as _f:
+    _f.write("{ this is not json")
+_st3 = UserPriceStore(_bad)
+_left = [x for x in os.listdir(_pdir) if x.startswith("broken.corrupt-")]
+check("坏文件不就地覆盖：改名 *.corrupt-*.json 保留后以空表继续",
+      _st3.count() == 0 and len(_left) == 1 and not os.path.exists(_bad), _left)
+check("坏文件现场给出可见错误（不静默）", bool(_st3.last_error), _st3.last_error)
+
+# 脏值清理：手写文件里的非数字条目直接丢弃
+_dirty = os.path.join(_pdir, "dirty.json")
+json.dump({"prices": {"泵类设备报价": {"离心泵": {"A": "1.5", "B": "abc", "C": ""}}}},
+          open(_dirty, "w", encoding="utf-8"), ensure_ascii=False)
+_st4 = UserPriceStore(_dirty)
+check("载入时清洗脏值（只留合法数字，丢弃 abc 与空串）",
+      _st4.prices == {"泵类设备报价": {"离心泵": {"A": "1.5"}}}, _st4.prices)
+
+check("默认存储路径落在 ~/.ChemCal/data 下（与 ChemCal_data.json 同目录）",
+      default_store_path().endswith(os.path.join(".ChemCal", "data",
+                                                 "equipment_prices.json"))
+      and os.path.dirname(default_store_path()) == os.path.join(
+          os.path.expanduser("~"), ".ChemCal", "data"),
+      default_store_path())
+
+# ── P2. UI：只有「询价实价」一列可编辑 ─────────────────────────
+_pui = os.path.join(_pdir, "ui.json")
+pref = ReferenceWidget(price_store=UserPriceStore(_pui))
+pref.menu_enabled = False
+pref.file_dialog_enabled = False
+
+
+def find_in(widget, title):
+    """按节标题在**指定 widget 自己的** ref_data 里定位。
+
+    ⚠ 必须用目标 widget 的 ref_data —— 模块级 find() 走的是另一个实例的数据，
+    小节 dict 对象不同（`_current_category()` 用 `is` 比对），
+    实价会被归档到空分类下，测试看着「成功」其实键是错的。
+    """
+    for cat in widget.ref_data:
+        for sec in cat.get("sections", []):
+            if sec.get("title") == title:
+                return cat, sec
+    return None, None
+
+
+_pcat, _psec = find_in(pref, "离心泵")
+check("设备报价节点存在（离心泵）", _psec is not None and _pcat is not None)
+check("小节归属分类可反查（实价存储的第一层键）",
+      pref._current_category() == "" and _pcat.get("category") == "泵类设备报价",
+      _pcat.get("category"))
+pref._render_section(_psec)
+check("渲染后 _current_category() 能反查到「泵类设备报价」",
+      pref._current_category() == "泵类设备报价", pref._current_category())
+_pcol = _psec["headers"].index("询价实价")
+check("渲染后认出「询价实价」列号", pref._price_col == _pcol, pref._price_col)
+check("导出 / 导入实价按钮在该表上出现（离屏用 isHidden 判定）",
+      not pref.export_price_btn.isHidden() and not pref.import_price_btn.isHidden())
+check("提示标签写明可填 + 单位 + 只存本机，并显示已填 0/N",
+      "已填 0/%d" % len(_psec["rows"]) in pref.price_hint.text()
+      and "万元" in pref.price_hint.text() and "只存本机" in pref.price_hint.text(),
+      pref.price_hint.text())
+check("实价列可编辑（ItemIsEditable 已按列补回）",
+      bool(pref.table_widget.item(0, _pcol).flags() & Qt.ItemFlag.ItemIsEditable))
+_editable_others = [c for c in range(pref.table_widget.columnCount())
+                    if c != _pcol
+                    and bool(pref.table_widget.item(0, c).flags()
+                             & Qt.ItemFlag.ItemIsEditable)]
+check("同表其它列一律只读（资料库数据不允许被误改）", not _editable_others,
+      _editable_others)
+
+# ── P3. 编辑 → 校验 → 落盘 → 配色 → 重渲染 ────────────────────
+_pspec = pref.table_widget.item(0, 0).text()
+_cell = pref.table_widget.item(0, _pcol)
+check("未填时显示「—」且用主题 muted 色",
+      _cell.text() == "—"
+      and _cell.foreground().color().name().lower() == get_content_colors()["muted"].lower(),
+      (_cell.text(), _cell.foreground().color().name()))
+
+_cell.setText("0.42")
+check("编辑完成即写入存储（键 = 分类/小节/规格文本，不用行号）",
+      pref.price_store.get("泵类设备报价", "离心泵", _pspec) == "0.42",
+      pref.price_store.prices)
+check("已填格用主题 ok 色并加粗（在表里读不到 QSS，必须显式上色）",
+      _cell.foreground().color().name().lower() == get_content_colors()["ok"].lower()
+      and _cell.font().bold(),
+      (_cell.foreground().color().name(), _cell.font().bold()))
+_mid = pref.table_widget.item(0, _pcol + 1)
+check("已有实价的行，低/中/高三档转灰（提示「以实价为准」）",
+      _mid.foreground().color().name().lower() == get_content_colors()["muted"].lower(),
+      _mid.foreground().color().name())
+check("提示刷新为已填 1/N", "已填 1/%d" % len(_psec["rows"]) in pref.price_hint.text(),
+      pref.price_hint.text())
+check("给出「已记录」回执（含规格与数值）",
+      "已记录" in pref.hit_label.text() and "0.42" in pref.hit_label.text(),
+      pref.hit_label.text())
+
+_cell.setText("abc")
+check("非法输入被拒：单元格回退原值，存储不动",
+      _cell.text() == "0.42" and pref.price_store.get("泵类设备报价", "离心泵", _pspec) == "0.42",
+      (_cell.text(), pref.price_store.prices))
+check("非法输入有明确提示（不静默吞掉）",
+      "不是有效价格" in pref.hit_label.text(), pref.hit_label.text())
+
+pref._render_section(_psec)
+check("重新渲染后自填值仍在（JSON 里的「—」不覆盖用户值）",
+      pref.table_widget.item(0, _pcol).text() == "0.42")
+check("重新渲染后仍带 ok 色（配色随渲染重建）",
+      pref.table_widget.item(0, _pcol).foreground().color().name().lower()
+      == get_content_colors()["ok"].lower())
+
+pref.table_widget.item(0, _pcol).setText("—")
+check("清空后回到「—」并从存储删除该条",
+      pref.table_widget.item(0, _pcol).text() == "—"
+      and pref.price_store.get("泵类设备报价", "离心泵", _pspec) == ""
+      and pref.price_store.count() == 0, pref.price_store.prices)
+check("清空后提示也复位为已填 0/N",
+      "已填 0/%d" % len(_psec["rows"]) in pref.price_hint.text(), pref.price_hint.text())
+
+# 选中实价格仍能「送入计算器」（自填值参与取值链路）
+pref.table_widget.item(0, _pcol).setText("1.25")
+pref.table_widget.clearSelection()
+pref.table_widget.item(0, _pcol).setSelected(True)
+_pv, _praw = pref._selected_value()
+check("自填的实价值可被「送入计算器」取到", _pv == 1.25 and _praw == "1.25", (_pv, _praw))
+check("复制当前表时带的是用户填的实价（不是「—」）",
+      "1.25" in "\t".join(pref.table_widget.item(0, c).text()
+                          for c in range(pref.table_widget.columnCount())))
+
+# ── P4. 非报价表 / 文本节：一律只读且收起按钮 ──────────────────
+pref._render_section(_psec)                       # 先让按钮处于可见态
+_, _pipesec = find_in(pref, "管径快速选型")
+pref._render_section(_pipesec)
+check("非报价表：_price_col = -1", pref._price_col == -1, pref._price_col)
+check("非报价表：导出 / 导入按钮收起，提示标签隐藏",
+      pref.export_price_btn.isHidden() and pref.import_price_btn.isHidden()
+      and pref.price_hint.isHidden())
+check("非报价表：没有任何可编辑格子（回归到全表只读）",
+      not any(bool(pref.table_widget.item(r, c).flags() & Qt.ItemFlag.ItemIsEditable)
+              for r in range(pref.table_widget.rowCount())
+              for c in range(pref.table_widget.columnCount())))
+
+_ts = next(s for c in pref.ref_data for s in c.get("sections", [])
+           if s.get("type") == "text")
+pref._render_section(_ts)
+check("文本节：切换后按钮同样收起、栈页为文本视图",
+      pref.export_price_btn.isHidden() and pref.content_stack.currentIndex() == 1,
+      pref.content_stack.currentIndex())
+
+# 每个设备报价节都能正常渲染（27 节全过一遍，防某节结构不同导致炸）
+_qsecs = [s for c in pref.ref_data if c.get("category", "").endswith("报价")
+          for s in c.get("sections", []) if s.get("type") == "table"]
+_broken = []
+for _s in _qsecs:
+    try:
+        pref._render_section(_s)
+        if pref._price_col < 0 or pref.export_price_btn.isHidden():
+            _broken.append(_s.get("title"))
+    except Exception as _e:                                     # noqa: BLE001
+        _broken.append((_s.get("title"), str(_e)))
+check("全部设备报价节都能渲染并认出实价列（%d 节）" % len(_qsecs), not _broken, _broken)
+check("设备报价表都恰好 7 列且含「询价实价 / 低 / 中 / 高」",
+      all(s.get("headers") == ["规格 / 型号", "单位", "询价实价", "低", "中", "高",
+                               "来源与备注"] for s in _qsecs),
+      [s.get("headers") for s in _qsecs][:1])
+
+# ── P5. 导入走真实处理函数（对表提示孤儿键） ────────────────────
+_bad_export = os.path.join(_pdir, "mixed.json")
+_st5 = UserPriceStore(os.path.join(_pdir, "mixsrc.json"))
+_st5.set("泵类设备报价", "离心泵", _pspec, "0.48")
+_st5.set("泵类设备报价", "不存在的设备", "某规格", "1.00")
+_st5.export_to(_bad_export)
+
+_orig_open = QFileDialog.getOpenFileName
+QFileDialog.getOpenFileName = staticmethod(lambda *a, **k: (_bad_export, ""))
+pref.file_dialog_enabled = True
+pref._render_section(_psec)
+pref._on_import_prices()
+QFileDialog.getOpenFileName = _orig_open
+pref.file_dialog_enabled = False
+check("导入后本机存储多出该条", pref.price_store.get("泵类设备报价", "离心泵", _pspec) == "0.48")
+check("导入回执含新增/覆盖计数",
+      "新增" in pref.hit_label.text() and "覆盖" in pref.hit_label.text(),
+      pref.hit_label.text())
+check("对不上的键被点名提示（不静默、也不丢弃）",
+      "找不到对应行" in pref.hit_label.text(), pref.hit_label.text())
+check("导入后当前表已重渲染并显示导入的值",
+      pref.table_widget.item(0, _pcol).text() == "0.48",
+      pref.table_widget.item(0, _pcol).text())
+check("孤儿键确实被保留（用户数据不丢）",
+      pref.price_store.get("泵类设备报价", "不存在的设备", "某规格") == "1.00")
+pref.price_store.clear_all()
+
+# 文件对话框禁用时两个按钮静默返回（离屏测试不会卡死）
+pref._on_export_prices()
+pref._on_import_prices()
+
+# ── P6. 源码级约束 ───────────────────────────────────────────
+_ref_src_p = open(os.path.join(ROOT, "modules", "reference",
+                              "reference_widget.py"), encoding="utf-8").read()
+_up_src = open(os.path.join(ROOT, "modules", "reference",
+                            "user_prices.py"), encoding="utf-8").read()
+check("资料库页不再用全局 NoEditTriggers（否则按列放行无从谈起）",
+      "NoEditTriggers" not in code_text(os.path.join(
+          ROOT, "modules", "reference", "reference_widget.py")))
+check("资料库页按列补 ItemIsEditable（只放行实价列）",
+      "ItemIsEditable" in _ref_src_p and "USER_PRICE_HEADER" in _ref_src_p)
+check("实价存储用独立文件，不并进 ChemCal_data.json（可单独备份 / 清理）",
+      'STORE_FILENAME = "equipment_prices.json"' in _up_src
+      and UserPriceStore(_pfile).path != DataManager.get_instance().data_file,
+      UserPriceStore(_pfile).path)
+check("实价存储在用户目录（~/.ChemCal/data），非安装目录",
+      '.ChemCal' in _up_src and '"data"' in _up_src)
+check("落盘用 os.replace 原子替换（避免写一半留半截 JSON）",
+      "os.replace" in _up_src)
+check("写实价前先校验单位口径（拒绝带单位写法）", "_PRICE_RE" in _up_src)
+check("坏文件改名保留而非就地覆盖（与 data_manager 同一套做法）",
+      ".corrupt-" in _up_src and "os.replace" in _up_src)
+check("注释里讲清了「为什么用规格文本而不用行号做键」",
+      "行号" in _up_src and "规格" in _up_src)
 
 # ══════════════════════════════ 汇总 ══════════════════════════════
 print()

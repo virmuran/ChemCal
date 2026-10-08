@@ -15,6 +15,13 @@
      现在粗糙度由 reference_data.PIPE_ROUGHNESS 现场生成节，
      管径选型表补 Sch 40 对照列、物性表补 20°C 对照列（同样现场取），
      不在 JSON 里再抄一份。
+
+2026-10-08 追加：**「询价实价」列可双击自填**。
+设备投资报价表多了一列「询价实价」—— 询价结果属于用户自己的商业信息，
+软件不可能也不该预置。该列是**全表唯一可编辑的格子**（其余一律只读），
+填完即时存到 `~/.ChemCal/data/equipment_prices.json`（不进安装包、升级不覆盖），
+并可用标题栏的「导出实价 / 导入实价」备份或换机迁移。
+详见 modules/reference/user_prices.py。
 """
 
 import os
@@ -22,12 +29,14 @@ import re
 import sys
 import json
 
+from datetime import datetime
+
 from PySide6.QtWidgets import (
     QApplication,
     QWidget, QVBoxLayout, QHBoxLayout, QTreeWidget, QTreeWidgetItem,
     QStackedWidget, QLabel, QLineEdit, QTableWidget, QTableWidgetItem,
     QTextEdit, QSplitter, QFrame, QAbstractItemView, QHeaderView,
-    QPushButton, QComboBox, QMenu,
+    QPushButton, QComboBox, QMenu, QFileDialog,
 )
 from PySide6.QtCore import Qt, QPoint
 from PySide6.QtGui import QFont, QColor, QBrush, QTextCharFormat, QTextCursor
@@ -39,6 +48,11 @@ try:
 except ImportError:                                  # 兼容以文件路径直接导入
     from ref_exchange import EXCHANGE, TARGETS
 
+try:
+    from modules.reference.user_prices import UserPriceStore, clean_price
+except ImportError:                                  # 兼容以文件路径直接导入
+    from user_prices import UserPriceStore, clean_price
+
 
 # ── 分类图标（新增分类记得补，否则会掉到默认文件夹图标）─────────────
 CATEGORY_ICONS = {
@@ -48,6 +62,9 @@ CATEGORY_ICONS = {
     "蒸汽参数": "♨️", "压缩空气": "💨",
     "消防安全": "🚒", "水质标准": "💧", "热工设备": "🔥",
     "防爆区域": "⚡", "投资估算": "💰", "设计规范": "📚",
+    "泵类设备报价": "🌀", "风机与压缩报价": "🌬️", "分离与过滤报价": "🧲",
+    "换热设备报价": "🌡️", "蒸发与结晶报价": "🧊", "干燥设备报价": "☀️",
+    "反应与搅拌报价": "🥣", "容器与塔器报价": "🛢️", "公用工程报价": "⚙️",
 }
 DEFAULT_CATEGORY_ICON = "📁"
 
@@ -61,6 +78,10 @@ FALLBACK_GROUP = "其他"
 
 #: 标签筛选下拉的固定项
 TAG_ALL = "全部标签"
+
+#: 用户可自填的列名 —— 只有「设备投资报价」系列的表有这一列。
+#: 该列是**唯一**可编辑单元格（默认所有格子只读，见 _show_table 的 flags）。
+USER_PRICE_HEADER = "询价实价"
 
 #: 数值反查：相对容差 1%（0.6 → ±0.006）
 _NUM_TOL_RATIO = 0.01
@@ -222,7 +243,7 @@ def _load_reference_data():
 class ReferenceWidget(QWidget):
     """参考资料库模块"""
 
-    def __init__(self, parent=None, data_manager=None):
+    def __init__(self, parent=None, data_manager=None, price_store=None):
         super().__init__(parent)
         self.data_manager = data_manager
         self.ref_data = _load_reference_data()
@@ -234,6 +255,12 @@ class ReferenceWidget(QWidget):
         self._current_section = None
         #: QMenu.exec() 在离屏环境会永久阻塞 —— 测试里置 False
         self.menu_enabled = True
+        #: QFileDialog 同为模态对话框，离屏会阻塞 —— 测试里置 False
+        self.file_dialog_enabled = True
+        #: 「询价实价」列 —— 该列可双击自填，数据落 ~/.ChemCal/data/（只存本机）
+        self.price_store = price_store if price_store is not None else UserPriceStore()
+        self._price_col = -1         # 当前表的实价列号；-1 = 本表不可填
+        self._loading_table = False  # 填充/上色期间屏蔽 itemChanged（setItem 会发信号）
         self._build_search_index()
         self._setup_ui()
 
@@ -377,6 +404,27 @@ class ReferenceWidget(QWidget):
         copy_btn.clicked.connect(self._copy_content)
         title_row.addWidget(copy_btn)
 
+        # 只在「设备投资报价」表上出现的两个按钮（实价自填的备份入口）
+        self.export_price_btn = QPushButton("导出实价")
+        self.export_price_btn.setObjectName("iconBtn")
+        self.export_price_btn.setFixedHeight(30)
+        self.export_price_btn.setToolTip(
+            "把你在「询价实价」列填的价格导出成一个 JSON 文件\n"
+            "（用于备份或换电脑迁移；实价只存本机，不随软件分发）")
+        self.export_price_btn.clicked.connect(self._on_export_prices)
+        self.export_price_btn.setVisible(False)
+        title_row.addWidget(self.export_price_btn)
+
+        self.import_price_btn = QPushButton("导入实价")
+        self.import_price_btn.setObjectName("iconBtn")
+        self.import_price_btn.setFixedHeight(30)
+        self.import_price_btn.setToolTip(
+            "从之前导出的 JSON 文件**并入**实价\n"
+            "同一条目以文件里的值为准，本机其它已填的行原样保留")
+        self.import_price_btn.clicked.connect(self._on_import_prices)
+        self.import_price_btn.setVisible(False)
+        title_row.addWidget(self.import_price_btn)
+
         right_layout.addLayout(title_row)
 
         self.content_desc = QLabel("")
@@ -398,6 +446,14 @@ class ReferenceWidget(QWidget):
         self.content_note.setVisible(False)
         right_layout.addWidget(self.content_note)
 
+        # 实价自填状态（只在设备报价表显示；颜色交给主题的 accentLabel）
+        self.price_hint = QLabel("")
+        self.price_hint.setWordWrap(True)
+        self.price_hint.setObjectName("accentLabel")
+        self.price_hint.setStyleSheet("font-size: 11px; margin-top: 2px; margin-bottom: 4px;")
+        self.price_hint.setVisible(False)
+        right_layout.addWidget(self.price_hint)
+
         self.hit_label = QLabel("")
         self.hit_label.setObjectName("mutedLabel")
         self.hit_label.setStyleSheet("font-size: 11px; margin-top: 4px;")
@@ -407,7 +463,15 @@ class ReferenceWidget(QWidget):
         right_layout.addWidget(self.content_stack)
 
         self.table_widget = QTableWidget()
-        self.table_widget.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        # 触发条件放开，但**默认每个格子仍不可编辑** —— QTableWidgetItem 出厂带
+        # ItemIsEditable，_show_table 里按列把它摘掉，只给「询价实价」列补回来。
+        # 换成全局 NoEditTriggers 就没法只放行一列。
+        self.table_widget.setEditTriggers(
+            QAbstractItemView.EditTrigger.DoubleClicked
+            | QAbstractItemView.EditTrigger.EditKeyPressed
+            | QAbstractItemView.EditTrigger.AnyKeyPressed
+        )
+        self.table_widget.itemChanged.connect(self._on_item_changed)
         self.table_widget.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectItems)
         self.table_widget.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.table_widget.setAlternatingRowColors(True)
@@ -613,6 +677,7 @@ class ReferenceWidget(QWidget):
 
     def _render_section(self, sec):
         self._current_section = sec
+        self._price_col = -1          # 先复位；由 _show_table 按表头重新认定
 
         self.content_title.setText(sec.get("title", ""))
         self.content_desc.setText(sec.get("description", ""))
@@ -636,28 +701,212 @@ class ReferenceWidget(QWidget):
         else:
             self.content_stack.setCurrentIndex(2)
 
+        self._sync_price_ui(sec)
+
     def _show_table(self, sec):
-        headers = sec.get("headers", [])
+        headers = [str(h) for h in (sec.get("headers") or [])]
         rows = sec.get("rows", [])
 
+        # 「询价实价」只有设备投资报价表有 —— 本表可否双击填写由此决定
+        try:
+            self._price_col = headers.index(USER_PRICE_HEADER)
+        except ValueError:
+            self._price_col = -1
+        cat = self._current_category()
+        stitle = sec.get("title", "")
+
+        self._loading_table = True     # setItem / setForeground 都会发 itemChanged
         self.table_widget.setRowCount(len(rows))
         self.table_widget.setColumnCount(len(headers))
         self.table_widget.setHorizontalHeaderLabels(headers)
 
+        base_flags = (Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
         for r, row in enumerate(rows):
             for c, cell in enumerate(row):
-                item = QTableWidgetItem(str(cell))
+                text = str(cell)
+                if c == self._price_col:
+                    saved = self.price_store.get(cat, stitle, str(row[0]))
+                    if saved:                       # 用户填过的实价覆盖 JSON 里的「—」
+                        text = saved
+                item = QTableWidgetItem(text)
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 # 隔行底色交给主题（主题的 QTableWidget 已有 alternate-background-color）
+                item.setFlags(base_flags | (Qt.ItemFlag.ItemIsEditable
+                                            if c == self._price_col
+                                            else Qt.ItemFlag.NoItemFlags))
                 self.table_widget.setItem(r, c, item)
+            if self._price_col >= 0:
+                self._mark_price_cells(r)
+        self._loading_table = False
 
         self.table_widget.resizeColumnsToContents()
         header = self.table_widget.horizontalHeader()
         for i in range(self.table_widget.columnCount()):
             header.setSectionResizeMode(i, QHeaderView.ResizeMode.Stretch)
 
-        self._apply_cell_highlight(sec)
+        # 先把栈切到表格页再上高亮 —— _apply_cell_highlight 会检查
+        # content_stack.currentIndex()==0，顺序反了第一次渲染就整片高亮丢失
         self.content_stack.setCurrentIndex(0)
+        # 高亮会 setBackground/setForeground，两者都会发 itemChanged ——
+        # 若命中的正好是实价列，会误当成「用户改了价」而重复写盘，这里一并屏蔽
+        self._loading_table = True
+        self._apply_cell_highlight(sec)
+        self._loading_table = False
+        self._sync_price_ui(sec)
+
+    # ── 「询价实价」自填（只存本机，见 modules/reference/user_prices.py）──
+
+    def _current_category(self):
+        """反查当前小节所属的分类名（实价存储的第一层键）。"""
+        sec = self._current_section
+        if sec is None:
+            return ""
+        for cat in self.ref_data:
+            for s in cat.get("sections", []):
+                if s is sec:
+                    return cat.get("category", "")
+        return ""
+
+    def _mark_price_cells(self, row):
+        """按「该行是否已有实价」上色：自填=主题 ok 色加粗，未填=灰 + 三档转淡。
+
+        颜色一律走 get_content_colors()（表里读不到 QSS），
+        三套主题下都保证可读 —— 这也是不能写死颜色的原因。
+        """
+        c = get_content_colors()
+        price = self.table_widget.item(row, self._price_col)
+        if price is None:
+            return
+        filled = (price.text() or "").strip() not in ("", "—")
+        f = price.font()
+        f.setBold(filled)
+        price.setFont(f)
+        price.setForeground(QBrush(QColor(c["ok"] if filled else c["muted"])))
+        price.setToolTip(
+            "本值由你填写 —— 只存本机，不随软件分发" if filled
+            else "双击此处填入你自己的询价实价（单位：万元）；填了就以此为准")
+        # 已有实价的行，低/中/高三档只是参考，转灰以免看着像还在用网查价
+        for cidx in (self._price_col + 1, self._price_col + 2, self._price_col + 3):
+            it = self.table_widget.item(row, cidx)
+            if it is None:
+                continue
+            if filled:
+                it.setForeground(QBrush(QColor(c["muted"])))
+            else:
+                it.setData(Qt.ItemDataRole.ForegroundRole, None)   # 交回主题默认色
+
+    def _sync_price_ui(self, sec):
+        """按当前条目决定「实价」相关控件是否可见，并刷新「已填 n/m 行」。"""
+        has = self._price_col >= 0 and self.content_stack.currentIndex() == 0
+        self.export_price_btn.setVisible(has)
+        self.import_price_btn.setVisible(has)
+        self.price_hint.setVisible(has)
+        if not has:
+            return
+        total = self.table_widget.rowCount()
+        filled = self.price_store.count_in(self._current_category(),
+                                           sec.get("title", ""))
+        self.price_hint.setText(
+            f"✎ 本表「{USER_PRICE_HEADER}」列可双击直接填写（单位：万元，只存本机、"
+            f"不随软件分发）—— 已填 {filled}/{total} 行。"
+            f"填了实价就以实价为准，低 / 中 / 高只是网查参考。")
+
+    def _known_specs(self):
+        """当前资料库里全部 (分类, 小节, 规格) 三元组 —— 导入后对表用。"""
+        known = set()
+        for cat in self.ref_data:
+            cname = cat.get("category", "")
+            for sec in cat.get("sections", []):
+                if not sec.get("rows"):
+                    continue
+                for row in sec["rows"]:
+                    if row:
+                        known.add((cname, sec.get("title", ""), str(row[0])))
+        return known
+
+    def _on_item_changed(self, item):
+        """「询价实价」格编辑完成 → 校验 → 落盘 → 刷新计数与配色。"""
+        if self._loading_table or self._price_col < 0 or item is None:
+            return
+        if item.column() != self._price_col or self.content_stack.currentIndex() != 0:
+            return
+        sec = self._current_section
+        if not sec or item.row() >= self.table_widget.rowCount():
+            return
+        spec_item = self.table_widget.item(item.row(), 0)
+        if spec_item is None:
+            return
+        cat, stitle, spec = (self._current_category(), sec.get("title", ""),
+                             spec_item.text())
+        raw = item.text()
+        stored = self.price_store.get(cat, stitle, spec)
+        cleaned, ok = clean_price(raw)
+        if ok and cleaned == stored and (stored or raw.strip() in ("", "—")):
+            return                      # 值没变（多为程序性 setText），不做无用写盘
+        self._loading_table = True
+        try:
+            if not ok:
+                # 非法输入：回退到原值，不静默吞掉
+                item.setText(stored or "—")
+                self.hit_label.setText(
+                    f"↳ 「{_clip(raw, 16)}」不是有效价格，"
+                    f"请只填数字（单位：万元，如 3.2）")
+                return
+            if cleaned:
+                item.setText(cleaned)
+                self.price_store.set(cat, stitle, spec, cleaned)
+            else:
+                item.setText("—")
+                self.price_store.remove(cat, stitle, spec)
+            self._mark_price_cells(item.row())
+        finally:
+            self._loading_table = False
+        self._sync_price_ui(sec)
+        if cleaned:
+            self.hit_label.setText(
+                f"↳ 已记录 {stitle} · {_clip(spec, 20)} = {cleaned} 万元（只存本机）")
+        else:
+            self.hit_label.setText("↳ 已清除该行实价")
+
+    def _on_export_prices(self):
+        if not self.file_dialog_enabled:
+            return
+        n = self.price_store.count()
+        if not n:
+            self.hit_label.setText("↳ 还没有填写任何实价，无需导出")
+            return
+        default = os.path.join(
+            os.path.expanduser("~"),
+            "ChemCal询价实价_%s.json" % datetime.now().strftime("%Y%m%d"))
+        path, _filter = QFileDialog.getSaveFileName(
+            self, "导出询价实价", default, "JSON 文件 (*.json)")
+        if not path:
+            return
+        ok, _n, err = self.price_store.export_to(path)
+        self.hit_label.setText(f"↳ 已导出 {n} 条实价 → {path}" if ok
+                               else f"↳ 导出失败：{err}")
+
+    def _on_import_prices(self):
+        if not self.file_dialog_enabled:
+            return
+        path, _filter = QFileDialog.getOpenFileName(
+            self, "导入询价实价（并入，不覆盖本机其它已填行）",
+            os.path.expanduser("~"), "JSON 文件 (*.json)")
+        if not path:
+            return
+        ok, added, updated, total, err = self.price_store.import_from(path)
+        if not ok:
+            self.hit_label.setText(f"↳ 导入失败：{err}")
+            return
+        # 先重渲染再写回执 —— _render_section 会走 _apply_cell_highlight，
+        # 那里在「无命中」时会把 hit_label 清空，顺序反了就看不到导入结果
+        if self._current_section is not None:
+            self._render_section(self._current_section)
+        orphan = self.price_store.orphan_keys(self._known_specs())
+        msg = f"↳ 已导入 {total} 条（新增 {added}、覆盖 {updated}）"
+        if orphan:
+            msg += f"；其中 {len(orphan)} 条在当前资料库里找不到对应行（已保留，未丢弃）"
+        self.hit_label.setText(msg)
 
     def _apply_cell_highlight(self, sec):
         hits = self._hits.get(id(sec)) or []
@@ -929,6 +1178,10 @@ class ReferenceWidget(QWidget):
     def refresh(self):
         """刷新数据"""
         self.ref_data = _load_reference_data()
+        # 重载后是**全新的 dict 对象**，旧 _current_section 已不在树里 ——
+        # 不清掉的话 _current_category() 反查不到分类，实价会写进 ("", 小节, 规格) 这种错键
+        self._current_section = None
+        self._price_col = -1
         self._build_search_index()
         tags_cur = self.tag_combo.currentText() if hasattr(self, "tag_combo") else TAG_ALL
         if hasattr(self, "tag_combo"):
@@ -940,3 +1193,4 @@ class ReferenceWidget(QWidget):
             self.tag_combo.setCurrentIndex(idx if idx >= 0 else 0)
             self.tag_combo.blockSignals(False)
         self._rebuild_tree()
+        self._sync_price_ui(None)      # _price_col 已复位 → 收起实价相关按钮
