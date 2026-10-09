@@ -22,6 +22,18 @@ import zipfile
 ROOT = os.path.dirname(os.path.abspath(__file__))
 os.chdir(ROOT)
 
+# ── 输出编码 ──
+# 本机是中文 Windows（stdout 默认 GBK，能编码中文），而 GitHub Actions 的
+# windows runner 是英文 Windows（stdout 默认 cp1252，编不了中文）——
+# 2026-10-09 v1.14.2 首次云端构建就是死在这：version_gate 第一句 print
+# 中文直接 UnicodeEncodeError（本机从未复现）。统一重配为 UTF-8；
+# GitHub 日志按 UTF-8 解析，中文正好显示正常。
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8")
+    except (AttributeError, ValueError):        # 非 TextIOWrapper（重定向等）
+        pass
+
 
 def find_iscc():
     """找 Inno Setup 的编译器 ISCC.exe
@@ -48,7 +60,11 @@ def step(msg):
 
 def run(cmd):
     print("  $", " ".join(cmd), flush=True)
-    r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    # 子进程（PyInstaller / ISCC）同样可能 print 中文/打印含中文的路径 ——
+    # 云端 cp1252 下一样会炸，统一切到 UTF-8。
+    env = dict(os.environ, PYTHONUTF8="1", PYTHONIOENCODING="utf-8")
+    r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
+                       errors="replace", env=env)
     if r.returncode != 0:
         print(r.stdout[-2000:])
         print(r.stderr[-2000:])

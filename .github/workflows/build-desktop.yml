@@ -37,6 +37,13 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 30
 
+    # 云端 runner 是英文 Windows（stdout 默认 cp1252，编不了中文）——不强制
+    # UTF-8 的话，打包脚本 print 第一句中文就 UnicodeEncodeError
+    # （v1.14.2 首跑踩中：本机是中文系统 GBK 能编，所以本地从未复现）。
+    env:
+      PYTHONUTF8: '1'
+      PYTHONIOENCODING: utf-8
+
     steps:
       # fetch-depth: 0 —— 取全量历史与 tag。云端打包走的是 `build_release.py --cloud`
       # （已跳过 tag 比对），所以这一步不是必须；但保留它，万一哪天手动触发时想跑
@@ -57,7 +64,7 @@ jobs:
         run: |
           python -m venv .venv
           .venv\Scripts\python.exe -m pip install --upgrade pip
-          .venv\Scripts\python.exe -m pip install -r requirements.txt pyinstaller
+          .venv\Scripts\python.exe -m pip install -r requirements.txt "PySide6==6.11.1" pyinstaller
 
       # 打包前先跑全量自检。它能在几分钟的打包之前拦住问题
       # （公式回归、界面回归、资料库计数、版本号闸门等）。
