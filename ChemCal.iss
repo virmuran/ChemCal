@@ -33,7 +33,13 @@ PrivilegesRequired=admin
 Name: "desktopicon"; Description: "创建桌面快捷方式(&D)"; GroupDescription: "附加任务:"; Flags: checkedonce
 
 [Languages]
-Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
+; 中文语言包**随仓库分发**，不再用 compiler:Languages\ChineseSimplified.isl —— 那个前缀
+; 指向 Inno 编译器安装目录，本机 Inno 7 自带这份文件，但 GitHub runner 的 Inno（6.7.1）
+; 官方安装包不含简体中文（社区翻译，不在官方语言集里），云端编译必失败：
+;   Error on line 36: Couldn't open include file "...\Inno Setup 6\Languages\ChineseSimplified.isl"
+; 相对路径按**本脚本所在目录**解析（已实测）；这份 isl 与 Inno 6.5.0+/7.x 的消息集
+; 完全一致（281 条，0 缺 0 多），云端 6.7.1 与本机 7.x 都能直接编译。
+Name: "chinesesimplified"; MessagesFile: "ChineseSimplified.isl"
 
 [Files]
 Source: "dist\ChemCal\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion createallsubdirs
