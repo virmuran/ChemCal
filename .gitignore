@@ -50,4 +50,10 @@ RELEASE_NOTES_v*.md
 # ── 临时文件 ──
 *.tmp
 *.bak
+*.bak[0-9]
+*.bak[0-9][0-9]
 *.orig
+
+# ── 测试运行报告（run_all.py 每次覆盖，非源码）──
+tests/_last_run.txt
+tests/_tmp_fire/

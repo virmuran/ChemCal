@@ -15,6 +15,7 @@
 """
 import os
 import re
+import subprocess
 import sys
 import tempfile
 
@@ -227,6 +228,50 @@ check("bump_version.py 存在（升号工具）",
 # 单一实现：更新器复用 version.py 的解析函数，不再各写一份
 check("updater.parse_version 就是 version.parse_version（无重复实现）",
       __import__("updater").parse_version is version_mod.parse_version)
+
+# ════════════════════════════ F. 云端自动打包配置 ════════════════════════════
+# 这几条锁住一个易碎的组合：云端在 Release 已 Publish 时触发，此刻 tag 必然存在 ——
+# 若 build_release.py 的闸门照旧做 tag 比对，云端构建每次必红。改了要一起改。
+print("\nF. 云端自动打包（GitHub Actions）配置")
+
+_ci = os.path.join(PROJ, ".github", "workflows", "build-desktop.yml")
+check(".github/workflows/build-desktop.yml 存在（云端出包入口）", os.path.exists(_ci))
+if os.path.exists(_ci):
+    _ci_txt = open(_ci, encoding="utf-8").read()
+    check("工作流在 Release 发布时触发", "release:" in _ci_txt and "published" in _ci_txt)
+    check("工作流保留手动触发（只出 artifact）", "workflow_dispatch" in _ci_txt)
+    check("工作流有写 Release 的权限", "contents: write" in _ci_txt)
+    check("checkout 取全量 tag（否则版本闸门读到空 tag）", "fetch-depth: 0" in _ci_txt)
+    check("打包前跑已入库的自检 tests/run_all.py",
+          "tests/run_all.py" in _ci_txt and "build_release.py" in _ci_txt)
+    check("云端打包带 --cloud（跳过 tag 比对，否则必红）",
+          "build_release.py --cloud" in _ci_txt)
+    check("产物路径与 build_release 产物一致（installer/*.exe + dist/*.zip）",
+          "installer/*.exe" in _ci_txt and "dist/*.zip" in _ci_txt)
+    check("发版时把产物补进同一个 Release", "gh release upload" in _ci_txt)
+
+check("测试入口 tests/run_all.py 已入库（.workbuddy 那份云端读不到）",
+      os.path.exists(os.path.join(PROJ, "tests", "run_all.py")))
+# 权威判据用 git check-ignore，别拿子串去猜 .gitignore（注释里出现 run_all 就会误伤）
+_ci_ignored = subprocess.run(["git", "check-ignore", "tests/run_all.py"],
+                             cwd=PROJ, capture_output=True, text=True)
+check("tests/run_all.py 未被 .gitignore 挡下（云端 checkout 拿得到）",
+      _ci_ignored.returncode != 0)
+
+# build_release.version_gate 的两种模式（纯逻辑，不真打包）
+import importlib.util as _ilu
+_br_spec = _ilu.spec_from_file_location("_br_probe",
+                                        os.path.join(PROJ, "build_release.py"))
+_br = _ilu.module_from_spec(_br_spec)
+_br_spec.loader.exec_module(_br)
+check("build_release 提供 find_iscc（云端 Inno Setup 6 在 Program Files (x86)）",
+      callable(getattr(_br, "find_iscc", None)))
+_iscc = _br.find_iscc()
+print(f"  · info: 本机探测到的 ISCC = {_iscc or '未安装 Inno Setup（不影响本套测试）'}")
+check("version_gate 云端模式只做格式校验（不 sys.exit）", (lambda: (
+    _br.version_gate(VERSION, cloud=True), True))()[1])
+check("version_gate 本地模式仍会拦下已存在的 tag",
+      raises(SystemExit, _br.version_gate, "1.14.0"))
 
 # ══════════════════════════════ 汇总 ══════════════════════════════
 print()

@@ -1,8 +1,12 @@
 """ChemCal 一键发版脚本
-用法:  .venv/Scripts/python.exe build_release.py [--skip-build]
+用法:  .venv/Scripts/python.exe build_release.py [--skip-build] [--cloud]
 流程:  校验版本号 -> 同步版本号 -> PyInstaller onedir -> Inno Setup 安装包 -> 便携 zip
 产物:  installer/ChemCal_<版号>_setup.exe
        dist/ChemCal_<版号>_portable.zip
+
+--cloud  ：GitHub Actions 用。云端在 Release 已 Publish 时才触发，tag 已存在，
+           故跳过 tag 比对（否则每次构建必红）；本地不要加这个参数。
+--skip-build：跳过 PyInstaller 那步（已打过包，只想重出安装包/便携 zip 时用）。
 
 升版本号请用 bump_version.py（不要手改 version.py）：
     .venv/Scripts/python.exe bump_version.py patch "修复 xxx"
@@ -18,7 +22,24 @@ import zipfile
 ROOT = os.path.dirname(os.path.abspath(__file__))
 os.chdir(ROOT)
 
-ISCC = r"C:\Program Files\Inno Setup 7\ISCC.exe"
+
+def find_iscc():
+    """找 Inno Setup 的编译器 ISCC.exe
+
+    **不能写死单一路径**：本机装的是 Inno Setup 7（在 `Program Files`），
+    而 GitHub 的 windows-latest 预装的是 6.x（还在 `Program Files (x86)`）。
+    写死会让云端构建第一次就失败，报错只说"找不到文件"，看着像打包脚本坏了。
+
+    按 7 → 6、Program Files → Program Files (x86) 的顺序探测第一个存在的。
+    """
+    bases = [os.environ.get("ProgramFiles", r"C:\Program Files"),
+             os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")]
+    for ver in (7, 6):
+        for base in bases:
+            p = os.path.join(base, f"Inno Setup {ver}", "ISCC.exe")
+            if os.path.isfile(p):
+                return p
+    return None
 
 
 def step(msg):
@@ -73,13 +94,17 @@ def remote_health_check():
             print(f"  ✓ {rel.get('tag_name')}: {len(assets)} 个资产，tag 与资产版本一致")
 
 
-def version_gate(ver: str):
+def version_gate(ver: str, cloud: bool = False):
     """发版前的版本号闸门 —— 不合规直接中断打包。
 
     拦三类真实踩过的坑：
       ① 格式不合法（1.4.20260623 日期当号 / 四段 / 前导零 / 带 v 前缀）
       ② 版本号没升（改了代码却忘了升号，会覆盖已发布版本）
       ③ 与已有 git tag 撞号（版本号复用）
+
+    **cloud=True（GitHub Actions）时只做 ①**：云端在「Release 已 Publish」时触发，
+    那一刻 tag v{ver} 必然已经存在 —— 再跑 ②③ 会把自己拦下，构建每次必红。
+    本地打包（cloud=False）照旧做全三项。
     """
     step("校验版本号")
     from version import is_valid_version, compare_versions
@@ -87,6 +112,10 @@ def version_gate(ver: str):
     if not is_valid_version(ver):
         sys.exit(f"✗ 版本号 '{ver}' 不符合规范（须为三段纯数字 X.Y.Z，禁止日期/四段/前导零）。\n"
                  f"  规范见 VERSIONING.md；升号用 bump_version.py")
+
+    if cloud:
+        print(f"  v{ver} 格式合法（云端构建：tag 由 Release 触发时已存在，跳过 tag 比对）")
+        return
 
     try:
         r = subprocess.run(["git", "tag", "-l", "v*"], cwd=ROOT,
@@ -113,11 +142,12 @@ def version_gate(ver: str):
 
 def main():
     # 0) 版本号
+    cloud = "--cloud" in sys.argv      # GitHub Actions 传它：跳过 tag 比对（见 version_gate）
     sys.path.insert(0, ROOT)
     from version import VERSION  # noqa: E402
     ver = VERSION
     print(f"ChemCal v{ver}")
-    version_gate(ver)
+    version_gate(ver, cloud=cloud)
 
     # 1) 同步 ChemCal.iss 的 AppVersion（防两处不同步）
     step("同步 ChemCal.iss 版本号")
@@ -150,7 +180,17 @@ def main():
         print("  ⚠ 未找到 LICENSE，跳过")
 
     step("Inno Setup 编译安装包")
-    run([ISCC, "ChemCal.iss"])
+    iscc = find_iscc()
+    if not iscc:
+        sys.exit("✗ 找不到 Inno Setup 的 ISCC.exe —— 装了 Inno Setup 6 或 7 才能打安装包。\n"
+                 "  本机与云端（windows-latest）路径不同，脚本会依次探测：\n"
+                 "    · Program Files\\Inno Setup 7\\ISCC.exe\n"
+                 "    · Program Files\\Inno Setup 6\\ISCC.exe\n"
+                 "    · Program Files (x86)\\Inno Setup 7\\ISCC.exe\n"
+                 "    · Program Files (x86)\\Inno Setup 6\\ISCC.exe\n"
+                 "  确认已安装：https://jrsoftware.org/isdl.php")
+    print(f"  ISCC: {iscc}")
+    run([iscc, "ChemCal.iss"])
 
     # 4) 便携 zip（ZIP_LZMA；勿用 bsdtar 默认 deflate，体积差 3 倍）
     step("制作便携 zip")
