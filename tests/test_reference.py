@@ -129,9 +129,10 @@ def leaf_count():
 section("A. 数据派生（单一来源）与规模闸门")
 
 check("实例化无异常", ref is not None)
-check("分类数 27（原 14：原辅料标准拆成食品添加剂/工业原料；2026-09-21 增设计规范；"
-      "2026-10-08 设备报价改为 9 个设备大类分类；2026-10-09 增输送与包装 / 自控与仪表）",
-      len(ref.ref_data) == 27, len(ref.ref_data))
+check("分类数 28（原 14：原辅料标准拆成食品添加剂/工业原料；2026-09-21 增设计规范；"
+      "2026-10-08 设备报价改为 9 个设备大类分类；2026-10-09 增输送与包装 / 自控与仪表，"
+      "木糖醇项目补齐后增固体处理）",
+      len(ref.ref_data) == 28, len(ref.ref_data))
 _groups = {c.get("group") for c in ref.ref_data}
 check("分组数 6 且与 GROUP_ORDER 完全一致", _groups == set(GROUP_ORDER),
       _groups ^ set(GROUP_ORDER))
@@ -144,11 +145,11 @@ check("每个条目都有标签（标签筛选的数据源）",
       all(s.get("tags") for c in ref.ref_data for s in c.get("sections", [])))
 
 _all_secs = [s for c in ref.ref_data for s in c.get("sections", [])]
-check("小节总数 125 = 90 表 + 35 文（README 数字须与此一致）", len(_all_secs) == 125,
+check("小节总数 145 = 110 表 + 35 文（README 数字须与此一致）", len(_all_secs) == 145,
       len(_all_secs))
 _rows = sum(len(s.get("rows") or []) for s in _all_secs)
-check("表格数据行合计 912（含派生的粗糙度 14 行 + 波美度详表 333 行 + 饱和水蒸气详表 39 行 + 标准清单 8 行 + 设备报价 206 行）",
-      _rows == 912, _rows)
+check("表格数据行合计 981（含派生的粗糙度 14 行 + 波美度详表 333 行 + 饱和水蒸气详表 39 行 + 标准清单 8 行 + 设备报价 275 行）",
+      _rows == 981, _rows)
 check("未搜索时树里的节数 = 全库节数", leaf_count() == len(_all_secs), leaf_count())
 
 # 派生节：管道粗糙度（原本只活在计算器下拉框里）
@@ -584,7 +585,7 @@ except Exception as e:      # noqa: BLE001
     _ok2 = f"{type(e).__name__}: {e}"
 check("refresh() 重载数据不抛异常", _ok2 is True, _ok2)
 check("refresh() 后分类数与标签项仍正确",
-      len(ref.ref_data) == 27 and ref.tag_combo.count() > 20,
+      len(ref.ref_data) == 28 and ref.tag_combo.count() > 20,
       (len(ref.ref_data), ref.tag_combo.count()))
 check("on_activate() 存在（标签页切换回调）",
       callable(getattr(ref, "on_activate", None)))
@@ -994,7 +995,7 @@ check("文本节：切换后按钮同样收起、栈页为文本视图",
       pref.export_price_btn.isHidden() and pref.content_stack.currentIndex() == 1,
       pref.content_stack.currentIndex())
 
-# 每个设备报价节都能正常渲染（52 节全过一遍，防某节结构不同导致炸）
+# 每个设备报价节都能正常渲染（72 节全过一遍，防某节结构不同导致炸）
 _qsecs = [s for c in pref.ref_data if c.get("category", "").endswith("报价")
           for s in c.get("sections", []) if s.get("type") == "table"]
 _broken = []
