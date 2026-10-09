@@ -258,6 +258,20 @@ _ci_ignored = subprocess.run(["git", "check-ignore", "tests/run_all.py"],
 check("tests/run_all.py 未被 .gitignore 挡下（云端 checkout 拿得到）",
       _ci_ignored.returncode != 0)
 
+# Inno 的中文语言包必须随仓库分发：云端 runner 的 Inno（6.7.1）官方安装包不含简体中文
+# （社区翻译，不在官方语言集里），一旦改回 compiler:Languages\... 云端编译必失败
+# —— v1.14.2 云端第二跑就是死在这（PyInstaller 已过、卡在 ISCC）。
+_isl = os.path.join(PROJ, "ChineseSimplified.isl")
+check("中文语言包 ChineseSimplified.isl 已入库（随仓库分发）", os.path.exists(_isl))
+if os.path.exists(_isl):
+    check("语言包内容完整（含 [Messages] 段，不是空占位）",
+          "[Messages]" in open(_isl, encoding="utf-8-sig").read())
+_mf = re.search(r'^\s*Name:\s*"chinesesimplified";\s*MessagesFile:\s*"([^"]+)"',
+                real_iss, re.M)
+check("ChemCal.iss 用仓库相对路径引用语言包（不写 compiler: 前缀）",
+      _mf is not None and _mf.group(1) == "ChineseSimplified.isl",
+      _mf.group(1) if _mf else "未匹配到 [Languages] 的 chinesesimplified 条目")
+
 # build_release.version_gate 的两种模式（纯逻辑，不真打包）
 import importlib.util as _ilu
 _br_spec = _ilu.spec_from_file_location("_br_probe",
