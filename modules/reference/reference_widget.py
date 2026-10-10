@@ -38,7 +38,7 @@ from PySide6.QtWidgets import (
     QTextEdit, QSplitter, QFrame, QAbstractItemView, QHeaderView,
     QPushButton, QComboBox, QMenu, QFileDialog,
 )
-from PySide6.QtCore import Qt, QPoint
+from PySide6.QtCore import Qt, QPoint, QEvent
 from PySide6.QtGui import QFont, QColor, QBrush, QTextCharFormat, QTextCursor
 
 from theme_manager import get_content_colors, normalize_legacy_content_colors
@@ -263,8 +263,11 @@ class ReferenceWidget(QWidget):
         self.price_store = price_store if price_store is not None else UserPriceStore()
         self._price_col = -1         # 当前表的实价列号；-1 = 本表不可填
         self._loading_table = False  # 填充/上色期间屏蔽 itemChanged（setItem 会发信号）
+        self._quote_ratios = None    # 报价表列宽比例；None = 当前表不是报价表
         self._build_search_index()
         self._setup_ui()
+        # 报价表列宽按比例摊分，需随视口尺寸变化重排（窗口拉伸 / 换不同尺寸显示器）
+        self.table_widget.viewport().installEventFilter(self)
 
     # ── 索引 ───────────────────────────────────────────────
 
@@ -741,10 +744,23 @@ class ReferenceWidget(QWidget):
                 self._mark_price_cells(r)
         self._loading_table = False
 
-        self.table_widget.resizeColumnsToContents()
         header = self.table_widget.horizontalHeader()
-        for i in range(self.table_widget.columnCount()):
-            header.setSectionResizeMode(i, QHeaderView.ResizeMode.Stretch)
+        ncol = self.table_widget.columnCount()
+        if self._price_col >= 0 and ncol == 7:
+            # 设备报价表：按比例分配列宽 —— 规格 30% / 单位·询价实价·低·中·高 各 10% /
+            # 来源与备注 20%。用比例（而非固定像素）是为了适配任意尺寸的显示器：
+            # Fixed 模式下由 eventFilter 在视口尺寸变化时按比例重算。
+            self._quote_ratios = (0.30, 0.10, 0.10, 0.10, 0.10, 0.10, 0.20)
+            header.setStretchLastSection(False)
+            for i in range(ncol):
+                header.setSectionResizeMode(i, QHeaderView.ResizeMode.Fixed)
+        else:
+            # 其余表是数据 / 数字表（波美度详表、饱和水蒸气等），每列等宽最整齐
+            self._quote_ratios = None
+            header.setStretchLastSection(True)
+            for i in range(ncol):
+                header.setSectionResizeMode(i, QHeaderView.ResizeMode.Stretch)
+        self._apply_quote_widths()
 
         # 先把栈切到表格页再上高亮 —— _apply_cell_highlight 会检查
         # content_stack.currentIndex()==0，顺序反了第一次渲染就整片高亮丢失
@@ -755,6 +771,28 @@ class ReferenceWidget(QWidget):
         self._apply_cell_highlight(sec)
         self._loading_table = False
         self._sync_price_ui(sec)
+
+    def _apply_quote_widths(self):
+        """按 _quote_ratios 把当前报价表的列宽摊到视口宽度上。
+
+        比例 → 像素在这里换算，因此窗口拉伸、换不同尺寸显示器都会按同一比例重排。
+        """
+        if not self._quote_ratios:
+            return
+        total = self.table_widget.viewport().width()
+        if total <= 0:                       # 尚未完成布局，先跳过（Resize 事件会再来）
+            return
+        for i, ratio in enumerate(self._quote_ratios):
+            if i < self.table_widget.columnCount():
+                self.table_widget.setColumnWidth(i, max(1, int(total * ratio)))
+
+    def eventFilter(self, obj, event):
+        # 报价表列宽是 Fixed + 比例摊分，不会自己跟着视口变 —— 尺寸一变就重算
+        if (obj is self.table_widget.viewport()
+                and event.type() == QEvent.Type.Resize
+                and self._quote_ratios):
+            self._apply_quote_widths()
+        return super().eventFilter(obj, event)
 
     # ── 「询价实价」自填（只存本机，见 modules/reference/user_prices.py）──
 
