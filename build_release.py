@@ -233,10 +233,10 @@ def main():
     print(f"  2. git tag v{ver} && git push origin v{ver}")
     print("  3. GitHub 仓库页 -> Releases -> Draft a new release")
     print(f"     ★ tag 必须填 v{ver}（自动更新只读 tag，写错版本号就永远测不到更新）")
-    notes = os.path.join(ROOT, f"RELEASE_NOTES_v{ver}.md")
-    print(f"       标题 v{ver}，粘贴 RELEASE_NOTES_v{ver}.md 全文"
-          f"（{'已就绪' if os.path.exists(notes) else '★ 尚未撰写'}；"
-          f"格式见 RELEASE_NOTES_TEMPLATE.md，须与 README「更新日志」同名段逐字一致）")
+    _cl = os.path.join(ROOT, "CHANGELOG.md")
+    _ready = os.path.exists(_cl) and f"### v{ver} " in open(_cl, encoding="utf-8").read()
+    print(f"       标题 v{ver}，把 CHANGELOG.md 里 v{ver} 那一段整段复制为 Release 正文"
+          f"（{'已就绪' if _ready else '★ 尚未撰写'}；格式见 RELEASE_NOTES_TEMPLATE.md）")
     print(f"       上传 installer/ChemCal_{ver}_setup.exe 和 dist/ChemCal_{ver}_portable.zip")
     print("  4. Publish release（不要留成 Draft，Draft/Pre-release 不会被更新器识别）")
 

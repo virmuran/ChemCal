@@ -30,7 +30,8 @@ Part C  已移除项不再存在
     C1 「备份数据」「刷新所有模块」不在文件菜单
     C2 「用户手册」「常见问题」「系统信息」「查看日志」「开源许可」不在帮助菜单
 Part D  说明类内容与实际一致（原先写错的正是这里）
-    D1 使用说明：四个标签页 + 52 计算器 + 21 类换算
+    D1 使用说明：含四个标签页名，且不再写「52 个 / 21 类」等易变数量
+        （数量随功能增减而变，写进 UI 文案就得跟着维护 —— 2026-10-14 用户定：一律不写）
     D2 使用说明：已清除 AppData 路径 / pip 安装 / reportlab 等过时内容
     D3 诊断信息：版本 + 数据目录 + 日志
     D4 关于：含 MIT 与 LICENSE 指引，不再宣传已删模块
@@ -186,9 +187,12 @@ ChemCal._show_scrollable_dialog = _cap
 try:
     win._show_usage_guide()
     g = captured.get('使用说明', '')
-    check('D1 使用说明含四个标签页 / 52 计算器 / 21 类换算',
-          all(k in g for k in ('工程计算', '计算历史', '换算器', '资料库',
-                               '52 个计算器', '21 类单位换算')), g[:120])
+    check('D1 使用说明含四个标签页名',
+          all(k in g for k in ('工程计算', '计算历史', '换算器', '资料库')), g[:120])
+    _counts = [k for k in ('52 个计算器', '21 类单位换算', '27 大类', '125 小节',
+                           '四个标签页', '五类') if k in g]
+    check('D1 使用说明不再写易变数量（52 个 / 21 类 / 27 大类 125 小节等）',
+          not _counts, str(_counts))
 
     bad = [k for k in ('AppData', 'pip install', 'reportlab',
                        'requirements.txt') if k in g]
@@ -205,10 +209,13 @@ try:
     check('D4 关于含 MIT 与 LICENSE 指引，且不再宣传已删模块',
           'MIT' in a and 'LICENSE' in a
           and not any(k in a for k in ('结晶罐', '待办事项', '笔记')), a[:120])
+    _acnts = [k for k in ('52 个计算器', '21 类单位换算', '27 大类', '125 小节',
+                          '四个标签页') if k in a]
+    check('D5 关于不再写易变数量（同 D1 口径）', not _acnts, str(_acnts))
 finally:
     ChemCal._show_scrollable_dialog = _orig
 
 # ── 汇总 ─────────────────────────────────────────────────────────────
-total = 4 + 3 + 2 + 4
+total = 4 + 3 + 2 + 6
 print(f'\n共 {total} 项，通过 {total - FAILED}，失败 {FAILED}')
 sys.exit(1 if FAILED else 0)

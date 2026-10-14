@@ -145,7 +145,7 @@ check("每个条目都有标签（标签筛选的数据源）",
       all(s.get("tags") for c in ref.ref_data for s in c.get("sections", [])))
 
 _all_secs = [s for c in ref.ref_data for s in c.get("sections", [])]
-check("小节总数 145 = 110 表 + 35 文（README 数字须与此一致）", len(_all_secs) == 145,
+check("小节总数 145 = 110 表 + 35 文（数量锚点钉在这里；README/UI 文案一律不写数量）", len(_all_secs) == 145,
       len(_all_secs))
 _rows = sum(len(s.get("rows") or []) for s in _all_secs)
 check("表格数据行合计 981（含派生的粗糙度 14 行 + 波美度详表 333 行 + 饱和水蒸气详表 39 行 + 标准清单 8 行 + 设备报价 275 行）",
@@ -475,7 +475,7 @@ ref.table_widget.selectRow(0)
 ref._on_send_clicked()
 check("选中数值行点按钮 → menu_enabled=False 时静默返回不阻塞", True)
 
-check("计算器注册表解析到 52 个模块 id（口径与 README 一致）",
+check("计算器注册表解析到 52 个模块 id（数量锚点钉在这里；README/UI 文案一律不写数量）",
       len(_REGISTERED) == 52, len(_REGISTERED))
 check("TARGETS 全部指向已注册的计算器模块",
       all(m in _REGISTERED for _t, m, _f, _d in TARGETS),

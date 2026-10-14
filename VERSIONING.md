@@ -1,7 +1,7 @@
 # ChemCal 版本号规范
 
 > 本文是 ChemCal 版本号的**唯一权威标准**。写代码时只允许手改 `version.py`，
-> 其余位置（`ChemCal.iss`、`README` 徽章与更新日志）由
+> 其余位置（`ChemCal.iss`、`README` 徽章、`CHANGELOG.md` 更新日志）由
 > `bump_version.py` 自动同步，**不要手改**。
 
 ## 一、格式
@@ -171,7 +171,7 @@ ls dist/ installer/                    # ③ 有 ChemCal_<当前号>_* 产物？
 #    想先看看会改什么：
 .venv/Scripts/python.exe bump_version.py patch "说明" --dry-run
 
-# 2. 把 README 里自动生成的日志条目写详细（脚本只放骨架）
+# 2. 把 CHANGELOG.md 里自动生成的日志条目写详细（脚本只放骨架，该段即 Release 正文）
 # 3. 打包（内部含版本号闸门：格式不合法 / 没升号 / 撞 tag 都会中断）
 .venv/Scripts/python.exe build_release.py
 
@@ -190,7 +190,7 @@ git tag v1.6.0 && git push origin v1.6.0
 | 文件 | 作用 |
 |---|---|
 | `version.py` | 版本号唯一来源，含校验函数 `is_valid_version()` |
-| `bump_version.py` | 升号工具：校验 + 同步 `ChemCal.iss` / `README` |
+| `bump_version.py` | 升号工具：校验 + 同步 `ChemCal.iss` / README 徽章 / `CHANGELOG.md` |
 | `build_release.py` | 一键发版，打包前执行版本号闸门 + 远端一致性检查 |
 | `updater.py` | 自动更新，只读 Release 的 tag 与本地版本号比较 |
 | `tests/test_versioning.py` | 版本规范的回归测试 |

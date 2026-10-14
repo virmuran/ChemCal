@@ -11,7 +11,7 @@
 
 它做三件事：
     1. 校验 —— 新版本号必须符合规范、必须严格大于当前版本、必须未被 git tag 占用
-    2. 改写 —— version.py（唯一手写处）+ ChemCal.iss AppVersion + README 徽章与更新日志
+    2. 改写 —— version.py（唯一手写处）+ ChemCal.iss AppVersion + README 徽章 + CHANGELOG 条目
     3. 交底 —— 打印后续发版步骤（打包、打 tag、传 Release）
 
 版本语义（详见 VERSIONING.md）：
@@ -113,30 +113,39 @@ def sync_iss(root: str, ver: str) -> bool:
     return bool(n)
 
 
-def sync_readme(root: str, ver: str, note: str, date: str) -> list:
-    """改 README 徽章版本号，并在「## 更新日志」下插入新条目骨架。"""
+def sync_readme(root: str, ver: str) -> list:
+    """改 README 顶部的版本徽章（更新日志已独立到 CHANGELOG.md）。"""
     path = os.path.join(root, "README.md")
     if not os.path.exists(path):
         return []
     text = open(path, encoding="utf-8").read()
-    done = []
-
     new, n = re.subn(r"(badge/version-)([0-9.]+)(-)", rf"\g<1>{ver}\g<3>", text, count=1)
-    if n:
-        text = new
-        done.append("README 徽章")
+    if not n:
+        return []
+    open(path, "w", encoding="utf-8").write(new)
+    return ["README 徽章"]
 
-    head = "## 更新日志"
-    if head in text and f"### v{ver} " not in text:
-        entry = f"### v{ver} ({date})\n\n- {note}\n\n"
-        idx = text.index(head) + len(head)
-        # 跳过标题后的换行，把新条目插在最前面（最新在上）
-        rest = text[idx:].lstrip("\n")
-        text = text[:idx] + "\n\n" + entry + rest
-        done.append("README 更新日志条目")
 
+def sync_changelog(root: str, ver: str, note: str, date: str) -> list:
+    """在 CHANGELOG.md 里插入新版本条目骨架（插在现有最新版本段之前）。
+
+    更新说明只写这一处：CHANGELOG.md 的当前版本段即 GitHub Release 正文，
+    发布时整段复制。骨架按 RELEASE_NOTES_TEMPLATE.md，条目由人工写详细。
+    """
+    path = os.path.join(root, "CHANGELOG.md")
+    if not os.path.exists(path):
+        return []
+    text = open(path, encoding="utf-8").read()
+    if f"### v{ver} " in text:
+        return []
+    entry = f"### v{ver} ({date})\n\n- {note}\n\n"
+    nxt = re.search(r"^### v", text, re.M)      # 插在最新版本段之上（标题与说明块保持不动）
+    if nxt:
+        text = text[:nxt.start()] + entry + text[nxt.start():]
+    else:
+        text = text.rstrip("\n") + "\n\n" + entry
     open(path, "w", encoding="utf-8").write(text)
-    return done
+    return ["CHANGELOG 更新日志条目"]
 
 
 def check_git_tag(root: str, ver: str) -> bool:
@@ -180,7 +189,8 @@ def bump(kind: str, note: str, target: str = None, force: bool = False,
         changed.append("version.py")
     if sync_iss(root, new):
         changed.append("ChemCal.iss AppVersion")
-    changed += sync_readme(root, new, note, date)
+    changed += sync_readme(root, new)
+    changed += sync_changelog(root, new, note, date)
 
     return {"from": current, "to": new, "dry": False, "changed": changed, "warns": warns}
 
@@ -248,7 +258,7 @@ def main():
     for c in res["changed"]:
         print(f"  · 已更新 {c}")
     print("\n后续步骤：")
-    print(f"  1. 编辑 README「更新日志」的 v{res['to']} 条目，把改动写详细")
+    print(f"  1. 编辑 CHANGELOG.md 的 v{res['to']} 条目，把改动写详细（该段即 Release 正文）")
     print(f"  2. .venv/Scripts/python.exe build_release.py   # 打包安装包 + 便携 zip")
     print(f"  3. VS Code 提交推送，然后 git tag v{res['to']} && git push origin v{res['to']}")
     print(f"  4. GitHub Releases 新建 Release，tag 填 v{res['to']}（必须与 version.py 一致）")

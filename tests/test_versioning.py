@@ -6,7 +6,7 @@
   ① 版本号必须严格三段纯数字：禁止日期当号（1.4.20260623）、四段、前导零
   ② 比较按段位数值：历史上 1.5.23 被写成"1.5.2 的第 3 次修订"，
      结果被判为比 1.5.3 更新，会把用户往降级方向引（真实踩到，此处固化）
-  ③ 升号工具只 +1、不跳号；同步 version.py / ChemCal.iss / README 三处
+  ③ 升号工具只 +1、不跳号；同步 version.py / ChemCal.iss / README 徽章 / CHANGELOG 四处
   ④ 一致性：version.py 的版本号必须与 ChemCal.iss、README 徽章完全一致
      （自动更新只读 tag，三处不一致就是事故起点）
 
@@ -159,7 +159,9 @@ open(os.path.join(tmp, "ChemCal.iss"), "w", encoding="utf-8").write(
     '#define MyAppVersion "1.6.0"\n')
 open(os.path.join(tmp, "README.md"), "w", encoding="utf-8").write(
     '# T\n<img alt="version" src="https://img.shields.io/badge/version-1.6.0-green">\n\n'
-    '## 更新日志\n\n### v1.6.0 (2026-01-01)\n\n- 旧条目\n')
+    '## 更新日志\n\n完整更新日志见 [`CHANGELOG.md`](CHANGELOG.md)。\n')
+open(os.path.join(tmp, "CHANGELOG.md"), "w", encoding="utf-8").write(
+    "# 更新日志\n\n> 说明块\n\n### v1.6.0 (2026-01-01)\n\n- 旧条目\n")
 
 # dry-run 不得改文件
 before = open(os.path.join(tmp, "version.py"), encoding="utf-8").read()
@@ -174,22 +176,26 @@ check("升号结果 1.6.0 -> 1.6.1", res["from"] == "1.6.0" and res["to"] == "1.
 vpy = open(os.path.join(tmp, "version.py"), encoding="utf-8").read()
 iss = open(os.path.join(tmp, "ChemCal.iss"), encoding="utf-8").read()
 rdm = open(os.path.join(tmp, "README.md"), encoding="utf-8").read()
+chl = open(os.path.join(tmp, "CHANGELOG.md"), encoding="utf-8").read()
 
 check("version.py 已更新", 'VERSION = "1.6.1"' in vpy, vpy.strip())
 check("ChemCal.iss AppVersion 已更新", '#define MyAppVersion "1.6.1"' in iss, iss)
 check("README 徽章已更新", "badge/version-1.6.1-green" in rdm)
-check("README 插入了新更新日志条目", "### v1.6.1 (" in rdm)
-check("README 新条目含说明文字", "修复示例问题" in rdm)
-check("README 新条目排在旧条目之上",
-      rdm.index("### v1.6.1 ") < rdm.index("### v1.6.0 "))
-check("旧条目未被破坏", "### v1.6.0 (2026-01-01)" in rdm)
-check("同步清单包含三处", len(res["changed"]) >= 3, res["changed"])
+check("README 保留 CHANGELOG 入口", "CHANGELOG.md" in rdm)
+check("CHANGELOG 插入了新条目", "### v1.6.1 (" in chl)
+check("CHANGELOG 新条目含说明文字", "修复示例问题" in chl)
+check("CHANGELOG 新条目排在旧条目之上",
+      chl.index("### v1.6.1 ") < chl.index("### v1.6.0 "))
+check("CHANGELOG 顶部标题与说明块未被顶掉",
+      chl.index("# 更新日志") < chl.index("### v1.6.1 "))
+check("旧条目未被破坏", "### v1.6.0 (2026-01-01)" in chl)
+check("同步清单包含四处", len(res["changed"]) >= 4, res["changed"])
 
 # 重复升同一号不应产生重复条目
 bump_version.bump("patch", "第二次", root=tmp)
-rdm2 = open(os.path.join(tmp, "README.md"), encoding="utf-8").read()
+chl2 = open(os.path.join(tmp, "CHANGELOG.md"), encoding="utf-8").read()
 check("重复执行不产生重复条目（v1.6.2 只出现一次）",
-      rdm2.count("### v1.6.2 ") == 1)
+      chl2.count("### v1.6.2 ") == 1)
 check("version.py 二次升号 -> 1.6.2", 'VERSION = "1.6.2"' in
       open(os.path.join(tmp, "version.py"), encoding="utf-8").read())
 
@@ -209,8 +215,11 @@ check("README 徽章存在", mb is not None)
 check(f"README 徽章版本 == version.py（{VERSION}）", mb and mb.group(1) == VERSION,
       mb.group(1) if mb else "未找到")
 check("README 说明了版本规范", "VERSIONING.md" in real_readme)
-check("README 更新日志含当前版本条目",
-      f"### v{VERSION} " in real_readme or f"### v{VERSION}(" in real_readme)
+_real_cl = open(os.path.join(PROJ, "CHANGELOG.md"), encoding="utf-8").read()
+check("CHANGELOG.md 含当前版本条目",
+      f"### v{VERSION} " in _real_cl or f"### v{VERSION}(" in _real_cl)
+check("README 有指向 CHANGELOG.md 的入口（更新日志唯一的路）",
+      "CHANGELOG.md" in real_readme)
 
 real_main = open(os.path.join(PROJ, "main.py"), encoding="utf-8").read()
 check("main.py 不再手写逐版本更新日志（避免多处重复必然过期）",

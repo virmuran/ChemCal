@@ -165,7 +165,7 @@ check("实例化无异常，数据已加载", len(ref.ref_data) > 0, len(ref.ref
 # 2026-09-16 资料库整理：原辅料标准(19) 拆成 食品添加剂标准(10)+工业原料标准(9)，
 # 由 14 类变为 15 类；树顶层改为「分组」（5 个），分类降为第二层。
 # 2026-10-09 木糖醇项目补齐设备：设备报价拆分并新增「固体处理报价」，由 27 类变为 28 类。
-check("分类数为 28（README 数字须与此一致）", len(ref.ref_data) == 28, len(ref.ref_data))
+check("分类数为 28（数量锚点钉在这里；README/UI 文案一律不写数量）", len(ref.ref_data) == 28, len(ref.ref_data))
 check("分组数为 6", len({c.get("group") for c in ref.ref_data}) == 6)
 check("树顶层节点数 = 分组数", ref.tree.topLevelItemCount() == len(GROUP_ORDER),
       ref.tree.topLevelItemCount())
@@ -391,7 +391,7 @@ from modules.converter.converter_widget import ConverterWidget   # noqa: E402
 
 conv = ConverterWidget()
 check("实例化无异常", conv is not None)
-check("换算器类目数为 21（README 数字须与此一致）", len(conv.pages) == 21, len(conv.pages))
+check("换算器类目数为 21（数量锚点钉在这里；README/UI 文案一律不写数量）", len(conv.pages) == 21, len(conv.pages))
 check("导航项数与页面数一致", conv.nav_list.count() == len(conv.pages))
 switch_ok, switch_err = True, ""
 for i in range(conv.nav_list.count()):
