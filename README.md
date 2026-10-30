@@ -13,7 +13,7 @@
     <img alt="license" src="https://img.shields.io/badge/license-MIT-blue">
 </div>
 <div>
-    <img alt="version" src="https://img.shields.io/badge/version-1.14.2-green">
+    <img alt="version" src="https://img.shields.io/badge/version-1.14.3-green">
     <img alt="stars" src="https://img.shields.io/github/stars/virmuran/ChemCal?style=social">
 </div>
 <br>
