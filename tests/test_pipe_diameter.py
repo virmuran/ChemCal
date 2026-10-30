@@ -91,6 +91,64 @@ for gas, expect in [('压缩空气', 1.293), ('氧气', 1.429), ('氮气', 1.251
 u = w.calculate_actual_velocity(10, 50, 1000, '水及粘度相似的液体', 'P≤1MPa')
 check('实际流速 d=50mm 水10m³/h → 1.4147 m/s', approx(u, 1.4147, 1e-3), f'{u:.4f}')
 
+# ── 7. 淀粉糖物料档（2026-10-30 新增）：注册 / 联动 / 粘度中值 ──
+for _f in ['淀粉调浆液', '液化液', '糖化液', '脱色液', '葡萄糖浆',
+           '自定义粘性液体(按粘度推荐)']:
+    check(f'新介质下拉框注册: {_f}', w.fluid_combo.findText(_f) >= 0)
+    check(f'新介质流量档注册: {_f}', _f in w.fluid_ranges)
+
+w.fluid_combo.setCurrentText('液化液')
+_conds = [w.condition_combo.itemText(i) for i in range(w.condition_combo.count())]
+check('液化液条件 = DE10~15/DE16~18/90℃ 三档',
+      _conds == ['DE10~15(60℃)', 'DE16~18(60℃)', 'DE10~15(90℃出喷射器)'], str(_conds))
+check('液化液推荐流速自动填入 0.8', w.velocity_input.text() == '0.8', w.velocity_input.text())
+check('液化液粘度中值 1.5 Pa·s', approx(w._current_viscosity() or 0, 1.5, 1e-9))
+check('液化液密度 1140', w._current_density == 1140, str(w._current_density))
+
+w.fluid_combo.setCurrentText('葡萄糖浆')
+check('葡萄糖浆 75~80%DS 档流速 0.3', w.velocity_input.text() == '0.3', w.velocity_input.text())
+check('葡萄糖浆粘度中值 8.5 Pa·s', approx(w._current_viscosity() or 0, 8.5, 1e-9))
+
+# 自定义档：粘度 → 推荐流速（分级规则锚点）
+w.fluid_combo.setCurrentText('自定义粘性液体(按粘度推荐)')
+check('自定义档显示粘度行', not w.viscosity_input.isHidden())
+check('自定义档显示密度行', not w.density_input.isHidden())
+_band_cases = [(49, (1.5, 3.0)), (50, (0.8, 1.5)), (499, (0.8, 1.5)),
+               (999, (0.5, 1.0)), (9999, (0.3, 0.6)), (10000, (0.1, 0.3))]
+for _mu, _exp in _band_cases:
+    check(f'粘度分级锚点 {_mu} → {_exp}',
+          w.recommend_velocity_by_viscosity(_mu) == _exp,
+          str(w.recommend_velocity_by_viscosity(_mu)))
+w.viscosity_input.setText('1500')
+check('输入粘度1500 → 流速0.75', w.velocity_input.text() == '0.75', w.velocity_input.text())
+w.density_input.setText('1400')
+check('自定义密度输入生效 1400', w._current_density == 1400, str(w._current_density))
+
+# ── 8. 压降估算（Darcy-Weisbach）数值锚点 ──
+# 水 20℃ DN50(52.5mm) u=1.5: Re≈78750 湍流, 压降经验 35~55 kPa/100m
+_dp = w._estimate_pressure_drop(52.5, 1.5, 1000.0, 0.001)
+check('水 DN50 u=1.5 → 湍流', _dp['regime'] == '湍流', _dp['regime'])
+check('水 DN50 u=1.5 → 压降 35~55 kPa/100m', 35 < _dp['dp_kpa'] < 55, f"{_dp['dp_kpa']:.1f}")
+# 层流 λ=64/Re 精确锚点: Re=1575
+_dp3 = w._estimate_pressure_drop(52.5, 0.3, 1000.0, 0.01)
+check('粘性低速 Re=1575 → 层流', _dp3['regime'] == '层流', f"Re={_dp3['re']:.0f}")
+check('层流 λ=64/Re', approx(_dp3['lambda'], 64.0 / 1575.0, 1e-6), f"{_dp3['lambda']:.5f}")
+
+# 结果页压降段：带粘度介质显示、无粘度介质不显示
+w.fluid_combo.setCurrentText('液化液')
+w.flow_input.setText('10')
+w.calculate()
+check('液化液结果页含压降估算段',
+      '压降估算' in w.result_text.toPlainText() and 'kPa/100m' in w.result_text.toPlainText())
+w.fluid_combo.setCurrentText('自来水')
+w.flow_input.setText('10')
+w.calculate()
+check('自来水结果页无压降段', '压降估算' not in w.result_text.toPlainText())
+
+# 回归保护：原有锚点不被新功能破坏
+check('回归: 水 10m³/h u=2 → d≈42.06',
+      approx(w.calculate_diameter_from_flow(10, 2, 1000, '水及粘度相似的液体', 'P≤1MPa'), 42.06, 1e-3))
+
 # ── 汇总 ──
 print('\n' + '=' * 50)
 print(f'通过 {len(PASS)} 项, 失败 {len(FAIL)} 项')

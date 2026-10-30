@@ -216,6 +216,56 @@ class 管径计算(CalculatorBase):
             "粘度1Pa·s DN100": {"velocity": (0.25, 0.35), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "m³/h"},
             "粘度1Pa·s DN200": {"velocity": (0.35, 0.55), "flow": (0, 0), "pressure": (0, 0), "flow_unit": "m³/h"}
         }
+
+        # ── 淀粉糖物料档（2026-10-30 新增）──────────────────────────
+        # 粘度/密度为行业典型经验值[E]，随浓度与温度变化很大，仅作选型起点；
+        # 来源：酶制剂厂商工艺数据（液化液 60℃ Brookfield：DE10~15 为 1200~1800、
+        # DE16~18 为 400~800 mPa·s；90℃ 下 DE12~15 <100）、葡萄糖浆粘度-温度
+        # 关系（75%DS：15℃ 9220 / 60℃ 237.5 mPa·s；35℃ 下 75~80%DS 为
+        # 1228~10900 mPa·s）、商品葡萄糖浆规格（43℃、80%DS：8000~30000）。
+        # 推荐流速参考：熟化淀粉管道设计指南（DN50 0.8~1.5、DN100 1.2~2.5 m/s，
+        # 防沉降最低 0.3 m/s）与电磁流量计选型惯例（含颗粒介质 <3 m/s）。
+        # "viscosity" 键为该档典型粘度范围（Pa·s），供压降估算取中值。
+        self.fluid_ranges["淀粉调浆液"] = {
+            "淀粉乳30~35%DS(50~65℃未糊化)": {
+                "velocity": (0.8, 1.5), "flow": (0, 0), "pressure": (0, 0),
+                "flow_unit": "m³/h", "viscosity": (0.05, 1.0)}
+        }
+        self.fluid_ranges["液化液"] = {
+            "DE10~15(60℃)": {
+                "velocity": (0.5, 1.0), "flow": (0, 0), "pressure": (0, 0),
+                "flow_unit": "m³/h", "viscosity": (1.2, 1.8)},
+            "DE16~18(60℃)": {
+                "velocity": (0.6, 1.2), "flow": (0, 0), "pressure": (0, 0),
+                "flow_unit": "m³/h", "viscosity": (0.4, 0.8)},
+            "DE10~15(90℃出喷射器)": {
+                "velocity": (0.8, 1.5), "flow": (0, 0), "pressure": (0, 0),
+                "flow_unit": "m³/h", "viscosity": (0.05, 0.1)}
+        }
+        self.fluid_ranges["糖化液"] = {
+            "DE>95(35~40%DS,55~60℃)": {
+                "velocity": (1.0, 2.0), "flow": (0, 0), "pressure": (0, 0),
+                "flow_unit": "m³/h", "viscosity": (0.02, 0.1)}
+        }
+        self.fluid_ranges["脱色液"] = {
+            "40~50%DS(40~60℃)": {
+                "velocity": (1.0, 2.0), "flow": (0, 0), "pressure": (0, 0),
+                "flow_unit": "m³/h", "viscosity": (0.01, 0.06)}
+        }
+        self.fluid_ranges["葡萄糖浆"] = {
+            "75~80%DS(40~50℃)": {
+                "velocity": (0.2, 0.5), "flow": (0, 0), "pressure": (0, 0),
+                "flow_unit": "m³/h", "viscosity": (2.0, 15.0)},
+            "75%DS(60℃保温)": {
+                "velocity": (0.5, 1.0), "flow": (0, 0), "pressure": (0, 0),
+                "flow_unit": "m³/h", "viscosity": (0.24, 1.2)}
+        }
+        # 自定义档：粘度/密度由用户输入，流速按粘度分级规则自动推荐
+        self.fluid_ranges["自定义粘性液体(按粘度推荐)"] = {
+            "输入粘度自动推荐流速": {
+                "velocity": (0.1, 3.0), "flow": (0, 0), "pressure": (0, 0),
+                "flow_unit": "m³/h"}
+        }
         
         # 液氨
         self.fluid_ranges["液氨"] = {
@@ -387,7 +437,9 @@ class 管径计算(CalculatorBase):
         
         # 1. 说明文本
         description = QLabel(
-            "根据流体类型和计算条件计算管道直径或流量，依据《化工管路设计手册》表1.3-1推荐值。"
+            "根据流体类型和计算条件计算管道直径或流量，依据《化工管路设计手册》表1.3-1推荐值。\n"
+            "粘性物料（淀粉糖浆等）可选专用档，或选「自定义粘性液体」输入粘度自动推荐流速；"
+            "带粘度的介质在结果页附每100m直管压降估算。"
         )
         description.setWordWrap(True)
         description.setStyleSheet("font-size: 12px; padding: 5px;")
@@ -569,6 +621,48 @@ class 管径计算(CalculatorBase):
         self._temp_row = row
         self._hide_temp_row()
 
+        row += 1
+
+        # ── 第7行：粘度（仅「自定义粘性液体」显示）──
+        self.viscosity_label = QLabel("粘度 (mPa·s):")
+        self.viscosity_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.viscosity_label.setStyleSheet(label_style)
+
+        self.viscosity_input = QLineEdit()
+        self.viscosity_input.setPlaceholderText("例如: 1500")
+        self.viscosity_input.setValidator(QDoubleValidator(0.01, 100000.0, 2))
+        self.viscosity_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.viscosity_input.textChanged.connect(self._on_viscosity_changed)
+
+        self.viscosity_hint = QLabel("输入后自动推荐流速并估算压降")
+        self.viscosity_hint.setStyleSheet("font-style: italic;")
+        self.viscosity_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+        self._add_viscosity_row(input_layout, row)
+        self._viscosity_row = row
+        self._hide_viscosity_row()
+
+        row += 1
+
+        # ── 第8行：密度（仅「自定义粘性液体」显示，供压降估算）──
+        self.density_label = QLabel("密度 (kg/m³):")
+        self.density_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.density_label.setStyleSheet(label_style)
+
+        self.density_input = QLineEdit("1200")
+        self.density_input.setPlaceholderText("例如: 1200")
+        self.density_input.setValidator(QDoubleValidator(1.0, 20000.0, 1))
+        self.density_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.density_input.textChanged.connect(self._on_custom_density_changed)
+
+        self.density_hint = QLabel("淀粉糖浆类典型 1100~1450，随浓度变化")
+        self.density_hint.setStyleSheet("font-style: italic;")
+        self.density_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+        self._add_density_row(input_layout, row)
+        self._density_row = row
+        self._hide_density_row()
+
         left_layout.addWidget(input_group)
         
         # 4. 在底部添加拉伸因子
@@ -671,6 +765,148 @@ class 管径计算(CalculatorBase):
             w.setVisible(False)
         self.temp_input.clear()
 
+    def _add_viscosity_row(self, layout, row):
+        layout.addWidget(self.viscosity_label, row, 0)
+        layout.addWidget(self.viscosity_input, row, 1)
+        layout.addWidget(self.viscosity_hint, row, 2)
+
+    def _show_viscosity_row(self):
+        for w in [self.viscosity_label, self.viscosity_input, self.viscosity_hint]:
+            w.setVisible(True)
+
+    def _hide_viscosity_row(self):
+        for w in [self.viscosity_label, self.viscosity_input, self.viscosity_hint]:
+            w.setVisible(False)
+        self.viscosity_input.clear()
+
+    def _add_density_row(self, layout, row):
+        layout.addWidget(self.density_label, row, 0)
+        layout.addWidget(self.density_input, row, 1)
+        layout.addWidget(self.density_hint, row, 2)
+
+    def _show_density_row(self):
+        for w in [self.density_label, self.density_input, self.density_hint]:
+            w.setVisible(True)
+
+    def _hide_density_row(self):
+        for w in [self.density_label, self.density_input, self.density_hint]:
+            w.setVisible(False)
+
+    # ------------------------------------------------------------
+    #  粘度 → 推荐流速 / 压降估算
+    # ------------------------------------------------------------
+
+    #: 粘度分级推荐流速（m/s），经验值[E]：
+    #: 锚点 = 化工管路设计手册粘度档（0.05/0.1/1 Pa·s）与熟化淀粉管道
+    #: 设计指南（防沉降最低 0.3 m/s），分级间平滑过渡。
+    VISCOSITY_VELOCITY_BANDS = [
+        (50,        1.5, 3.0),   # 类水稀液
+        (500,       0.8, 1.5),   # 稀糖液/糖化液
+        (2000,      0.5, 1.0),   # 液化液
+        (10000,     0.3, 0.6),   # 浓糖浆（容积泵）
+        (float("inf"), 0.1, 0.3) # 超高粘（冷糖膏）
+    ]
+
+    @classmethod
+    def recommend_velocity_by_viscosity(cls, mu_mpa_s):
+        """按动力粘度(mPa·s)返回推荐流速范围 (lo, hi) m/s"""
+        for upper, lo, hi in cls.VISCOSITY_VELOCITY_BANDS:
+            if mu_mpa_s < upper:
+                return lo, hi
+        return cls.VISCOSITY_VELOCITY_BANDS[-1][1], cls.VISCOSITY_VELOCITY_BANDS[-1][2]
+
+    def _on_viscosity_changed(self, text):
+        """自定义档：输入粘度 → 自动填入推荐流速"""
+        fluid = self.fluid_combo.currentText()
+        if fluid != "自定义粘性液体(按粘度推荐)":
+            return
+        try:
+            mu = float(text)
+        except ValueError:
+            return
+        if mu <= 0:
+            return
+        lo, hi = self.recommend_velocity_by_viscosity(mu)
+        vel = (lo + hi) / 2
+        self.velocity_input.setText(f"{vel:.2f}")
+        self.velocity_input.setToolTip(
+            f"按粘度 {mu:g} mPa·s 推荐: {lo}~{hi} m/s（经验值，可手动修改）")
+
+    def _on_custom_density_changed(self, text):
+        """自定义档：密度输入实时生效（供流量换算与压降估算）"""
+        fluid = self.fluid_combo.currentText()
+        if fluid != "自定义粘性液体(按粘度推荐)":
+            return
+        try:
+            rho = float(text)
+            if rho > 0:
+                self._current_density = rho
+        except ValueError:
+            pass
+
+    def _current_viscosity(self):
+        """当前粘度 (Pa·s)；无粘度数据时返回 None。
+
+        自定义档取用户输入（mPa·s → Pa·s）；预设档取典型范围中值。
+        """
+        fluid = self.fluid_combo.currentText()
+        if fluid == "自定义粘性液体(按粘度推荐)":
+            try:
+                return float(self.viscosity_input.text()) / 1000.0
+            except ValueError:
+                return None
+        condition = self.condition_combo.currentText()
+        rng = self.fluid_ranges.get(fluid, {}).get(condition)
+        if rng and "viscosity" in rng:
+            lo, hi = rng["viscosity"]
+            return (lo + hi) / 2.0
+        return None
+
+    def _estimate_pressure_drop(self, diameter_mm, velocity, density, mu_pa_s):
+        """Darcy-Weisbach 压降估算（每 100m 直管），返回 dict 或 None。
+
+        摩阻系数：层流 λ=64/Re；湍流 Swamee-Jain 显式式，
+        粗糙度取 0.05 mm（食品级 304/316 无缝不锈钢管典型值）。
+        """
+        if not (mu_pa_s and mu_pa_s > 0 and diameter_mm > 0
+                and velocity > 0 and density > 0):
+            return None
+        d_m = diameter_mm / 1000.0
+        re = density * velocity * d_m / mu_pa_s
+        roughness = 0.00005  # m
+        if re < 2300:
+            lam = 64.0 / re
+        else:
+            lam = 0.25 / (math.log10(roughness / (3.7 * d_m)
+                                     + 5.74 / re ** 0.9) ** 2)
+        dp_pa = lam * (100.0 / d_m) * (density * velocity ** 2 / 2.0)  # Pa/100m
+        head_m = lam * (100.0 / d_m) * velocity ** 2 / (2 * 9.81)      # m液柱/100m
+        regime = "层流" if re < 2300 else ("过渡区" if re < 4000 else "湍流")
+        return {"re": re, "lambda": lam, "dp_kpa": dp_pa / 1000.0,
+                "head_m": head_m, "regime": regime}
+
+    def _pressure_drop_text(self, diameter_mm, velocity, density):
+        """生成压降估算文本段（无粘度数据时返回空串）"""
+        mu = self._current_viscosity()
+        if mu is None:
+            return ""
+        dp = self._estimate_pressure_drop(diameter_mm, velocity, density, mu)
+        if dp is None:
+            return ""
+        return f"""
+────────────
+压降估算 (每100m直管, Darcy-Weisbach)
+────────────
+
+    粘度: {mu * 1000:g} mPa·s   流态: {dp['regime']} (Re = {dp['re']:,.0f})
+    摩阻系数 λ = {dp['lambda']:.4f}
+
+    • 压降: {dp['dp_kpa']:.1f} kPa/100m
+    • 水力坡降: {dp['head_m']:.2f} m液柱/100m
+
+    注：仅计直管摩擦，未含弯头/阀门局部阻力（工程上通常另加
+    10%~50%）；粘度为典型经验值，重要管路请以实测粘度复核。"""
+
     # ------------------------------------------------------------
     #  模式 / 流体 / 条件联动
     # ------------------------------------------------------------
@@ -763,6 +999,12 @@ class 管径计算(CalculatorBase):
             "二溴乙烯",
             "海水，微碱水",
             "粘度较大的液体",
+            "淀粉调浆液",
+            "液化液",
+            "糖化液",
+            "脱色液",
+            "葡萄糖浆",
+            "自定义粘性液体(按粘度推荐)",
             "液氨",
             "氢氧化钠",
             "四氯化碳",
@@ -817,6 +1059,14 @@ class 管径计算(CalculatorBase):
             "过热水": 1000,
             "海水，微碱水": 1025,
             "粘度较大的液体": 1200,
+            # 淀粉糖物料典型密度[E]（随干物浓度变化：调浆液/液化液/糖化液按
+            # 32~40%DS 取值，脱色液按 40~50%DS，葡萄糖浆按 75~80%DS）
+            "淀粉调浆液": 1130,
+            "液化液": 1140,
+            "糖化液": 1160,
+            "脱色液": 1190,
+            "葡萄糖浆": 1390,
+            "自定义粘性液体(按粘度推荐)": 1200,
             # 液氨 20°C 饱和液氨密度 610 kg/m³。
             # 修正记录（2026-09-16）：原值 682 是 −33°C（常压沸点）的密度，
             # 被误置于「液体类 (20°C)」下，使液氨管径计算偏小约 6%。
@@ -892,6 +1142,8 @@ class 管径计算(CalculatorBase):
             self.condition_hint.setText("选择流体后出现")
             self._show_pressure_row()
             self._hide_temp_row()
+            self._hide_viscosity_row()
+            self._hide_density_row()
             return
 
         # 清空旧值，设置默认值
@@ -914,6 +1166,17 @@ class 管径计算(CalculatorBase):
             self._show_temp_row()
         else:
             self._hide_temp_row()
+
+        # 自定义粘性液体 → 显示粘度/密度行，流速由粘度推荐
+        if text == "自定义粘性液体(按粘度推荐)":
+            self._show_viscosity_row()
+            self._show_density_row()
+            self.velocity_input.setPlaceholderText("输入粘度后自动推荐")
+            self.condition_hint.setText("输入粘度后流速自动推荐")
+        else:
+            self._hide_viscosity_row()
+            self._hide_density_row()
+            self.velocity_input.setPlaceholderText("选择流体后自动填入")
     
     def update_condition_options(self, fluid):
         """根据流体更新条件选项，并自动选择第一个条件"""
@@ -975,7 +1238,12 @@ class 管径计算(CalculatorBase):
                 else:
                     vel = (vel_min + vel_max) / 2  # 使用推荐值（中点）
                 self.velocity_input.setText(f"{vel:.1f}")
-                self.velocity_input.setToolTip(f"推荐范围: {vel_min}~{vel_max} m/s（已随机填入 {vel:.1f}）")
+                tip = f"推荐范围: {vel_min}~{vel_max} m/s（已自动填入 {vel:.1f}）"
+                if "viscosity" in ranges:
+                    mu_lo, mu_hi = ranges["viscosity"]
+                    tip += (f"；典型粘度 {mu_lo * 1000:g}~{mu_hi * 1000:g} mPa·s"
+                            f"（经验值[E]，压降按中值估算）")
+                self.velocity_input.setToolTip(tip)
 
         # 更新压力范围/自动填入/隐藏
         pressure_min, pressure_max = ranges["pressure"]
@@ -1059,6 +1327,8 @@ class 管径计算(CalculatorBase):
         self.flow_input.clear()
         self.diameter_input.clear()
         self.temp_input.clear()
+        self.viscosity_input.clear()
+        self.density_input.setText("1200")
         self.result_text.clear()
     
     # ───────────────── SVG 管路示意图 ─────────────────
@@ -1299,7 +1569,8 @@ class 管径计算(CalculatorBase):
         
         # 找到最接近的标准管径
         closest_diam = min(standard_diameters, key=lambda x: abs(x - diameter_mm))
-        
+        actual_vel = self.calculate_actual_velocity(flow_rate, closest_diam, density, fluid, condition)
+
         result = f"""═══════════
  输入参数
 ══════════
@@ -1319,7 +1590,7 @@ class 管径计算(CalculatorBase):
     理论计算管径: {diameter_mm:.1f} mm
 
     推荐标准管径: DN{closest_diam}
-    • 实际流速: {self.calculate_actual_velocity(flow_rate, closest_diam, density, fluid, condition):.2f} m/s
+    • 实际流速: {actual_vel:.2f} m/s
 
 ══════════
 计算公式 (HG/T 20570.6—1995)
@@ -1344,8 +1615,9 @@ class 管径计算(CalculatorBase):
 
     • 推荐使用标准管径 DN{closest_diam}
     • 考虑管道材质、压力等级和安装条件
-    • 计算结果仅供参考，实际选择需考虑具体工况"""
-        
+    • 计算结果仅供参考，实际选择需考虑具体工况""" + self._pressure_drop_text(
+            closest_diam, actual_vel, density)
+
         self.result_text.setText(result)
     
     def show_flow_result(self, fluid, condition, diameter_mm, velocity, flow_rate, density, pressure, mode):
@@ -1426,8 +1698,9 @@ class 管径计算(CalculatorBase):
 
     • 当前流速和流量在推荐范围内
     • 根据实际流量需求调整管道尺寸或流速
-    • 计算结果仅供参考，实际应用请考虑安全系数"""
-        
+    • 计算结果仅供参考，实际应用请考虑安全系数""" + self._pressure_drop_text(
+            diameter_mm, velocity, density)
+
         self.result_text.setText(result)
     
     def calculate_actual_velocity(self, flow_rate, diameter_mm, density, fluid, condition):
@@ -1457,6 +1730,7 @@ class 管径计算(CalculatorBase):
         velocity = float(self.velocity_input.text() or 0)
         density = getattr(self, '_current_density', 1000.0)
         pressure = float(self.pressure_input.text() or 0)
+        mu = self._current_viscosity()
 
         inputs = {
             "计算模式": mode,
@@ -1466,6 +1740,8 @@ class 管径计算(CalculatorBase):
             "密度_kg_m3": density,
             "压力_MPa": pressure
         }
+        if mu:
+            inputs["粘度_mPa_s"] = round(mu * 1000, 1)
         outputs = {}
 
         try:
@@ -1484,7 +1760,11 @@ class 管径计算(CalculatorBase):
                 closest_diam = min(standard_diameters, key=lambda x: abs(x - diameter_mm))
                 outputs["理论管径_mm"] = round(diameter_mm, 1)
                 outputs["推荐标准管径"] = f"DN{closest_diam}"
-                outputs["实际流速_m_s"] = round(self.calculate_actual_velocity(flow_rate, closest_diam, density, fluid, condition), 2)
+                actual_vel = self.calculate_actual_velocity(flow_rate, closest_diam, density, fluid, condition)
+                outputs["实际流速_m_s"] = round(actual_vel, 2)
+                dp = self._estimate_pressure_drop(closest_diam, actual_vel, density, mu) if mu else None
+                if dp:
+                    outputs["压降_kPa_100m"] = round(dp["dp_kpa"], 1)
             else:
                 diameter_mm = float(self.diameter_input.text() or 0)
                 inputs["管道内径_mm"] = diameter_mm
