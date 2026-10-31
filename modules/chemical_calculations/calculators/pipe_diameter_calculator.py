@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QGroupBox, QTextEdit, QComboBox, QMessageBox,
-    QScrollArea, QButtonGroup, QGridLayout, QSizePolicy
+    QScrollArea, QButtonGroup, QGridLayout, QSizePolicy, QCheckBox
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QDoubleValidator
@@ -23,6 +23,11 @@ class 管径计算(CalculatorBase):
         super().__init__(parent)
         self.fluid_ranges = {}
         self.fluid_data = {}
+        # 预设/手改状态：程序填值期间 _filling=True，避免把预设值误判成「已手动修改」
+        self._filling = False
+        self._density_manual = False
+        self._velocity_preset = None      # (lo, hi, text) 当前预设流速
+        self._current_density = 1000.0
         
         # 使用传入的数据管理器或创建新的
         if data_manager is not None:
@@ -485,11 +490,64 @@ class 管径计算(CalculatorBase):
         # 默认选择第一个
         self.mode_buttons["由流量计算管径"].setChecked(True)
         self.mode_button_group.buttonClicked.connect(self.on_mode_button_clicked)
-        
+
         left_layout.addWidget(mode_group)
         
-        # 3. 输入参数组 - 使用GridLayout实现整齐的布局
-        input_group = CalculatorBase.make_group_box("输入参数")
+        # 3. 预设组：只负责把手册默认值填进下方参数，填完可改
+        preset_group = CalculatorBase.make_group_box("预设（选完自动填下方参数，填完可改）")
+        preset_layout = QGridLayout(preset_group)
+        preset_layout.setVerticalSpacing(10)
+        preset_layout.setHorizontalSpacing(10)
+        preset_layout.setColumnStretch(0, 4)
+        preset_layout.setColumnStretch(1, 8)
+        preset_layout.setColumnStretch(2, 5)
+
+        prow = 0
+
+        # ── 流体类型 ──
+        fluid_label = QLabel("流体类型:")
+        fluid_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        fluid_label.setStyleSheet(label_style)
+        preset_layout.addWidget(fluid_label, prow, 0)
+
+        self.fluid_combo = QComboBox()
+        self.fluid_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.setup_fluid_options()
+        self.fluid_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.fluid_combo.currentTextChanged.connect(self.on_fluid_changed)
+        preset_layout.addWidget(self.fluid_combo, prow, 1)
+
+        # 流体决定密度与可选条件清单
+        self.fluid_hint = QLabel("决定密度与可选条件")
+        self.fluid_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        preset_layout.addWidget(self.fluid_hint, prow, 2)
+
+        prow += 1
+
+        # ── 计算条件 ──
+        condition_label = QLabel("计算条件:")
+        condition_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        condition_label.setStyleSheet(label_style)
+        preset_layout.addWidget(condition_label, prow, 0)
+
+        self.condition_combo = QComboBox()
+        self.condition_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.condition_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.condition_combo.currentTextChanged.connect(self.on_condition_changed)
+        preset_layout.addWidget(self.condition_combo, prow, 1)
+
+        # 条件决定推荐流速与压力适用范围
+        self.condition_hint = QLabel("决定推荐流速与压力范围")
+        self.condition_hint.setStyleSheet("font-style: italic;")
+        self.condition_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        preset_layout.addWidget(self.condition_hint, prow, 2)
+
+        prow += 1
+
+        left_layout.addWidget(preset_group)
+
+        # 4. 参数组：全部可编辑，预设只提供默认值
+        input_group = CalculatorBase.make_group_box("参数（预设填入后仍可修改）")
         
         # 使用GridLayout确保整齐排列
         input_layout = QGridLayout(input_group)
@@ -502,59 +560,28 @@ class 管径计算(CalculatorBase):
         
         row = 0
 
-        # ── 第1行：流体类型 ──
-        fluid_label = QLabel("流体类型:")
-        fluid_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        fluid_label.setStyleSheet(label_style)
-        input_layout.addWidget(fluid_label, row, 0)
-
-        self.fluid_combo = QComboBox()
-        self.fluid_combo.setStyleSheet(COMBOBOX_STYLE)
-        self.setup_fluid_options()
-        self.fluid_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.fluid_combo.currentTextChanged.connect(self.on_fluid_changed)
-        input_layout.addWidget(self.fluid_combo, row, 1)
-
-        self.fluid_hint = QLabel("")
-        self.fluid_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        input_layout.addWidget(self.fluid_hint, row, 2)
-
-        row += 1
-
-        # ── 第2行：计算条件 ──
-        condition_label = QLabel("计算条件:")
-        condition_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        condition_label.setStyleSheet(label_style)
-        input_layout.addWidget(condition_label, row, 0)
-
-        self.condition_combo = QComboBox()
-        self.condition_combo.setStyleSheet(COMBOBOX_STYLE)
-        self.condition_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.condition_combo.currentTextChanged.connect(self.on_condition_changed)
-        input_layout.addWidget(self.condition_combo, row, 1)
-
-        self.condition_hint = QLabel("选择流体后出现")
-        self.condition_hint.setStyleSheet("font-style: italic;")
-        self.condition_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        input_layout.addWidget(self.condition_hint, row, 2)
-
-        row += 1
-
-        # ── 第3行：流速（始终显示）──
+        # ── 第1行：流速（始终显示）──
         velocity_label = QLabel("流速 (m/s):")
         velocity_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         velocity_label.setStyleSheet(label_style)
         input_layout.addWidget(velocity_label, row, 0)
 
         self.velocity_input = QLineEdit()
-        self.velocity_input.setPlaceholderText("选择流体后自动填入")
+        self.velocity_input.setPlaceholderText("选流体后自动填入，可改")
         self.velocity_input.setValidator(QDoubleValidator(0.1, 150.0, 2))
         self.velocity_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.velocity_input.textChanged.connect(self._on_velocity_changed)
         input_layout.addWidget(self.velocity_input, row, 1)
+
+        # 第三列：来源标注（预设值 / 已手动修改）
+        self.velocity_hint = QLabel("")
+        self.velocity_hint.setStyleSheet("font-size: 10px;")
+        self.velocity_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        input_layout.addWidget(self.velocity_hint, row, 2)
 
         row += 1
 
-        # ── 第4行：流量（默认模式）──
+        # ── 第2行：流量 / 管道内径（按模式切换）──
         self.flow_label = QLabel("流量:")
         self.flow_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.flow_label.setStyleSheet(label_style)
@@ -583,15 +610,30 @@ class 管径计算(CalculatorBase):
         self._current_row_widgets = [self.flow_label, self.flow_input]
         row += 1
 
-        # ── 第5行：压力（部分流体显示）──
+        # ── 泵配管联算（仅「由流量计算管径」+ 液体时显示）──
+        # 属输出口径的参数：勾了就不只给一排管径，而是排出/吸入成对给
+        self.pump_pair_check = QCheckBox("同时计算泵吸入管")
+        self.pump_pair_check.setToolTip(
+            "勾选后一次给出排出管与吸入管两套推荐管径。\n"
+            "吸入流速自动取低值：手册有成对吸入档的按手册取中值，\n"
+            "否则取排出管流速的 0.6 倍且不低于 0.3 m/s（防汽蚀，经验取法[E]）。\n"
+            "吸入管径保证不小于排出管径（相等时升一档）。仅液体（m³/h）可用。")
+        self.pump_pair_check.setVisible(False)
+        input_layout.addWidget(self.pump_pair_check, row, 1, 1, 2)
+
+        row += 1
+
+        # ── 压力（部分流体显示）──
         self.pressure_label = QLabel("压力 (MPa):")
         self.pressure_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.pressure_label.setStyleSheet(label_style)
 
         self.pressure_input = QLineEdit()
-        self.pressure_input.setPlaceholderText("选择流体后自动填入")
+        self.pressure_input.setPlaceholderText("选流体后自动填入，可改")
         self.pressure_input.setValidator(QDoubleValidator(0.0, 150.0, 2))
         self.pressure_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        # 压力变化要重算气体的工况密度（标态流量按此折算）
+        self.pressure_input.textChanged.connect(self._on_pressure_changed)
 
         self.pressure_range_label = QLabel("")
         self.pressure_range_label.setStyleSheet("color: #7f8c8d; font-size: 10px;")
@@ -603,7 +645,7 @@ class 管径计算(CalculatorBase):
 
         row += 1
 
-        # ── 第6行：温度（仅过热蒸汽显示）──
+        # ── 温度（仅过热蒸汽显示）──
         self.temp_label = QLabel("温度 (°C):")
         self.temp_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.temp_label.setStyleSheet(label_style)
@@ -623,7 +665,7 @@ class 管径计算(CalculatorBase):
 
         row += 1
 
-        # ── 第7行：粘度（仅「自定义粘性液体」显示）──
+        # ── 粘度（仅「自定义粘性液体」显示）──
         self.viscosity_label = QLabel("粘度 (mPa·s):")
         self.viscosity_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.viscosity_label.setStyleSheet(label_style)
@@ -644,7 +686,7 @@ class 管径计算(CalculatorBase):
 
         row += 1
 
-        # ── 第8行：密度（仅「自定义粘性液体」显示，供压降估算）──
+        # ── 密度（常显、可改；不同流量单位下作用不同）──
         self.density_label = QLabel("密度 (kg/m³):")
         self.density_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.density_label.setStyleSheet(label_style)
@@ -653,15 +695,14 @@ class 管径计算(CalculatorBase):
         self.density_input.setPlaceholderText("例如: 1200")
         self.density_input.setValidator(QDoubleValidator(1.0, 20000.0, 1))
         self.density_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.density_input.textChanged.connect(self._on_custom_density_changed)
+        self.density_input.textChanged.connect(self._on_density_changed)
 
-        self.density_hint = QLabel("淀粉糖浆类典型 1100~1450，随浓度变化")
-        self.density_hint.setStyleSheet("font-style: italic;")
+        self.density_hint = QLabel("")
+        self.density_hint.setStyleSheet("font-size: 10px;")
         self.density_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         self._add_density_row(input_layout, row)
         self._density_row = row
-        self._hide_density_row()
 
         left_layout.addWidget(input_group)
         
@@ -784,14 +825,6 @@ class 管径计算(CalculatorBase):
         layout.addWidget(self.density_input, row, 1)
         layout.addWidget(self.density_hint, row, 2)
 
-    def _show_density_row(self):
-        for w in [self.density_label, self.density_input, self.density_hint]:
-            w.setVisible(True)
-
-    def _hide_density_row(self):
-        for w in [self.density_label, self.density_input, self.density_hint]:
-            w.setVisible(False)
-
     # ------------------------------------------------------------
     #  粘度 → 推荐流速 / 压降估算
     # ------------------------------------------------------------
@@ -828,21 +861,81 @@ class 管径计算(CalculatorBase):
             return
         lo, hi = self.recommend_velocity_by_viscosity(mu)
         vel = (lo + hi) / 2
-        self.velocity_input.setText(f"{vel:.2f}")
-        self.velocity_input.setToolTip(
-            f"按粘度 {mu:g} mPa·s 推荐: {lo}~{hi} m/s（经验值，可手动修改）")
+        self._fill(self.velocity_input, f"{vel:.2f}")
+        self._velocity_preset = (lo, hi, f"{vel:.2f}")
+        self.velocity_hint.setText(f"按粘度 {mu:g} mPa·s 推荐 {lo:g}~{hi:g} m/s")
 
-    def _on_custom_density_changed(self, text):
-        """自定义档：密度输入实时生效（供流量换算与压降估算）"""
-        fluid = self.fluid_combo.currentText()
-        if fluid != "自定义粘性液体(按粘度推荐)":
+    # ───────────────── 参数填写 / 手改标记 ─────────────────
+    def _fill(self, widget, text):
+        """程序填值：不触发「已手动修改」判定，也不触发联动重入。"""
+        self._filling = True
+        try:
+            widget.setText(text)
+        finally:
+            self._filling = False
+
+    def _flow_unit_of(self, fluid=None, condition=None):
+        """当前（或指定）流体·条件的流量单位；查不到返回 None。
+
+        条件不属于该流体时（结果页可能只给流体名），回退取该流体任一条件的单位。
+        """
+        fluid = fluid if fluid is not None else self.fluid_combo.currentText()
+        condition = condition if condition is not None else self.condition_combo.currentText()
+        rng = self.fluid_ranges.get(fluid, {}).get(condition)
+        if rng:
+            return rng.get("flow_unit")
+        for r in self.fluid_ranges.get(fluid, {}).values():
+            if r.get("flow_unit"):
+                return r["flow_unit"]
+        return None
+
+    def _on_velocity_changed(self, text):
+        """流速手改：第三列标注来源（预设 / 已改）"""
+        if self._filling:
+            return
+        self.velocity_hint.setText(self._velocity_hint_text(text, manual=True))
+
+    def _velocity_hint_text(self, text=None, manual=False):
+        """流速行的来源说明文案。"""
+        text = (self.velocity_input.text() if text is None else text).strip()
+        if not self._velocity_preset:
+            return "手动输入" if text else ""
+        lo, hi, preset = self._velocity_preset
+        if not text:
+            return f"手册 {lo:g}~{hi:g} m/s"
+        if manual:
+            return f"已改 {text} m/s（手册 {lo:g}~{hi:g}）"
+        return f"预设 {text} m/s（手册 {lo:g}~{hi:g}）"
+
+    def _on_pressure_changed(self, text):
+        """压力手改：气体档工况密度要跟着重算（密度被手改过则不覆盖）。"""
+        if self._filling:
+            return
+        if self._flow_unit_of() == "Nm³/h":
+            self._refresh_density()
+
+    def _on_density_changed(self, text):
+        """密度手改：无论哪个档位都实时生效，并标记为手动值。"""
+        if self._filling:
             return
         try:
             rho = float(text)
-            if rho > 0:
-                self._current_density = rho
         except ValueError:
+            return
+        if rho > 0:
+            self._current_density = rho
+            self._density_manual = True
+            self.density_hint.setText("已改（手动值，切预设会重置）")
+
+    def _read_density(self):
+        """计算时取密度：优先输入框，无效则回退内部值。"""
+        try:
+            rho = float(self.density_input.text())
+            if rho > 0:
+                return rho
+        except (ValueError, AttributeError):
             pass
+        return self._current_density
 
     def _current_viscosity(self):
         """当前粘度 (Pa·s)；无粘度数据时返回 None。
@@ -958,6 +1051,8 @@ class 管径计算(CalculatorBase):
             self._current_row_widgets = [self.diameter_label, self.diameter_input, self.diameter_combo]
             if not self.diameter_input.text():
                 self.diameter_input.setText("80")
+        # 泵吸入管联算只在「由流量计算管径」模式下有意义
+        self.pump_pair_check.setVisible(mode == "由流量计算管径")
     
     def setup_fluid_options(self):
         """设置流体选项"""
@@ -1132,31 +1227,38 @@ class 管径计算(CalculatorBase):
         if text.startswith("-") or not text.strip():
             self.condition_combo.clear()
             self.condition_combo.addItem("- 请先选择流体类型 -")
-            self.velocity_input.clear()
+            self._clear_preset_marks()
+            self._fill(self.velocity_input, "")
             self.velocity_input.setToolTip("")
-            self.pressure_input.clear()
+            self.velocity_hint.setText("")
+            self._fill(self.pressure_input, "")
             self.pressure_input.setReadOnly(False)
             self.pressure_range_label.setText("")
-            self.flow_input.clear()
+            self._fill(self.flow_input, "")
             self.flow_input.setToolTip("")
-            self.condition_hint.setText("选择流体后出现")
+            self.condition_hint.setText("决定推荐流速与压力范围")
             self._show_pressure_row()
             self._hide_temp_row()
             self._hide_viscosity_row()
-            self._hide_density_row()
+            self._fill(self.density_input, "")
+            self.density_hint.setText("选流体后自动填入，可改")
+            self.pump_pair_check.setEnabled(False)
+            self.pump_pair_check.setChecked(False)
             return
 
-        # 清空旧值，设置默认值
-        self.velocity_input.clear()
-        self.pressure_input.clear()
+        # 切预设 = 重填：先复位手改标记，再按新预设填参数
+        self._clear_preset_marks()
+        self._fill(self.velocity_input, "")
+        self.velocity_hint.setText("")
+        self._fill(self.pressure_input, "")
         self.pressure_input.setReadOnly(False)
         self.pressure_range_label.setText("")
-        self.flow_input.clear()
-        self.flow_input.setText("70")  # 默认流量
+        self._fill(self.flow_input, "")
+        self._fill(self.flow_input, "70")  # 默认流量
 
         self.update_condition_options(text)
         self.update_density(text)
-        self.condition_hint.setText("请选择计算条件")
+        self.condition_hint.setText("决定推荐流速与压力范围")
 
         # 默认为全部流体显示压力行
         self._show_pressure_row()
@@ -1167,16 +1269,14 @@ class 管径计算(CalculatorBase):
         else:
             self._hide_temp_row()
 
-        # 自定义粘性液体 → 显示粘度/密度行，流速由粘度推荐
+        # 自定义粘性液体 → 显示粘度行，流速由粘度推荐
         if text == "自定义粘性液体(按粘度推荐)":
             self._show_viscosity_row()
-            self._show_density_row()
             self.velocity_input.setPlaceholderText("输入粘度后自动推荐")
             self.condition_hint.setText("输入粘度后流速自动推荐")
         else:
             self._hide_viscosity_row()
-            self._hide_density_row()
-            self.velocity_input.setPlaceholderText("选择流体后自动填入")
+            self.velocity_input.setPlaceholderText("选流体后自动填入，可改")
     
     def update_condition_options(self, fluid):
         """根据流体更新条件选项，并自动选择第一个条件"""
@@ -1196,26 +1296,88 @@ class 管径计算(CalculatorBase):
             self.condition_combo.blockSignals(False)
     
     def update_density(self, fluid):
-        """更新密度值（存入内部变量，不在UI显示）"""
-        if fluid in self.fluid_data:
-            self._current_density = self.fluid_data[fluid]
-        else:
-            self._current_density = 1000.0
-    
+        """切换流体：重置为「自动」状态并按预设重填密度框。"""
+        self._density_manual = False
+        if fluid == "自定义粘性液体(按粘度推荐)":
+            # 自定义档的密度由用户填：切过来时给个淀粉糖典型起点，之后不再自动覆盖
+            rho = self.fluid_data.get(fluid, 1200.0)
+            self._current_density = rho
+            self._fill(self.density_input, f"{rho:.2f}")
+            self.density_hint.setText("淀粉糖浆类典型 1100~1450，随浓度变化")
+            return
+        self._refresh_density()
+
+    def _density_preset(self, fluid=None):
+        """按当前预设算出的密度值 + 说明文字，返回 (rho, hint)。
+
+        - m³/h（液体 / 按体积计的气体）：fluid_data 的典型密度。
+          体积流量法管径与密度无关（d 只取决于 Q 与 u），密度仅供压降估算。
+        - t/h（蒸汽、液氨等按质量计）：fluid_data 的密度，直接进管径公式。
+        - Nm³/h（按标态体积计的气体）：按表压折算工况密度
+          ρ = ρ_N × (273.15/293.15) × ((P+0.1013)/0.1013)，20°C 口径。
+          原来的实现直接把标态密度当工况密度用，加压后管径偏大（0.5MPa 约偏大 2.35 倍）。
+        """
+        fluid = fluid if fluid is not None else self.fluid_combo.currentText()
+        rho_n = self.fluid_data.get(fluid, 1000.0)
+        unit = self._flow_unit_of(fluid)
+
+        if unit == "Nm³/h":
+            try:
+                p = float(self.pressure_input.text())
+            except (ValueError, AttributeError):
+                p = 0.0
+            rho = rho_n * (273.15 / 293.15) * ((p + 0.1013) / 0.1013)
+            return rho, f"工况密度（按 {p:g} MPa 表压折算，20°C）"
+        if unit == "t/h":
+            return rho_n, "影响管径；随压力/温度变化，可按实际值改"
+        return rho_n, "仅影响压降估算（体积流量法管径与密度无关）"
+
+    def _density_note(self, fluid=None):
+        """结果页里「密度」后面的口径说明（避免把气体工况密度当成标态密度）。"""
+        fluid = fluid if fluid is not None else self.fluid_combo.currentText()
+        unit = self._flow_unit_of(fluid)
+        if unit == "Nm³/h":
+            rho_n = self.fluid_data.get(fluid)
+            if rho_n:
+                return f"（工况密度，标态 {rho_n:g} kg/Nm³）"
+        elif unit == "m³/h":
+            return "（体积流量法，管径与密度无关；密度用于压降）"
+        return ""
+
+    def _refresh_density(self):
+        """按预设重算密度框；用户手改过、或自定义档（密度由用户填）就不覆盖。"""
+        if self._density_manual:
+            return
+        if self.fluid_combo.currentText() == "自定义粘性液体(按粘度推荐)":
+            return
+        rho, hint = self._density_preset()
+        self._current_density = rho
+        self._fill(self.density_input, f"{rho:.2f}")
+        self.density_hint.setText(hint)
+
+    def _clear_preset_marks(self):
+        """切预设前的复位：清「手改」标记。"""
+        self._density_manual = False
+        self._velocity_preset = None
+
+
     def on_condition_changed(self, text):
         """处理条件变化 - 自动填入推荐值并控制压力/温度可见性"""
         if text.startswith("-") or not text.strip():
-            self.velocity_input.clear()
+            self._fill(self.velocity_input, "")
             self.velocity_input.setToolTip("")
+            self.velocity_hint.setText("")
             self.pressure_range_label.setText("")
-            self.pressure_input.clear()
+            self._fill(self.pressure_input, "")
             self.pressure_input.setReadOnly(False)
             self._show_pressure_row()
-            self.flow_input.clear()
+            self._fill(self.flow_input, "")
             self.flow_input.setToolTip("")
             return
 
         if text:
+            # 切条件也算切预设：复位手改标记，按新条件的预设重填
+            self._clear_preset_marks()
             self.update_parameter_ranges()
             self.condition_hint.setText("推荐值已自动填入")
     
@@ -1227,34 +1389,46 @@ class 管径计算(CalculatorBase):
         if fluid.startswith("-") or condition.startswith("-"):
             return
 
-        if fluid in self.fluid_ranges and condition in self.fluid_ranges[fluid]:
-            ranges = self.fluid_ranges[fluid][condition]
+        ranges = self.fluid_ranges.get(fluid, {}).get(condition)
+        if not ranges:
+            return
 
-            # 自动填入推荐流速：在范围内随机取值
-            vel_min, vel_max = ranges["velocity"]
-            if vel_min > 0 and vel_max > 0:
-                if vel_min == vel_max:
-                    vel = vel_min  # 固定值
-                else:
-                    vel = (vel_min + vel_max) / 2  # 使用推荐值（中点）
-                self.velocity_input.setText(f"{vel:.1f}")
-                tip = f"推荐范围: {vel_min}~{vel_max} m/s（已自动填入 {vel:.1f}）"
-                if "viscosity" in ranges:
-                    mu_lo, mu_hi = ranges["viscosity"]
-                    tip += (f"；典型粘度 {mu_lo * 1000:g}~{mu_hi * 1000:g} mPa·s"
-                            f"（经验值[E]，压降按中值估算）")
-                self.velocity_input.setToolTip(tip)
+        # 泵吸入管联算仅对液体（体积流量 m³/h）有意义
+        if ranges.get("flow_unit") == "m³/h":
+            self.pump_pair_check.setEnabled(True)
+        else:
+            self.pump_pair_check.setEnabled(False)
+            self.pump_pair_check.setChecked(False)
 
-        # 更新压力范围/自动填入/隐藏
+        # 自动填入推荐流速（预设中点，填完可改）
+        vel_min, vel_max = ranges["velocity"]
+        if vel_min > 0 and vel_max > 0:
+            if vel_min == vel_max:
+                vel = vel_min  # 固定值
+            else:
+                vel = (vel_min + vel_max) / 2  # 使用推荐值（中点）
+            _vtext = f"{vel:.1f}"
+            self._fill(self.velocity_input, _vtext)
+            self._velocity_preset = (vel_min, vel_max, _vtext)
+            self.velocity_hint.setText(self._velocity_hint_text(_vtext))
+            tip = f"推荐范围: {vel_min}~{vel_max} m/s（预设 {_vtext}，可改）"
+            if "viscosity" in ranges:
+                mu_lo, mu_hi = ranges["viscosity"]
+                tip += (f"；典型粘度 {mu_lo * 1000:g}~{mu_hi * 1000:g} mPa·s"
+                        f"（经验值[E]，压降按中值估算）")
+            self.velocity_input.setToolTip(tip)
+
+        # 更新压力范围 / 自动填入 / 显示与否
         pressure_min, pressure_max = ranges["pressure"]
-        if pressure_min == 0 and pressure_max == 0:
-            # 不需要压力 → 隐藏压力行
+        flow_unit = ranges["flow_unit"]
+        if pressure_min == 0 and pressure_max == 0 and flow_unit != "Nm³/h":
+            # 手册没给压力范围、且不需要压力折算 → 隐藏压力行
             self._remove_pressure_row()
         else:
             self._show_pressure_row()
             if pressure_min == pressure_max and pressure_min > 0:
                 self.pressure_range_label.setText(f"固定值: {pressure_min} MPa")
-                self.pressure_input.setText(f"{pressure_min}")
+                self._fill(self.pressure_input, f"{pressure_min}")
                 self.pressure_input.setReadOnly(True)
             elif pressure_min > 0 or pressure_max > 0:
                 self.pressure_range_label.setText(f"适用范围: {pressure_min}~{pressure_max} MPa")
@@ -1262,15 +1436,21 @@ class 管径计算(CalculatorBase):
                 # 只有上下限都有效时才填中值
                 if pressure_min > 0 and pressure_max > 0:
                     p_mid = (pressure_min + pressure_max) / 2
-                    self.pressure_input.setText(f"{p_mid:.2f}")
+                    self._fill(self.pressure_input, f"{p_mid:.2f}")
+            else:
+                # 手册无范围但气体折算必须知道压力 → 默认 0.1 MPa 表压，可改
+                self.pressure_range_label.setText("标态流量按此表压折算工况体积")
+                self.pressure_input.setReadOnly(False)
+                if not self.pressure_input.text():
+                    self._fill(self.pressure_input, "0.10")
 
-            # 更新流量标签和默认值
-            flow_unit = ranges["flow_unit"]
-            self.flow_label.setText(f"流量 ({flow_unit}):")
+        # 流量标签与单位（原来嵌在压力 else 分支里，无压力范围的档位会漏更新）
+        self.flow_label.setText(f"流量 ({flow_unit}):")
+        if not self.flow_input.text():
+            self._fill(self.flow_input, "70")
 
-            # 默认填入 70
-            if not self.flow_input.text():
-                self.flow_input.setText("70")
+        # 密度随预设/压力刷新（手改过则保留）
+        self._refresh_density()
     
     def setup_diameter_options(self):
         """设置管道内径选项"""
@@ -1323,12 +1503,15 @@ class 管径计算(CalculatorBase):
     def clear_inputs(self):
         """清空输入"""
         self.set_default_values()
-        self.velocity_input.clear()
-        self.flow_input.clear()
-        self.diameter_input.clear()
-        self.temp_input.clear()
-        self.viscosity_input.clear()
-        self.density_input.setText("1200")
+        self._clear_preset_marks()
+        self._fill(self.velocity_input, "")
+        self._fill(self.flow_input, "")
+        self._fill(self.diameter_input, "")
+        self._fill(self.temp_input, "")
+        self._fill(self.viscosity_input, "")
+        self._fill(self.density_input, "1200")
+        self.velocity_hint.setText("")
+        self.density_hint.setText("选流体后自动填入，可改")
         self.result_text.clear()
     
     # ───────────────── SVG 管路示意图 ─────────────────
@@ -1445,7 +1628,7 @@ class 管径计算(CalculatorBase):
             if pressure_text and self.pressure_label.isVisible():
                 pressure = float(pressure_text)
 
-            density = getattr(self, '_current_density', 1000.0)
+            density = self._read_density()
             
             # 验证参数范围
             self.validate_parameters(fluid, condition, velocity, pressure)
@@ -1547,6 +1730,39 @@ class 管径计算(CalculatorBase):
         
         return flow_rate
     
+    # 手册里「排出管 ↔ 吸入管」成对给出的条件（同一流体内的条件名）
+    PUMP_SUCTION_PAIRS = {
+        ("水及粘度相似的液体", "离心泵排出管"): "离心泵吸入管(常温)",
+        ("水及粘度相似的液体", "离心泵排出管(70~110℃)"): "离心泵吸入管(常温)",
+        ("水及粘度相似的液体", "高压离心泵排出管"): "离心泵吸入管(常温)",
+        ("水及粘度相似的液体", "往复式泵排出管"): "往复式泵吸入管",
+        ("水及粘度相似的液体", "齿轮泵排出管"): "齿轮泵吸入管",
+    }
+
+    def _pump_suction_velocity(self, fluid, condition, u_discharge):
+        """吸入管流速取值（返回 (流速, 来源说明)）。
+
+        优先级：① 手册成对吸入档的中值；② 排出管流速 × 0.6 且 ≥0.3 m/s
+        （防汽蚀/防沉降，经验取法[E]）。
+        """
+        pair = self.PUMP_SUCTION_PAIRS.get((fluid, condition))
+        if pair and pair in self.fluid_ranges.get(fluid, {}):
+            lo, hi = self.fluid_ranges[fluid][pair]["velocity"]
+            if lo > 0 and hi > 0:
+                return (lo + hi) / 2, f"手册吸入档「{pair}」推荐 {lo:g}~{hi:g} m/s 取中值"
+        return max(0.3, u_discharge * 0.6), "取排出管流速的 0.6 倍且不低于 0.3 m/s（防汽蚀，经验取法[E]）"
+
+    def _pump_suction_dn(self, flow_rate, u_suction, density, fluid, condition, discharge_dn):
+        """由同一流量算吸入管理论管径并圆整；保证吸入管径 > 排出管径（相等则升一档）。"""
+        d_s = self.calculate_diameter_from_flow(flow_rate, u_suction, density, fluid, condition)
+        sizes = [6, 8, 10, 15, 20, 25, 32, 40, 50, 65, 80, 100,
+                 125, 150, 200, 250, 300, 350, 400, 450, 500]
+        s_dn = min(sizes, key=lambda x: abs(x - d_s))
+        if s_dn <= discharge_dn:
+            bigger = [s for s in sizes if s > discharge_dn]
+            s_dn = bigger[0] if bigger else s_dn
+        return d_s, s_dn
+
     def show_diameter_result(self, fluid, condition, flow_rate, velocity, diameter_mm, density, pressure, mode):
         """显示管径计算结果"""
         # 获取流量单位
@@ -1570,6 +1786,7 @@ class 管径计算(CalculatorBase):
         # 找到最接近的标准管径
         closest_diam = min(standard_diameters, key=lambda x: abs(x - diameter_mm))
         actual_vel = self.calculate_actual_velocity(flow_rate, closest_diam, density, fluid, condition)
+        _dn = self._density_note(fluid)
 
         result = f"""═══════════
  输入参数
@@ -1581,7 +1798,7 @@ class 管径计算(CalculatorBase):
     压力: {pressure} MPa(G)
     流量: {flow_rate} {flow_unit}
     流速: {velocity} m/s
-    密度: {density:.2f} kg/m³
+    密度: {density:.2f} kg/m³{_dn}
 
 ══════════
 计算结果
@@ -1615,8 +1832,30 @@ class 管径计算(CalculatorBase):
 
     • 推荐使用标准管径 DN{closest_diam}
     • 考虑管道材质、压力等级和安装条件
-    • 计算结果仅供参考，实际选择需考虑具体工况""" + self._pressure_drop_text(
-            closest_diam, actual_vel, density)
+    • 计算结果仅供参考，实际选择需考虑具体工况"""
+
+        # 泵吸入管联算：与排出管同流量、更低的吸入流速
+        if self.pump_pair_check.isChecked():
+            u_s, src = self._pump_suction_velocity(fluid, condition, velocity)
+            d_s, s_dn = self._pump_suction_dn(flow_rate, u_s, density, fluid, condition, closest_diam)
+            v_s = self.calculate_actual_velocity(flow_rate, s_dn, density, fluid, condition)
+            result += f"""
+
+══════════
+泵吸入管配管（与排出管同流量一次算出）
+══════════
+
+    吸入管流速: {u_s:.2f} m/s（{src}）
+    理论计算管径: {d_s:.1f} mm
+    推荐标准管径: DN{s_dn}
+    • 实际流速: {v_s:.2f} m/s
+
+    说明:
+    • 泵铭牌流量即进出口共同的流量（稳定工况下相等），吸入管按同一流量、更低流速选大管
+    • 吸入管路应短而直、少弯头变径，阻力越小越不易汽蚀
+    • 汽蚀余量校核请用「离心泵NPSHa计算」"""
+
+        result += self._pressure_drop_text(closest_diam, actual_vel, density)
 
         self.result_text.setText(result)
     
@@ -1646,7 +1885,7 @@ class 管径计算(CalculatorBase):
     压力: {pressure} MPa(G)
     管道内径: {diameter_mm} mm
     流速: {velocity} m/s
-    密度: {density:.2f} kg/m³
+    密度: {density:.2f} kg/m³{self._density_note(fluid)}
 
 ══════════
 计算结果
@@ -1728,7 +1967,7 @@ class 管径计算(CalculatorBase):
         fluid = self.fluid_combo.currentText()
         condition = self.condition_combo.currentText()
         velocity = float(self.velocity_input.text() or 0)
-        density = getattr(self, '_current_density', 1000.0)
+        density = self._read_density()
         pressure = float(self.pressure_input.text() or 0)
         mu = self._current_viscosity()
 
@@ -1765,6 +2004,13 @@ class 管径计算(CalculatorBase):
                 dp = self._estimate_pressure_drop(closest_diam, actual_vel, density, mu) if mu else None
                 if dp:
                     outputs["压降_kPa_100m"] = round(dp["dp_kpa"], 1)
+                # 泵吸入管联算：吸入管径与吸入流速一并入史
+                if self.pump_pair_check.isChecked():
+                    u_s, _src = self._pump_suction_velocity(fluid, condition, velocity)
+                    d_s, s_dn = self._pump_suction_dn(flow_rate, u_s, density, fluid, condition, closest_diam)
+                    outputs["吸入管径"] = f"DN{s_dn}"
+                    outputs["吸入管流速_m_s"] = round(
+                        self.calculate_actual_velocity(flow_rate, s_dn, density, fluid, condition), 2)
             else:
                 diameter_mm = float(self.diameter_input.text() or 0)
                 inputs["管道内径_mm"] = diameter_mm
