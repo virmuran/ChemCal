@@ -409,7 +409,7 @@ class FlashEvaporationCalculator(CalculatorBase):
             entries = [self._chain_sources[idx - 1]]
         if not entries:
             self.chain_status.setText(
-                "当前没有可用上游 —— 请先到上游页（喷射液化器用汽量）点「计算」。")
+                "当前没有可用上游 —— 请先到上游页（喷射液化器计算）点「计算」。")
             return
 
         keys = [k for k, _attr, _f, _u in self.CHAIN_MAP]

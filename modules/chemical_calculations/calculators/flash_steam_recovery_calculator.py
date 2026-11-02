@@ -166,7 +166,7 @@ class FlashSteamRecoveryCalculator(CalculatorBase):
         desc = QLabel(
             "闪蒸汽（二次蒸汽）回收核算：闪蒸汽进换热器冷凝放热 → 回收热量 → "
             "蒸汽体积 → 可加热物料量。点「取上游值」一次取全整链："
-            "物料比热 / 浆料比重 ← 喷射液化器用汽量，闪蒸汽量 / 闪蒸压力 ← 闪蒸降温浓缩，"
+            "物料比热 / 浆料比重 ← 喷射液化器计算，闪蒸汽量 / 闪蒸压力 ← 闪蒸降温浓缩，"
             "不必手抄、也不用分两次取（下拉里可改为只取某一段）。")
         desc.setWordWrap(True)
         desc.setStyleSheet("font-size:12px;padding:5px;")

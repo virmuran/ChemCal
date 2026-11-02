@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""蒸汽喷射液化器用汽量 回归测试
+"""蒸汽喷射液化器计算（用汽量 + 设备结构尺寸）回归测试
 
 纯 PySide6 offscreen 运行：
     .venv/Scripts/python.exe tests/test_injection_liquefier.py
@@ -332,13 +332,13 @@ c = mk()
 c.calculate()
 rep = c.generate_report()
 check('generate_report() 返回 str', isinstance(rep, str) and len(rep) > 500)
-check('报告含标题与公式依据', '用汽量计算书' in rep and 'D = G·C·(t₂ − t₁) / (I − λ)' in rep)
+check('报告含标题与公式依据', '喷射液化器计算书' in rep and 'D = G·C·(t₂ − t₁) / (I − λ)' in rep)
 info = c.get_project_info()
 check('get_project_info() 五个标准键齐全',
       set(info) == {'company_name', 'project_number', 'project_name',
                     'subproject_name', 'calculation_type'})
-check('calculation_type = 蒸汽喷射液化器用汽量计算',
-      info['calculation_type'] == '蒸汽喷射液化器用汽量计算')
+check('calculation_type = 蒸汽喷射液化器计算',
+      info['calculation_type'] == '蒸汽喷射液化器计算')
 h = c._get_history_data()
 check('_get_history_data() 返回 inputs/outputs',
       set(h) == {'inputs', 'outputs'} and h['outputs'])
@@ -572,6 +572,161 @@ check('J8 clear 后总焓框清空', c.total_h_input.text() == '')
 c.calculate()
 check('J8 clear 后可直接重算（总焓留空走自动）',
       c._last_result.get('I_src') == '自动（按压力与干度）')
+
+# ════════════════════════════════════════════════════════════════
+print('\n══ Part K  设备结构尺寸（汽带料 / 料带汽）══')
+# 口径：与用汽量同一套热平衡，只把 D 拿去做喷嘴与管体尺寸
+#   汽带料：r_c = 0.5457 → p* = r_c·p₁；c* = √(2(h₁−h*)·1000)；G* = c*/v*
+#           d_t = √(4(D/3600)/(G*·μ)/π)；d_e = √(4(D/3600)·v_e/(c_e·μ)/π)
+#   料带汽：d_l = √(4Q/(π·c_l))；Δp = ρc_l²/(2φ²)；H = Δp总/(ρg)；P = V·Δp总/η
+#   共用  ：D_m = √(4V_mix/(π·u_m))，但不得小于 1.5×喷嘴径（射流要塞得进去）
+
+
+def sz(jet='汽带料', ps='0.8', mode=0, struct=True, **kw):
+    """按指定形式/汽压算一遍，返回 (widget, result)"""
+    x = mk()
+    x.jet_mode_combo.setCurrentIndex(0 if jet == '汽带料' else 1)
+    x.mode_combo.setCurrentIndex(mode)
+    x.ps_input.setText(ps)
+    x.struct_check.setChecked(struct)
+    for k, v in kw.items():
+        getattr(x, k).setText(str(v))
+    x.calculate()
+    return x, x._last_result
+
+
+c, r = sz()
+s1 = r['size1']
+check('K1 默认勾选「计算设备结构尺寸」并输出尺寸段',
+      r['struct_on'] is True and s1 is not None, r.get('struct_on'))
+check('K2 一次喷射段号为「七」（单级工况）',
+      '【七、设备结构尺寸' in c.result_text.toPlainText())
+
+# ── 汽带料：蒸汽拉伐尔喷嘴 ──
+check('K3 临界压比 r_c = 0.5457（γ=1.3）', close(s1['rc'], 0.5457, 5e-4), s1['rc'])
+check('K4 临界压力 p* = r_c·p₁ ≈ 0.4919 MPa',
+      close(s1['p_star'], 0.4919, 1e-3), f"{s1['p_star']:.4f}")
+check('K5 压比 8.9 → 判为临界/阻塞', s1['choked'] is True, s1['nozzle_ratio'])
+check('K6 临界速度 c* ≈ 475 m/s', close(s1['c_star'], 475, 3), f"{s1['c_star']:.1f}")
+check('K7 临界质量流密度 G* ≈ 1302 kg/(m²·s)',
+      close(s1['g_star'], 1302, 8), f"{s1['g_star']:.1f}")
+# 喉径独立复算：A_t = (D/3600)/(G*·μ)
+_A = (s1['D'] / 3600.0) / (s1['g_star'] * 0.95)
+_dt = (4 * _A / 3.141592653589793) ** 0.5 * 1000
+check('K8 喉径与独立复算一致（≈25.8 mm）',
+      close(s1['d_t'], _dt, 1e-6) and close(s1['d_t'], 25.8, 0.5), f"{s1['d_t']:.2f}")
+check('K9 出口径 ≈ 38.4 mm', close(s1['d_e'], 38.4, 0.5), f"{s1['d_e']:.2f}")
+check('K10 d_e/d_t 落在 1.3~1.8（拉伐尔喷嘴量级）',
+      1.3 <= s1['ratio_de'] <= 1.8, f"{s1['ratio_de']:.2f}")
+check('K11 出口速度大于临界速度（继续膨胀加速）',
+      s1['c_e'] > s1['c_star'], f"{s1['c_e']:.0f} vs {s1['c_star']:.0f}")
+
+# ── 混合管/扩压管的几何自洽（射流必须塞得进混合管）──
+check('K12 混合管径 ≥ 1.5×喷嘴出口径（否则射流装不进）',
+      s1['d_mix'] >= 1.5 * s1['d_e'] - 1e-9,
+      f"{s1['d_mix']:.1f} vs {s1['d_e']:.1f}")
+check('K13 混合管长 = K·D_m', close(s1['L_mix'], s1['K_len'] * s1['d_mix'], 1e-9))
+check('K14 扩压管出口径 > 混合管径（扩压段只能扩张）',
+      s1['d_out'] > s1['d_mix'], f"{s1['d_out']:.1f} vs {s1['d_mix']:.1f}")
+check('K15 定径依据写明「受射流限制」', '射流' in s1['mix_basis'], s1['mix_basis'])
+check('K16 引射比 u = 料液/蒸汽 = G/D₁',
+      close(s1['u_actual'], 20000.0 / s1['D'], 1e-9), f"{s1['u_actual']:.3f}")
+
+# ── 料带汽：料液喷嘴 + 泵 ──
+c2, r2 = sz('料带汽', ps='0.1')
+s2 = r2['size1']
+check('K17 料带汽不输出蒸汽喷嘴尺寸', s2['d_t'] is None and s2['d_e'] is None)
+check('K18 料液喷嘴直径 ≈ 15.8 mm', close(s2['d_l'], 15.8, 0.3), f"{s2['d_l']:.2f}")
+check('K19 喷嘴压降 ≈ 0.391 MPa', close(s2['dp_noz'] / 1e6, 0.391, 5e-3),
+      f"{s2['dp_noz'] / 1e6:.4f}")
+check('K20 泵出口压力 = 蒸汽绝压 + 喷嘴压降 ≈ 0.592 MPa',
+      close(s2['p_pump'], 0.592, 5e-3), f"{s2['p_pump']:.4f}")
+# 扬程按泵进出口**压差**（从常压罐吸入），不是绝压
+_H = (s2['p_pump'] - 0.101325) * 1e6 / (r2['rho'] * 9.81)
+check('K21 泵扬程 = Δp总/(ρg)，按压差算（非绝压）',
+      close(s2['h_pump'], _H, 0.15), f"{s2['h_pump']:.1f} vs {_H:.1f}")
+check('K22 泵轴功率 ≈ 3.45 kW',
+      close(s2['p_shaft'], 3.45, 0.05), f"{s2['p_shaft']:.2f}")
+check('K23 料带汽混合管按液体体积定径（不受射流限制）',
+      '射流' not in s2['mix_basis'], s2['mix_basis'])
+
+# 喷嘴速度翻倍 → 压降按平方涨 4 倍（自证判定力）
+c3, r3 = sz('料带汽', ps='0.1', cl_input=50)
+check('K24 料液喷嘴速度 25→50 m/s，压降约 4 倍',
+      close(r3['size1']['dp_noz'] / s2['dp_noz'], 4.0, 0.05),
+      f"{r3['size1']['dp_noz'] / s2['dp_noz']:.3f}")
+
+# ── 开关与显隐 ──
+c4, r4 = sz(struct=False)
+check('K25 取消勾选后不输出尺寸段',
+      r4['size1'] is None and '设备结构尺寸' not in c4.result_text.toPlainText())
+check('K26 取消勾选后系数行全部隐藏（不留空白）',
+      c4.mu_input.isHidden() and c4.cl_input.isHidden()
+      and c4.umix_input.isHidden())
+c5, _ = sz('汽带料')
+check('K27 汽带料：显示蒸汽喷嘴系数、隐藏料液喷嘴参数',
+      not c5.mu_input.isHidden() and c5.cl_input.isHidden())
+c6, _ = sz('料带汽', ps='0.1')
+check('K28 料带汽：隐藏蒸汽喷嘴系数、显示料液喷嘴与泵参数',
+      c6.mu_input.isHidden() and not c6.cl_input.isHidden()
+      and not c6.pump_eff_input.isHidden())
+
+# ── 两次喷射：一次、二次各按本级汽量定尺 ──
+c7, r7 = sz(mode=1)
+check('K29 两次喷射 → 输出两套尺寸',
+      r7['size1'] is not None and r7['size2'] is not None)
+check('K30 二次段用二次汽量定尺（D₂ < D₁ → 喉径更小）',
+      r7['size2']['D'] < r7['size1']['D']
+      and r7['size2']['d_t'] < r7['size1']['d_t'],
+      f"{r7['size2']['d_t']:.1f} vs {r7['size1']['d_t']:.1f}")
+check('K31 两套尺寸段号均为「八」',
+      c7.result_text.toPlainText().count('【八、设备结构尺寸') == 2)
+# 引射比区间按温升折算：二次段温升 30 K（基准 80 K），不得误报
+check('K32 二次喷射段引射比按温升折算，不误报超区间',
+      not any('二次喷射' in w and '引射比' in w for w in r7['warn']),
+      [w for w in r7['warn'] if '引射比' in w])
+check('K33 二次段区间已放大（80/30 ≈ 2.67 倍）',
+      close(r7['size2']['u_band'][1] / r7['size1']['u_band'][1],
+            80.0 / 30.0, 1e-6),
+      f"{r7['size2']['u_band'][1]:.3g} vs {r7['size1']['u_band'][1]:.3g}")
+
+# ── 报错与契约 ──
+c8 = mk()
+c8.mode_combo.setCurrentIndex(0)
+c8.ps_input.setText('0.05')            # p₁ = 0.1513
+c8.p2_input.setText('0.20')            # 吸入室 > 蒸汽绝压
+c8.calculate()
+check('K34 吸入室压力不低于蒸汽压力时报错',
+      '错误' in c8.result_text.toPlainText(),
+      c8.result_text.toPlainText()[:60])
+c8.p2_input.setText('0.1013')
+
+c9, _ = sz()
+hd = c9._get_history_data()
+check('K35 历史输出含混合管径与混合管长',
+      '混合管径_mm' in hd['outputs'] and '混合管长_mm' in hd['outputs'],
+      list(hd['outputs'].keys()))
+check('K36 汽带料历史含蒸汽喷嘴喉径',
+      '蒸汽喷嘴喉径_mm' in hd['outputs'], list(hd['outputs'].keys()))
+check('K37 历史输入含喷射器形式', hd['inputs'].get('喷射器形式', '') != '')
+c10, _ = sz('料带汽', ps='0.1')
+hd2 = c10._get_history_data()
+check('K38 料带汽历史含料液喷嘴直径与泵扬程',
+      '料液喷嘴直径_mm' in hd2['outputs'] and '供料泵扬程_m' in hd2['outputs'],
+      list(hd2['outputs'].keys()))
+rep = c9.generate_report()
+check('K39 计算书含设备尺寸公式段',
+      isinstance(rep, str) and '设备结构尺寸' in rep)
+c11, _ = sz(struct=False)
+check('K40 不算尺寸时历史也不写尺寸项',
+      '混合管径_mm' not in c11._get_history_data()['outputs'])
+c12 = mk()
+c12.struct_check.setChecked(False)
+c12.clear_inputs()
+check('K41 clear 后恢复勾选并可重算',
+      c12.struct_check.isChecked() is True and c12.mu_input.text() == '0.95')
+c12.calculate()
+check('K42 clear 后重算仍有尺寸', c12._last_result.get('size1') is not None)
 
 # ════════════════════════════════════════════════════════════════
 print('\n' + '═' * 58)

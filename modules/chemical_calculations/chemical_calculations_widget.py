@@ -158,7 +158,7 @@ class ChemicalCalculationsWidget(QWidget):
             ("篮式过滤器", "篮式过滤器", "basket_filter_design_calculator", True),
             ("板框压滤机面积", "FilterPressAreaCalculator", "filter_press_area_calculator", True),
             ("浓缩蒸发器计算", "EvaporatorCalculator", "evaporator_calculator", True),
-            ("喷射液化器用汽量", "InjectionLiquefierCalculator", "injection_liquefier_calculator", True),
+            ("喷射液化器计算", "InjectionLiquefierCalculator", "injection_liquefier_calculator", True),
             ("闪蒸降温浓缩", "FlashEvaporationCalculator", "flash_evaporation_calculator", True),
             ("闪蒸蒸汽回收", "FlashSteamRecoveryCalculator", "flash_steam_recovery_calculator", True),
             ("闪蒸罐计算", "FlashTankCalculator", "flash_tank_calculator", True),
@@ -180,7 +180,6 @@ class ChemicalCalculationsWidget(QWidget):
             ("离心泵NPSHa计算", "NPSHaCalculator", "npsha_calculator", True),
             ("蒸汽管径流量", "蒸汽管径流量", "steam_pipe_calculator", True),
             ("长输蒸汽管道温降计算", "LongDistanceSteamPipeCalculator", "long_distance_steam_pipe_calculator", True),
-            ("蒸汽管道压降计算", "SteamPipePressureDropCalculator", "steam_pipe_pressure_drop_calculator", True),
             ("循环水用水量计算", "CoolingWaterCalculator", "cooling_water_calculator", True),
             #
             # ══════════════════════════════════════════
@@ -706,7 +705,6 @@ class ChemicalCalculationsWidget(QWidget):
         "npsha_calculator": "流体输送",
         "steam_pipe_calculator": "流体输送",
         "long_distance_steam_pipe_calculator": "流体输送",
-        "steam_pipe_pressure_drop_calculator": "流体输送",
         "cooling_water_calculator": "流体输送",
         # 四、热工制冷
         "steam_sterilization_calculator": "热工制冷",

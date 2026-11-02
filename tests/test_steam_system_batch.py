@@ -176,10 +176,38 @@ ld.calculate()
 check("DN50 长输触发'接近常压'守卫", "接近常压" in ld.result_text.toPlainText(),
       ld.result_text.toPlainText()[:60])
 
+# —— 敷设方式散热修正（吸收自原「蒸汽管道压降计算」页，α：架空1.0/地沟0.5/直埋0.3）——
+ld.pipe_diameter_input.setText("200")
+ld.steam_type.setCurrentIndex(0)   # 回饱和模式（锚点工况）
+ld.calculate()
+hl_overhead = _re(r'总热损失：([\d.]+)', ld.result_text.toPlainText())
+check("敷设：默认为架空（α=1.0）", ld.install_type.currentIndex() == 0
+      and ld.install_type.currentText().startswith("架空"))
+check("敷设：架空热损失仍在 60~130 kW", hl_overhead is not None and 60 < hl_overhead < 130,
+      str(hl_overhead))
+
+ld.install_type.setCurrentIndex(1)  # 地沟 α=0.5
+ld.calculate()
+hl_ditch = _re(r'总热损失：([\d.]+)', ld.result_text.toPlainText())
+ratio_d = (hl_ditch / hl_overhead) if (hl_ditch and hl_overhead) else None
+check("敷设：地沟热损失 ≈ 架空×0.5（±10%）",
+      ratio_d is not None and 0.45 < ratio_d < 0.55, f"比值 {ratio_d}")
+
+ld.install_type.setCurrentIndex(2)  # 直埋 α=0.3
+ld.calculate()
+hl_buried = _re(r'总热损失：([\d.]+)', ld.result_text.toPlainText())
+ratio_b = (hl_buried / hl_overhead) if (hl_buried and hl_overhead) else None
+check("敷设：直埋热损失 ≈ 架空×0.3（±10%）",
+      ratio_b is not None and 0.27 < ratio_b < 0.33, f"比值 {ratio_b}")
+
+hd = ld._get_history_data()
+check("敷设：历史记录含敷设方式", hd['inputs'].get('敷设方式') == '直埋', str(hd['inputs'].get('敷设方式')))
+
 # clear 恢复默认
 ld.clear_inputs()
 check("clear 后流量恢复 10", ld.flow_rate_input.text() == "10", ld.flow_rate_input.text())
 check("clear 后管径恢复 200", ld.pipe_diameter_input.text() == "200")
+check("clear 后敷设方式恢复架空", ld.install_type.currentIndex() == 0)
 
 # ══════════════════ Part 3: 蒸汽空消 ══════════════════
 print('── Part 3: 蒸汽空消 ──')

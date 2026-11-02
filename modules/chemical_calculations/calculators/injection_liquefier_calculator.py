@@ -1,5 +1,5 @@
 """
-蒸汽喷射液化器用汽量计算器（一次喷射 / 两次喷射）
+蒸汽喷射液化器计算器（用汽量 + 设备结构尺寸；一次喷射 / 两次喷射）
 
 适用：淀粉糖、麦芽糊精、味精、酒精、氨基酸等行业的淀粉乳**喷射液化**工段，
       核算喷射液化器（含低压「低温蒸汽」喷射液化器）所需的工作蒸汽（生蒸汽）用汽量，
@@ -105,6 +105,32 @@
 
     ⚠ 「吨淀粉乳气耗」（÷ 物料量，含水的乳液）与「吨干物汽耗」（÷ 干物量）是
       **两个不同口径**，本计算器同时给出。二者换算：吨干物汽耗 = 吨乳气耗 ÷ (X/100)。
+
+═══════════════ 7. 设备结构尺寸（可选输出，与用汽量无关）═══════════════
+    勾选「计算设备结构尺寸」后，按**同一套用汽量**追加喷嘴与管体尺寸，供询价、
+    比价与方案图使用（定尺以厂家图纸为准）。两种形式的推动力完全不同：
+
+    汽带料（推动力 = 高压蒸汽）—— 蒸汽拉伐尔喷嘴：
+        r_c = (2/(γ+1))^(γ/(γ−1))，γ = 1.3 → 0.5457
+        p*  = r_c·p₁；等熵膨胀到 p* 得 h*、v*
+        c*  = √(2(h₁ − h*))，G* = c*/v*
+        喉径 A_t = (D/3600)/(μ·G*)；出口 A_e = (D/3600)·v_e/(μ·c_e)
+        （出口按等熵膨胀到吸入室压力 p₂ 求 v_e、c_e）
+
+    料带汽（推动力 = 料液泵）—— 料液喷嘴 + 供料泵：
+        d_l = √(4·Q/(π·c_l))
+        Δp  = ρ·c_l²/(2φ²)，泵出口压力 = p_蒸汽 + Δp
+        H   = Δp总/(ρg)，P = V·Δp总/η
+
+    两种形式共用（蒸汽在混合管内已凝结，按**混合后液体**体积流量定径；
+    若按蒸汽体积定径会大出 2~3 倍）：
+        D_m = √(4·V_mix/(π·u_m))，L = K·D_m，D_o = √(4·V_mix/(π·u_o))
+
+    ⚠ 系数（γ=1.3、μ/φ ≈ 0.95、u_m = 3~6、K = 3~5）全属工程经验取值[E]。
+    两次喷射模式下一次、二次各按各自汽量单独定尺 —— 现场本来就是两台设备。
+    引射能力按工业气液比经验区间校核（汽带料 u = 料液/蒸汽 ∈ [5, 15]、
+    料带汽 u = 蒸汽/料液 ∈ [0.06, 0.20]）；汽-液喷射器含凝结相变，
+    索科洛夫完整理论公式须查原书，故此处不用理论式强算。
 """
 
 import math
@@ -113,7 +139,7 @@ import importlib.util
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
-    QComboBox, QGridLayout, QTextEdit, QScrollArea, QSizePolicy,
+    QComboBox, QGridLayout, QTextEdit, QScrollArea, QSizePolicy, QCheckBox,
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QDoubleValidator
@@ -165,15 +191,42 @@ BAUME_TO_SOLID = 1.7770
 #: （两者偏差通常 < 0.1 %，即表格的 4.19·t₂ 与精确焓等价）
 LAMBDA_CP_REF = 4.19
 
+#: 常压（MPa 绝压）
+P_ATM = 0.101325
+
+#: 蒸汽比热比（饱和蒸汽工程经验值[E]）—— 决定临界压比与临界流速
+GAMMA_STEAM = 1.3
+
+#: 临界压比 r_c = (2/(γ+1))^(γ/(γ−1))；γ=1.3 → 0.5457
+#: 压比 p₁/p₂ ≥ 1/r_c 时喷嘴达临界（喉部音速、流量只由上游状态决定）
+CRITICAL_PRESSURE_RATIO = (2.0 / (GAMMA_STEAM + 1.0)) ** (
+    GAMMA_STEAM / (GAMMA_STEAM - 1.0))
+
+#: 混合管径下限（相对喷嘴出口/料液喷嘴直径）：混合管必须容得下射流，
+#: 工业设备常见 D_m/d_noz = 1.5~2.5，取 1.5 作硬下限[E]
+MIX_OVER_NOZZLE_MIN = 1.5
+
+#: 扩压管出口径下限（相对混合管径）：扩压段只能扩张不能收缩，取 1.15[E]
+DIFFUSER_OVER_MIX_MIN = 1.15
+
+#: 引射比经验区间的基准温升（K）：30 %DS 淀粉乳从 25 ℃ 喷到 105 ℃。
+#: 引射比随温升反比变化，温升不同的喷段按 ΔT 折算区间，避免二次喷射段误报
+_U_REF_DT = 80.0
+
 
 class InjectionLiquefierCalculator(CalculatorBase):
-    """蒸汽喷射液化器用汽量计算器（一次喷射 / 两次喷射）"""
+    """蒸汽喷射液化器计算器（用汽量 + 设备结构尺寸）"""
 
     MODES = ["一次喷射液化（低温喷射）", "两次喷射液化（一次 + 二次高温）"]
 
+    #: 喷射器形式（决定推动力与喷嘴类型）：
+    #:   汽带料 —— 高压蒸汽经拉伐尔喷嘴加速后引射料液，供料泵扬程低
+    #:   料带汽 —— 料液泵打出的高速射流引射低压蒸汽，汽压只要 0.05~0.1 MPa
+    JET_MODES = ["汽带料（蒸汽引射料液）", "料带汽（料液引射蒸汽）"]
+
     #: 计算链标识（下游页面按此标识取本页输出）
     CHAIN_MODULE = "injection_liquefier_calculator"
-    CHAIN_PAGE = "喷射液化器用汽量"
+    CHAIN_PAGE = "喷射液化器计算"
 
     #: 浆料量输入方式（体积流量需过一道密度换算）
     FLOW_MODES = ["质量流量 (t/h)", "体积流量 (m³/h)"]
@@ -255,6 +308,13 @@ class InjectionLiquefierCalculator(CalculatorBase):
         g0g.addWidget(lbl("计算模式:"), 0, 0)
         g0g.addWidget(self.mode_combo, 0, 1)
         g0g.addWidget(hint("「一次」即第一段低温喷射"), 0, 2)
+
+        self.jet_mode_combo = QComboBox()
+        self.jet_mode_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.jet_mode_combo.addItems(self.JET_MODES)
+        g0g.addWidget(lbl("喷射器形式:"), 1, 0)
+        g0g.addWidget(self.jet_mode_combo, 1, 1)
+        g0g.addWidget(hint("决定推动力与喷嘴类型"), 1, 2)
         ll.addWidget(g0)
 
         # ── 浆料与产能 ──
@@ -342,6 +402,11 @@ class InjectionLiquefierCalculator(CalculatorBase):
         r = add_row(g3g, "ps", "生蒸汽表压 p_s (MPa):", self.ps_input,
                     "表压！低温喷射 0.1 起", r)
 
+        self.p2_input = QLineEdit("0.1013")
+        self.p2_input.setValidator(QDoubleValidator(0.005, 4.0, 4))
+        r = add_row(g3g, "p2", "吸入室绝压 p₂ (MPa a):", self.p2_input,
+                    "常压喷射取 0.1013，仅定尺寸用", r)
+
         # 设计表格里的「总焓（查表）」列：留空即按压力（与干度）自动查算
         self.total_h_input = QLineEdit("")
         self.total_h_input.setValidator(QDoubleValidator(1000.0, 4000.0, 2))
@@ -360,6 +425,61 @@ class InjectionLiquefierCalculator(CalculatorBase):
                     "选型用，覆盖热损/波动", r)
 
         ll.addWidget(g3)
+
+        # ── 结构与经验系数（定设备尺寸，与用汽量无关）──
+        g4 = CalculatorBase.make_group_box("结构与经验系数")
+        g4g = QGridLayout(g4)
+        g4g.setHorizontalSpacing(10)
+        g4g.setVerticalSpacing(10)
+        g4g.setColumnStretch(0, 4)
+        g4g.setColumnStretch(1, 8)
+        g4g.setColumnStretch(2, 5)
+        r = 0
+
+        self.struct_check = QCheckBox("计算设备结构尺寸")
+        self.struct_check.setChecked(True)
+        self.struct_check.setToolTip(
+            "勾选后按喷射汽量算出喷嘴、混合管、扩压管的参考尺寸。\n"
+            "系数全为工程经验值，设备定尺请以厂家图纸或实测为准。")
+        r = add_row(g4g, "struct_toggle", "设备尺寸:", self.struct_check,
+                    "喷嘴/混合管/扩压管", r)
+
+        self.mu_input = QLineEdit("0.95")
+        self.mu_input.setValidator(QDoubleValidator(0.5, 1.0, 3))
+        r = add_row(g4g, "steam_nozzle", "蒸汽喷嘴流量系数 μ:", self.mu_input,
+                    "拉伐尔喷嘴 0.95 左右", r)
+
+        self.cl_input = QLineEdit("25")
+        self.cl_input.setValidator(QDoubleValidator(5.0, 60.0, 1))
+        r = add_row(g4g, "liquid_nozzle", "料液喷嘴出口速度 c_l (m/s):",
+                    self.cl_input, "经验 15~30，泵压按平方涨", r)
+
+        self.phi_input = QLineEdit("0.95")
+        self.phi_input.setValidator(QDoubleValidator(0.5, 1.0, 3))
+        r = add_row(g4g, "liquid_nozzle", "料液喷嘴流量系数 φ:", self.phi_input,
+                    "0.95~0.98", r)
+
+        self.pump_eff_input = QLineEdit("0.7")
+        self.pump_eff_input.setValidator(QDoubleValidator(0.2, 0.95, 2))
+        r = add_row(g4g, "liquid_nozzle", "供料泵效率 η (0~1):", self.pump_eff_input,
+                    "0.6~0.75，仅用于算轴功率", r)
+
+        self.umix_input = QLineEdit("4.0")
+        self.umix_input.setValidator(QDoubleValidator(0.5, 20.0, 2))
+        r = add_row(g4g, "struct_common", "混合管设计流速 u_m (m/s):", self.umix_input,
+                    "经验 3~6", r)
+
+        self.klen_input = QLineEdit("4.0")
+        self.klen_input.setValidator(QDoubleValidator(1.0, 12.0, 1))
+        r = add_row(g4g, "struct_common", "混合管长径比 K (L/D):", self.klen_input,
+                    "经验 3~5", r)
+
+        self.uout_input = QLineEdit("3.0")
+        self.uout_input.setValidator(QDoubleValidator(0.5, 15.0, 2))
+        r = add_row(g4g, "struct_common", "扩压管出口流速 u_o (m/s):", self.uout_input,
+                    "经验 2~4", r)
+
+        ll.addWidget(g4)
         ll.addStretch()
         scroll.setWidget(lw)
 
@@ -410,8 +530,11 @@ class InjectionLiquefierCalculator(CalculatorBase):
 
         # 控件全部建好后再连信号（避免早发信号时槽函数访问未创建的控件）
         self.flow_mode_combo.currentTextChanged.connect(self._on_flow_mode_changed)
+        self.jet_mode_combo.currentTextChanged.connect(self._on_jet_mode_changed)
+        self.struct_check.toggled.connect(self._on_struct_toggled)
         self._on_mode_changed(self.mode_combo.currentText())
         self._on_flow_mode_changed(self.flow_mode_combo.currentText())
+        self._refresh_struct_rows()
         self._update_svg_diagram()
 
     # ═══════════════════════ 交互 ═══════════════════════
@@ -431,6 +554,27 @@ class InjectionLiquefierCalculator(CalculatorBase):
         for key in ("t2b_in", "t2b_out"):
             for w in self._rows.get(key, ()):
                 w.setVisible(two_stage)
+
+    def _on_jet_mode_changed(self, mode):
+        """切换喷射器形式：汽带料要蒸汽喷嘴系数，料带汽要料液喷嘴与泵参数"""
+        self._refresh_struct_rows()
+
+    def _on_struct_toggled(self, on):
+        """关掉「计算设备结构尺寸」时把系数行一并收起，不留空白行"""
+        self._refresh_struct_rows()
+
+    def _refresh_struct_rows(self):
+        """系数行的可见性由「是否算尺寸」与「喷射器形式」共同决定"""
+        on = self.struct_check.isChecked()
+        steam_mode = (self.jet_mode_combo.currentText() == self.JET_MODES[0])
+        vis = {
+            "steam_nozzle": on and steam_mode,
+            "liquid_nozzle": on and not steam_mode,
+            "struct_common": on,
+        }
+        for key, v in vis.items():
+            for w in self._rows.get(key, ()):
+                w.setVisible(v)
 
     @staticmethod
     def _num(widget, name):
@@ -510,6 +654,169 @@ class InjectionLiquefierCalculator(CalculatorBase):
         dn = next((d for d in _DN_SERIES if d >= d_mm), _DN_SERIES[-1])
         u_act = q_m3h / 3600.0 / (math.pi * (dn / 1000.0) ** 2 / 4.0)
         return dn, d_mm, u_act
+
+    # ═══════════════════════ 设备结构尺寸 ═══════════════════════
+    def _struct_size(self, D, I, s1, p1_abs, p2_abs, m_liquid, rho,
+                     steam_mode, label, dt_rise=None):
+        """按给定用汽量 D 算一组喷射器参考尺寸
+
+        参数：
+            D         该级用汽量 kg/h
+            I / s1    工作蒸汽焓与熵（等熵膨胀用）
+            p1_abs    工作蒸汽绝压 MPa(a)
+            p2_abs    吸入室（混合室）绝压 MPa(a)
+            m_liquid  进入该级的料液质量流量 kg/h（二次喷射是稀释后的量）
+            rho       料液密度 kg/m³
+            steam_mode  True = 汽带料（蒸汽喷嘴）/ False = 料带汽（料液喷嘴）
+            label      「一次喷射」「二次喷射」，仅用于提示文字
+
+        返回 dict；参数不自洽时抛 ValueError。
+        几何按等熵喷嘴 + 经验流速定径，系数全属工程经验取值[E]。
+        """
+        if _STEAM is None:
+            raise ValueError("IAPWS-IF97 模块不可用，无法算设备尺寸")
+        if D <= 0:
+            raise ValueError(f"{label}用汽量为 0，无法定尺")
+        if p2_abs <= 0.0007:
+            raise ValueError("吸入室绝压过低（< 0.0007 MPa a 超出 IF97 范围）")
+        if p2_abs >= p1_abs:
+            raise ValueError(
+                f"吸入室绝压 {p2_abs:.3f} MPa(a) 不低于蒸汽绝压 {p1_abs:.3f} MPa(a)："
+                f"蒸汽无法膨胀，喷嘴建立不起抽吸")
+
+        rc = CRITICAL_PRESSURE_RATIO
+        p_star = rc * p1_abs
+        nozzle_ratio = p1_abs / p2_abs
+        choked = nozzle_ratio >= (1.0 / rc)
+
+        st_star = _STEAM.properties_from_ps(p_star, s1)
+        h_star, v_star = st_star["h"], st_star["v"]
+        c_star = math.sqrt(max(0.0, 2.0 * 1000.0 * (I - h_star)))
+        g_star = c_star / v_star if v_star > 0 else 0.0
+        if g_star <= 0:
+            raise ValueError(f"{label}临界质量流密度为 0，蒸汽参数不自洽")
+
+        # ── 汽带料：蒸汽拉伐尔喷嘴（喉径 + 出口径）──
+        d_t = d_e = None
+        h_e = v_e = c_e = None
+        if steam_mode:
+            mu = self._num(self.mu_input, "蒸汽喷嘴流量系数 μ")
+            if not (0.3 < mu <= 1.0):
+                raise ValueError(f"蒸汽喷嘴流量系数 μ = {mu:g} 不合理（应在 0.5~1.0）")
+            A_t = (D / 3600.0) / (g_star * mu)
+            d_t = math.sqrt(4.0 * A_t / math.pi) * 1000.0
+            st_e = _STEAM.properties_from_ps(p2_abs, s1)
+            h_e, v_e = st_e["h"], st_e["v"]
+            c_e = math.sqrt(max(0.0, 2.0 * 1000.0 * (I - h_e)))
+            A_e = (D / 3600.0) * v_e / (c_e * mu) if c_e > 0 else 0.0
+            if A_e > 0:
+                d_e = math.sqrt(4.0 * A_e / math.pi) * 1000.0
+        else:
+            mu = None
+
+        # ── 料带汽：料液喷嘴 + 供料泵 ──
+        d_l = None
+        c_l = phi = eta_p = dp_noz = p_pump = h_pump = p_shaft = None
+        if not steam_mode:
+            c_l = self._num(self.cl_input, "料液喷嘴出口速度 c_l")
+            phi = self._num(self.phi_input, "料液喷嘴流量系数 φ")
+            eta_p = self._num(self.pump_eff_input, "供料泵效率 η")
+            if not (0.3 < phi <= 1.0):
+                raise ValueError(f"料液喷嘴流量系数 φ = {phi:g} 不合理（应在 0.95 附近）")
+            if not (0.1 <= eta_p <= 1.0):
+                raise ValueError(f"供料泵效率 η = {eta_p:g} 不合理（应在 0.6~0.75）")
+            v_l_m3s = (m_liquid / rho) / 3600.0
+            if v_l_m3s > 0 and c_l > 0:
+                d_l = math.sqrt(4.0 * (v_l_m3s / c_l) / math.pi) * 1000.0
+            dp_noz = rho * c_l ** 2 / (2.0 * phi ** 2)          # Pa
+            p_pump = p1_abs + dp_noz / 1e6                      # MPa(a)
+            dp_total = max(0.0, (p_pump - P_ATM) * 1e6)         # Pa，从常压罐吸入
+            h_pump = dp_total / (rho * 9.81)                    # m
+            p_shaft = (v_l_m3s * dp_total / eta_p / 1000.0) if eta_p > 0 else 0.0
+
+        # ── 混合管与扩压管（两种形式共用，按混合后液体体积定径）──
+        V_l = m_liquid / rho                                    # m³/h
+        V_c = D / 1000.0                                        # m³/h 凝水
+        V_mix = V_l + V_c
+        rho_mix = (m_liquid + D) / V_mix if V_mix > 0 else rho
+        u_mix = self._num(self.umix_input, "混合管设计流速 u_m")
+        K_len = self._num(self.klen_input, "混合管长径比 K")
+        u_out = self._num(self.uout_input, "扩压管出口流速 u_o")
+        if u_mix <= 0 or u_out <= 0:
+            raise ValueError("混合管/扩压管流速必须大于 0")
+        d_mix_liq = math.sqrt(4.0 * (V_mix / 3600.0) / (math.pi * u_mix)) * 1000.0
+        # 混合管必须容得下射流：喷嘴出口径的 1.5 倍是硬下限，两者取大
+        d_noz = d_e if steam_mode else d_l
+        d_mix_min = MIX_OVER_NOZZLE_MIN * d_noz if d_noz else 0.0
+        if d_mix_liq >= d_mix_min:
+            d_mix = d_mix_liq
+            mix_basis = f"按 u_m = {u_mix:g} m/s"
+        else:
+            d_mix = d_mix_min
+            mix_basis = (f"受射流限制，取 {MIX_OVER_NOZZLE_MIN:g}×喷嘴径 "
+                         f"{d_noz:.1f} mm")
+        L_mix = K_len * d_mix
+        d_out_liq = math.sqrt(4.0 * (V_mix / 3600.0) / (math.pi * u_out)) * 1000.0
+        d_out_min = DIFFUSER_OVER_MIX_MIN * d_mix
+        if d_out_liq >= d_out_min:
+            d_out = d_out_liq
+            out_basis = f"按 u_o = {u_out:g} m/s"
+        else:
+            d_out = d_out_min
+            out_basis = f"受混合管径限制，取 {DIFFUSER_OVER_MIX_MIN:g}×D_m"
+
+        ratio_de = (d_e / d_t) if (d_e and d_t) else None
+        ratio_mix = (d_mix / d_noz) if d_noz else None
+
+        # ── 引射比与校核 ──
+        # 引射比随温升反比变化（温升越小，同样的料量只需更少的汽），
+        # 故把经验区间按 ΔT 折算：基准 80 K（30 %DS 从 25 ℃ 喷到 105 ℃）
+        u_actual = (m_liquid / D) if steam_mode else (D / m_liquid)
+        u_band = (5.0, 15.0) if steam_mode else (0.06, 0.20)
+        if dt_rise and dt_rise > 0:
+            k = (_U_REF_DT / dt_rise) if steam_mode else (dt_rise / _U_REF_DT)
+            u_band = (u_band[0] * k, u_band[1] * k)
+        warn = []
+        if steam_mode:
+            if not choked:
+                warn.append(
+                    f"{label}：蒸汽压比 p₁/p₂ = {nozzle_ratio:.2f} < {1 / rc:.2f}，"
+                    f"喷嘴未达临界（喷不出音速、抽吸力弱）—— 汽带料需更高蒸汽压力"
+                    f"（厂商样本口径 ≥0.5 MPa）")
+        else:
+            if c_l > 30:
+                warn.append(
+                    f"{label}：料液喷嘴速度 {c_l:.0f} m/s 偏高，泵压按平方增长、"
+                    f"喷嘴磨损加剧（经验区间 15~30 m/s）")
+        if not (u_band[0] <= u_actual <= u_band[1]):
+            _n = "料液/蒸汽" if steam_mode else "蒸汽/料液"
+            if steam_mode:
+                _hint = ("——蒸汽量偏大或料量偏小" if u_actual < u_band[0]
+                         else "——带不动这么多料，需提高蒸汽压力或减小温升")
+            else:
+                _hint = "——请复核蒸汽压力与温升"
+            warn.append(
+                f"{label}：引射比 u({_n}) = {u_actual:.2f}，超出常见区间 "
+                f"[{u_band[0]:.3g}, {u_band[1]:.3g}]{_hint}")
+
+        return {
+            "label": label, "steam_mode": steam_mode, "D": D,
+            "p1_abs": p1_abs, "p2_abs": p2_abs,
+            "rc": rc, "p_star": p_star, "nozzle_ratio": nozzle_ratio,
+            "choked": choked, "h_star": h_star, "v_star": v_star,
+            "c_star": c_star, "g_star": g_star, "mu": mu,
+            "h_e": h_e, "v_e": v_e, "c_e": c_e, "d_t": d_t, "d_e": d_e,
+            "ratio_de": ratio_de,
+            "d_l": d_l, "c_l": c_l, "phi": phi, "eta_p": eta_p,
+            "dp_noz": dp_noz, "p_pump": p_pump, "h_pump": h_pump,
+            "p_shaft": p_shaft,
+            "V_mix": V_mix, "rho_mix": rho_mix,
+            "u_mix": u_mix, "K_len": K_len, "u_out": u_out,
+            "d_mix": d_mix, "L_mix": L_mix, "d_out": d_out,
+            "mix_basis": mix_basis, "out_basis": out_basis,
+            "ratio_mix": ratio_mix,
+            "u_actual": u_actual, "u_band": u_band, "warn": warn,
+        }
 
     # ═══════════════════════ 计算 ═══════════════════════
     def calculate(self):
@@ -763,7 +1070,46 @@ class InjectionLiquefierCalculator(CalculatorBase):
         p_min_a = self._p_sat_abs(t2a) + 0.05 - ATM
         p_min_b = (self._p_sat_abs(t2b_out) + 0.05 - ATM) if two_stage else None
 
-        # ── 7. 「最终出口状态」：供计算链下游（闪蒸、预热等）取用 ──
+        # ── 7. 设备结构尺寸（可选；与用汽量无关，按各级汽量分别定尺）──
+        struct_on = self.struct_check.isChecked()
+        steam_mode = (self.jet_mode_combo.currentText() == self.JET_MODES[0])
+        p2_abs = self._num(self.p2_input, "吸入室绝压")
+        s1 = None
+        size1 = size2 = None
+        if struct_on:
+            wet = _STEAM.wet_steam_properties(P_MPa=p_abs, dryness=dry)
+            s1 = wet["s"]
+            # 定尺用的焓：查表值若低于「按该熵等熵膨胀到临界压力」的 h*，说明填的
+            # 总焓与熵不自洽（多半查错了蒸汽表）——几何按真实饱和焓算并给出提示
+            I_size = I
+            st_star_chk = _STEAM.properties_from_ps(
+                CRITICAL_PRESSURE_RATIO * p_abs, s1)
+            if I - st_star_chk["h"] <= 1.0:
+                I_size = wet["h"]
+                warn.append(
+                    f"总焓 {I:.1f} kJ/kg 低于按该熵等熵膨胀后的 h* = "
+                    f"{st_star_chk['h']:.1f} kJ/kg，与熵不自洽（多为查错蒸汽表）："
+                    f"用汽量仍按你填的值算，设备结构尺寸改按饱和焓 "
+                    f"{I_size:.1f} kJ/kg 计算")
+            size1 = self._struct_size(D1, I_size, s1, p_abs, p2_abs, G, rho,
+                                      steam_mode, "一次喷射", dt_rise=t2a - t1)
+            warn.extend(size1["warn"])
+            if two_stage and D2 > 0:
+                size2 = self._struct_size(D2, I_size, s1, p_abs, p2_abs, G1, rho,
+                                          steam_mode, "二次喷射",
+                                          dt_rise=t2b_out - t2b_in)
+                warn.extend(size2["warn"])
+            # 形式与汽压的匹配（厂商样本口径，仅提示）
+            if steam_mode and ps < 0.5:
+                warn.append(
+                    f"汽带料式蒸汽表压 {ps:.2f} MPa 偏低：厂商样本称 <0.5~0.7 MPa "
+                    f"常带不动料，若实际能运行请以厂家数据为准")
+            if (not steam_mode) and ps > 0.3:
+                warn.append(
+                    f"料带汽式蒸汽表压 {ps:.2f} MPa 偏高：该形式通常在 0.05~0.1 MPa "
+                    f"就够，汽压过高会顶住料液射流、抽吸变差")
+
+        # ── 8. 「最终出口状态」：供计算链下游（闪蒸、预热等）取用 ──
         if two_stage:
             t_out, G_final, X_final, C_final = t2b_out, G2, X2 * 100.0, C2
         else:
@@ -811,15 +1157,66 @@ class InjectionLiquefierCalculator(CalculatorBase):
             "D_design": D_design, "dn_total": dn_total,
             "d_calc": d_calc, "u_act": u_act,
             "p_min_a": p_min_a, "p_min_b": p_min_b,
+            # 设备结构尺寸（可选）
+            "struct_on": struct_on, "jet_mode": self.jet_mode_combo.currentText(),
+            "steam_mode": steam_mode, "p2_abs": p2_abs, "s1": s1,
+            "size1": size1, "size2": size2,
             # 计算链下游用的最终出口状态
             "t_out": t_out, "G_final": G_final, "X_final": X_final, "C_final": C_final,
             "warn": warn,
         }
 
     # ═══════════════════════ 结果渲染 ═══════════════════════
+    def _render_struct(self, L, s, n, second=False):
+        """把一组喷射器结构尺寸追加到结果行（s 为 _struct_size 的返回）"""
+        if s is None:
+            return
+        tag = "二次喷射" if second else "一次喷射"
+        if second:
+            L.append("")
+        if s["steam_mode"]:
+            L.append(f"【{n}、设备结构尺寸 —— {tag}（汽带料：蒸汽拉伐尔喷嘴）】★")
+            L.append(f"  该级用汽量 D      = {s['D']:.1f} kg/h")
+            L.append(f"  临界压比 r_c      = (2/(γ+1))^(γ/(γ−1))，γ=1.3 → {s['rc']:.4f}")
+            L.append(f"  实际压比 p₁/p₂    = {s['nozzle_ratio']:.2f}"
+                     f"（判据 ≥ {1.0 / s['rc']:.2f}）→ "
+                     + ("临界/阻塞 ✓" if s["choked"] else "未临界 ✗ 抽吸力弱"))
+            L.append(f"  临界压力 p*       = r_c·p₁ = {s['p_star']:.4f} MPa")
+            L.append(f"  等熵到 p*：h* = {s['h_star']:.1f} kJ/kg，v* = {s['v_star']:.4f} m³/kg")
+            L.append(f"  临界速度 c*       = √(2(h₁−h*)) = {s['c_star']:.1f} m/s")
+            L.append(f"  临界质量流密度 G* = c*/v* = {s['g_star']:.1f} kg/(m²·s)")
+            L.append(f"  → 喉部直径 d_t    = {s['d_t']:.1f} mm（按 μ = {s['mu']:g} 折减）")
+            L.append(f"  等熵到 p₂：h_e = {s['h_e']:.1f} kJ/kg，v_e = {s['v_e']:.4f} m³/kg")
+            L.append(f"  出口速度 c_e      = √(2(h₁−h_e)) = {s['c_e']:.1f} m/s")
+            L.append(f"  → 出口直径 d_e    = {s['d_e']:.1f} mm"
+                     f"（d_e/d_t = {s['ratio_de']:.2f}，常见 1.3~1.8）")
+        else:
+            L.append(f"【{n}、设备结构尺寸 —— {tag}（料带汽：料液喷嘴 + 供料泵）】★")
+            L.append(f"  该级用汽量 D      = {s['D']:.1f} kg/h")
+            L.append(f"  料液喷嘴出口速度  = {s['c_l']:.1f} m/s（φ = {s['phi']:g}）")
+            L.append(f"  → 喷嘴直径 d_l    = {s['d_l']:.1f} mm")
+            L.append(f"  喷嘴压降 Δp       = ρ·c_l²/(2φ²) = {s['dp_noz'] / 1e6:.3f} MPa")
+            L.append(f"  泵出口压力        = p_蒸汽 + Δp = {s['p1_abs']:.3f} + "
+                     f"{s['dp_noz'] / 1e6:.3f} = {s['p_pump']:.3f} MPa(a)")
+            L.append(f"  → 泵扬程 H        = Δp/(ρg) = {s['h_pump']:.1f} m"
+                     f"（从常压罐吸入，未计管损）")
+            L.append(f"  → 泵轴功率        = V·Δp/(η={s['eta_p']:g}) = {s['p_shaft']:.2f} kW")
+        L.append(f"  混合后体积流量    = 料液 + 凝水 = {s['V_mix']:.3f} m³/h"
+                 f"（混合液密度 {s['rho_mix']:.1f} kg/m³）")
+        L.append(f"  混合管径 D_m      = {s['d_mix']:.1f} mm（{s['mix_basis']}）")
+        L.append(f"  混合管长 L        = K·D_m = {s['K_len']:g}×{s['d_mix']:.1f}"
+                 f" = {s['L_mix']:.0f} mm")
+        L.append(f"  扩压管出口径 D_o  = {s['d_out']:.1f} mm（{s['out_basis']}）")
+        if s["ratio_mix"]:
+            L.append(f"  量级自查          = D_m/喷嘴径 = {s['ratio_mix']:.2f}"
+                     f"（工业设备常见 1.5~2.5，偏大说明射流相对管径偏细）")
+        _un = "料液/蒸汽" if s["steam_mode"] else "蒸汽/料液"
+        L.append(f"  引射比 u({_un}) = {s['u_actual']:.2f}"
+                 f"（常见区间 {s['u_band'][0]:.3g}~{s['u_band'][1]:.3g}，按温升折算）")
+
     def _render(self, r):
         L = []
-        L.append("蒸汽喷射液化器用汽量计算")
+        L.append("蒸汽喷射液化器计算（用汽量 + 设备尺寸）")
         L.append("=" * 58)
         L.append(f"【计算模式】{r['mode']}")
         L.append("")
@@ -933,6 +1330,18 @@ class InjectionLiquefierCalculator(CalculatorBase):
         L.append(f"  最低蒸汽表压要求  = {r['p_min_a']:.3f} MPa"
                  + (f"（二次段 {r['p_min_b']:.3f} MPa）" if r["p_min_b"] is not None else "")
                  + "   [出口温度 + 0.05 MPa 驱动余量]")
+        if r.get("struct_on"):
+            n = "八" if r["two_stage"] else "七"
+            self._render_struct(L, r.get("size1"), n)
+            if r.get("size2"):
+                self._render_struct(L, r["size2"], n, second=True)
+            L.append("")
+            L.append("  [设备尺寸口径] 几何按「等熵喷嘴 + 经验流速定径」估算：喷嘴按等熵")
+            L.append("  膨胀到临界压力 p* 求临界质量流密度 G*，再由 G* 与汽量反算喉径；")
+            L.append("  混合管与扩压管按**混合后液体体积流量**（蒸汽在管内已凝结）定径，")
+            L.append("  若按蒸汽体积定径会大出 2~3 倍。γ=1.3、μ/φ=0.95、u_m=3~6、K=3~5")
+            L.append("  均属工程经验取值[E]，仅用于方案估算与询价，设备定尺请以厂家图纸")
+            L.append("  或实测为准。")
         if r["warn"]:
             L.append("")
             L.append("【提示与警告】")
@@ -976,19 +1385,31 @@ class InjectionLiquefierCalculator(CalculatorBase):
         self.t2b_in_input.setText("95")
         self.t2b_out_input.setText("125")
         self.ps_input.setText("0.3")
+        self.p2_input.setText(str(P_ATM))
         self.total_h_input.setText("")
         self.dry_input.setText("1.0")
         self.margin_input.setText("10")
+        # 结构与经验系数
+        self.struct_check.setChecked(True)
+        self.mu_input.setText("0.95")
+        self.cl_input.setText("25")
+        self.phi_input.setText("0.95")
+        self.pump_eff_input.setText("0.7")
+        self.umix_input.setText("4.0")
+        self.klen_input.setText("4.0")
+        self.uout_input.setText("3.0")
 
     def clear_inputs(self):
         """恢复出厂默认值（可直接重算）"""
         self.mode_combo.setCurrentIndex(0)
         self.flow_mode_combo.setCurrentIndex(0)
+        self.jet_mode_combo.setCurrentIndex(0)
         self.setup_default_values()
         self.result_text.clear()
         self._last_result = {}
         self._on_mode_changed(self.mode_combo.currentText())
         self._on_flow_mode_changed(self.flow_mode_combo.currentText())
+        self._refresh_struct_rows()
         self._update_svg_diagram()
 
     # ═══════════════════════ 历史 ═══════════════════════
@@ -998,6 +1419,7 @@ class InjectionLiquefierCalculator(CalculatorBase):
             return {"inputs": {}, "outputs": {}}
         inputs = {
             "计算模式": r.get("mode", ""),
+            "喷射器形式": r.get("jet_mode", ""),
             "浆料量方式": r.get("flow_mode", ""),
             "淀粉乳流量_t_h": r.get("G_t", 0),
             "浆料比重_d20": r.get("d20", 0),
@@ -1023,6 +1445,18 @@ class InjectionLiquefierCalculator(CalculatorBase):
         if r.get("two_stage"):
             outputs["二次用汽量_kg_h"] = round(r.get("D2", 0), 1)
             outputs["液化总用汽_kg_h"] = round(r.get("D_total", 0), 1)
+        s1 = r.get("size1")
+        if s1:
+            if s1["steam_mode"]:
+                outputs["蒸汽喷嘴喉径_mm"] = round(s1["d_t"], 1)
+                outputs["蒸汽喷嘴出口径_mm"] = round(s1["d_e"], 1)
+            else:
+                outputs["料液喷嘴直径_mm"] = round(s1["d_l"], 1)
+                outputs["供料泵扬程_m"] = round(s1["h_pump"], 1)
+                outputs["供料泵轴功率_kW"] = round(s1["p_shaft"], 2)
+            outputs["混合管径_mm"] = round(s1["d_mix"], 1)
+            outputs["混合管长_mm"] = round(s1["L_mix"], 0)
+            outputs["扩压管出口径_mm"] = round(s1["d_out"], 1)
         return {"inputs": inputs, "outputs": outputs}
 
     # ═══════════════════════ 工程信息 / 报告 ═══════════════════════
@@ -1039,19 +1473,19 @@ class InjectionLiquefierCalculator(CalculatorBase):
             "project_number": saved.get("project_number", ""),
             "project_name": saved.get("project_name", ""),
             "subproject_name": saved.get("subproject_name", ""),
-            "calculation_type": "蒸汽喷射液化器用汽量计算",
+            "calculation_type": "蒸汽喷射液化器计算",
         }
 
     def generate_report(self):
         """生成计算书文本（str；无结果返回 None）"""
         try:
             body = self.result_text.toPlainText()
-            if not body or "用汽量计算" not in body:
+            if not body or "喷射液化器" not in body:
                 return None
             info = self.get_project_info()
             head = "\n".join([
                 "═" * 58,
-                "        蒸汽喷射液化器用汽量计算书",
+                "        蒸汽喷射液化器计算书",
                 "═" * 58,
             ])
             foot = "\n".join([
@@ -1103,6 +1537,22 @@ class InjectionLiquefierCalculator(CalculatorBase):
                 "     吨淀粉乳气耗 = D ÷ 物料量   kg 汽 / t 淀粉乳（设计表格口径，分母是含水的乳液）",
                 "     吨干物汽耗   = D ÷ 干物量   kg 汽 / t 干物（换算式：吨干物汽耗 = 吨乳气耗 ÷ X%）",
                 "  8. 管径：DN 按 V = D·v_g 与流速 30 m/s（饱和蒸汽常规 25~40）估算",
+                "  9. 设备结构尺寸（可选，勾选「计算设备结构尺寸」时输出）",
+                "     蒸汽喷嘴（汽带料）：临界压比 r_c = (2/(γ+1))^(γ/(γ−1))，γ=1.3 → 0.5457",
+                "       临界压力 p* = r_c·p₁；等熵膨胀至 p* 得 h*、v*",
+                "       临界速度 c* = √(2(h₁ − h*))，h 以 kJ/kg 计时须 ×1000 换成 J/kg",
+                "       临界质量流密度 G* = c*/v*        kg/(m²·s)",
+                "       喉径 A_t = (D/3600)/(μ·G*)，d_t = √(4·A_t/π)",
+                "       出口 A_e = (D/3600)·v_e/(μ·c_e)，等熵膨胀至吸入室压力 p₂",
+                "     料液喷嘴（料带汽）：d_l = √(4·Q/(π·c_l))，Q 为料液体积流量 m³/s",
+                "       喷嘴压降 Δp = ρ·c_l²/(2φ²)；泵出口压力 = p_蒸汽 + Δp",
+                "       泵扬程 H = Δp总/(ρg)（从常压罐吸入）；轴功率 P = V·Δp总/η",
+                "     混合管与扩压管（两种形式共用）：按混合后液体体积流量定径",
+                "       D_m = √(4·V_mix/(π·u_m))，L = K·D_m，D_o = √(4·V_mix/(π·u_o))",
+                "       蒸汽在混合管内已凝结，故按液体体积定径（按蒸汽体积会大 2~3 倍）",
+                " 10. 引射比校核：u = 料液/蒸汽（汽带料）或 蒸汽/料液（料带汽），",
+                "     对照工业气液比区间（汽带料 5~15、料带汽 0.06~0.20）判断是否超出；",
+                "     汽-液喷射器含凝结相变，索科洛夫完整公式须查原书，本器按经验区间校核。",
                 "",
                 "═" * 58,
                 " 数据来源与假设",
@@ -1127,10 +1577,10 @@ class InjectionLiquefierCalculator(CalculatorBase):
             return None
 
     def download_docx_report(self):
-        ReportExporter.export_docx(self, "蒸汽喷射液化器用汽量")
+        ReportExporter.export_docx(self, "蒸汽喷射液化器计算")
 
     def download_pdf_report(self):
-        ReportExporter.export_pdf(self, "蒸汽喷射液化器用汽量")
+        ReportExporter.export_pdf(self, "蒸汽喷射液化器计算")
 
     # ═══════════════════════ SVG 示意图 ═══════════════════════
     def _text(self, x, y, text, size=9, color="#333", bold=False, center=True):

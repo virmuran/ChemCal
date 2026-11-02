@@ -41,6 +41,14 @@ except Exception as e:
 class LongDistanceSteamPipeCalculator(CalculatorBase):
     """长输蒸汽管道温降计算器"""
 
+    # 敷设方式散热修正系数 α[E]：地沟半封闭散热约为架空的 0.5 倍，直埋土壤约 0.3 倍
+    # （吸收自原「蒸汽管道压降计算」页的经验取法，工程常用）
+    INSTALL_TYPES = {
+        "架空": {"alpha": 1.0, "desc": "空气中散热"},
+        "地沟": {"alpha": 0.5, "desc": "地沟内半封闭"},
+        "直埋": {"alpha": 0.3, "desc": "土壤中直埋"},
+    }
+
     # 计算类型类属性
     calculation_type = "长输蒸汽管道温降计算"
 
@@ -82,7 +90,7 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         scroll_layout.setSpacing(15)
 
         # 顶部说明文字
-        desc_label = QLabel("计算长距离蒸汽管道的温度降、压力损失和热损失，基于能量平衡和动量平衡方程进行分段计算。")
+        desc_label = QLabel("计算长距离蒸汽管道的温度降、压力损失和热损失，基于能量平衡和动量平衡方程进行分段计算；支持架空 / 地沟 / 直埋敷设方式的散热修正。")
         desc_label.setWordWrap(True)
         desc_label.setStyleSheet("font-size: 12px; padding: 5px;")
         scroll_layout.addWidget(desc_label)
@@ -279,6 +287,23 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         insulation_layout.addWidget(self.ambient_temp_input, row, 1)
         insulation_layout.addWidget(hint, row, 2)
 
+        row = 4
+        lbl = QLabel("敷设方式:")
+        lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        lbl.setStyleSheet(INPUT_LABEL_STYLE)
+        self.install_type = QComboBox()
+        self.install_type.setStyleSheet(COMBOBOX_STYLE)
+        self.install_type.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        for name, info in self.INSTALL_TYPES.items():
+            self.install_type.addItem(f"{name}（{info['desc']}）")
+        self.install_type.setToolTip(
+            "散热修正系数 α：架空 1.0 / 地沟 0.5 / 直埋 0.3 [经验值]。\n"
+            "直埋时环境温度建议填地温（15~20 °C）而非气温。")
+        hint = QLabel("")
+        insulation_layout.addWidget(lbl, row, 0)
+        insulation_layout.addWidget(self.install_type, row, 1)
+        insulation_layout.addWidget(hint, row, 2)
+
         scroll_layout.addWidget(insulation_group)
 
         scroll_layout.addStretch()
@@ -340,6 +365,7 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         self.insulation_thickness_input.setText("50")
         self.insulation_conductivity_input.setText("0.04")
         self.ambient_temp_input.setText("20")
+        self.install_type.setCurrentIndex(0)
         self.result_text.clear()
 
     def calculate(self):
@@ -372,11 +398,16 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
             insulation_conductivity = float(self.insulation_conductivity_input.text())
             ambient_temp = float(self.ambient_temp_input.text())
 
+            # 敷设方式 → 散热修正系数 α（下拉文本为"架空（空气中散热）"格式，取括号前名称）
+            install_name = self.install_type.currentText().split("（")[0].strip()
+            install_alpha = self.INSTALL_TYPES[install_name]["alpha"]
+
             # 执行计算
             results = self.calculate_steam_pipe_loss(
                 steam_type, mass_flow, inlet_temp, inlet_pressure_mpa,
                 pipe_length, pipe_diameter, roughness,
-                insulation_thickness, insulation_conductivity, ambient_temp
+                insulation_thickness, insulation_conductivity, ambient_temp,
+                install_alpha=install_alpha
             )
 
             # 显示结果
@@ -407,6 +438,7 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         insulation_thickness = float(self.insulation_thickness_input.text() or 0)
         insulation_conductivity = float(self.insulation_conductivity_input.text() or 0)
         ambient_temp = float(self.ambient_temp_input.text() or 0)
+        install_name = self.install_type.currentText().split("（")[0].strip()
 
         inputs = {
             "蒸汽类型": steam_type,
@@ -420,7 +452,8 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
             "粗糙度_mm": roughness,
             "保温厚度_mm": insulation_thickness,
             "保温导热系数_W_mK": insulation_conductivity,
-            "环境温度_C": ambient_temp
+            "环境温度_C": ambient_temp,
+            "敷设方式": install_name
         }
 
         outputs = {}
@@ -428,7 +461,8 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
             results = self.calculate_steam_pipe_loss(
                 steam_type, mass_flow, inlet_temp, inlet_pressure_mpa,
                 pipe_length, pipe_diameter / 1000, roughness / 1000,
-                insulation_thickness / 1000, insulation_conductivity, ambient_temp
+                insulation_thickness / 1000, insulation_conductivity, ambient_temp,
+                install_alpha=self.INSTALL_TYPES[install_name]["alpha"]
             )
             outputs = {
                 "出口温度_C": round(results.get('outlet_temp', 0), 1),
@@ -484,6 +518,7 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
   保温厚度：{self.insulation_thickness_input.text()} mm
   保温材料：{self.insulation_material.currentText()}
   导热系数：{self.insulation_conductivity_input.text()} W/(m·K)
+  敷设方式：{self.install_type.currentText()}
   环境温度：{self.ambient_temp_input.text()} °C
 
 【计算结果】
@@ -503,7 +538,7 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
 备注说明
 ══════════════════════════════════════════
 
-  1. 本计算书基于能量平衡和动量平衡方程分段计算
+  1. 本计算书基于能量平衡和动量平衡方程分段计算，散热按敷设方式修正（架空 1.0 / 地沟 0.5 / 直埋 0.3，经验值）
   2. 蒸汽物性采用 IAPWS-IF97 工业标准
   3. 计算结果仅供参考，实际工程需经专业工程师审核确认
 
@@ -524,7 +559,8 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
         ReportExporter.export_pdf(self, "长输蒸汽管道温降")
     def calculate_steam_pipe_loss(self, steam_type, mass_flow, inlet_temp, inlet_pressure,
                                  pipe_length, pipe_diameter, roughness,
-                                 insulation_thickness, insulation_conductivity, ambient_temp):
+                                 insulation_thickness, insulation_conductivity, ambient_temp,
+                                 install_alpha=1.0):
         """计算蒸汽管道温降和压降"""
         # 蒸汽物性参数 (IAPWS-IF97 工业标准)
         def get_steam_properties(temp_c, pressure_mpa):
@@ -616,6 +652,9 @@ class LongDistanceSteamPipeCalculator(CalculatorBase):
             else:
                 # 无保温层
                 heat_loss_segment = 2 * math.pi * (pipe_diameter / 2) * segment_length * 10 * (current_temp - ambient_temp)  # 估算
+
+            # 敷设方式修正：地沟/直埋散热低于架空（α[经验值]）
+            heat_loss_segment *= install_alpha
 
             total_heat_loss += heat_loss_segment
 

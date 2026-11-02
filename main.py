@@ -24,7 +24,9 @@ from PySide6.QtWidgets import (
     QFormLayout, QLineEdit, QCheckBox, QMenu, QSystemTrayIcon
 )
 from PySide6.QtGui import QAction, QActionGroup, QFont, QDesktopServices, QIcon
-from PySide6.QtCore import Qt, QTimer, QUrl, QMetaObject, Q_ARG, Slot, QThread, Signal
+from PySide6.QtCore import (
+    Qt, QTimer, QUrl, QMetaObject, Q_ARG, Slot, QThread, Signal, QTranslator
+)
 
 from data_manager import DataManager
 from theme_manager import ThemeManager
@@ -1033,7 +1035,7 @@ class ChemCal(QMainWindow):
 4. 需要存档就点「下载 DOCX」或「下载 PDF」，抬头取自「文件 → 工程信息」<br><br>
 
 <b>三、跨计算器取数（计算链）</b><br>
-工艺参数往往一环扣一环（例如 喷射液化器用汽量 → 闪蒸降温浓缩 → 闪蒸蒸汽回收 → 闪蒸罐 → 脱色柱）。
+工艺参数往往一环扣一环（例如 喷射液化器计算 → 闪蒸降温浓缩 → 闪蒸蒸汽回收 → 闪蒸罐 → 脱色柱）。
 下游页面的「<b>取上游值</b>」下拉里能直接选上游算出的结果，一键填进输入框，不用手抄；
 结果页会标明这个值取自哪一页。上游参数改了，旧值会被标记为过期。<br><br>
 
@@ -1213,6 +1215,62 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 
+#: Qt 中文翻译器 —— 必须长期持有，一旦被回收，装上去的中文会失效
+_QT_TRANSLATOR = None
+
+
+def _qt_translation_dirs():
+    """Qt 翻译文件的候选目录（源码运行 / PyInstaller 打包都能命中）"""
+    dirs = []
+    try:
+        from PySide6.QtCore import QLibraryInfo
+        dirs.append(QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath))
+    except Exception:
+        pass
+    dirs.append(os.path.join(resource_path("PySide6"), "translations"))
+    out = []
+    for d in dirs:
+        if d and d not in out and os.path.isdir(d):
+            out.append(d)
+    return out
+
+
+def install_qt_chinese_translations(app=None):
+    """把 Qt **自带**的界面文字换成中文（qtbase_zh_CN）。
+
+    应用自己的文案本来就是中文，但 Qt 内置的那批字串是英文的，用户能碰到的有：
+    QLineEdit / QTextEdit 的**右键菜单**（Undo / Redo / Cut / Copy / Paste /
+    Delete / Select All）、QMessageBox 的标准按钮、文件对话框、QComboBox 空列表提示。
+
+    装一个 QTranslator 就整体汉化，比逐个控件重写 contextMenu 可靠得多。
+    翻译文件随 PySide6 分发（PyInstaller 也会打进去），不需要额外资源。
+
+    返回加载成功的翻译器；找不到文件时返回 None（只记日志，不影响启动）。
+    """
+    global _QT_TRANSLATOR
+    from PySide6.QtWidgets import QApplication
+    # SafeApplication 是轻量包装类（不是 QObject），真身挂在 _app 上；
+    # 直接用包装对象当 parent 会因类型不符而报错
+    qapp = getattr(app, "_app", app)
+    if not isinstance(qapp, QApplication):
+        qapp = QApplication.instance()
+    if qapp is None:
+        logger.warning("安装 Qt 中文翻译时还没有 QApplication，跳过")
+        return None
+
+    translator = QTranslator(qapp)          # 挂 parent，避免被提前回收
+    for folder in _qt_translation_dirs():
+        if translator.load("qtbase_zh_CN", folder):
+            qapp.installTranslator(translator)
+            _QT_TRANSLATOR = translator     # 再存一份全局引用，双保险
+            logger.info("已加载 Qt 中文翻译: {}",
+                        os.path.join(folder, "qtbase_zh_CN.qm"))
+            return translator
+
+    logger.warning("未找到 qtbase_zh_CN.qm —— 右键菜单等 Qt 内置文字将保持英文")
+    return None
+
+
 def main():
     app = SafeApplication(sys.argv)
     app.setApplicationName("ChemCal")
@@ -1221,6 +1279,9 @@ def main():
     # 主窗口可以被收进托盘（hide()）—— 此时"最后一个窗口关闭"不代表要退出进程，
     # 否则一收托盘程序就没了。真退出统一走 ChemCal._quit_app() → QApplication.quit()
     app.setQuitOnLastWindowClosed(False)
+
+    # Qt 内置文字汉化（输入框右键菜单 / 标准按钮 / 文件对话框）—— 必须在建窗口之前
+    install_qt_chinese_translations(app)
 
     try:
         window = ChemCal()

@@ -260,6 +260,59 @@ w.temperature_input.setText("25")
 w.pressure_input.setText("101.3")
 w.calculate()
 check("铁 25°C → 固态", "固态" in w.state_label.text(), w.state_label.text())
+
+# ── B4. 糖醇/糖类/有机酸扩充（2026-11-02）──
+NEW_SUBS = ["甘油", "乳酸", "木糖醇", "麦芽糖醇", "山梨醇",
+            "麦芽糖", "葡萄糖", "果糖", "木糖", "柠檬酸"]
+check("扩充 10 种糖醇/糖类全部有数据", all(s in w.substance_data for s in NEW_SUBS))
+
+gly = w.substance_data["甘油"]
+check("甘油 粘度 25°C=945 (锚点表)",
+      approx(w._viscosity_at(gly["thermal"], gly["basic"], 25, name="甘油"), 945.0, 15.0),
+      w._viscosity_at(gly["thermal"], gly["basic"], 25, name="甘油"))
+check("甘油 粘度 40°C=330 (锚点表)",
+      approx(w._viscosity_at(gly["thermal"], gly["basic"], 40, name="甘油"), 330.0, 8.0))
+check("甘油 粘度 50°C=176 (端点)",
+      approx(w._viscosity_at(gly["thermal"], gly["basic"], 50, name="甘油"), 176.0, 6.0))
+check("甘油 密度 25°C≈1260",
+      approx(w._density_at(gly["thermal"], gly["basic"], 25, 101.3, name="甘油"), 1260.0, 3.0))
+check("甘油 25°C → 液态",
+      w._phase_of(gly["basic"], 25) == "liquid",
+      w._phase_of(gly["basic"], 25))
+
+# 沸点缺省（糖类分解不沸腾）: 相态判断不崩溃、不误判气态
+lac = w.substance_data["木糖醇"]
+check("木糖醇 沸点=None（受热分解不沸腾）", lac["basic"]["沸点"] is None)
+check("木糖醇 25°C → 固态", w._phase_of(lac["basic"], 25) == "solid")
+check("木糖醇 150°C → 液态(熔融) 而非气态",
+      w._phase_of(lac["basic"], 150) == "liquid",
+      w._phase_of(lac["basic"], 150))
+check("木糖醇 密度 25°C=1520 (固体典型值)",
+      approx(w._density_at(lac["thermal"], lac["basic"], 25, 101.3, name="木糖醇"), 1520.0, 1.0))
+check("木糖醇 粘度=None → 界面 N/A 不崩溃",
+      w._viscosity_at(lac["thermal"], lac["basic"], 25, name="木糖醇") is None)
+
+# UI 走通: 选中糖类 + 界面查询不抛异常
+w.on_category_changed("固体")
+w.substance_combo.setCurrentText("葡萄糖")
+w.temperature_input.setText("25")
+w.calculate()
+check("葡萄糖 25°C 查询 → 固态", "固态" in w.state_label.text(), w.state_label.text())
+w.on_category_changed("液体")
+w.substance_combo.setCurrentText("乳酸")
+w.calculate()
+check("乳酸 25°C 查询 → 液态", "液态" in w.state_label.text(), w.state_label.text())
+w.on_category_changed("有机物")
+w.substance_combo.setCurrentText("甘油")
+w.calculate()
+check("甘油 查询后计算书可生成（str/None）",
+      w.generate_report() is None or isinstance(w.generate_report(), str))
+
+# 恢复原有铁测试的前置状态（本块把下拉切到了甘油）
+w.on_category_changed("金属")
+w.substance_combo.setCurrentText("铁")
+w.temperature_input.setText("25")
+w.calculate()
 ti = w.thermo_prop_table.item(0, 1)
 check("铁 密度=7874", ti is not None and "7874" in ti.text(),
       ti.text() if ti else "no item")

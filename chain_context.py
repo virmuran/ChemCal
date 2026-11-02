@@ -4,7 +4,7 @@
 ═══════════════ 解决什么问题 ═══════════════
     一条工艺路线上的多个计算器常常是**串起来**的，上一段的输出就是下一段的输入：
 
-        喷射液化器用汽量 ──→ 闪蒸（降温/浓缩）──→ 闪蒸罐（定径）──→ 后续工段
+        喷射液化器计算 ──→ 闪蒸（降温/浓缩）──→ 闪蒸罐（定径）──→ 后续工段
            · 出口温度 t₂            · 进闪蒸温度            · 闪蒸汽量
            · 蒸汽用量 D₁            · 蒸汽用量（与物料量相加）· 闪蒸压力
            · 喷射后液量 G₁          · 物料量                · 蒸汽密度（←回收页）
@@ -54,7 +54,7 @@ class ChainContext:
     #: 同名键**先到先得**，下游页面不会用后算的上游覆盖更上游的数据。
     #: 新增计算器时把 module_id 追加进来即可（不在表里的排在最后，按计算时间）。
     CHAIN_ORDER = [
-        "injection_liquefier_calculator",      # 喷射液化器用汽量
+        "injection_liquefier_calculator",      # 喷射液化器计算
         "flash_evaporation_calculator",        # 闪蒸降温浓缩
         "flash_steam_recovery_calculator",     # 闪蒸蒸汽回收
         "flash_tank_calculator",               # 闪蒸罐计算（汽液分离罐定径）
@@ -78,7 +78,7 @@ class ChainContext:
         参数
         ----
         module_id : str   模块标识（如 "injection_liquefier_calculator"）
-        page_name : str   页面显示名（如 "喷射液化器用汽量"）
+        page_name : str   页面显示名（如 "喷射液化器计算"）
         values    : dict  可传递输出 {键: 数值}，键用中文语义名
         units     : dict  可选 {键: 单位}
         note      : str   备注（如计算模式），仅供展示
@@ -202,7 +202,7 @@ class ChainContext:
 
     @classmethod
     def describe_ref(cls, ref):
-        """引用标记 → 展示文本，如「喷射液化器用汽量 09-24 08:45」"""
+        """引用标记 → 展示文本，如「喷射液化器计算 09-24 08:45」"""
         if not ref:
             return ""
         return f"{ref.get('page', ref.get('module', ''))} {ref.get('time_str', '')}".strip()
@@ -222,7 +222,7 @@ class ChainContext:
 
     @classmethod
     def describe_refs(cls, refs):
-        """多来源引用 → 展示文本，如「喷射液化器用汽量 08:45 + 闪蒸降温浓缩 08:50」"""
+        """多来源引用 → 展示文本，如「喷射液化器计算 08:45 + 闪蒸降温浓缩 08:50」"""
         return " + ".join(p for p in (cls.describe_ref(r) for r in (refs or [])) if p)
 
     @classmethod

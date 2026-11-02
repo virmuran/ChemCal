@@ -16,12 +16,15 @@ a = Analysis(
             ('common_constants.py', '.'), ('reference_data.py', '.'),
             ('chain_context.py', '.'),
             ('updater.py', '.'), ('ChemCal.ico', '.')],
-    hiddenimports=['PySide6.QtCore', 'PySide6.QtWidgets', 'PySide6.QtGui', 'PySide6.QtSvgWidgets', 'PySide6.QtSvg', 'numpy', 'datetime', 'json', 'os', 'sys', 'math', 'reportlab', 'reportlab.pdfgen', 'reportlab.pdfgen.canvas', 'reportlab.lib', 'reportlab.lib.pagesizes', 'reportlab.lib.styles', 'reportlab.lib.units', 'reportlab.pdfbase', 'reportlab.pdfbase.ttfonts', 'reportlab.platypus', 'reportlab.platypus.paragraph', 'reportlab.platypus.doctemplate', 'threading', 'time', 're', 'pathlib', 'shutil', 'pyperclip', 'sqlite3', 'modules.history_db', 'modules.reference.reference_widget', 'modules.combo_box_utils', 'utils', 'utils.docx_utils', 'fpdf'],
+    hiddenimports=['PySide6.QtCore', 'PySide6.QtWidgets', 'PySide6.QtGui', 'PySide6.QtSvgWidgets', 'PySide6.QtSvg', 'numpy', 'datetime', 'json', 'os', 'sys', 'math', 'reportlab', 'reportlab.pdfgen', 'reportlab.pdfgen.canvas', 'reportlab.lib', 'reportlab.lib.pagesizes', 'reportlab.lib.styles', 'reportlab.lib.units', 'reportlab.pdfbase', 'reportlab.pdfbase.ttfonts', 'reportlab.platypus', 'reportlab.platypus.paragraph', 'reportlab.platypus.doctemplate', 'threading', 'time', 're', 'pathlib', 'shutil', 'pyperclip', 'sqlite3', 'modules.history_db', 'modules.reference.reference_widget', 'modules.combo_box_utils', 'utils', 'utils.docx_utils'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=['PyQt5', 'PyQt6', 'PyQt5.QtCore', 'PyQt5.QtWidgets', 'PyQt5.QtGui',
               'scipy', 'pandas', 'matplotlib', 'tkinter', 'unittest'],
+              # ⚠ 往本清单加标准库前先 grep 三方库是否顶层 import 它：
+              # v1.14.4 曾排除 unittest，而 fpdf/sign.py 顶层 import unittest，
+              # 导致打包版 from fpdf import FPDF 断裂（该死导入已删，fpdf 不再进包）。
     noarchive=False,
     optimize=0,
 )

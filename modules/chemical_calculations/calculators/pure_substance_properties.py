@@ -8,7 +8,6 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QDoubleValidator
 from datetime import datetime
 import math
-from fpdf import FPDF
 import sys
 from pathlib import Path
 
@@ -64,6 +63,7 @@ VISC_TABLES = {   # 液体动力粘度 mPa·s，(T°C, μ)
     "苯":   [(10,0.758),(20,0.652),(25,0.604),(30,0.560),(40,0.492),
              (50,0.436),(60,0.382)],
     "甲苯": [(20,0.590),(25,0.560),(40,0.470)],
+    "甘油": [(10,3850),(20,1412),(25,945),(30,629),(40,330),(50,176)],
 }
 
 CP_TABLES = {     # 液体比热容 kJ/(kg·K)，(T°C, cp)
@@ -408,8 +408,10 @@ class PureSubstanceProperties(CalculatorBase):
         result += f"  分子式: {basic.get('分子式', 'N/A')}\n"
         result += f"  分子量: {basic.get('分子量', 0):.3f} g/mol\n"
         result += f"  CAS号: {basic.get('CAS号', 'N/A')}\n"
-        result += f"  沸点: {basic.get('沸点', 0)} °C\n"
-        result += f"  熔点: {basic.get('熔点', 0)} °C\n"
+        _bp = basic.get('沸点')
+        _mp = basic.get('熔点')
+        result += f"  沸点: {(_bp if _bp is not None else '—')} °C\n"
+        result += f"  熔点: {(_mp if _mp is not None else '—')} °C\n"
         result += f"  临界温度: {basic.get('临界温度', 'N/A')} K\n"
         result += f"  临界压力: {basic.get('临界压力', 'N/A')} kPa\n"
         result += f"  临界密度: {basic.get('临界密度', 'N/A')} g/cm³\n"
@@ -450,14 +452,20 @@ class PureSubstanceProperties(CalculatorBase):
             data = self.substance_data[substance]
             basic = data.get("basic", {})
             thermal = data.get("thermal", {})
-            boiling_point = basic.get("沸点", 0)
-            state = "气态" if temperature > boiling_point else ("固态" if temperature < basic.get("熔点", 0) else "液态")
+            boiling_point = basic.get("沸点")
+            melting_point = basic.get("熔点")
+            if boiling_point is not None and temperature > boiling_point:
+                state = "气态"
+            elif melting_point is not None and temperature < melting_point:
+                state = "固态"
+            else:
+                state = "液态"
 
             outputs = {
                 "分子式": basic.get("分子式", ""),
                 "分子量": basic.get("分子量", 0),
-                "沸点_C": basic.get("沸点", 0),
-                "熔点_C": basic.get("熔点", 0),
+                "沸点_C": boiling_point if boiling_point is not None else "",
+                "熔点_C": melting_point if melting_point is not None else "",
                 "临界温度_K": basic.get("临界温度", 0),
                 "临界压力_kPa": basic.get("临界压力", 0),
                 "物态": state,
@@ -534,11 +542,16 @@ class PureSubstanceProperties(CalculatorBase):
         """类别改变事件"""
         substances = {
             "无机物": ["水", "氨", "二氧化碳", "硫酸", "氯化钠", "氢氧化钠"],
-            "有机物": ["甲醇", "乙醇", "丙酮", "苯", "甲苯", "乙酸", "正己烷", "环己烷", "甲烷", "乙烷", "丙烷", "乙烯", "丙烯"],
+            "有机物": ["甲醇", "乙醇", "丙酮", "苯", "甲苯", "乙酸", "正己烷", "环己烷",
+                        "甘油", "乳酸",
+                        "木糖醇", "麦芽糖醇", "山梨醇", "麦芽糖", "葡萄糖", "果糖", "木糖", "柠檬酸",
+                        "甲烷", "乙烷", "丙烷", "乙烯", "丙烯"],
             "金属": ["铁", "铜", "铝", "锌", "铅", "银", "金"],
             "气体": ["空气", "氧气", "氮气", "氢气", "甲烷", "乙烷", "丙烷", "乙烯", "丙烯", "二氧化碳"],
-            "液体": ["水", "乙醇", "甲醇", "丙酮", "苯", "甲苯", "乙酸", "正己烷", "环己烷", "硫酸"],
-            "固体": ["冰", "氯化钠", "石英", "石墨", "金刚石"]
+            "液体": ["水", "乙醇", "甲醇", "丙酮", "苯", "甲苯", "乙酸", "正己烷", "环己烷",
+                     "硫酸", "甘油", "乳酸"],
+            "固体": ["冰", "氯化钠", "石英", "石墨", "金刚石",
+                     "木糖醇", "麦芽糖醇", "山梨醇", "麦芽糖", "葡萄糖", "果糖", "木糖", "柠檬酸"]
         }
         
         self.substance_combo.clear()
@@ -584,6 +597,16 @@ class PureSubstanceProperties(CalculatorBase):
             "乙酸": "64-19-7",
             "正己烷": "110-54-3",
             "环己烷": "110-82-7",
+            "甘油": "56-81-5",
+            "乳酸": "50-21-5",
+            "木糖醇": "87-99-0",
+            "麦芽糖醇": "585-88-6",
+            "山梨醇": "50-70-4",
+            "麦芽糖": "69-79-4",
+            "葡萄糖": "50-99-7",
+            "果糖": "57-48-7",
+            "木糖": "58-86-6",
+            "柠檬酸": "77-92-9",
             "氢氧化钠": "1310-73-2",
             "空气": "132259-10-0",
             "氧气": "7782-44-7",
@@ -598,7 +621,10 @@ class PureSubstanceProperties(CalculatorBase):
         self.cas_label.setText(cas_numbers.get(substance, "未知"))
     
     def load_substance_data(self):
-        """加载物质物性数据库（2026-09-13 扩展：22 种流体 + 7 金属 + 4 固体 + NaOH）
+        """加载物质物性数据库（2026-09-13 扩展：22 种流体 + 7 金属 + 4 固体 + NaOH；
+        2026-11-02 扩充：糖醇/糖类/有机酸 10 种 —— 甘油、乳酸、木糖醇、麦芽糖醇、
+        山梨醇、麦芽糖、葡萄糖、果糖、木糖、柠檬酸；固体 cp/密度为 [E] 固体典型值，
+        糖类沸点留 None（受热分解不沸腾），来源与口径见数据区注释块）
 
         数据来源:
         - 临界性质: NIST Chemistry WebBook / DIPPR Project 801
@@ -851,6 +877,155 @@ class PureSubstanceProperties(CalculatorBase):
                     "antoine_A": 6.84941, "antoine_B": 1206.001, "antoine_C": 223.148,
                     "antoine_Tmin": 6, "antoine_Tmax": 105
                 }
+            },
+            # ── 糖醇 / 糖类 / 有机酸（2026-11-02 扩充，10 种） ──
+            # 数据来源: CRC Handbook / NIST WebBook / 食品添加剂手册
+            # 口径说明（与全库一致，不虚造数）:
+            #   - 糖类/糖醇受热分解、不沸腾 → 沸点留 None（界面显示 "—"，
+            #     相态判断只按熔点分 固态/液态（熔融））
+            #   - 固体密度/比热容为 25°C 固体典型值 [E]（结晶密度随晶型略
+            #     有差异；cp 多取邻近物类实测值推定），拿不准的参数一律留
+            #     None 显示 N/A，不硬填
+            #   - 乳酸沸点 122 °C 为减压（约 2 kPa）值 [E]，常压下受热分解
+            "甘油": {
+                "basic": {
+                    "分子式": "C₃H₈O₃", "分子量": 92.094, "CAS号": "56-81-5",
+                    "沸点": 290.0, "熔点": 18.2, "临界温度": None,
+                    "临界压力": None, "临界密度": None,
+                    "偏心因子": None
+                },
+                "thermal": {
+                    "密度": 1260.0, "粘度": 945.0, "热导率": 0.292,
+                    "比热容": 2.43, "蒸发热": None, "表面张力": 63.3,
+                    "基准温度": 25.0
+                },
+                "formula_params": {}
+            },
+            "乳酸": {
+                "basic": {
+                    "分子式": "C₃H₆O₃", "分子量": 90.078, "CAS号": "50-21-5",
+                    "沸点": 122.0, "熔点": 16.8, "临界温度": None,
+                    "临界压力": None, "临界密度": None,
+                    "偏心因子": None
+                },
+                "thermal": {
+                    "密度": 1206.0, "粘度": 27.5, "热导率": None,
+                    "比热容": None, "蒸发热": None, "表面张力": None,
+                    "基准温度": 25.0
+                },
+                "formula_params": {}
+            },
+            "木糖醇": {
+                "basic": {
+                    "分子式": "C₅H₁₂O₅", "分子量": 152.15, "CAS号": "87-99-0",
+                    "沸点": None, "熔点": 93.0, "临界温度": None,
+                    "临界压力": None, "临界密度": None,
+                    "偏心因子": None
+                },
+                "thermal": {
+                    "密度": 1520.0, "粘度": None, "热导率": None,
+                    "比热容": 1.30, "蒸发热": None, "表面张力": None,
+                    "基准温度": 25.0
+                },
+                "formula_params": {}
+            },
+            "麦芽糖醇": {
+                "basic": {
+                    "分子式": "C₁₂H₂₄O₁₁", "分子量": 344.31, "CAS号": "585-88-6",
+                    "沸点": None, "熔点": 138.0, "临界温度": None,
+                    "临界压力": None, "临界密度": None,
+                    "偏心因子": None
+                },
+                "thermal": {
+                    "密度": 1540.0, "粘度": None, "热导率": None,
+                    "比热容": 1.30, "蒸发热": None, "表面张力": None,
+                    "基准温度": 25.0
+                },
+                "formula_params": {}
+            },
+            "山梨醇": {
+                "basic": {
+                    "分子式": "C₆H₁₄O₆", "分子量": 182.17, "CAS号": "50-70-4",
+                    "沸点": None, "熔点": 95.0, "临界温度": None,
+                    "临界压力": None, "临界密度": None,
+                    "偏心因子": None
+                },
+                "thermal": {
+                    "密度": 1490.0, "粘度": None, "热导率": None,
+                    "比热容": 1.30, "蒸发热": None, "表面张力": None,
+                    "基准温度": 25.0
+                },
+                "formula_params": {}
+            },
+            "麦芽糖": {
+                "basic": {
+                    "分子式": "C₁₂H₂₂O₁₁", "分子量": 342.30, "CAS号": "69-79-4",
+                    "沸点": None, "熔点": 160.0, "临界温度": None,
+                    "临界压力": None, "临界密度": None,
+                    "偏心因子": None
+                },
+                "thermal": {
+                    "密度": 1540.0, "粘度": None, "热导率": None,
+                    "比热容": 1.25, "蒸发热": None, "表面张力": None,
+                    "基准温度": 25.0
+                },
+                "formula_params": {}
+            },
+            "葡萄糖": {
+                "basic": {
+                    "分子式": "C₆H₁₂O₆", "分子量": 180.156, "CAS号": "50-99-7",
+                    "沸点": None, "熔点": 146.0, "临界温度": None,
+                    "临界压力": None, "临界密度": None,
+                    "偏心因子": None
+                },
+                "thermal": {
+                    "密度": 1540.0, "粘度": None, "热导率": None,
+                    "比热容": 1.28, "蒸发热": None, "表面张力": None,
+                    "基准温度": 25.0
+                },
+                "formula_params": {}
+            },
+            "果糖": {
+                "basic": {
+                    "分子式": "C₆H₁₂O₆", "分子量": 180.156, "CAS号": "57-48-7",
+                    "沸点": None, "熔点": 103.0, "临界温度": None,
+                    "临界压力": None, "临界密度": None,
+                    "偏心因子": None
+                },
+                "thermal": {
+                    "密度": 1660.0, "粘度": None, "热导率": None,
+                    "比热容": 1.28, "蒸发热": None, "表面张力": None,
+                    "基准温度": 25.0
+                },
+                "formula_params": {}
+            },
+            "木糖": {
+                "basic": {
+                    "分子式": "C₅H₁₀O₅", "分子量": 150.13, "CAS号": "58-86-6",
+                    "沸点": None, "熔点": 145.0, "临界温度": None,
+                    "临界压力": None, "临界密度": None,
+                    "偏心因子": None
+                },
+                "thermal": {
+                    "密度": 1525.0, "粘度": None, "热导率": None,
+                    "比热容": 1.26, "蒸发热": None, "表面张力": None,
+                    "基准温度": 25.0
+                },
+                "formula_params": {}
+            },
+            "柠檬酸": {
+                "basic": {
+                    "分子式": "C₆H₈O₇", "分子量": 192.124, "CAS号": "77-92-9",
+                    "沸点": None, "熔点": 156.0, "临界温度": None,
+                    "临界压力": None, "临界密度": None,
+                    "偏心因子": None
+                },
+                "thermal": {
+                    "密度": 1665.0, "粘度": None, "热导率": None,
+                    "比热容": 1.26, "蒸发热": None, "表面张力": None,
+                    "基准温度": 25.0
+                },
+                "formula_params": {}
             },
             # ── 气体（常温） ──
             "甲烷": {
@@ -1180,19 +1355,19 @@ class PureSubstanceProperties(CalculatorBase):
         self.calculate()
     
     def update_state_label(self, substance, temperature):
-        """更新状态标签"""
+        """更新状态标签（沸点/熔点缺省（None）时按有值的一侧判断）"""
         if substance in self.substance_data:
             data = self.substance_data[substance]
-            boiling_point = data["basic"]["沸点"]
-            melting_point = data["basic"]["熔点"]
-            
-            if temperature > boiling_point:
+            boiling_point = data["basic"].get("沸点")
+            melting_point = data["basic"].get("熔点")
+
+            if boiling_point is not None and temperature > boiling_point:
                 state = "气态"
-            elif temperature < melting_point:
+            elif melting_point is not None and temperature < melting_point:
                 state = "固态"
             else:
                 state = "液态"
-            
+
             self.state_label.setText(state)
     
     def display_basic_properties(self, basic_data):
@@ -1201,8 +1376,8 @@ class PureSubstanceProperties(CalculatorBase):
             ["分子式", basic_data["分子式"], "-"],
             ["分子量", f"{basic_data['分子量']:.3f}", "g/mol"],
             ["CAS号", basic_data["CAS号"], "-"],
-            ["沸点", f"{basic_data['沸点']}", "°C"],
-            ["熔点", f"{basic_data['熔点']}", "°C"],
+            ["沸点", f"{basic_data['沸点']}" if basic_data.get("沸点") is not None else "—", "°C"],
+            ["熔点", f"{basic_data['熔点']}" if basic_data.get("熔点") is not None else "—", "°C"],
             ["临界温度", f"{basic_data['临界温度']}" if basic_data.get("临界温度") else "N/A", "K"],
             ["临界压力", f"{basic_data['临界压力']}" if basic_data.get("临界压力") else "N/A", "kPa"],
             ["临界密度", f"{basic_data['临界密度']}" if basic_data.get("临界密度") else "N/A", "g/cm³"],
