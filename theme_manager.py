@@ -128,6 +128,11 @@ class ThemeManager(QObject):
                                              border-color: #4a6fa5; }
         QLineEdit[roField="true"] { background-color: #f0f0f0; color: #6b7280; }
         QLabel[unitLabel="true"] { color: #6b7280; }
+        /* 结果区顶部的结论条（把「答案」钉在最上面） */
+        QLabel#conclusionBar {
+            background-color: #eef4fb; color: #1f2937;
+            border: 1px solid #c8dbf0; border-left: 4px solid #4a6fa5;
+            border-radius: 4px; padding: 8px 12px; }
         """,
         "dark": """
         /* ═══════ 语义组件（三套主题同步，详见 theme_manager.SEMANTIC_RULES） ═══════ */
@@ -148,6 +153,11 @@ class ThemeManager(QObject):
                                              border-color: #4a6fa5; }
         QLineEdit[roField="true"] { background-color: #2b2b2b; color: #a3a3a3; }
         QLabel[unitLabel="true"] { color: #a3a3a3; }
+        /* 结果区顶部的结论条（把「答案」钉在最上面） */
+        QLabel#conclusionBar {
+            background-color: #232f3d; color: #e5e7eb;
+            border: 1px solid #3a4b5f; border-left: 4px solid #6b9bd8;
+            border-radius: 4px; padding: 8px 12px; }
         """,
         "blue": """
         /* ═══════ 语义组件（三套主题同步，详见 theme_manager.SEMANTIC_RULES） ═══════ */
@@ -168,6 +178,11 @@ class ThemeManager(QObject):
                                              border-color: #3182ce; }
         QLineEdit[roField="true"] { background-color: #edf2f7; color: #5b6b7c; }
         QLabel[unitLabel="true"] { color: #5b6b7c; }
+        /* 结果区顶部的结论条（把「答案」钉在最上面） */
+        QLabel#conclusionBar {
+            background-color: #eaf0fb; color: #1a365d;
+            border: 1px solid #c3d7f2; border-left: 4px solid #3182ce;
+            border-radius: 4px; padding: 8px 12px; }
         """,
     }
 

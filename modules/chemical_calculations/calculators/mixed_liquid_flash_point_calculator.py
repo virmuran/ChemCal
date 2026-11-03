@@ -627,15 +627,45 @@ class MixedLiquidFlashPointCalculator(CalculatorBase):
 
             self._last_results = {"method": method, "flash_point": flash_point,
                                   **results}
+
+            # 所选方法缺数据（如选了沸点关联式但没填沸点）→ 明确说明而非
+            # format_results 对 None 做 f"{x:.1f}" 崩进「计算错误」弹窗
+            if flash_point is None:
+                self.result_text.setPlainText(
+                    self._no_result_text(self._resolve_method(method), results))
+                return
+
             # 必须用 setPlainText：原 setText 会把含 HTML 标签的结果整段按 HTML 渲染，
             # 换行全部丢失，结果框变成一坨没有换行的文字
             self.result_text.setPlainText(
                 self.format_results(method, flash_point, total_fraction, results,
                                     ibp=ibp,
                                     n_nonflammable=len(self.components) - len(flammable)))
-            
+
         except Exception as e:
             QMessageBox.critical(self, "计算错误", f"计算过程中发生错误: {str(e)}")
+
+    def _no_result_text(self, method_name, results):
+        """所选方法无有效结果时的说明文本（替代崩溃弹窗）"""
+        cmp_lines = []
+        for name in self.METHOD_ORDER:
+            v = results.get(name)
+            txt = "—（无有效数据）" if v is None else f"{v:.1f} °C"
+            cmp_lines.append(f"• {name}: {txt}")
+        return f"""═══════════════════════════════════════════════════
+                  所选方法无有效结果
+═══════════════════════════════════════════════════
+
+所选方法「{method_name}」算不出闪点，可能原因:
+
+• Le Chatelier / 摩尔加权: 可燃组分缺分子量（分子量需 > 0）
+• 沸点关联式(Riazi): 可燃组分缺沸点（沸点需 > 0）
+• 最低闪点法 / 质量加权: 没有任何可燃组分
+
+各方法对比:
+{chr(10).join(cmp_lines)}
+
+请补全数据后重算，或改用上面对比中有数值的方法。"""
 
     def _get_history_data(self):
         """提供历史记录数据"""
@@ -678,18 +708,25 @@ class MixedLiquidFlashPointCalculator(CalculatorBase):
         """Le Chatelier 混合法则：1/T_f,mix = Σ(x_i / T_f,i)
 
         出处：Le Chatelier 混合规则（Coward & Jones 1952；Liaw 模型；Alqaheem & Riazi 2017
-        等一致采用），x_i 为液相摩尔分数，T 为绝对温度。
-        仅对可燃组分求和；不燃组分仍计入摩尔分数分母 —— 稀释效应由此体现。
+        等一致采用），x_i 为**可燃组分**的液相摩尔分数，T 为绝对温度。
+        2026-11-02 修正：原实现把不燃组分计入摩尔分数分母。Le Chatelier 规则只描述
+        可燃蒸气混合物的燃烧下限，对惰性稀释没有任何热力学依据 —— 50% 乙醇水溶液
+        会因此估出 743 °C 的荒谬值，还把真易燃液体判成「不属易燃」。现改为只在
+        可燃组分间归一（等同于「把可燃部分单独看」），结果偏保守（实际闪点因稀释
+        通常更高）；含不燃稀释剂时结果区另有专项提示。
+        需要可燃组分的分子量 > 0；缺数据返回 None（不再静默换成质量加权平均，
+        方法口径必须与所选名称一致）。
         """
-        # 摩尔分数（全部组分参与分母，含不燃组分）
         total_moles = 0.0
         for comp in self.components:
+            if comp.get("flash_point") is None:
+                continue
             mw = comp.get("molecular_weight") or 0
             if mw > 0:
                 total_moles += comp["mass_fraction"] / mw
 
         if total_moles <= 0:
-            return self.calculate_weighted_average_mass()
+            return None
 
         sum_reciprocal = 0.0
         for comp in self.components:
@@ -744,10 +781,13 @@ class MixedLiquidFlashPointCalculator(CalculatorBase):
         为"只有沸点数据时"公认最简关联式。
         修复：原实现用 0.7×沸点(°C) − 50，属无出处的经验式，且对芳烃偏不安全
         （苯、甲苯会被估到比实测值高 10~25 °C）。
+        2026-11-02 修正：只取可燃组分做平均 —— 原实现把水等不燃组分的沸点也按
+        质量分数计入，人为抬高平均沸点进而高估闪点（不保守方向）。
         注意：该关联式源自烃类，含醇/水等极性组分时偏差可能明显偏大。
         """
         pairs = [(c["boiling_point"], c["mass_fraction"]) for c in self.components
-                 if (c.get("boiling_point") or 0) > 0]
+                 if c.get("flash_point") is not None
+                 and (c.get("boiling_point") or 0) > 0]
         total = sum(f for _, f in pairs)
         if total <= 0:
             return None
@@ -773,6 +813,10 @@ class MixedLiquidFlashPointCalculator(CalculatorBase):
         """
         results = results or self.compute_all_methods()
 
+        # 防御：所选方法无有效数据时走说明文本（不能对 None 做比较/格式化）
+        if flash_point is None:
+            return self._no_result_text(method, results)
+
         # 安全等级（按 GB 13690 低/中/高闪点液体分档）
         if flash_point < -18:
             safety_level = "极度危险（低闪点液体）"
@@ -793,20 +837,20 @@ class MixedLiquidFlashPointCalculator(CalculatorBase):
         excluded = ""
         caution = ""
         if n_nonflammable:
-            excluded = (f"  注: {n_nonflammable} 个不燃组分（如水）不参与闪点加权平均，\n"
-                        f"      但仍计入 Le Chatelier 摩尔分数的分母 —— 稀释效应由此体现\n")
-            # 该式假定各组分汽化潜热相近；含水等不燃稀释剂时会严重高估闪点
-            # （水+乙醇体系可估出数百 °C），必须明确提示，否则会被误读为"更安全"
+            excluded = (f"  注: {n_nonflammable} 个不燃组分（如水）不参与闪点计算，\n"
+                        f"      各方法均只在可燃组分间取值\n")
+            # 不燃稀释剂的稀释效应任何简化公式都无法可靠量化（需 VLE/Liaw 模型）；
+            # 现口径 = 可燃部分单独看，结果偏保守，如实告知用户
             caution = ("""
 ═══════════════════════════════════════════════════
-            ⚠ 含不燃稀释剂时的适用性提示
+            ⚠ 含不燃稀释剂（如水）时的适用性提示
 ═══════════════════════════════════════════════════
 
-• Le Chatelier 简化式假定各组分汽化潜热相近、且不燃组分不参与
-  可燃蒸气分压 —— 含水/不燃稀释剂时会严重高估闪点（水+乙醇可估出数百 °C），
-  该值绝不可单独作为安全依据
-• 稀释剂对闪点的真实影响需汽液平衡数据（Antoine + 活度系数）或实测
-• 安全设计请以"最低闪点法"数值为准，或按 GB/T 261-2021 闭杯法实测
+• 各方法均不含稀释效应: 数值相当于「把可燃部分单独看」的闪点，
+  实际混合物闪点通常因稀释而更高 —— 本页结果偏保守（偏安全方向）
+• 稀释抬升闪点的真实幅度需汽液平衡计算（Antoine + 活度系数，Liaw 模型）
+  或实测，简化公式无法可靠量化
+• 安全设计请以实测为准（闭杯法 GB/T 261-2021）
 """)
 
         # 安全相关场合应以最低值为准
@@ -845,7 +889,8 @@ class MixedLiquidFlashPointCalculator(CalculatorBase):
                         计算说明
 ═══════════════════════════════════════════════════
 
-• Le Chatelier 法则: 1/T_mix = Σ(x_i/T_i)，x 为液相摩尔分数，T 为绝对温度
+• Le Chatelier 法则: 1/T_mix = Σ(x_i/T_i)，x 为可燃组分的液相摩尔分数
+  （不燃组分不参与），T 为绝对温度
 • 最低闪点法提供最保守的安全估计，安全评价优先采用
 • 质量/摩尔加权平均法适用于组分性质相近的混合物
 • 沸点关联式 T_fp = 0.7×T_bp(K) 源自烃类（Riazi/AIChE 2015），
@@ -857,7 +902,7 @@ class MixedLiquidFlashPointCalculator(CalculatorBase):
         components_text = ""
         for i, comp in enumerate(self.components, 1):
             fp_txt = "不燃" if comp.get("flash_point") is None else f"{comp['flash_point']}°C"
-            components_text += f"{i}. {comp['name']}: 闪点{fp_txt}, 质量分数{comp['mass_fraction']}%\\n"
+            components_text += f"{i}. {comp['name']}: 闪点{fp_txt}, 质量分数{comp['mass_fraction']}%\n"
         return components_text
     
     @staticmethod

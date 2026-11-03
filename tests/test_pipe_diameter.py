@@ -313,6 +313,210 @@ w.clear_inputs()
 check('10.23 清空后密度回 1200 且手改标记复位',
       w.density_input.text() == '1200' and w._density_manual is False, w.density_input.text())
 
+# ══════════════════ Part 11: 固液浆料档（Thomas/OT 临界流速 + K-D 表观粘度）══════════════════
+print('\n── Part 11: 浆料档 ──')
+SF = mod.管径计算.SLURRY_FLUID
+
+check('11.1 浆料档已注册到 fluid_ranges', SF in w.fluid_ranges)
+check('11.2 浆料档出现在流体下拉里',
+      SF in [w.fluid_combo.itemText(i) for i in range(w.fluid_combo.count())])
+
+# 含固换算：质量浓度 → 体积分数 / 浆料密度（手算锚点）
+phi_coal = w.slurry_volume_fraction(20, 1900, 1000)
+rho_coal = w.slurry_density(20, 1900, 1000)
+check('11.3 活性炭 20wt% → 体积分数 0.11628',
+      approx(phi_coal, 0.116279, 1e-4), f'{phi_coal:.6f}')
+check('11.4 活性炭 20wt% → 浆料密度 1104.65',
+      approx(rho_coal, 1104.651, 1e-5), f'{rho_coal:.3f}')
+check('11.5 0.5% 稀浆密度 1002.37（接近水）',
+      approx(w.slurry_density(0.5, 1900, 1000), 1002.374, 1e-5),
+      f"{w.slurry_density(0.5, 1900, 1000):.3f}")
+
+# Krieger-Dougherty：η_r = (1−φ/0.63)^(−1.575)
+_eta = w.slurry_apparent_viscosity(phi_coal, 0.001)
+_eta_ref = 0.001 * (1 - phi_coal / 0.63) ** (-2.5 * 0.63)
+check('11.6 表观粘度 = 水 1mPa·s × K-D 系数 → 1.379 mPa·s',
+      approx(_eta, _eta_ref, 1e-9) and approx(_eta * 1000, 1.379, 1e-3),
+      f'{_eta * 1000:.4f}')
+check('11.7 K-D 在 φ→φmax 处失效（返回 None 而非无穷）',
+      w.slurry_apparent_viscosity(0.70, 0.001) is None)
+
+# Thomas(1979) 独立手算：9.0·[μg(S−1)/ρ]^0.37·(ρD/μ)^0.11
+_vc40, _m40 = w.slurry_critical_velocity(20, 40, 1900, 1000, 0.001, phi_coal)
+_vc40_ref = 9.0 * (0.001 * 9.81 * 0.9 / 1000) ** 0.37 * (1000 * 0.04 / 0.001) ** 0.11
+check('11.8 活性炭 d50=20μm DN40 临界流速 = Thomas 0.3896 m/s',
+      approx(_vc40, _vc40_ref, 1e-9) and approx(_vc40, 0.3896, 1e-3),
+      f'{_vc40:.4f}')
+check('11.9 细颗粒（<74μm）用 Thomas 式', _m40 == 'Thomas 式', _m40)
+
+# 临界流速随管径单调增（Thomas 含 D^0.11）
+_vcs = [w.slurry_critical_velocity(20, D, 1900, 1000, 0.001, phi_coal)[0]
+        for D in (25, 50, 100, 200)]
+check('11.10 临界流速随管径单调增', all(b > a for a, b in zip(_vcs, _vcs[1:])),
+      str([round(v, 3) for v in _vcs]))
+
+# 粗颗粒：OT 式参与取大，且浓度升高时临界流速上升
+_vc_dry500, _m_dry = w.slurry_critical_velocity(1500, 100, 1400, 1000, 0.001, 0.05)
+_vc_dry500_hi, _ = w.slurry_critical_velocity(1500, 100, 1400, 1000, 0.001, 0.25)
+check('11.11 粗颗粒（≥74μm）走 OT 参与取大', _m_dry == 'Oroskar-Turian 式', _m_dry)
+check('11.12 浓浆临界流速高于稀浆（OT 浓度项生效）',
+      _vc_dry500_hi > _vc_dry500,
+      f'{_vc_dry500:.3f} → {_vc_dry500_hi:.3f}')
+
+# 推荐流速：经验下限主导（低浓度），且有磨损上限
+check('11.13 细颗粒稀浆推荐流速 = 经验下限 1.2 m/s',
+      approx(w.slurry_velocity(20, 1900, 1000, 0.001, 0.01), 1.2, 1e-6))
+check('11.14 粗颗粒推荐流速上限 = 1.5 m/s',
+      approx(w.slurry_velocity(1500, 1400, 1000, 0.001, 0.02), 1.5, 1e-6))
+check('11.15 树脂磨损上限 2.0，其余 2.5',
+      w.slurry_max_velocity('离子交换树脂') == 2.0
+      and w.slurry_max_velocity('硅藻土(助滤剂)') == 2.5)
+
+# 页面联动
+w.clear_inputs()
+w.fluid_combo.setCurrentText(SF)
+check('11.16 切浆料档：条件为「按固相与浓度自动推荐」',
+      w.condition_combo.currentText() == '按固相与浓度自动推荐',
+      w.condition_combo.currentText())
+check('11.17 切浆料档：固相行显示', not w.solid_combo.isHidden())
+check('11.18 切浆料档：压力行隐藏（浆料按 m³/h 选型）', w.pressure_input.isHidden())
+check('11.19 切浆料档：粘度框改作「液相粘度」',
+      '液相' in w.viscosity_label.text(), w.viscosity_label.text())
+check('11.20 默认硅藻土 3% → 密度自动填 1016.6',
+      approx(w._read_density(), 1016.6, 1e-3), w.density_input.text())
+check('11.21 默认推荐流速 = 1.20 m/s（细颗粒防沉积下限）',
+      approx(float(w.velocity_input.text()), 1.2, 1e-6), w.velocity_input.text())
+
+w.solid_combo.setCurrentText('活性炭(粉末)')
+check('11.22 换固相：d50 自动带回 20 μm', w.solid_d50_input.text() == '20',
+      w.solid_d50_input.text())
+w.solid_pct_input.setText('20')
+check('11.23 改浓度 20%：浆料密度跟到 1104.7',
+      approx(w._read_density(), 1104.651, 1e-3), w.density_input.text())
+check('11.24 改浓度 20%：表观粘度入压降口径（1.38 mPa·s）',
+      approx(w._current_viscosity() * 1000, 1.379, 1e-3),
+      f'{w._current_viscosity() * 1000:.4f}')
+
+# 结果页
+w.flow_input.setText('5')
+w.calculate()
+_txt = w.result_text.toPlainText()
+check('11.25 浆料结果页含「浆料校核」段', '浆料校核' in _txt)
+check('11.26 结果页给出临界不淤流速与设计最低流速',
+      '临界不淤流速' in _txt and '设计最低流速' in _txt)
+check('11.27 结果页给出磨损上限判定', '磨损上限' in _txt)
+check('11.28 结果页含压降校核（HG/T 20570-95）',
+      '压降校核' in _txt and 'HG/T 20570-95' in _txt)
+
+# 历史记录
+_h = w._get_history_data()
+check('11.29 历史记录含固相/浓度/粒径',
+      _h['inputs'].get('固相') == '活性炭(粉末)'
+      and _h['inputs'].get('固相浓度_wt%') == 20
+      and _h['inputs'].get('粒径_d50_um') == 20, str(_h['inputs'])[:120])
+check('11.30 历史记录含临界不淤流速',
+      '临界不淤流速_m_s' in _h['outputs'], str(_h['outputs']))
+check('11.31 历史记录粘度键改称「表观粘度」',
+      '表观粘度_mPa_s' in _h['inputs'], str(list(_h['inputs'].keys())))
+
+# 切回普通档：浆料段不再出现
+w.fluid_combo.setCurrentText('葡萄糖浆')
+w.condition_combo.setCurrentIndex(1)
+w.flow_input.setText('50')
+w.calculate()
+_txt2 = w.result_text.toPlainText()
+check('11.32 非浆料档结果页不含浆料校核', '浆料校核' not in _txt2)
+check('11.33 非浆料档固相行隐藏', w.solid_combo.isHidden())
+
+# 清空复位
+w.clear_inputs()
+check('11.34 清空后固相参数复位',
+      w.solid_combo.currentText() == '硅藻土(助滤剂)'
+      and w.solid_pct_input.text() == '3'
+      and w.liquid_rho_input.text() == '1000',
+      f'{w.solid_combo.currentText()}/{w.solid_pct_input.text()}/{w.liquid_rho_input.text()}')
+
+# ══════════════════ Part 12: 流体下拉分组 + 搜索 ══════════════════
+print('\n── Part 12: 分组与搜索 ──')
+w.clear_inputs()
+w.fluid_combo.setCurrentText('水及粘度相似的液体')   # 确定起点，便于断言「不跳档」
+
+_GROUPED = set()
+for _title, _items in mod.管径计算.FLUID_GROUPS:
+    _GROUPED.update(_items)
+check('12.1 分组覆盖全部 fluid_ranges（无漏项）',
+      set(w.fluid_ranges) - _GROUPED == set(), sorted(set(w.fluid_ranges) - _GROUPED))
+check('12.2 分组不含 fluid_ranges 之外的名字（无野项）',
+      _GROUPED - set(w.fluid_ranges) == set(), sorted(_GROUPED - set(w.fluid_ranges)))
+check('12.3 分组内无重复',
+      sum(len(i) for _t, i in mod.管径计算.FLUID_GROUPS) == len(_GROUPED))
+
+_ALL = [w.fluid_combo.itemText(i) for i in range(w.fluid_combo.count())]
+check('12.4 每个 fluid_ranges 项都能在下拉里选到',
+      all(f in _ALL for f in w.fluid_ranges),
+      sorted(set(w.fluid_ranges) - set(_ALL)))
+
+# 分组标题置灰不可选
+_titles = [t for t in _ALL if t.startswith('-')]
+check('12.5 占位项与分组标题都置灰不可选',
+      all(w.fluid_combo.model().item(i).isEnabled() is False
+          for i in range(w.fluid_combo.count())
+          if w.fluid_combo.itemText(i).startswith('-')),
+      _titles)
+check('12.6 组数为 6（水/淀粉糖/酸碱盐/气体/有机溶剂/其他）',
+      len(mod.管径计算.FLUID_GROUPS) == 6,
+      [t for t, _ in mod.管径计算.FLUID_GROUPS])
+
+# 关键字搜索
+w.fluid_filter.setText('糖')
+_hit = [w.fluid_combo.itemText(i) for i in range(w.fluid_combo.count())]
+check('12.7 搜「糖」命中糖化液/脱色液/葡萄糖浆',
+      {'糖化液', '脱色液', '葡萄糖浆'} <= set(_hit), _hit)
+check('12.8 搜索后当前流体仍保留（不跳档）',
+      w.fluid_combo.currentText() == '水及粘度相似的液体', w.fluid_combo.currentText())
+
+w.fluid_filter.setText('炭')
+_hit = [w.fluid_combo.itemText(i) for i in range(w.fluid_combo.count())]
+check('12.9 搜「活性炭」的「炭」经别名命中浆料档',
+      '浆料/悬浮液(含固)' in _hit, _hit)
+w.fluid_filter.setText('硅藻土')
+_hit = [w.fluid_combo.itemText(i) for i in range(w.fluid_combo.count())]
+check('12.10 搜「硅藻土」也命中浆料档（别名）', '浆料/悬浮液(含固)' in _hit, _hit)
+w.fluid_filter.setText('蒸汽')
+_hit = [w.fluid_combo.itemText(i) for i in range(w.fluid_combo.count())]
+check('12.11 搜「蒸汽」命中饱和/过热/二次蒸汽',
+      {'饱和蒸汽', '过热蒸汽', '二次蒸汽'} <= set(_hit), _hit)
+
+# 无匹配：不清空下拉，只给提示
+_n_before = w.fluid_combo.count()
+w.fluid_filter.setText('zzzz')
+check('12.12 无匹配时不清空下拉（避免误以为可用）',
+      w.fluid_combo.count() == _n_before and '无匹配' in w.filter_hint.text(),
+      f'{w.fluid_combo.count()} / {w.filter_hint.text()}')
+
+# 清空恢复
+w.fluid_filter.setText('')
+check('12.13 清空关键字恢复全部项',
+      w.fluid_combo.count() == len(_ALL), f'{w.fluid_combo.count()} vs {len(_ALL)}')
+
+# 关键回归：不可编辑下拉不会因 setCurrentText 静默新建条目
+_n0 = w.fluid_combo.count()
+w.fluid_combo.setCurrentText('不存在的流体XYZ')
+check('12.14 setCurrentText 不存在的名字不会新建条目（防假档）',
+      w.fluid_combo.count() == _n0 and w.fluid_combo.currentText() != '不存在的流体XYZ',
+      f'{w.fluid_combo.count()} / {w.fluid_combo.currentText()}')
+
+# 过滤后照常算
+w.fluid_filter.setText('葡萄糖')
+w.fluid_combo.setCurrentText('葡萄糖浆')
+w.condition_combo.setCurrentIndex(1)
+w.flow_input.setText('50')
+w.calculate()
+_t3 = w.result_text.toPlainText()
+check('12.15 过滤状态下计算正常且流体类型正确',
+      '葡萄糖浆' in _t3 and '推荐标准管径' in _t3)
+w.fluid_filter.setText('')
+
 # ── 汇总 ──
 print('\n' + '=' * 50)
 print(f'通过 {len(PASS)} 项, 失败 {len(FAIL)} 项')

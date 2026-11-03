@@ -281,7 +281,9 @@ class PHCalculator(CalculatorBase):
         r = self._add_row(g, r, "待求液 H⁺/OH⁻ 个数", "n_other_val", self._inp("1", 0),
                           "所求侧的氢离子或氢氧根个数")
         self._mode_widgets["酸碱中和"] = gb
-        gb.setVisible(True)
+        # 修复：此处原有一句 gb.setVisible(True)——此时 gb 还没挂进布局（无 parent），
+        # 会瞬间变成顶层窗口显示再被收走 = 用户看到的「小窗口闪一下 + 卡顿」。
+        # addWidget 挂进可见布局后自然显示，无需手动 setVisible。
         layout.addWidget(gb)
 
     def _create_buffer_panel(self, layout):

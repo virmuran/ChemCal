@@ -55,7 +55,11 @@ class 管径计算(CalculatorBase):
             self.data_manager = None
     
     def setup_fluid_ranges(self):
-        """根据化工管路设计手册表1.3-1设置流体对应的参数范围"""
+        """根据 HG/T 20570-95《工艺系统工程设计技术规定》设置流体对应的参数范围。
+
+        推荐流速、压力适用范围、粘度档（0.05/0.1/1 Pa·s）与泵进出口流速
+        均取自该标准的常用介质流速表，统一按标准原文标注，便于审图时追溯依据。
+        """
         self.fluid_ranges["饱和蒸汽"] = {
             "DN>200": {"velocity": (30, 40), "flow": (0, 0), "pressure": (0.1, 12), "flow_unit": "t/h"},
             "100<DN<200": {"velocity": (25, 35), "flow": (0, 0), "pressure": (0.1, 12), "flow_unit": "t/h"},
@@ -265,6 +269,16 @@ class 管径计算(CalculatorBase):
                 "velocity": (0.5, 1.0), "flow": (0, 0), "pressure": (0, 0),
                 "flow_unit": "m³/h", "viscosity": (0.24, 1.2)}
         }
+        # ── 固液浆料档（2026-11-02 新增）──────────────────────────
+        # 单相预设对含固物料是错的：管径由「不淤流速」控制而不是推荐流速，
+        # 密度随含固量变，压降随表观粘度非线性上升。本档只给占位区间，
+        # 真正的流速/密度由固相+浓度+粒径算出（见 _refresh_slurry）。
+        self.fluid_ranges[self.SLURRY_FLUID] = {
+            "按固相与浓度自动推荐": {
+                "velocity": (0.6, 2.5), "flow": (0, 0), "pressure": (0, 0),
+                "flow_unit": "m³/h", "slurry": True}
+        }
+
         # 自定义档：粘度/密度由用户输入，流速按粘度分级规则自动推荐
         self.fluid_ranges["自定义粘性液体(按粘度推荐)"] = {
             "输入粘度自动推荐流速": {
@@ -442,9 +456,11 @@ class 管径计算(CalculatorBase):
         
         # 1. 说明文本
         description = QLabel(
-            "根据流体类型和计算条件计算管道直径或流量，依据《化工管路设计手册》表1.3-1推荐值。\n"
-            "粘性物料（淀粉糖浆等）可选专用档，或选「自定义粘性液体」输入粘度自动推荐流速；"
-            "带粘度的介质在结果页附每100m直管压降估算。"
+            "根据流体类型和计算条件计算管道直径或流量，推荐流速取自"
+            " HG/T 20570-95《工艺系统工程设计技术规定》。\n"
+            "含固物料（硅藻土、活性炭、白土、树脂等）选「浆料/悬浮液」档，按固相、浓度、粒径"
+            "算防沉积流速与浆料压降；粘性物料（淀粉糖浆等）可选专用档或「自定义粘性液体」。"
+            "结果页附每 100m 直管压降，并按该标准的百米压降控制值给出校核结论。"
         )
         description.setWordWrap(True)
         description.setStyleSheet("font-size: 12px; padding: 5px;")
@@ -521,6 +537,26 @@ class 管径计算(CalculatorBase):
         self.fluid_hint = QLabel("决定密度与可选条件")
         self.fluid_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         preset_layout.addWidget(self.fluid_hint, prow, 2)
+
+        prow += 1
+
+        # ── 查找流体（不改下拉可编辑性：可编辑 QComboBox 的
+        #    setCurrentText 对不存在的项会静默新建条目，联动会读到假档）──
+        filter_label = QLabel("查找:")
+        filter_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        filter_label.setStyleSheet(label_style)
+        preset_layout.addWidget(filter_label, prow, 0)
+
+        self.fluid_filter = QLineEdit()
+        self.fluid_filter.setPlaceholderText("输入关键字过滤，如「糖」「蒸汽」「炭」")
+        self.fluid_filter.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.fluid_filter.textChanged.connect(self._filter_fluids)
+        preset_layout.addWidget(self.fluid_filter, prow, 1)
+
+        self.filter_hint = QLabel("")
+        self.filter_hint.setStyleSheet("font-size: 10px;")
+        self.filter_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        preset_layout.addWidget(self.filter_hint, prow, 2)
 
         prow += 1
 
@@ -686,6 +722,50 @@ class 管径计算(CalculatorBase):
 
         row += 1
 
+        # ── 浆料四行（仅「浆料/悬浮液(含固)」显示）──
+        # 行号连续占 4 行，隐藏时整块折叠
+        self.solid_label = QLabel("固相:")
+        self.solid_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.solid_label.setStyleSheet(label_style)
+        self.solid_combo = QComboBox()
+        self.solid_combo.setStyleSheet(COMBOBOX_STYLE)
+        self.solid_combo.addItems(list(self.SLURRY_SOLIDS.keys()))
+        self.solid_combo.setCurrentText("硅藻土(助滤剂)")
+        self.solid_combo.currentTextChanged.connect(self._on_solid_changed)
+
+        # 液相密度（第三列）：糖液脱色时液相不是水，必须能改
+        self.liquid_rho_input = QLineEdit("1000")
+        self.liquid_rho_input.setPlaceholderText("液相密度 kg/m³")
+        self.liquid_rho_input.setValidator(QDoubleValidator(500.0, 3000.0, 1))
+        self.liquid_rho_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.liquid_rho_input.textChanged.connect(self._refresh_slurry)
+
+        self.solid_pct_label = QLabel("固相浓度 (wt%):")
+        self.solid_pct_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.solid_pct_label.setStyleSheet(label_style)
+        self.solid_pct_input = QLineEdit("3")
+        self.solid_pct_input.setPlaceholderText("例如: 3（车间说的 3% 炭浆）")
+        self.solid_pct_input.setValidator(QDoubleValidator(0.1, 60.0, 2))
+        self.solid_pct_input.textChanged.connect(self._refresh_slurry)
+
+        self.solid_d50_label = QLabel("粒径 d50 (μm):")
+        self.solid_d50_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.solid_d50_label.setStyleSheet(label_style)
+        self.solid_d50_input = QLineEdit("")
+        self.solid_d50_input.setPlaceholderText("选固相后自动填入，可按实测改")
+        self.solid_d50_input.setValidator(QDoubleValidator(0.5, 50000.0, 1))
+        self.solid_d50_input.textChanged.connect(self._refresh_slurry)
+
+        self.slurry_hint = QLabel("")
+        self.slurry_hint.setStyleSheet("font-size: 10px; color: #7f8c8d;")
+        self.slurry_hint.setWordWrap(True)
+        self.slurry_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+        self._add_slurry_rows(input_layout, row)
+        self._slurry_row = row
+        self._hide_slurry_rows()
+        row += 4
+
         # ── 密度（常显、可改；不同流量单位下作用不同）──
         self.density_label = QLabel("密度 (kg/m³):")
         self.density_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -825,12 +905,38 @@ class 管径计算(CalculatorBase):
         layout.addWidget(self.density_input, row, 1)
         layout.addWidget(self.density_hint, row, 2)
 
+    # ── 浆料四行：固相 / 固相浓度 / 粒径 / 提示（占 4 个连续行号）──
+    def _add_slurry_rows(self, layout, row):
+        layout.addWidget(self.solid_label, row, 0)
+        layout.addWidget(self.solid_combo, row, 1)
+        layout.addWidget(self.liquid_rho_input, row, 2)
+
+        layout.addWidget(self.solid_pct_label, row + 1, 0)
+        layout.addWidget(self.solid_pct_input, row + 1, 1)
+
+        layout.addWidget(self.solid_d50_label, row + 2, 0)
+        layout.addWidget(self.solid_d50_input, row + 2, 1)
+
+        layout.addWidget(self.slurry_hint, row + 3, 0, 1, 3)
+
+    def _show_slurry_rows(self):
+        for w in [self.solid_label, self.solid_combo, self.liquid_rho_input,
+                  self.solid_pct_label, self.solid_pct_input,
+                  self.solid_d50_label, self.solid_d50_input, self.slurry_hint]:
+            w.setVisible(True)
+
+    def _hide_slurry_rows(self):
+        for w in [self.solid_label, self.solid_combo, self.liquid_rho_input,
+                  self.solid_pct_label, self.solid_pct_input,
+                  self.solid_d50_label, self.solid_d50_input, self.slurry_hint]:
+            w.setVisible(False)
+
     # ------------------------------------------------------------
     #  粘度 → 推荐流速 / 压降估算
     # ------------------------------------------------------------
 
     #: 粘度分级推荐流速（m/s），经验值[E]：
-    #: 锚点 = 化工管路设计手册粘度档（0.05/0.1/1 Pa·s）与熟化淀粉管道
+    #: 锚点 = HG/T 20570-95 粘度档（0.05/0.1/1 Pa·s）与熟化淀粉管道
     #: 设计指南（防沉降最低 0.3 m/s），分级间平滑过渡。
     VISCOSITY_VELOCITY_BANDS = [
         (50,        1.5, 3.0),   # 类水稀液
@@ -839,6 +945,177 @@ class 管径计算(CalculatorBase):
         (10000,     0.3, 0.6),   # 浓糖浆（容积泵）
         (float("inf"), 0.1, 0.3) # 超高粘（冷糖膏）
     ]
+
+    #: 百米直管允许压降（kPa/100m），HG/T 20570-95《工艺系统工程设计技术规定》
+    #: 表 2.0.2-2「每 100m 管长的压力降控制值」。标准给的区间照录，
+    #: 判合格时与区间**上限**比较（不超过上限即可接受）。
+    #: 顺序按允许值由严到宽排列，便于结果页直接读出「能达到哪一档」。
+    DP_ALLOW_KPA_100M = [
+        ("自流液体",              5.0,  5.0),
+        ("泵吸入（饱和液体）",    10.0, 11.0),
+        ("泵吸入（不饱和液体）",  20.0, 22.0),
+        ("循环冷却水",            30.0, 30.0),
+        ("泵排出（≥150 m³/h）",   45.0, 45.0),
+        ("泵排出（<150 m³/h）",   45.0, 50.0),
+    ]
+
+    @classmethod
+    def check_pressure_drop(cls, dp_kpa):
+        """按 HG/T 20570-95 逐类别校核百米压降，返回 (明细, 结论)。
+
+        明细：[{name, lo, hi, ok}]；结论：可直接写进结果页/历史的一句话。
+        判据：dp ≤ hi 即满足该类别。dp 为 None 时返回 (None, "")。
+        """
+        if dp_kpa is None:
+            return None, ""
+        rows = []
+        for name, lo, hi in cls.DP_ALLOW_KPA_100M:
+            rows.append({"name": name, "lo": lo, "hi": hi,
+                         "ok": dp_kpa <= hi + 1e-9})
+        passed = [r["name"] for r in rows if r["ok"]]
+        if len(passed) == len(rows):
+            note = "各类别均满足，可作泵吸入管使用"
+        elif passed:
+            # 满足的最宽一档 = 可安全用作该类别；更严的类别需放大管径
+            note = f"可作「{passed[-1]}」；更严格的类别不满足，需放大管径"
+        else:
+            note = "所有类别均超出控制值，建议放大一档管径后复核"
+        return rows, note
+
+    # ══════════════════════════════════════════════════════════
+    #  固液浆料（含固）模型
+    # ══════════════════════════════════════════════════════════
+    #: 浆料档名称（多处判断用，避免字符串散落）
+    SLURRY_FLUID = "浆料/悬浮液(含固)"
+
+    #: 固相库：名称 → (真密度 kg/m³, d50 典型 μm)
+    #: 真密度取手册值（硅藻土 2.1~2.3、活性炭 1.8~2.0、白土 2.4~2.6、
+    #: 湿树脂 1.15~1.25、石灰石 2.7、淀粉 1.5、玉米芯渣 1.3~1.5）；
+    #: d50 为行业典型值[E]，实际以激光粒度实测为准，界面可改。
+    SLURRY_SOLIDS = {
+        "硅藻土(助滤剂)":   (2200.0, 25.0),
+        "活性炭(粉末)":     (1900.0, 20.0),
+        "活性炭(颗粒)":     (1900.0, 1200.0),
+        "白土(脱色)":       (2500.0, 30.0),
+        "离子交换树脂":     (1200.0, 600.0),
+        "石灰石粉(石灰乳)": (2700.0, 50.0),
+        "淀粉(未糊化)":     (1500.0, 30.0),
+        "玉米芯渣":         (1400.0, 1500.0),
+        "自定义":           (None, None),
+    }
+
+    #: 临界流速判据分界（μm）：< 该值颗粒受粘性支配，用 Thomas(1979)；
+    #: ≥ 该值用 Oroskar-Turian(1980)。两者都算、取大者（PNNL-37669 实践）。
+    SLURRY_FINE_LIMIT_UM = 74.0
+    #: 设计流速 = 临界流速 × 安全系数（PNNL 取 1.2~1.3，此处取中）
+    SLURRY_SAFETY = 1.25
+    #: 经验最小流速下限（m/s）：细颗粒 1.2（4 ft/s，HDPE 浆管手册）、粗颗粒 1.5
+    SLURRY_MIN_VEL_FINE = 1.2
+    SLURRY_MIN_VEL_COARSE = 1.5
+    #: 磨损流速上限（m/s）：活性炭等硬颗粒 >2.5 对 304 弯头冲刷明显；树脂取 2.0
+    SLURRY_MAX_WEAR_VEL = 2.5
+    SLURRY_MAX_WEAR_VEL_SOFT = 2.0
+    #: 最大堆积体积分数（Krieger-Dougherty 用）
+    SLURRY_PHI_MAX = 0.63
+
+    @staticmethod
+    def slurry_volume_fraction(w_pct, rho_s, rho_l):
+        """固相质量浓度(wt%) → 体积分数 φ。参数无效返回 None。"""
+        if not (rho_s and rho_l and 0 < w_pct < 100):
+            return None
+        w = w_pct / 100.0
+        v_s = w / rho_s
+        v_l = (1.0 - w) / rho_l
+        tot = v_s + v_l
+        return (v_s / tot) if tot > 0 else None
+
+    @staticmethod
+    def slurry_density(w_pct, rho_s, rho_l):
+        """浆料密度 ρm (kg/m³) = 1/(w/ρs + (1-w)/ρl)。"""
+        if not (rho_s and rho_l and 0 < w_pct < 100):
+            return None
+        w = w_pct / 100.0
+        return 1.0 / (w / rho_s + (1.0 - w) / rho_l)
+
+    @classmethod
+    def slurry_apparent_viscosity(cls, phi, mu_l):
+        """Krieger-Dougherty 相对粘度 → 表观粘度 (Pa·s)。
+
+        η_r = (1 − φ/φmax)^(−2.5·φmax)，φmax = 0.63，本征粘度取 2.5。
+        细颗粒均质浆液（硅藻土、活性炭、白土）用它把含固量折进压降计算；
+        粗颗粒浆料本式会低估，结果页另有附加系数提示。
+        """
+        if phi is None or mu_l is None or not (0 <= phi < cls.SLURRY_PHI_MAX):
+            return None
+        eta_r = (1.0 - phi / cls.SLURRY_PHI_MAX) ** (-2.5 * cls.SLURRY_PHI_MAX)
+        return mu_l * eta_r
+
+    @classmethod
+    def slurry_critical_velocity(cls, d_um, D_mm, rho_s, rho_l, mu_l, phi):
+        """临界不淤流速 (m/s)，返回 (v, 依据)；无法计算返回 (None, "")。
+
+        细颗粒 Thomas(1979)：v = 9.0·[μ·g(S−1)/ρ]^0.37·(ρD/μ)^0.11
+        粗颗粒 Oroskar-Turian(1980)：含粒径、体积分数、d/D、雷诺数项
+        d ≥ 74μm 时两式都算取大者（单一关联式在不同浓度下误差都很大）；
+        d < 74μm 只用 Thomas —— OT 式在细颗粒域外推不可靠。
+        """
+        if not (d_um and d_um > 0 and D_mm and D_mm > 0
+                and rho_s and rho_l and mu_l and mu_l > 0):
+            return None, ""
+        s_rel = rho_s / rho_l
+        if s_rel <= 1.0:
+            return None, ""
+        g = 9.81
+        d_m = d_um * 1e-6
+        D_m = D_mm / 1000.0
+        cands = []
+        # Thomas(1979) —— 细颗粒受粘性支配，式中不含粒径；
+        # 粗颗粒时偏保守，作为下限一起参与取大
+        try:
+            v_t = (9.0 * (mu_l * g * (s_rel - 1.0) / rho_l) ** 0.37
+                   * (rho_l * D_m / mu_l) ** 0.11)
+            cands.append((v_t, "Thomas 式"))
+        except (ValueError, ZeroDivisionError, OverflowError):
+            pass
+        # Oroskar-Turian(1980) —— 名义适用 d ≥ 74μm，细颗粒不套用
+        if d_um >= cls.SLURRY_FINE_LIMIT_UM and phi is not None and 0 < phi < 1:
+            try:
+                base = math.sqrt(g * d_m * (s_rel - 1.0))
+                v_ot = (1.85 * base
+                        * phi ** 0.1536
+                        * (1.0 - phi) ** 0.3564
+                        * (d_m / D_m) ** -0.378
+                        * (rho_l * D_m * base / mu_l) ** 0.09
+                        * (0.95 ** 0.30))
+                cands.append((v_ot, "Oroskar-Turian 式"))
+            except (ValueError, ZeroDivisionError, OverflowError):
+                pass
+        cands = [(v, n) for v, n in cands if v and v > 0]
+        if not cands:
+            return None, ""
+        v, name = max(cands, key=lambda x: x[0])
+        return v, name
+
+    @classmethod
+    def slurry_velocity(cls, d_um, rho_s, rho_l, mu_l, phi, solid_name=None):
+        """浆料推荐流速（不依赖管径的预填值）：经验下限起，浓度高时上浮。
+
+        真正的临界流速要等管径定了才能算（Thomas/OT 都含 D），
+        所以这里只给工程下限，结果页再用实际 DN 回算校核。
+        """
+        fine = (d_um or 0) < cls.SLURRY_FINE_LIMIT_UM
+        v = cls.SLURRY_MIN_VEL_FINE if fine else cls.SLURRY_MIN_VEL_COARSE
+        # 体积分数超过 10% 的浓浆需要更高流速防沉积（经验[E]）
+        if phi and phi > 0.10:
+            v *= 1.0 + min(0.5, (phi - 0.10) * 3.0)
+        return min(v, cls.slurry_max_velocity(solid_name))
+
+    @classmethod
+    def slurry_max_velocity(cls, solid_name=None):
+        """磨损流速上限 (m/s)：树脂等软颗粒 2.0，其余 2.5。"""
+        if solid_name and "树脂" in solid_name:
+            return cls.SLURRY_MAX_WEAR_VEL_SOFT
+        return cls.SLURRY_MAX_WEAR_VEL
 
     @classmethod
     def recommend_velocity_by_viscosity(cls, mu_mpa_s):
@@ -864,6 +1141,92 @@ class 管径计算(CalculatorBase):
         self._fill(self.velocity_input, f"{vel:.2f}")
         self._velocity_preset = (lo, hi, f"{vel:.2f}")
         self.velocity_hint.setText(f"按粘度 {mu:g} mPa·s 推荐 {lo:g}~{hi:g} m/s")
+
+    # ------------------------------------------------------------
+    #  浆料档：固相 + 浓度 → 流速 / 密度 / 表观粘度
+    # ------------------------------------------------------------
+
+    def _is_slurry(self):
+        """当前是否为浆料档。"""
+        return self.fluid_combo.currentText() == self.SLURRY_FLUID
+
+    def _slurry_inputs(self):
+        """读浆料输入 → dict；非浆料档或关键输入不全返回 None。"""
+        if not self._is_slurry():
+            return None
+        name = self.solid_combo.currentText()
+        rho_s, d50_def = self.SLURRY_SOLIDS.get(name, (None, None))
+        if not rho_s:
+            return None
+        try:
+            w = float(self.solid_pct_input.text())
+        except (ValueError, AttributeError):
+            return None
+        if not (0 < w < 100):
+            return None
+        d50 = d50_def
+        d50_txt = self.solid_d50_input.text().strip()
+        if d50_txt:
+            try:
+                d50 = float(d50_txt)
+            except ValueError:
+                pass
+        try:
+            rho_l = float(self.liquid_rho_input.text())
+        except (ValueError, AttributeError):
+            rho_l = 1000.0
+        if rho_l <= 0:
+            rho_l = 1000.0
+        try:
+            mu_l = float(self.viscosity_input.text()) / 1000.0
+        except (ValueError, AttributeError):
+            mu_l = None
+        if not mu_l or mu_l <= 0:
+            mu_l = 0.001          # 缺省按 20°C 水
+        return {"name": name, "rho_s": rho_s, "d50": d50, "w": w,
+                "rho_l": rho_l, "mu_l": mu_l}
+
+    def _slurry_state(self):
+        """浆料完整状态：φ、ρm、μ_app、推荐流速。输入不全返回 None。"""
+        inp = self._slurry_inputs()
+        if inp is None:
+            return None
+        phi = self.slurry_volume_fraction(inp["w"], inp["rho_s"], inp["rho_l"])
+        rho_m = self.slurry_density(inp["w"], inp["rho_s"], inp["rho_l"])
+        mu_app = self.slurry_apparent_viscosity(phi, inp["mu_l"])
+        v = self.slurry_velocity(inp["d50"], inp["rho_s"], inp["rho_l"],
+                                 inp["mu_l"], phi, inp["name"])
+        return {**inp, "phi": phi, "rho_m": rho_m,
+                "mu_app": mu_app, "velocity": v}
+
+    def _refresh_slurry(self, *_):
+        """浆料参数变化 → 重算流速 / 密度 / 提示（不触发联动重入）。"""
+        if self._filling or not self._is_slurry():
+            return
+        st = self._slurry_state()
+        if st is None:
+            self.slurry_hint.setText("填齐固相、浓度与液相密度后自动推荐流速")
+            return
+        vmax = self.slurry_max_velocity(st["name"])
+        v = min(st["velocity"], vmax)
+        self._fill(self.velocity_input, f"{v:.2f}")
+        self._velocity_preset = (v, vmax, f"{v:.2f}")
+        self.velocity_hint.setText(f"防沉积下限 {v:.2f}（磨损上限 {vmax:g}）")
+        # 密度按含固量算：改浓度必然重算，手填值只在浓度不变时保留
+        self._current_density = st["rho_m"]
+        self._fill(self.density_input, f"{st['rho_m']:.1f}")
+        self.density_hint.setText("浆料密度（按含固量算，可改）")
+        self.slurry_hint.setText(
+            f"固相体积分数 {st['phi'] * 100:.1f}%"
+            f" · 表观粘度 {st['mu_app'] * 1000:.2f} mPa·s"
+            f" · 液相 {st['rho_l']:g} kg/m³")
+
+    def _on_solid_changed(self, text):
+        """切换固相：d50 填回典型值后刷新。"""
+        _rho_s, d50 = self.SLURRY_SOLIDS.get(text, (None, None))
+        if d50 is not None:
+            self._fill(self.solid_d50_input, f"{d50:g}")
+        self._refresh_slurry()
 
     # ───────────────── 参数填写 / 手改标记 ─────────────────
     def _fill(self, widget, text):
@@ -940,9 +1303,13 @@ class 管径计算(CalculatorBase):
     def _current_viscosity(self):
         """当前粘度 (Pa·s)；无粘度数据时返回 None。
 
-        自定义档取用户输入（mPa·s → Pa·s）；预设档取典型范围中值。
+        自定义档取用户输入（mPa·s → Pa·s）；预设档取典型范围中值；
+        浆料档返回含固后的表观粘度（Krieger-Dougherty）。
         """
         fluid = self.fluid_combo.currentText()
+        if fluid == self.SLURRY_FLUID:
+            st = self._slurry_state()
+            return st["mu_app"] if st else None
         if fluid == "自定义粘性液体(按粘度推荐)":
             try:
                 return float(self.viscosity_input.text()) / 1000.0
@@ -986,19 +1353,79 @@ class 管径计算(CalculatorBase):
         dp = self._estimate_pressure_drop(diameter_mm, velocity, density, mu)
         if dp is None:
             return ""
+        rows, note = self.check_pressure_drop(dp["dp_kpa"])
+        check_lines = []
+        for r in rows:
+            allow = (f"{r['lo']:g}" if r["lo"] == r["hi"]
+                     else f"{r['lo']:g}~{r['hi']:g}")
+            mark = "✓" if r["ok"] else "✗"
+            check_lines.append(f"    {mark} {r['name']}  允许 {allow} kPa/100m")
+        check_block = "\n".join(check_lines)
         return f"""
 ────────────
 压降估算 (每100m直管, Darcy-Weisbach)
 ────────────
 
-    粘度: {mu * 1000:g} mPa·s   流态: {dp['regime']} (Re = {dp['re']:,.0f})
+    粘度: {round(mu * 1000, 2):g} mPa·s   流态: {dp['regime']} (Re = {dp['re']:,.0f})
     摩阻系数 λ = {dp['lambda']:.4f}
 
     • 压降: {dp['dp_kpa']:.1f} kPa/100m
     • 水力坡降: {dp['head_m']:.2f} m液柱/100m
 
+────────────
+压降校核 (HG/T 20570-95 每100m管长压力降控制值)
+────────────
+
+    本工况 {dp['dp_kpa']:.1f} kPa/100m（未含局部阻力）
+
+{check_block}
+
+    结论: {note}
+
     注：仅计直管摩擦，未含弯头/阀门局部阻力（工程上通常另加
     10%~50%）；粘度为典型经验值，重要管路请以实测粘度复核。"""
+
+    def _slurry_check_text(self, diameter_mm, velocity):
+        """浆料专属校核段：临界不淤流速 / 磨损上限。非浆料档返回空串。
+
+        顺序很重要：临界流速两式都含管径 D，所以必须等 DN 定下来再回算，
+        不能反过来用临界流速定管径（会循环依赖）。
+        """
+        st = self._slurry_state()
+        if st is None:
+            return ""
+        vc, method = self.slurry_critical_velocity(
+            st["d50"], diameter_mm, st["rho_s"], st["rho_l"],
+            st["mu_l"], st["phi"])
+        if vc is None:
+            return ""
+        v_req = vc * self.SLURRY_SAFETY
+        vmax = self.slurry_max_velocity(st["name"])
+        ok_settle = velocity >= v_req - 1e-9
+        ok_wear = velocity <= vmax + 1e-9
+        coarse = (st["d50"] or 0) >= self.SLURRY_FINE_LIMIT_UM
+        wear_note = "未超" if ok_wear else "已超，建议放大管径或降流量"
+        coarse_note = (
+            "\n    注：粗颗粒（d50 ≥ 74 μm）实际压降可能再高 10%~30%，"
+            "\n    弯头取 R/D≥5 并做耐磨处理（陶瓷/超高分子量聚乙烯）。"
+            if coarse else "")
+        return f"""
+────────────
+浆料校核 (固液两相, 管径定后回算)
+────────────
+
+    固相: {st['name']}   浓度 {st['w']:g} wt%   d50 {st['d50']:g} μm
+    浆料密度: {st['rho_m']:.1f} kg/m³   固相体积分数: {st['phi'] * 100:.1f}%
+    表观粘度: {st['mu_app'] * 1000:.2f} mPa·s（Krieger-Dougherty）
+
+    临界不淤流速: {vc:.2f} m/s（{method}，按内径 {diameter_mm:.0f} mm 回算）
+    设计最低流速: {v_req:.2f} m/s（×{self.SLURRY_SAFETY:g} 安全系数）
+
+    {'✓' if ok_settle else '✗'} 实际流速 {velocity:.2f} m/s {'≥' if ok_settle else '<'} 设计最低 {v_req:.2f}
+    {'✓' if ok_wear else '✗'} 磨损上限 {vmax:g} m/s（{wear_note}）
+
+    注：低浓度时经验下限（细颗粒 1.2 / 粗颗粒 1.5 m/s）通常起控制作用，
+    公式值只在浓浆或粗颗粒时才反超。{coarse_note}"""
 
     # ------------------------------------------------------------
     #  模式 / 流体 / 条件联动
@@ -1054,71 +1481,133 @@ class 管径计算(CalculatorBase):
         # 泵吸入管联算只在「由流量计算管径」模式下有意义
         self.pump_pair_check.setVisible(mode == "由流量计算管径")
     
+    #: 流体下拉分组（工艺常用在前，手册冷门品归最后一组）。
+    #: "- xxx -" 为分组标题，界面置灰不可选；分组只决定显示顺序，
+    #: 数据源仍是 setup_fluid_ranges 里的 fluid_ranges（此处不重复定义参数）。
+    FLUID_GROUPS = [
+        ("- 水与蒸汽 -", [
+            "水及粘度相似的液体", "过热水", "锅炉给水", "蒸汽冷凝液", "冷凝水",
+            "饱和蒸汽", "过热蒸汽", "二次蒸汽", "乏汽", "高压乏汽",
+            "自来水", "海水，微碱水", "排除废水"]),
+        ("- 淀粉糖与糖醇 -", [
+            "淀粉调浆液", "液化液", "糖化液", "脱色液", "葡萄糖浆",
+            "浆料/悬浮液(含固)", "粘度较大的液体"]),
+        ("- 酸碱盐溶液 -", [
+            "氢氧化钠", "硫酸", "盐酸", "氯化钠", "液氨"]),
+        ("- 气体 -", [
+            "压缩气体", "气体", "氧气", "氮气", "氢气", "氮",
+            "天然气", "煤气", "半水煤气", "烟道气", "石灰窑窑气",
+            "氨气", "乙炔气", "乙烯气", "氢氮混合气"]),
+        ("- 有机溶剂 -", [
+            "乙二醇", "氯仿", "氯化氢", "溴", "氯化甲烷", "氯乙烷",
+            "二氯乙烷", "三氯乙烷", "苯乙烯", "二溴乙烯", "四氯化碳"]),
+        ("- 其他 -", ["泥状混合物", "自定义粘性液体(按粘度推荐)"]),
+    ]
+
+    #: 搜索别名：流体名 → 车间常用叫法/成分名。
+    #: 名字里搜不到的（如「活性炭」在浆料档名下）靠别名命中，
+    #: 否则用户按物料名找必然落空。
+    FLUID_ALIASES = {
+        "浆料/悬浮液(含固)": ["浆料", "悬浮液", "含固", "固液", "活性炭", "炭浆",
+                              "硅藻土", "助滤剂", "白土", "树脂", "石灰乳", "石灰石"],
+        "水及粘度相似的液体": ["水", "清水", "工艺水", "低粘度"],
+        "淀粉调浆液": ["淀粉乳", "调浆", "淀粉浆"],
+        "液化液": ["液化", "喷射液化"],
+        "糖化液": ["糖化", "糖化醪"],
+        "脱色液": ["脱色", "糖液", "脱色糖液"],
+        "葡萄糖浆": ["糖浆", "葡萄糖", "淀粉糖", "糖醇"],
+        "粘度较大的液体": ["高粘", "粘稠", "稠液"],
+        "蒸汽冷凝液": ["冷凝水", "凝结水"],
+        "冷凝水": ["凝结水", "冷凝液"],
+        "氢氧化钠": ["碱液", "烧碱", "NaOH"],
+        "液氨": ["氨", "氨水"],
+        "饱和蒸汽": ["蒸汽", "低压蒸汽"],
+        "过热蒸汽": ["蒸汽", "高温蒸汽"],
+        "自来水": ["水", "市政水"],
+        "海水，微碱水": ["海水", "微碱水"],
+        "排除废水": ["废水", "排污"],
+    }
+
+    @classmethod
+    def _fluid_matches(cls, name, kw):
+        """流体名或其别名命中关键字。"""
+        if kw in name.lower():
+            return True
+        return any(kw in a.lower() for a in cls.FLUID_ALIASES.get(name, ()))
+
+    @classmethod
+    def _fluid_options(cls):
+        """下拉实际项 = 占位项 + 各组标题 + 组内流体（顺序即显示顺序）。"""
+        out = ["- 请选择流体类型 -"]
+        for title, items in cls.FLUID_GROUPS:
+            out.append(title)
+            out.extend(items)
+        return out
+
+    def _filter_fluids(self, text):
+        """按关键字过滤流体下拉（只改显示项，不动 fluid_ranges）。
+
+        当前选中的流体永远置顶保留：否则过滤后 currentText 会跳到别的档，
+        而参数还是旧流体的，显示与计算就对不上了。
+        与下拉「可编辑 + completer」方案相比，这样做不会让 setCurrentText
+        静默新建不存在的条目（那会喂给联动逻辑一个假档）。
+        """
+        kw = (text or "").strip().lower()
+        cur = self.fluid_combo.currentText()
+
+        if not kw:
+            items = self._fluid_options()
+        else:
+            items = []
+            for title, group in self.FLUID_GROUPS:
+                hits = [f for f in group if self._fluid_matches(f, kw)]
+                if hits:
+                    items.append(title)
+                    items.extend(hits)
+            if not items:
+                self.filter_hint.setText("无匹配（清空可恢复全部）")
+                return
+        # 当前项不在结果里时置顶保留：包括「- 请选择流体类型 -」占位项，
+        # 否则过滤后 currentIndex 会落到不可选的分组标题上，显示与参数状态打架
+        if cur and cur not in items:
+            items = [cur] + items
+
+        n_hit = len([x for x in items if not x.startswith("-")])
+        self.filter_hint.setText("" if not kw else f"{n_hit} 项")
+
+        self.fluid_combo.blockSignals(True)
+        try:
+            self.fluid_combo.clear()
+            self.fluid_combo.addItems(items)
+            for _i in range(self.fluid_combo.count()):
+                if self.fluid_combo.itemText(_i).startswith("-"):
+                    _item = self.fluid_combo.model().item(_i)
+                    if _item is not None:
+                        _item.setEnabled(False)
+            if cur in items:
+                self.fluid_combo.setCurrentIndex(items.index(cur))
+        finally:
+            self.fluid_combo.blockSignals(False)
+
     def setup_fluid_options(self):
         """设置流体选项"""
         # 更新流体选项列表
-        fluid_options = [
-            "- 请选择流体类型 -",
-            "饱和蒸汽",
-            "水及粘度相似的液体",
-            "自来水",
-            "压缩气体",
-            "锅炉给水",
-            "蒸汽冷凝液",
-            "冷凝水",
-            "过热水",
-            "过热蒸汽",
-            "二次蒸汽",
-            "高压乏汽",
-            "乏汽",
-            "氧气",
-            "煤气",
-            "半水煤气",
-            "天然气",
-            "烟道气",
-            "石灰窑窑气",
-            "氮气",
-            "氢氮混合气",
-            "氨气",
-            "乙炔气",
-            "氮",
-            "氯仿",
-            "氯化氢",
-            "溴",
-            "氯化甲烷",
-            "氯乙烷",
-            "二氯乙烷",
-            "三氯乙烷",
-            "乙二醇",
-            "苯乙烯",
-            "二溴乙烯",
-            "海水，微碱水",
-            "粘度较大的液体",
-            "淀粉调浆液",
-            "液化液",
-            "糖化液",
-            "脱色液",
-            "葡萄糖浆",
-            "自定义粘性液体(按粘度推荐)",
-            "液氨",
-            "氢氧化钠",
-            "四氯化碳",
-            "硫酸",
-            "盐酸",
-            "氯化钠",
-            "排除废水",
-            "泥状混合物",
-            "气体",
-            "氢气"
-        ]
-        
         self.fluid_combo.clear()
-        self.fluid_combo.addItems(fluid_options)
-        # 默认选"水及粘度相似的液体"，自动填充推荐流速/温度/流量
-        self.fluid_combo.setCurrentIndex(2)
+        self.fluid_combo.addItems(self._fluid_options())
+        # 分组标题（"- xxx -"）置灰不可选，避免误点后参数被清空
+        for _i in range(self.fluid_combo.count()):
+            if self.fluid_combo.itemText(_i).startswith("-"):
+                _item = self.fluid_combo.model().item(_i)
+                if _item is not None:
+                    _item.setEnabled(False)
+        # 默认选「水及粘度相似的液体」（此时尚未连信号，不会触发联动）
+        self.fluid_combo.setCurrentText("水及粘度相似的液体")
         
         # 设置流体数据字典（密度值）
         self.fluid_data = {
+            # 浆料档：密度随含固量变，由 _refresh_slurry 按 1/(w/ρs+(1-w)/ρl) 覆盖，
+            # 此处只作查表占位（fluid_ranges/fluid_data 必须一一对应）
+            "浆料/悬浮液(含固)": 1000.0,
             # 蒸汽类
             "饱和蒸汽": 5.16,  # 0.9MPa(G)下的近似密度
             "过热蒸汽": 4.8,
@@ -1271,11 +1760,31 @@ class 管径计算(CalculatorBase):
 
         # 自定义粘性液体 → 显示粘度行，流速由粘度推荐
         if text == "自定义粘性液体(按粘度推荐)":
+            self._hide_slurry_rows()
             self._show_viscosity_row()
+            self.viscosity_label.setText("粘度 (mPa·s):")
+            self.viscosity_hint.setText("输入后自动推荐流速并估算压降")
             self.velocity_input.setPlaceholderText("输入粘度后自动推荐")
             self.condition_hint.setText("输入粘度后流速自动推荐")
+        elif text == self.SLURRY_FLUID:
+            # 浆料：粘度框改作「液相粘度」，另有三行固相参数；
+            # 压力不参与选型（按 m³/h 计），隐藏避免误导
+            self._hide_slurry_rows()
+            self._show_viscosity_row()
+            self.viscosity_label.setText("液相粘度 (mPa·s):")
+            self.viscosity_hint.setText("液相粘度（水=1），用于算临界流速")
+            if not self.viscosity_input.text().strip():
+                self._fill(self.viscosity_input, "1.0")
+            self._show_slurry_rows()
+            self._remove_pressure_row()
+            self.velocity_input.setPlaceholderText("按固相与浓度自动推荐")
+            self.condition_hint.setText("按固相、浓度、粒径自动推荐流速")
+            self._refresh_slurry()
         else:
+            self._hide_slurry_rows()
             self._hide_viscosity_row()
+            self.viscosity_label.setText("粘度 (mPa·s):")
+            self.viscosity_hint.setText("输入后自动推荐流速并估算压降")
             self.velocity_input.setPlaceholderText("选流体后自动填入，可改")
     
     def update_condition_options(self, fluid):
@@ -1510,6 +2019,10 @@ class 管径计算(CalculatorBase):
         self._fill(self.temp_input, "")
         self._fill(self.viscosity_input, "")
         self._fill(self.density_input, "1200")
+        # 浆料档参数复位（d50 会随固相选择自动带回典型值）
+        self.solid_combo.setCurrentText("硅藻土(助滤剂)")
+        self._fill(self.solid_pct_input, "3")
+        self._fill(self.liquid_rho_input, "1000")
         self.velocity_hint.setText("")
         self.density_hint.setText("选流体后自动填入，可改")
         self.result_text.clear()
@@ -1856,6 +2369,7 @@ class 管径计算(CalculatorBase):
     • 汽蚀余量校核请用「离心泵NPSHa计算」"""
 
         result += self._pressure_drop_text(closest_diam, actual_vel, density)
+        result += self._slurry_check_text(closest_diam, actual_vel)
 
         self.result_text.setText(result)
     
@@ -1938,7 +2452,8 @@ class 管径计算(CalculatorBase):
     • 当前流速和流量在推荐范围内
     • 根据实际流量需求调整管道尺寸或流速
     • 计算结果仅供参考，实际应用请考虑安全系数""" + self._pressure_drop_text(
-            diameter_mm, velocity, density)
+            diameter_mm, velocity, density) + self._slurry_check_text(
+            diameter_mm, velocity)
 
         self.result_text.setText(result)
     
@@ -1980,7 +2495,16 @@ class 管径计算(CalculatorBase):
             "压力_MPa": pressure
         }
         if mu:
-            inputs["粘度_mPa_s"] = round(mu * 1000, 1)
+            inputs["表观粘度_mPa_s" if self._is_slurry() else "粘度_mPa_s"] = \
+                round(mu * 1000, 2)
+        # 浆料档：固相/浓度/粒径是复现结果的关键参数，必须入史
+        _st = self._slurry_state() if self._is_slurry() else None
+        if _st:
+            inputs["固相"] = _st["name"]
+            inputs["固相浓度_wt%"] = _st["w"]
+            inputs["粒径_d50_um"] = _st["d50"]
+            inputs["浆料密度_kg_m3"] = round(_st["rho_m"], 1)
+            inputs["液相粘度_mPa_s"] = round(_st["mu_l"] * 1000, 2)
         outputs = {}
 
         try:
@@ -2004,6 +2528,20 @@ class 管径计算(CalculatorBase):
                 dp = self._estimate_pressure_drop(closest_diam, actual_vel, density, mu) if mu else None
                 if dp:
                     outputs["压降_kPa_100m"] = round(dp["dp_kpa"], 1)
+                    # 压降校核（HG/T 20570-95）：记「能达到的最宽类别」而不是整段说明，
+                    # 历史列表放得下；完整对照见结果页与计算书
+                    _rows, _ = self.check_pressure_drop(dp["dp_kpa"])
+                    _passed = [r["name"] for r in _rows if r["ok"]]
+                    outputs["压降校核"] = (
+                        "全部满足" if len(_passed) == len(_rows)
+                        else (_passed[-1] if _passed else "全部超出"))
+                # 浆料：临界流速随管径变，按选定的 DN 回算后入史
+                if _st:
+                    _vc, _m = self.slurry_critical_velocity(
+                        _st["d50"], closest_diam, _st["rho_s"],
+                        _st["rho_l"], _st["mu_l"], _st["phi"])
+                    if _vc:
+                        outputs["临界不淤流速_m_s"] = round(_vc, 2)
                 # 泵吸入管联算：吸入管径与吸入流速一并入史
                 if self.pump_pair_check.isChecked():
                     u_s, _src = self._pump_suction_velocity(fluid, condition, velocity)

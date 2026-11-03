@@ -251,6 +251,24 @@ check("clear 后可直接重算（不报缺少参数）",
 # ══════════════════ Part 2: pH 计算 ══════════════════
 print('── Part 2: pH 计算 ──')
 m2 = _load('t_ph', os.path.join(CALC_DIR, 'ph_calculator.py'))
+
+# 构造过程不得闪现顶层窗口（修前 _create_neutralize_panel 在挂布局前
+# 调 gb.setVisible(True)，无 parent 的 QGroupBox 瞬间变顶层窗口 = 用户
+# 看到的「小窗口闪一下 + 卡顿」）
+from PySide6.QtWidgets import QWidget as _QW
+_flashed = []
+_orig_vis = _QW.setVisible
+def _spy_vis(self, v):
+    if v and self.isWindow():
+        _flashed.append(type(self).__name__)
+    return _orig_vis(self, v)
+_QW.setVisible = _spy_vis
+try:
+    ph_flash_probe = m2.PHCalculator()
+finally:
+    _QW.setVisible = _orig_vis
+check("pH 页构造无顶层窗口闪现（修前弹一下小窗口）", not _flashed, str(_flashed))
+
 ph = m2.PHCalculator()
 
 # pK 表约定
@@ -473,11 +491,18 @@ check("最低闪点法仅取可燃组分 = 12.8",
       abs(fp_calc.calculate_minimum_flash() - 12.8) < 1e-9)
 check("质量加权平均仅在可燃组分间归一 = 12.8",
       abs(fp_calc.calculate_weighted_average_mass() - 12.8) < 1e-9)
+check("Le Chatelier 只在可燃组分间归一: 乙醇+水 = 12.8（修前被水拉到 ~743 °C）",
+      abs(fp_calc.calculate_le_chatelier() - 12.8) < 0.05,
+      str(fp_calc.calculate_le_chatelier()))
+check("沸点关联式不含水: 乙醇+水 = −27.1 °C（修前把水的沸点也计入平均而高估）",
+      abs(fp_calc.calculate_cox_method() - (-27.07)) < 0.06,
+      str(fp_calc.calculate_cox_method()))
 fp_calc.method_combo.setCurrentText("最低闪点法 - 保守估计，取最低组分闪点")
 fp_calc.calculate_flash_point()
 txt = fp_calc.result_text.toPlainText()
 check("含水体系出现「含不燃稀释剂」适用性警示", "不燃稀释剂" in txt)
 check("含水体系结果给出保守值 12.8 °C", "12.8" in txt)
+check("组分列表换行正常（无字面 \\n 残留）", "\\n" not in txt, txt[:80])
 
 # 全部不燃 → 无闪点
 fp_calc.components = [
@@ -488,6 +513,17 @@ fp_calc.calculate_flash_point()
 check("全部不燃 → 提示无闪点而非崩溃",
       "无闪点" in fp_calc.result_text.toPlainText(),
       fp_calc.result_text.toPlainText()[:40])
+
+# 所选方法缺数据 → 结果区明确说明而非「计算错误」弹窗（修前 format_results 对 None 崩）
+fp_calc.components = [
+    {"name": "乙醇", "flash_point": 12.8, "boiling_point": 0,
+     "molecular_weight": 0, "mass_fraction": 100.0},
+]
+fp_calc.method_combo.setCurrentIndex(0)   # Le Chatelier
+fp_calc.calculate_flash_point()
+check("缺分子量+沸点 → 结果区明确说明而非崩溃",
+      "无有效结果" in fp_calc.result_text.toPlainText(),
+      fp_calc.result_text.toPlainText()[:60])
 
 # 导出契约
 m3b = _load('t_flash2', os.path.join(CALC_DIR, 'mixed_liquid_flash_point_calculator.py'))
